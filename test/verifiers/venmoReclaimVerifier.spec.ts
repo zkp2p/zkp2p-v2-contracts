@@ -35,7 +35,7 @@ const blockchain = new Blockchain(ethers.provider);
 describe("VenmoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let ramp: Account;
+  let escrow: Account;
   let providerHash: string;
   let witnessAddress: Address;
 
@@ -49,7 +49,7 @@ describe("VenmoReclaimVerifier", () => {
     [
       owner,
       attacker,
-      ramp
+      escrow
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -61,7 +61,7 @@ describe("VenmoReclaimVerifier", () => {
     nullifierRegistry = await deployer.deployNullifierRegistry();
     const claimVerifier = await deployer.deployClaimVerifier();
     verifier = await deployer.deployVenmoReclaimVerifier(
-      ramp.address,
+      escrow.address,
       nullifierRegistry.address,
       [providerHash],
       BigNumber.from(30),
@@ -74,7 +74,7 @@ describe("VenmoReclaimVerifier", () => {
 
   describe("#constructor", async () => {
     it("should set the correct state", async () => {
-      const rampAddress = await verifier.ramp();
+      const escrowAddress = await verifier.escrow();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
       const timestampBuffer = await verifier.timestampBuffer();
       const providerHashes = await verifier.getProviderHashes();
@@ -82,7 +82,7 @@ describe("VenmoReclaimVerifier", () => {
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
       expect(timestampBuffer).to.eq(BigNumber.from(30));
       expect(providerHashes).to.deep.eq([providerHash]);
-      expect(rampAddress).to.eq(ramp.address);
+      expect(escrowAddress).to.eq(escrow.address);
     });
   });
 
@@ -126,7 +126,7 @@ describe("VenmoReclaimVerifier", () => {
         [proof]
       );
 
-      subjectCaller = ramp;
+      subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(5);
       subjectIntentTimestamp = BigNumber.from(1727914697);
@@ -164,7 +164,7 @@ describe("VenmoReclaimVerifier", () => {
       );
     }
 
-    it("should process the proof", async () => {
+    it("should verify the proof", async () => {
       const [
         verified,
         intentHash
@@ -267,13 +267,13 @@ describe("VenmoReclaimVerifier", () => {
       });
     });
 
-    describe("when the caller is not the ramp", async () => {
+    describe("when the caller is not the escrow", async () => {
       beforeEach(async () => {
         subjectCaller = owner;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only ramp can call");
+        await expect(subject()).to.be.revertedWith("Only escrow can call");
       });
     });
   });

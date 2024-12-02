@@ -14,13 +14,21 @@ pragma solidity ^0.8.18;
 
 import "hardhat/console.sol";
 
-// todo: add lots of comments
-
 contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
 
-    /* ============ Events ============ */
+    /* ============ Structs ============ */
+
+    // Struct to hold the payment details extracted from the proof
+    struct PaymentDetails {
+        string amountString;
+        string dateString;
+        string paymentId;
+        string recipientVenmoId;
+        string intentHash;
+        string providerHash;
+    }
 
     /* ============ Constants ============ */
     uint8 internal constant MAX_EXTRACT_VALUES = 6;
@@ -28,13 +36,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constructor ============ */
     constructor(
-        address _ramp,
+        address _escrow,
         INullifierRegistry _nullifierRegistry,
         string[] memory _providerHashes,
         uint256 _timestampBuffer
     )   
         BaseReclaimPaymentVerifier(
-            _ramp, 
+            _escrow, 
             _nullifierRegistry, 
             _timestampBuffer, 
             _providerHashes
@@ -44,15 +52,16 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     /* ============ External Functions ============ */
 
     /**
-     * ONLY RAMP: Verifies proof. Checks payment details.
+     * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
+     * is paid to _payeeDetailsHash after _intentTimestamp + timestampBuffer on Venmo.
      *
      * @param _proof            Proof to be verified
-     * @param _depositToken     The deposit token
-     * @param _intentAmount     The intent amount
-     * @param _intentTimestamp  The intent timestamp
-     * @param _conversionRate   The conversion rate
-     * @param _payeeDetailsHash The payee details hash
-     * @param _data             The data
+     * @param _depositToken     The deposit token locked in escrow
+     * @param _intentAmount     Amount of deposit.token that the offchain payer wants to unlock from escrow
+     * @param _intentTimestamp  The timestamp at which intent was created. Offchain payment must be made after this time.
+     * @param _conversionRate   The conversion rate for the deposit token to offchain USD
+     * @param _payeeDetailsHash The payee details hash (hash of the payee's Venmo ID)
+     * @param _depositData      Additional data required for proof verification. In this case, the attester's address.
      */
     function verifyPayment(
         bytes calldata _proof,
@@ -61,66 +70,93 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         uint256 _intentTimestamp,
         uint256 _conversionRate,
         bytes32 _payeeDetailsHash,
-        bytes calldata _data
+        bytes calldata _depositData
     )
         external 
         override
         returns (bool, bytes32)
     {
-        require(msg.sender == ramp, "Only ramp can call");
+        require(msg.sender == escrow, "Only escrow can call");
 
-        // Decode the proof and deposit data
-        ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
-        address attester = _extractVerificationData(_data);
-
-        // Verify proof
-        address[] memory witnesses = new address[](1);
-        witnesses[0] = attester;
-        verifyProofSignatures(proof, witnesses);
-        
-        // Extract public values
-        (
-            string memory amountString,
-            string memory dateString,
-            string memory paymentId,
-            string memory recipientId,
-            string memory intentHash,
-            string memory providerHash
-        ) = _extractValues(proof);
-
-        // Check provider hash (Required for Reclaim proofs)
-        require(_validateProviderHash(providerHash), "No valid providerHash");
-
-
-        uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
-        
-        // Payment details
-        // todo: is this correct?
-        uint8 decimals = IERC20Metadata(_depositToken).decimals();
-        uint256 paymentAmount = amountString.stringToUint(decimals);
-        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(dateString) + timestampBuffer;
-        bytes32 paymentRecipient = hexStringToBytes32(recipientId);
-    
-        // Confirm payment details
-        require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
-        require(paymentRecipient == _payeeDetailsHash, "Incorrect payment recipient");
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_proof, _depositData);
+                
+        _verifyPaymentDetails(
+            paymentDetails, 
+            _depositToken, 
+            _intentAmount, 
+            _intentTimestamp, 
+            _conversionRate, 
+            _payeeDetailsHash
+        );
         
         // Nullify the payment
-        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentId)));
+        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, hexStringToBytes32(intentHash));
+        return (true, hexStringToBytes32(paymentDetails.intentHash));
     }
 
     /* ============ Internal Functions ============ */
 
     /**
-     * Extracts the verification data from the data. This could also be used to extract 
-     * other values from the deposit data if needed.
+     * Verifies the proof and extracts the public values from the proof and _depositData.
+     *
+     * @param _proof The proof to verify.
+     * @param _depositData The deposit data to extract the verification data from.
+     */
+    function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
+        internal
+        view
+        returns (PaymentDetails memory paymentDetails) 
+    {
+        // Decode proof
+        ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
+
+        // Extract verification data
+        address attester = _decodeDepositData(_depositData);
+
+        address[] memory witnesses = new address[](1);
+        witnesses[0] = attester;
+        verifyProofSignatures(proof, witnesses);
+        
+        // Extract public values
+        paymentDetails = _extractValues(proof);
+
+        // Check provider hash (Required for Reclaim proofs)
+        require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
+    }
+
+    /**
+     * Verifies the right _intentAmount * _conversionRate is paid to _payeeDetailsHash after 
+     * _intentTimestamp + timestampBuffer on Venmo. Reverts if any of the conditions are not met.
+     */
+    function _verifyPaymentDetails(
+        PaymentDetails memory paymentDetails,
+        address _depositToken,
+        uint256 _intentAmount,
+        uint256 _intentTimestamp,
+        uint256 _conversionRate,
+        bytes32 _payeeDetailsHash
+    ) internal view {
+        
+        uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
+        uint8 decimals = IERC20Metadata(_depositToken).decimals();
+        uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
+        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        
+        bytes32 paymentRecipient = hexStringToBytes32(paymentDetails.recipientVenmoId);
+        require(paymentRecipient == _payeeDetailsHash, "Incorrect payment recipient");
+        
+        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
+        require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
+    }
+
+    /**
+     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the attester's address.
+     * In case of a zkEmail proof, data contains the DKIM key hash. Can also contain additional data like currency code, etc.
      *
      * @param _data The data to extract the verification data from.
      */
-    function _extractVerificationData(bytes calldata _data) internal pure returns (address attester) {
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address attester) {
         attester = abi.decode(_data, (address));
     }
 
@@ -129,29 +165,24 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _proof The proof containing the context to extract values from.
      */
-    function _extractValues(ReclaimProof memory _proof) internal pure returns (
-        string memory amountString,
-        string memory dateString,
-        string memory paymentId,
-        string memory recipientVenmoId,
-        string memory intentHash,
-        string memory providerHash
-    ) {
+    function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
             MAX_EXTRACT_VALUES, 
             true
         );
 
-        return (
-            values[0], // amountString
-            values[1], // dateString
-            values[2], // paymentId
-            values[3], // recipientVenmoId
-            values[4], // intentHash
-            values[5]  // providerHash
-        );
+        return PaymentDetails({
+            amountString: values[0],
+            dateString: values[1],
+            paymentId: values[2],
+            recipientVenmoId: values[3],
+            intentHash: values[4],
+            providerHash: values[5]
+        });
     }
+
+    // todo: Figure out if this is needed, or there's a cleaner way to do this. If needed, move to lib.
 
     function hexStringToBytes32(string memory s) public pure returns (bytes32) {
         bytes memory b = bytes(s);

@@ -12,20 +12,20 @@ abstract contract BasePaymentVerifier is Ownable {
     event MaxIntentTakeAmountSet(uint256 maxIntentTakeAmount);
     
     /* ============ State Variables ============ */
-    address public immutable ramp;
+    address public immutable escrow;
     INullifierRegistry public nullifierRegistry;
     
     uint256 public timestampBuffer;
     
     /* ============ Constructor ============ */
     constructor(
-        address _ramp,
+        address _escrow,
         INullifierRegistry _nullifierRegistry,
         uint256 _timestampBuffer
     )
         Ownable()
     {
-        ramp = _ramp;
+        escrow = _escrow;
         nullifierRegistry = _nullifierRegistry;
 
         timestampBuffer = _timestampBuffer;

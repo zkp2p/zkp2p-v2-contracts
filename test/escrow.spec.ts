@@ -641,7 +641,7 @@ describe("Escrow", () => {
       );
     });
 
-    describe.only("when the sustainability fee is set", async () => {
+    describe("when the sustainability fee is set", async () => {
       beforeEach(async () => {
         await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
       });
