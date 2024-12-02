@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
 import { Account } from "@utils/test/types";
-import { NullifierRegistry, RampV2, VenmoReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, VenmoReclaimVerifier, USDCMock } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 import { Address, GrothProof, ReclaimProof } from "@utils/types";
 import { getIdentifierFromClaimInfo, createSignDataForClaim } from "@utils/reclaimUtils";

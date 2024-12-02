@@ -6,7 +6,7 @@ const circom = require("circomlibjs");
 
 import {
   USDCMock,
-  RampV2,
+  Escrow,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   NullifierRegistry,
@@ -24,7 +24,7 @@ import {
   ClaimVerifier__factory,
 } from "../typechain/factories/contracts/lib";
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
-import { RampV2__factory } from "../typechain/factories/contracts/index";
+import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
@@ -38,24 +38,18 @@ export default class DeployHelper {
     return await new USDCMock__factory(this._deployerSigner).deploy(mintAmount.toString(), name, symbol);
   }
 
-  public async deployRampV2(
+  public async deployEscrow(
     owner: Address,
-    minDepositAmount: BigNumber,
     intentExpirationPeriod: BigNumber,
     sustainabilityFee: BigNumber,
     sustainabilityFeeRecipient: Address
-  ): Promise<RampV2> {
-    return await new RampV2__factory(this._deployerSigner).deploy(
+  ): Promise<Escrow> {
+    return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
-      minDepositAmount,
       intentExpirationPeriod,
       sustainabilityFee,
       sustainabilityFeeRecipient
     );
-  }
-
-  public async deployPaymentVerifierMock(): Promise<PaymentVerifierMock> {
-    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployVenmoReclaimVerifier(
@@ -80,17 +74,20 @@ export default class DeployHelper {
     );
   }
 
-
   public async deployNullifierRegistry(): Promise<NullifierRegistry> {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployClaimVerifier(): Promise<ClaimVerifier> {
+    return await new ClaimVerifier__factory(this._deployerSigner).deploy();
   }
 
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
 
-  public async deployClaimVerifier(): Promise<ClaimVerifier> {
-    return await new ClaimVerifier__factory(this._deployerSigner).deploy();
+  public async deployPaymentVerifierMock(): Promise<PaymentVerifierMock> {
+    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployClaimVerifierMock(libraryName: string, libraryAddress: Address): Promise<ClaimVerifierMock> {

@@ -10,7 +10,7 @@ import {
 } from "@utils/types";
 import { Account } from "@utils/test/types";
 import {
-  RampV2,
+  Escrow,
   USDCMock,
   PaymentVerifierMock
 } from "@utils/contracts";
@@ -30,7 +30,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("RampV2", () => {
+describe("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
@@ -43,7 +43,7 @@ describe("RampV2", () => {
   let gatingService: Account;
   let witness: Account;
 
-  let ramp: RampV2;
+  let ramp: Escrow;
   let usdcToken: USDCMock;
 
   let verifier: PaymentVerifierMock;
@@ -71,9 +71,8 @@ describe("RampV2", () => {
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
-    ramp = await deployer.deployRampV2(
+    ramp = await deployer.deployEscrow(
       owner.address,
-      usdc(20),                          // $20 min deposit amount
       ONE_DAY_IN_SECONDS,                // 1 day intent expiration period
       ZERO,                              // Sustainability fee
       feeRecipient.address
@@ -82,7 +81,7 @@ describe("RampV2", () => {
     verifier = await deployer.deployPaymentVerifierMock();
     otherVerifier = await deployer.deployPaymentVerifierMock();
 
-    await ramp.addWhitelistedPaymentVerifier(verifier.address, ether(0.1));
+    await ramp.addWhitelistedPaymentVerifier(verifier.address, ZERO);
   });
 
   describe("#constructor", async () => {
@@ -91,10 +90,6 @@ describe("RampV2", () => {
       expect(ownerAddress).to.eq(owner.address);
     });
 
-    it("should set the correct min deposit amount", async () => {
-      const minDepositAmount: BigNumber = await ramp.minDepositAmount();
-      expect(minDepositAmount).to.eq(usdc(20));
-    });
 
     it("should set the correct sustainability fee", async () => {
       const sustainabilityFee: BigNumber = await ramp.sustainabilityFee();
@@ -110,9 +105,9 @@ describe("RampV2", () => {
   describe("#createDeposit", async () => {
     let subjectToken: Address;
     let subjectAmount: BigNumber;
-    let subjectIntentAmountRange: RampV2.RangeStruct;
+    let subjectIntentAmountRange: Escrow.RangeStruct;
     let subjectVerifiers: Address[];
-    let subjectVerificationData: RampV2.PaymentVerificationDataStruct[];
+    let subjectVerificationData: Escrow.PaymentVerificationDataStruct[];
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -187,24 +182,15 @@ describe("RampV2", () => {
     });
 
     // todo: figure out how to test this given that verifiers is an array
-    it.skip("should emit a DepositReceived event", async () => {
+    it("should emit a DepositReceived event", async () => {
       await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
-        0, // depositId starts at 0
+        ZERO, // depositId starts at 0
         offRamper.address,
-        subjectVerifiers, // Pass the array directly
+        subjectVerifiers[0],
         subjectToken,
-        subjectAmount
+        subjectAmount,
+        subjectVerificationData[0].conversionRate
       );
-    });
-
-    describe("when the deposited amount is less than the minimum", async () => {
-      beforeEach(async () => {
-        subjectAmount = usdc(19.99);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Deposit amount must be greater than min deposit amount");
-      });
     });
 
     describe("when the conversion rate is zero", async () => {
@@ -646,13 +632,89 @@ describe("RampV2", () => {
       await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
         intentHash,
         ZERO,
-        onRamper.address,
         verifier.address,
         onRamper.address,
+        onRamper.address,
         usdc(50),
-        0, // Assuming no fee for simplicity
-        0  // Assuming no verifier fee for simplicity
+        0,
+        0
       );
+    });
+
+    describe.only("when the sustainability fee is set", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+      });
+
+      it("should transfer the correct amounts including fee", async () => {
+        const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        await subject();
+
+        const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(fee));
+        expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
+      });
+
+      it("should emit an IntentFulfilled event with fee details", async () => {
+        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          intentHash,
+          ZERO,
+          verifier.address,
+          onRamper.address,
+          onRamper.address,
+          usdc(49),
+          fee,
+          0 // Assuming no verifier fee
+        );
+      });
+
+      describe("when the verifier fee share is set", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).updatePaymentVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
+        });
+
+        it("should transfer the correct amounts including both fees", async () => {
+          const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const initialVerifierBalance = await usdcToken.balanceOf(verifier.address);
+
+          await subject();
+
+          const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const finalVerifierBalance = await usdcToken.balanceOf(verifier.address);
+
+          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
+
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFee));
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(totalFee.sub(verifierFee));
+          expect(finalVerifierBalance.sub(initialVerifierBalance)).to.eq(verifierFee);
+        });
+
+        it("should emit an IntentFulfilled event with both fee details", async () => {
+          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
+
+          await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+            intentHash,
+            ZERO,
+            verifier.address,
+            onRamper.address,
+            onRamper.address,
+            usdc(50).sub(totalFee),
+            totalFee.sub(verifierFee),
+            verifierFee
+          );
+        });
+      });
     });
 
     describe("when the intent does not exist", async () => {
@@ -782,8 +844,8 @@ describe("RampV2", () => {
       await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
         subjectIntentHash,
         ZERO,
+        ADDRESS_ZERO,   // cause manual release of funds
         onRamper.address,
-        verifier.address,
         receiver.address,
         usdc(50),
         0,
@@ -1348,54 +1410,6 @@ describe("RampV2", () => {
       const tx = await subject();
 
       expect(tx).to.emit(ramp, "AcceptAllPaymentVerifiersUpdated").withArgs(subjectAcceptAll);
-    });
-
-    describe("when the caller is not the owner", async () => {
-      beforeEach(async () => {
-        subjectCaller = onRamper;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-  });
-
-  describe("#setMinDepositAmount", async () => {
-    let subjectMinDepositAmount: BigNumber;
-    let subjectCaller: Account;
-
-    beforeEach(async () => {
-      subjectMinDepositAmount = usdc(10);
-      subjectCaller = owner;
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setMinDepositAmount(subjectMinDepositAmount);
-    }
-
-    it("should set the correct min deposit amount", async () => {
-      await subject();
-
-      const depositAmount = await ramp.minDepositAmount();
-
-      expect(depositAmount).to.eq(subjectMinDepositAmount);
-    });
-
-    it("should emit a MinDepositAmountSet event", async () => {
-      const tx = await subject();
-
-      expect(tx).to.emit(ramp, "MinDepositAmountSet").withArgs(subjectMinDepositAmount);
-    });
-
-    describe("when the min deposit amount is 0", async () => {
-      beforeEach(async () => {
-        subjectMinDepositAmount = ZERO;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Minimum deposit cannot be zero");
-      });
     });
 
     describe("when the caller is not the owner", async () => {

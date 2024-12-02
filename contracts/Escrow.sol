@@ -18,7 +18,7 @@ pragma solidity ^0.8.18;
 // todo: add circuit breakers!
 // todo: add ability to add payment verifiers to existing deposits? too much?
 
-contract RampV2 is Ownable {
+contract Escrow is Ownable {
 
     using Bytes32ArrayUtils for bytes32[];
     using Uint256ArrayUtils for uint256[];
@@ -31,16 +31,17 @@ contract RampV2 is Ownable {
     event DepositReceived(
         uint256 indexed depositId,
         address indexed depositor,
-        address[] indexed verifier,
+        address indexed verifier,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        uint256 conversionRate
     );
 
     event IntentSignaled(
         bytes32 indexed intentHash,
         uint256 indexed depositId,
         address indexed verifier,
-        address payer,
+        address owner,
         address to,
         uint256 amount,
         uint256 timestamp
@@ -54,24 +55,13 @@ contract RampV2 is Ownable {
     event IntentFulfilled(
         bytes32 indexed intentHash,
         uint256 indexed depositId,
-        address indexed payer,
-        address verifier,
+        address indexed verifier,
+        address owner,
         address to,
         uint256 amount,
         uint256 sustainabilityFee,
         uint256 verifierFee
     );
-
-    // event FundsReleasedToPayer(
-    //     bytes32 indexed intentHash,
-    //     uint256 indexed depositId,
-    //     address indexed payer,
-    //     address verifier,
-    //     address to,
-    //     uint256 amount,
-    //     uint256 sustainabilityFee,
-    //     uint256 verifierFee
-    // );
 
     event DepositWithdrawn(
         uint256 indexed depositId,
@@ -80,8 +70,8 @@ contract RampV2 is Ownable {
     );
 
     event DepositClosed(uint256 depositId, address depositor);
-    event MinDepositAmountSet(uint256 minDepositAmount);
     
+    event MinDepositAmountSet(uint256 minDepositAmount);
     event SustainabilityFeeUpdated(uint256 fee);
     event SustainabilityFeeRecipientUpdated(address feeRecipient);
     event AcceptAllPaymentVerifiersUpdated(bool acceptAllPaymentVerifiers);
@@ -102,8 +92,8 @@ contract RampV2 is Ownable {
     }
 
     struct Range {
-        uint256 min;
-        uint256 max;
+        uint256 min;                                // Minimum value
+        uint256 max;                                // Maximum value
     }
 
     struct Deposit {
@@ -119,12 +109,13 @@ contract RampV2 is Ownable {
     }
 
     struct Intent {
-        address owner;
-        address to;
-        uint256 depositId;
-        uint256 amount;
-        uint256 timestamp;
-        address paymentVerifier;
+        address owner;                              // Address of the intent owner  
+        address to;                                 // Address to forward funds to (can be same as owner)
+        uint256 depositId;                          // ID of the deposit the intent is associated with
+        uint256 amount;                             // Amount of the deposit.token the intent is for
+        uint256 timestamp;                          // Timestamp of the intent
+        address paymentVerifier;                    // Address of the payment verifier corresponding to payment service the owner is 
+                                                    // going to pay with offchain
     }
 
     struct VerifierDataView {
@@ -135,13 +126,13 @@ contract RampV2 is Ownable {
     struct DepositView {
         uint256 depositId;
         Deposit deposit;
-        uint256 availableLiquidity;
+        uint256 availableLiquidity;                 // Amount of liquidity available to signal intents (net of expired intents)
         VerifierDataView[] verifiers;
     }
 
     struct IntentView {
-        bytes32 intentHash;                 // Intent hash
-        Intent intent;                      // Intent struct
+        bytes32 intentHash;
+        Intent intent;
     }
 
     /* ============ Constants ============ */
@@ -151,21 +142,23 @@ contract RampV2 is Ownable {
     
     /* ============ State Variables ============ */
 
-    mapping(address => uint256[]) public accountDeposits;
-    mapping(address => bytes32[]) public accountIntents;
+    mapping(address => uint256[]) public accountDeposits;           // Mapping of address to depositIds
+    mapping(address => bytes32[]) public accountIntents;            // Mapping of address to intentHashes
+    // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
+    // services (e.g. Venmo, Revolut, Mercado etc). Each payment service has it's own verification data which includes
+    // the conversion rate for that fiat currency, the payee details hash etc.
     mapping(uint256 => mapping(address => PaymentVerificationData)) public depositVerifierData;
 
     mapping(uint256 => Deposit) public deposits;                    // Mapping of depositIds to deposit structs
     mapping(bytes32 => Intent) public intents;                      // Mapping of intentHashes to intent structs
 
     // Governance controlled
-    bool public acceptAllPaymentVerifiers;
-    mapping(address => bool) public whitelistedPaymentVerifiers;          // Mapping of payment verifier addresses to boolean indicating if they are whitelisted
-    mapping(address => uint256) public paymentVerifierFeeShare;           // Mapping of payment verifier addresses to their fee share
+    bool public acceptAllPaymentVerifiers;                            // True if all payment verifiers are accepted, False otherwise
+    mapping(address => bool) public whitelistedPaymentVerifiers;      // Mapping of payment verifier addresses to boolean indicating if they are whitelisted
+    mapping(address => uint256) public paymentVerifierFeeShare;       // Mapping of payment verifier addresses to their fee share
 
-    uint256 public minDepositAmount;                                // Minimum amount of USDC that can be deposited
-    uint256 public intentExpirationPeriod;          // Time period after which an intent can be pruned from the system
-    uint256 public sustainabilityFee;                               // Fee charged to on-rampers in preciseUnits (1e16 = 1%)
+    uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
+    uint256 public sustainabilityFee;                               // Fee charged to takers in preciseUnits (1e16 = 1%)
     address public sustainabilityFeeRecipient;                      // Address that receives the sustainability fee
 
     uint256 public depositCounter;                                  // Counter for depositIds
@@ -174,14 +167,12 @@ contract RampV2 is Ownable {
     /* ============ Constructor ============ */
     constructor(
         address _owner,
-        uint256 _minDepositAmount,
         uint256 _intentExpirationPeriod,
         uint256 _sustainabilityFee,
         address _sustainabilityFeeRecipient
     )
         Ownable()
     {
-        minDepositAmount = _minDepositAmount;
         intentExpirationPeriod = _intentExpirationPeriod;
         sustainabilityFee = _sustainabilityFee;
         sustainabilityFeeRecipient = _sustainabilityFeeRecipient;
@@ -192,26 +183,27 @@ contract RampV2 is Ownable {
     /* ============ External Functions ============ */
 
     /**
-     * @notice Generates a deposit entry for off-rampers that can then be fulfilled by an on-ramper. This function will not add to
-     * previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
-     * of deposit token. Every deposit specifies verifiers and verification data for each verifier.
+     * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
+     * not add to previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
+     * of deposit token. Every deposit specifies the payment services it supports by specifying their corresponding verifier addresses and 
+     * verification data.
      *
      * @param _token                     The token to be deposited
      * @param _amount                    The amount of token to deposit
      * @param _intentAmountRange         The max and min take amount for each intent
-     * @param _verifier                  The payment verifiers for the deposit
+     * @param _verifiers                 The payment verifiers for the deposit
      * @param _verificationData          The payment verification data for the deposit
      */
     function createDeposit(
         IERC20 _token,
         uint256 _amount,
         Range calldata _intentAmountRange,
-        address[] calldata _verifier,
+        address[] calldata _verifiers,
         PaymentVerificationData[] calldata _verificationData
     )
         external
     {
-        _validateCreateDeposit(_amount, _verifier, _verificationData);
+        _validateCreateDeposit(_verifiers, _verificationData);
 
         uint256 depositId = depositCounter++;
 
@@ -231,30 +223,34 @@ contract RampV2 is Ownable {
             verifiers: new address[](0)
         });
 
-        for (uint256 i = 0; i < _verifier.length; i++) {
+        for (uint256 i = 0; i < _verifiers.length; i++) {
+            address verifier = _verifiers[i];
             require(
-                depositVerifierData[depositId][_verifier[i]].payeeDetailsHash == bytes32(0),
+                depositVerifierData[depositId][verifier].payeeDetailsHash == bytes32(0),
                 "Verifier already exists"
             );
-            deposit.verifiers.push(_verifier[i]);
-            depositVerifierData[depositId][_verifier[i]] = _verificationData[i];
+            deposit.verifiers.push(verifier);
+            depositVerifierData[depositId][verifier] = _verificationData[i];
+         
+            emit DepositReceived(depositId, msg.sender, verifier, _token, _amount, _verificationData[i].conversionRate);
         }
 
         _token.transferFrom(msg.sender, address(this), _amount);
 
-        emit DepositReceived(depositId, msg.sender, _verifier, _token, _amount);
     }
 
     /**
      * @notice Signals intent to pay the depositor defined in the _depositId the _amount * deposit conversionRate off-chain
      * in order to unlock _amount of funds on-chain. Caller must provide a signature from the deposit's gating service to prove
-     * their eligibility to take liquidity. If there are prunable intents then they will be deleted from the deposit to be able 
-     * to maintain state hygiene.
+     * their eligibility to take liquidity. The offchain gating service can perform any additional verification, for example, 
+     * verifying the payer's identity, checking the payer's KYC status, etc. If there are prunable intents then they will be 
+     * deleted from the deposit to be able to maintain state hygiene.
      *
-     * @param _depositId                The ID of the deposit the taker intends to use for 
-     * @param _amount                   The amount of USDC the user wants to take
+     * @param _depositId                The ID of the deposit the taker intends to use for taking onchain liquidity
+     * @param _amount                   The amount of deposit.token the user wants to take
      * @param _to                       Address to forward funds to (can be same as owner)
-     * @param _verifier                 The payment verifier for the intent (example: VenmoVerifier, RevolutVerifier, etc.)
+     * @param _verifier                 The payment verifier corresponding to the payment service the user is going to pay with 
+     *                                  offchain (e.g. Venmo, Revolut, Mercado, etc.)
      * @param _gatingServiceSignature   The signature from the deposit's gating service on intent parameters
      */
     function signalIntent(
@@ -325,8 +321,8 @@ contract RampV2 is Ownable {
 
     /**
      * @notice Anyone can submit a fullfill intent transaction, even if caller isn't the intent owner. Upon submission the
-     * payment proof is verified, payment details are validated, intent is removed, and deposit state is updated. Deposit token
-     * is transferred to the intent.to address.
+     * offchain payment proof is verified, payment details are validated, intent is removed, and deposit state is updated. 
+     * Deposit token is transferred to the intent.to address.
      *
      * @param _paymentProof         Payment proof. Can be Groth16 Proof, TLSNotary proof, TLSProxy proof, attestation etc.
      * @param _intentHash           Identifier of intent being fulfilled
@@ -354,7 +350,7 @@ contract RampV2 is Ownable {
             verificationData.data
         );
         require(success, "Payment verification failed");
-        require(intentHash == _intentHash, "Invalid intent hash");      // Did revolut ramp do this?
+        require(intentHash == _intentHash, "Invalid intent hash");      // todo: Did revolut ramp do this?
 
         _pruneIntent(deposit, _intentHash);
 
@@ -386,15 +382,14 @@ contract RampV2 is Ownable {
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
-        // todo: should the processor get fees in this scenario?
-        _transferFunds(token, _intentHash, intent, intent.paymentVerifier);
+        _transferFunds(token, _intentHash, intent, address(0));
     }
 
     /**
      * @notice Caller must be the depositor for depositId, if not revert. Depositor is returned all remaining deposits and any
      * outstanding intents that are expired. If an intent is not expired then those funds will not be returned. Deposit is marked 
-     * as not accepting intents and the funds locked due to intents can be withdrawn once the corresponding intents are expired.
-     * Deposit will be deleted as long as there are no more outstanding intents.
+     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this function
+     * again. Deposit will be deleted as long as there are no more outstanding intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
@@ -430,6 +425,7 @@ contract RampV2 is Ownable {
      * @notice GOVERNANCE ONLY: Adds a payment verifier to the whitelist.
      *
      * @param _verifier   The payment verifier address to add
+     * @param _feeShare   The fee share for the payment verifier
      */
     function addWhitelistedPaymentVerifier(address _verifier, uint256 _feeShare) external onlyOwner {
         require(_verifier != address(0), "Payment verifier cannot be zero address");
@@ -474,18 +470,6 @@ contract RampV2 is Ownable {
     function updateAcceptAllPaymentVerifiers(bool _acceptAllPaymentVerifiers) external onlyOwner {
         acceptAllPaymentVerifiers = _acceptAllPaymentVerifiers;
         emit AcceptAllPaymentVerifiersUpdated(_acceptAllPaymentVerifiers);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the minimum deposit amount a user can specify for deposits.
-     *
-     * @param _minDepositAmount   The new minimum deposit amount
-     */
-    function setMinDepositAmount(uint256 _minDepositAmount) external onlyOwner {
-        require(_minDepositAmount != 0, "Minimum deposit cannot be zero");
-
-        minDepositAmount = _minDepositAmount;
-        emit MinDepositAmountSet(_minDepositAmount);
     }
 
     /**
@@ -599,16 +583,13 @@ contract RampV2 is Ownable {
     /* ============ Internal Functions ============ */
 
     function _validateCreateDeposit(
-        uint256 _amount,
         address[] calldata _verifier,
         PaymentVerificationData[] calldata _paymentVerificationData
     ) internal view {
-        require(_amount >= minDepositAmount, "Deposit amount must be greater than min deposit amount");
         for (uint256 i = 0; i < _verifier.length; i++) {
             require(_verifier[i] != address(0), "Verifier cannot be zero address");
             require(whitelistedPaymentVerifiers[_verifier[i]] || acceptAllPaymentVerifiers, "Payment verifier not whitelisted");
             // Gating service can be zero address
-            // Attester can be zero address
             require(_paymentVerificationData[i].conversionRate > 0, "Conversion rate must be greater than 0");
             require(_paymentVerificationData[i].payeeDetailsHash != bytes32(0), "Payee details hash cannot be empty");
             // Data can be empty
@@ -646,7 +627,7 @@ contract RampV2 is Ownable {
     }
 
     function _calculateIntentHash(
-        address _onRamper,
+        address _intentOwner,
         address _verifier,
         uint256 _depositId
     )
@@ -656,7 +637,7 @@ contract RampV2 is Ownable {
         returns (bytes32 intentHash)
     {
         // Mod with circom prime field to make sure it fits in a 254-bit field
-        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_onRamper, _verifier, _depositId, block.timestamp)));
+        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_intentOwner, _verifier, _depositId, block.timestamp)));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }
 
@@ -707,7 +688,8 @@ contract RampV2 is Ownable {
 
     /**
      * @notice Removes a deposit if no outstanding intents AND no remaining deposits. Deleting a deposit deletes it from the
-     * deposits mapping and removes tracking it in the user's accountDeposits mapping.
+     * deposits mapping and removes tracking it in the user's accountDeposits mapping. Also deletes the verification data for the
+     * deposit.
      */
     function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
         uint256 openDepositAmount = _deposit.outstandingIntentAmount + _deposit.remainingDeposits;
@@ -732,15 +714,18 @@ contract RampV2 is Ownable {
 
     /**
      * @notice Checks if sustainability fee has been defined, if so sends fee to the respective fee recipients, and intent amount
-     * minus total fee to the on-ramper. If sustainability fee is undefined then full intent amount is transferred to on-ramper. 
-     * Total fee is split between the sustainability fee recipient and the payment verifier.
+     * minus total fee to the taker. Total fee is split between the sustainability fee recipient and the payment verifier. To 
+     * skip payment verifier fee split, set _verifier to zero address. If sustainability fee is undefined then full intent amount 
+     * is transferred to taker. 
      */
     function _transferFunds(IERC20 _token, bytes32 _intentHash, Intent memory _intent, address _verifier) internal {
         uint256 fee;
         uint256 verifierFee;
         if (sustainabilityFee != 0) {
             fee = (_intent.amount * sustainabilityFee) / PRECISE_UNIT;
-            verifierFee = (fee * paymentVerifierFeeShare[_verifier]) / PRECISE_UNIT;
+            if (_verifier != address(0)) {
+                verifierFee = (fee * paymentVerifierFeeShare[_verifier]) / PRECISE_UNIT;
+            }
             _token.transfer(sustainabilityFeeRecipient, fee - verifierFee);
             _token.transfer(_verifier, verifierFee);
         }
@@ -751,8 +736,8 @@ contract RampV2 is Ownable {
         emit IntentFulfilled(
             _intentHash, 
             _intent.depositId, 
-            _intent.owner, 
             _verifier, 
+            _intent.owner, 
             _intent.to, 
             transferAmount, 
             fee - verifierFee, 
