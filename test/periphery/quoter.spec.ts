@@ -25,7 +25,7 @@ import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
 
 
-describe.only("Quoter", function () {
+describe("Quoter", function () {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
@@ -113,6 +113,12 @@ describe.only("Quoter", function () {
     );
     return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
   }
+
+  describe("constructor", function () {
+    it("should set the escrow address correctly", async () => {
+      expect(await quoter.escrow()).to.equal(ramp.address);
+    });
+  });
 
   describe("quoteExactOutput", function () {
     let subjectDepositIds: BigNumber[];
