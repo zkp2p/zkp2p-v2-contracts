@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "V2 contracts for the ZK Peer to Peer fiat on/off-ramp",
   "main": "index.js",
-  "author": "bweick <brian.weickmann@gmail.com>",
+  "author": "0xsachink <0xsachink@gmail.com>",
   "license": "MIT",
   "scripts": {
     "build": "yarn clean && yarn compile && yarn build:ts:latest",

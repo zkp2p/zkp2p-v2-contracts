@@ -10,6 +10,7 @@ import {
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   NullifierRegistry,
+  BasePaymentVerifier,
   StringConversionUtilsMock,
   ClaimVerifierMock
 } from "./contracts";
@@ -26,6 +27,7 @@ import {
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -49,6 +51,20 @@ export default class DeployHelper {
       intentExpirationPeriod,
       sustainabilityFee,
       sustainabilityFeeRecipient
+    );
+  }
+
+  public async deployBasePaymentVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[]
+  ): Promise<BasePaymentVerifier> {
+    return await new BasePaymentVerifier__factory(this._deployerSigner).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies
     );
   }
 

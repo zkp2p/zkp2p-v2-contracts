@@ -38,13 +38,15 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     constructor(
         address _escrow,
         INullifierRegistry _nullifierRegistry,
-        string[] memory _providerHashes,
-        uint256 _timestampBuffer
+        uint256 _timestampBuffer,
+        string[] memory _currencies,
+        string[] memory _providerHashes
     )   
         BaseReclaimPaymentVerifier(
             _escrow, 
             _nullifierRegistry, 
             _timestampBuffer, 
+            _currencies,
             _providerHashes
         )
     { }

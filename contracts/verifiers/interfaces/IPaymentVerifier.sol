@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.18;
 
-interface IPaymentVerifier {
+import { IBasePaymentVerifier } from "./IBasePaymentVerifier.sol";
+
+interface IPaymentVerifier is IBasePaymentVerifier {
 
     function verifyPayment(
         bytes calldata _proof,

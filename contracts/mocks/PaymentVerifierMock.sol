@@ -4,10 +4,12 @@
 import { IPaymentVerifier } from "../verifiers/interfaces/IPaymentVerifier.sol";
 import { INullifierRegistry } from "../verifiers/nullifierRegistries/INullifierRegistry.sol";
 
+import { BasePaymentVerifier } from "../verifiers/BasePaymentVerifier.sol";
+
 pragma solidity ^0.8.18;
 
 
-contract PaymentVerifierMock is IPaymentVerifier {
+contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
     uint256 internal constant PRECISE_UNIT = 1e18;
 
@@ -15,6 +17,13 @@ contract PaymentVerifierMock is IPaymentVerifier {
     bool public shouldVerifyPayment;
     bool public shouldReturnFalse;
     
+    /* ============ Constructor ============ */
+    constructor(
+        address _escrow,
+        INullifierRegistry _nullifierRegistry,
+        uint256 _timestampBuffer,
+        string[] memory _currencies
+    ) BasePaymentVerifier(_escrow, _nullifierRegistry, _timestampBuffer, _currencies) {}
 
     /* ============ External Functions ============ */
 

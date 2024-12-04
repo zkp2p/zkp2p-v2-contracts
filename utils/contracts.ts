@@ -4,6 +4,7 @@ export {
   StringConversionUtilsMock,
   ClaimVerifierMock,
   Escrow,
+  BasePaymentVerifier,
   NullifierRegistry,
   VenmoReclaimVerifier,
 } from "../typechain";
