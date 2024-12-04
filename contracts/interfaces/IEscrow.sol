@@ -66,4 +66,6 @@ interface IEscrow {
         Intent intent;
         DepositView deposit;
     }
+
+    function getDepositFromIds(uint256[] memory _depositIds) external view returns (DepositView[] memory depositArray);
 }

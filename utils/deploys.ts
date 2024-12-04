@@ -12,7 +12,8 @@ import {
   NullifierRegistry,
   BasePaymentVerifier,
   StringConversionUtilsMock,
-  ClaimVerifierMock
+  ClaimVerifierMock,
+  Quoter
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -24,6 +25,7 @@ import { NullifierRegistry__factory } from "../typechain/factories/contracts/ver
 import {
   ClaimVerifier__factory,
 } from "../typechain/factories/contracts/lib";
+import { Quoter__factory } from "../typechain/factories/contracts/periphery";
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -96,6 +98,10 @@ export default class DeployHelper {
 
   public async deployNullifierRegistry(): Promise<NullifierRegistry> {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployQuoter(escrow: Address): Promise<Quoter> {
+    return await new Quoter__factory(this._deployerSigner).deploy(escrow);
   }
 
   public async deployClaimVerifier(): Promise<ClaimVerifier> {
