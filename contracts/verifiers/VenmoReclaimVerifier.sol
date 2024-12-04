@@ -39,7 +39,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         address _escrow,
         INullifierRegistry _nullifierRegistry,
         uint256 _timestampBuffer,
-        string[] memory _currencies,
+        bytes32[] memory _currencies,
         string[] memory _providerHashes
     )   
         BaseReclaimPaymentVerifier(
@@ -55,14 +55,16 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
-     * is paid to _payeeDetailsHash after _intentTimestamp + timestampBuffer on Venmo.
+     * USD was paid to _payeeDetailsHash after _intentTimestamp + timestampBuffer on Venmo.
+     * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
+     * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _proof            Proof to be verified
      * @param _depositToken     The deposit token locked in escrow
      * @param _intentAmount     Amount of deposit.token that the offchain payer wants to unlock from escrow
      * @param _intentTimestamp  The timestamp at which intent was created. Offchain payment must be made after this time.
-     * @param _conversionRate   The conversion rate for the deposit token to offchain USD
      * @param _payeeDetailsHash The payee details hash (hash of the payee's Venmo ID)
+     * @param _conversionRate   The conversion rate for the deposit token to offchain USD
      * @param _depositData      Additional data required for proof verification. In this case, the attester's address.
      */
     function verifyPayment(
@@ -70,8 +72,9 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         address _depositToken,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        uint256 _conversionRate,
         bytes32 _payeeDetailsHash,
+        bytes32 /*_fiatCurrency*/,
+        uint256 _conversionRate,
         bytes calldata _depositData
     )
         external 
@@ -87,8 +90,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             _depositToken, 
             _intentAmount, 
             _intentTimestamp, 
-            _conversionRate, 
-            _payeeDetailsHash
+            _payeeDetailsHash,
+            _conversionRate
         );
         
         // Nullify the payment
@@ -136,10 +139,10 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         address _depositToken,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        uint256 _conversionRate,
-        bytes32 _payeeDetailsHash
+        bytes32 _payeeDetailsHash,
+        uint256 _conversionRate
     ) internal view {
-        
+
         uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);

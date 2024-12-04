@@ -11,6 +11,14 @@ pragma solidity ^0.8.18;
 
 contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
+    struct PaymentDetails {
+        uint256 amount;
+        uint256 timestamp;
+        bytes32 offRamperIdHash;
+        bytes32 fiatCurrency;
+        bytes32 intentHash;
+    }
+
     uint256 internal constant PRECISE_UNIT = 1e18;
 
     /* ============ State Variables ============ */
@@ -22,7 +30,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         address _escrow,
         INullifierRegistry _nullifierRegistry,
         uint256 _timestampBuffer,
-        string[] memory _currencies
+        bytes32[] memory _currencies
     ) BasePaymentVerifier(_escrow, _nullifierRegistry, _timestampBuffer, _currencies) {}
 
     /* ============ External Functions ============ */
@@ -52,8 +60,9 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         address /*_depositToken*/,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        uint256 _conversionRate,
         bytes32 _payeeDetailsHash,
+        bytes32 _fiatCurrency,
+        uint256 _conversionRate,
         bytes calldata /*_data*/
     )
         external
@@ -61,23 +70,31 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         override
         returns (bool, bytes32)
     {
-        (
-            uint256 amount,
-            uint256 timestamp,
-            bytes32 offRamperIdHash,
-            bytes32 intentHash
-        ) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32));
+        PaymentDetails memory paymentDetails = _extractPaymentDetails(_proof);
 
         if (shouldVerifyPayment) {
-            require(timestamp >= _intentTimestamp, "Payment timestamp is before intent timestamp");
-            require(amount >= (_intentAmount * PRECISE_UNIT) / _conversionRate, "Payment amount is less than intent amount");
-            require(offRamperIdHash == _payeeDetailsHash, "Payment offramper does not match intent relayer");
+            require(paymentDetails.timestamp >= _intentTimestamp, "Payment timestamp is before intent timestamp");
+            require(paymentDetails.amount >= (_intentAmount * PRECISE_UNIT) / _conversionRate, "Payment amount is less than intent amount");
+            require(paymentDetails.offRamperIdHash == _payeeDetailsHash, "Payment offramper does not match intent relayer");
+            require(paymentDetails.fiatCurrency == _fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
         if (shouldReturnFalse) {
             return (false, bytes32(0));
         }
 
-        return (true, intentHash);
+        return (true, paymentDetails.intentHash);
+    }
+
+    function _extractPaymentDetails(bytes calldata _proof) internal pure returns (PaymentDetails memory) {
+        (
+            uint256 amount,
+            uint256 timestamp,
+            bytes32 offRamperIdHash,
+            bytes32 fiatCurrency,
+            bytes32 intentHash
+        ) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32, bytes32));
+
+        return PaymentDetails(amount, timestamp, offRamperIdHash, fiatCurrency, intentHash);
     }
 }

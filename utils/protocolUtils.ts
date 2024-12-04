@@ -8,6 +8,19 @@ const CIRCOM_FIELD = BigNumber.from("2188824287183927522224640574525727508854836
 
 let abiCoder = new AbiCoder();
 
+export const getKeccak256Hash = (value: string): string => {
+  return ethers.utils.keccak256(abiCoder.encode(["string"], [value]));
+}
+
+export const Currency = {
+  USD: getKeccak256Hash("USD"),
+  EUR: getKeccak256Hash("EUR"),
+  GBP: getKeccak256Hash("GBP"),
+  INR: getKeccak256Hash("INR"),
+  SGD: getKeccak256Hash("SGD")
+} as const;
+
+
 export const calculateIntentHash = (
   onRamper: string,
   verifier: string,

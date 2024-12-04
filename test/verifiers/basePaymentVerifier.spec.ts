@@ -2,6 +2,7 @@ import "module-alias/register";
 
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
+import { Currency } from "@utils/protocolUtils";
 import { Account } from "@utils/test/types";
 import { BasePaymentVerifier, NullifierRegistry } from "@utils/contracts"; // Adjust the import paths as necessary
 import DeployHelper from "@utils/deploys";
@@ -14,7 +15,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("BasePaymentVerifier", () => {
+describe("BasePaymentVerifier", () => {
   let owner: Account;
   let writer: Account;
   let attacker: Account;
@@ -43,7 +44,7 @@ describe.only("BasePaymentVerifier", () => {
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
-      ["USD", "EUR", "INR"]
+      [Currency.USD, Currency.EUR, Currency.INR]
     );
   });
 
@@ -60,7 +61,7 @@ describe.only("BasePaymentVerifier", () => {
 
     it("should set the correct currencies", async () => {
       const currencies = await basePaymentVerifier.getCurrencies();
-      expect(currencies).to.deep.equal(["USD", "EUR", "INR"]);
+      expect(currencies).to.deep.equal([Currency.USD, Currency.EUR, Currency.INR]);
     });
   });
 
@@ -69,7 +70,7 @@ describe.only("BasePaymentVerifier", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectCurrency = "SGD";
+      subjectCurrency = Currency.SGD;
       subjectCaller = owner;
     });
 
@@ -112,7 +113,7 @@ describe.only("BasePaymentVerifier", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectCurrency = "SGD";
+      subjectCurrency = Currency.SGD;
       subjectCaller = owner;
       await basePaymentVerifier.addCurrency(subjectCurrency);
     });

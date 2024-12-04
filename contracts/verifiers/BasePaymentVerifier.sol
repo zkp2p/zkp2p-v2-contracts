@@ -4,18 +4,18 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IBasePaymentVerifier } from "./interfaces/IBasePaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
-import { StringArrayUtils } from "../external/StringArrayUtils.sol";
+import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 
 pragma solidity ^0.8.18;
 
 contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
 
-    using StringArrayUtils for string[];
+    using Bytes32ArrayUtils for bytes32[];
 
     /* ============ Events ============ */
     event TimestampBufferSet(uint256 timestampBuffer);
-    event CurrencyAdded(string currencyCode);
-    event CurrencyRemoved(string currencyCode);
+    event CurrencyAdded(bytes32 currencyCode);
+    event CurrencyRemoved(bytes32 currencyCode);
     
     /* ============ State Variables ============ */
     address public immutable escrow;
@@ -23,15 +23,15 @@ contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
     
     uint256 public timestampBuffer;
 
-    string[] internal currencies;
-    mapping(string => bool) public isCurrency;
+    bytes32[] internal currencies;
+    mapping(bytes32 => bool) public isCurrency;
     
     /* ============ Constructor ============ */
     constructor(
         address _escrow,
         INullifierRegistry _nullifierRegistry,
         uint256 _timestampBuffer,
-        string[] memory _currencies
+        bytes32[] memory _currencies
     )
         Ownable()
     {
@@ -51,7 +51,7 @@ contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
      * @notice OWNER ONLY: Adds a currency code to supported currencies
      * @param _currencyCode Currency code to add
      */
-    function addCurrency(string memory _currencyCode) public onlyOwner {
+    function addCurrency(bytes32 _currencyCode) public onlyOwner {
         require(!isCurrency[_currencyCode], "Currency already added");
         
         currencies.push(_currencyCode);
@@ -64,7 +64,7 @@ contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
      * @notice OWNER ONLY: Removes a currency code from supported currencies
      * @param _currencyCode Currency code to remove
      */
-    function removeCurrency(string calldata _currencyCode) external onlyOwner {
+    function removeCurrency(bytes32 _currencyCode) external onlyOwner {
         require(isCurrency[_currencyCode], "Currency not added");
         
         currencies.removeStorage(_currencyCode);
@@ -87,7 +87,7 @@ contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
 
     /* ============ External View Functions ============ */
 
-    function getCurrencies() external view returns (string[] memory) {
+    function getCurrencies() external view returns (bytes32[] memory) {
         return currencies;
     }
 

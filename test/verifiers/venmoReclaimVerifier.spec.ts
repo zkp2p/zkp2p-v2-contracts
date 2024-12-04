@@ -9,6 +9,7 @@ import DeployHelper from "@utils/deploys";
 import { Address, GrothProof, ReclaimProof } from "@utils/types";
 import { getIdentifierFromClaimInfo, createSignDataForClaim } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
+import { Currency } from "@utils/protocolUtils";
 import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { BytesLike } from "ethers";
 
@@ -63,8 +64,9 @@ describe("VenmoReclaimVerifier", () => {
     verifier = await deployer.deployVenmoReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
-      [providerHash],
       BigNumber.from(30),
+      [Currency.USD],
+      [providerHash],
       "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
       claimVerifier.address
     );
@@ -101,7 +103,9 @@ describe("VenmoReclaimVerifier", () => {
     let subjectIntentTimestamp: BigNumber;
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: BytesLike;
+    let subjectFiatCurrency: BytesLike;
     let subjectData: BytesLike;
+
     beforeEach(async () => {
       proof = {
         claimInfo: {
@@ -134,6 +138,7 @@ describe("VenmoReclaimVerifier", () => {
       subjectPayeeDetailsHash = ethers.utils.keccak256(
         ethers.utils.solidityPack(['string'], ['645716473020416186'])
       );
+      subjectFiatCurrency = ZERO_BYTES32;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address'],
         [witnessAddress]
@@ -146,8 +151,9 @@ describe("VenmoReclaimVerifier", () => {
         subjectDepositToken,
         subjectIntentAmount,
         subjectIntentTimestamp,
-        subjectConversionRate,
         subjectPayeeDetailsHash,
+        subjectFiatCurrency,
+        subjectConversionRate,
         subjectData
       );
     }
@@ -158,8 +164,9 @@ describe("VenmoReclaimVerifier", () => {
         subjectDepositToken,
         subjectIntentAmount,
         subjectIntentTimestamp,
-        subjectConversionRate,
         subjectPayeeDetailsHash,
+        subjectFiatCurrency,
+        subjectConversionRate,
         subjectData
       );
     }

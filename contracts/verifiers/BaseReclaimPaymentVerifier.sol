@@ -32,7 +32,7 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
         address _ramp,
         INullifierRegistry _nulliferRegistry,
         uint256 _timestampBuffer,
-        string[] memory _currencies,
+        bytes32[] memory _currencies,
         string[] memory _providerHashes
     )
         BasePaymentVerifier(

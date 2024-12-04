@@ -44,10 +44,12 @@ export default class DeployHelper {
     owner: Address,
     intentExpirationPeriod: BigNumber,
     sustainabilityFee: BigNumber,
-    sustainabilityFeeRecipient: Address
+    sustainabilityFeeRecipient: Address,
+    chainId: BigNumber
   ): Promise<Escrow> {
     return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
+      chainId.toString(),
       intentExpirationPeriod,
       sustainabilityFee,
       sustainabilityFeeRecipient
@@ -71,8 +73,9 @@ export default class DeployHelper {
   public async deployVenmoReclaimVerifier(
     ramp: Address,
     nullifierRegistry: Address,
-    providerHashes: string[],
     timestampBuffer: BigNumber = BigNumber.from(30),
+    currencies: string[],
+    providerHashes: string[],
     claimVerifierLibraryName: string,
     claimVerifierLibraryAddress: Address,
   ): Promise<VenmoReclaimVerifier> {
@@ -85,8 +88,9 @@ export default class DeployHelper {
     ).deploy(
       ramp,
       nullifierRegistry,
-      providerHashes,
-      timestampBuffer
+      timestampBuffer,
+      currencies,
+      providerHashes
     );
   }
 
@@ -102,8 +106,18 @@ export default class DeployHelper {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
 
-  public async deployPaymentVerifierMock(): Promise<PaymentVerifierMock> {
-    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy();
+  public async deployPaymentVerifierMock(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    acceptedCurrencies: string[]
+  ): Promise<PaymentVerifierMock> {
+    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      acceptedCurrencies
+    );
   }
 
   public async deployClaimVerifierMock(libraryName: string, libraryAddress: Address): Promise<ClaimVerifierMock> {
