@@ -98,7 +98,7 @@ contract Escrow is Ownable, IEscrow {
     
     /* ============ State Variables ============ */
 
-    uint256 immutable chainId;                                      // chainId of the chain the escrow is deployed on
+    uint256 immutable public chainId;                                      // chainId of the chain the escrow is deployed on
 
     mapping(address => uint256[]) public accountDeposits;           // Mapping of address to depositIds
     mapping(address => bytes32) public accountIntent;               // Mapping of address to intentHash (Only one intent per address at a given time)

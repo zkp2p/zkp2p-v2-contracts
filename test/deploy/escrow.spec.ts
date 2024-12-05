@@ -63,6 +63,7 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       const actualSustainabilityFee = await escrow.sustainabilityFee();
       const actualSustainabilityFeeRecipient = await escrow.sustainabilityFeeRecipient();
       const actualOwner = await escrow.owner();
+      const actualChainId = await escrow.chainId();
 
       const expectedSustainabilityFeeRecipient = SUSTAINABILITY_FEE_RECIPIENT[network] != ""
         ? SUSTAINABILITY_FEE_RECIPIENT[network]
@@ -71,6 +72,7 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       expect(actualSustainabilityFee).to.eq(SUSTAINABILITY_FEE[network]);
       expect(actualSustainabilityFeeRecipient).to.eq(expectedSustainabilityFeeRecipient);
       expect(actualOwner).to.eq(multiSig);
+      expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
     });
 
     it("should have the correct intent expiration period set", async () => {

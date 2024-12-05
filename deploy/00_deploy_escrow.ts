@@ -21,6 +21,7 @@ import { getDeployedContractAddress, setNewOwner } from "../deployments/helpers"
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = await hre.deployments
   const network = hre.deployments.getNetworkName();
+  const chainId = (await ethers.provider.getNetwork()).chainId;
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
@@ -41,6 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [
       deployer,
+      chainId,
       INTENT_EXPIRATION_PERIOD[network],
       SUSTAINABILITY_FEE[network],
       SUSTAINABILITY_FEE_RECIPIENT[network] != ""

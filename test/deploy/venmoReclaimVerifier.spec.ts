@@ -23,11 +23,13 @@ import {
 } from "../../utils/types";
 
 import {
-  TIMESTAMP_BUFFER,
   MULTI_SIG,
 } from "../../deployments/parameters";
-import { PaymentService } from "../../utils/types";
-import { VENMO_RECLAIM_PROVIDER_HASHES } from "../../deployments/providerHashes/venmo_reclaim";
+import {
+  VENMO_RECLAIM_PROVIDER_HASHES,
+  VENMO_RECLAIM_TIMESTAMP_BUFFER,
+  VENMO_RECLAIM_CURRENCIES
+} from "../../deployments/verifiers/venmo_reclaim";
 
 const expect = getWaffleExpect();
 
@@ -74,12 +76,14 @@ describe("VenmoReclaimVerifier Deployment", () => {
       const actualNullifierRegistryAddress = await venmoReclaimVerifier.nullifierRegistry();
       const actualProviderHashes = await venmoReclaimVerifier.getProviderHashes();
       const actualTimestampBuffer = await venmoReclaimVerifier.timestampBuffer();
+      const actualCurrencies = await venmoReclaimVerifier.getCurrencies();
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
       expect(actualProviderHashes).to.deep.eq(VENMO_RECLAIM_PROVIDER_HASHES);
-      expect(actualTimestampBuffer).to.eq(TIMESTAMP_BUFFER[PaymentService.VenmoReclaim]);
+      expect(actualTimestampBuffer).to.eq(VENMO_RECLAIM_TIMESTAMP_BUFFER);
+      expect(actualCurrencies).to.deep.eq(VENMO_RECLAIM_CURRENCIES);
     });
   });
 

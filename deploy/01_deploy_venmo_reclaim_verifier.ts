@@ -5,12 +5,15 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
 
 import {
-  TIMESTAMP_BUFFER,
   MULTI_SIG,
 } from "../deployments/parameters";
 import { addWritePermission, getDeployedContractAddress, setNewOwner } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
-import { VENMO_RECLAIM_PROVIDER_HASHES } from "../deployments/providerHashes/venmo_reclaim";
+import {
+  VENMO_RECLAIM_PROVIDER_HASHES,
+  VENMO_RECLAIM_CURRENCIES,
+  VENMO_RECLAIM_TIMESTAMP_BUFFER,
+} from "../deployments/verifiers/venmo_reclaim";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -39,8 +42,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       escrowAddress,
       nullifierRegistryAddress,
+      VENMO_RECLAIM_TIMESTAMP_BUFFER,
+      VENMO_RECLAIM_CURRENCIES,
       VENMO_RECLAIM_PROVIDER_HASHES,
-      TIMESTAMP_BUFFER[paymentService]
     ],
   });
   console.log("VenmoReclaimVerifier deployed at", venmoVerifier.address);

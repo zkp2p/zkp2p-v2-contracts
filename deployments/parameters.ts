@@ -1,11 +1,6 @@
 import "module-alias/register";
-import { BigNumber } from "ethers";
 import { ONE_DAY_IN_SECONDS, THREE_MINUTES_IN_SECONDS, ZERO } from "../utils/constants";
 import { ether, usdc } from "../utils/common/units";
-
-export const TIMESTAMP_BUFFER = {
-  "venmo_reclaim": BigNumber.from(30)
-};
 
 export const INTENT_EXPIRATION_PERIOD: any = {
   "localhost": ONE_DAY_IN_SECONDS,
