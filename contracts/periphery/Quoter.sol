@@ -6,20 +6,22 @@ import { IEscrow } from "../interfaces/IEscrow.sol";
 
 /**
  * @title Quoter
- * @dev A contract to fetch the best conversion rate from the Escrow contract
+ * @dev A contract to fetch the best quotes for taking token liquidity from the Escrow contract
  */
 contract Quoter {
 
     /* ============ Structs ============ */
 
     struct QuoteData {
-        uint256[] depositIds;           // depositIds to consider
-        address tokenAddress;           // token address to filter by
-        address verifierAddress;        // verifierAddress address to filter by
-        address gatingServiceAddress;   // gating service address to filter by
-        bytes32 currencyCode;           // currency code to filter by
-        uint256 amountInputOrOutput;    // amount of tokens to convert
-        bool isExactOutput;             // true if amountInputOrOutput is amountOutput, false if amountInputOrOutput is amountInput
+        uint256[] depositIds;           // Deposit IDs to consider
+        address paymentVerifier;        // [Optional] Payment verifier address to filter by (E.g. VenmoReclaim, RevolutTLSN etc)
+        address gatingService;          // [Optional] Gating service address to filter by (based on the client from which the intent was created)
+        address receiveToken;           // Token address which the user wants to receive onchain
+        bytes32 sendCurrency;           // Fiat currency code which the user wants to send offchain
+        uint256 amount;                 // Either fiat amount or token amount
+        bool isTokenAmount;             // True if amount is token amount, false if amount is fiat amount
+                                        // If true, user has specified the exact amount of tokens they want to receive
+                                        // If false, user has specified the exact amount of fiat they want to send
     }
 
     /* ============ Constants ============ */
@@ -39,115 +41,115 @@ contract Quoter {
     /* ============ External Getter Functions ============ */
 
     /**
-     * @notice Finds the best conversion rate from the provided deposit IDs for a given token, verifierAddress, and/or currency code in the specified Escrow contract.
+     * @notice Finds the deposit that asks for the lowest amount of fiat for a exact amount of tokens the user wants to receive.
+     * User can filter the deposits by their chosen payment service (aka verifier) and/or the client from which the intent was 
+     *created (aka gating service).
      *
      * @param _depositIds               An array of deposit IDs to consider.
-     * @param _tokenAddress             The token address to filter by.
-     * @param _verifierAddress          The verifierAddress address to filter by. Use address(0) to ignore this filter.
-     * @param _gatingServiceAddress     The gating service address to filter by.
-     * @param _currencyCode             The currency code to filter by. Must be provided in bytes32 format.
-     * @param _amountOutput             Amount of tokens to convert.
+     * @param _paymentVerifier          The verifier address the user has chosen. Use address(0) to ignore this filter.
+     * @param _gatingService            The gating service address the user has chosen. Use address(0) to ignore this filter.
+     * @param _receiveToken             The token address the user wants to receive onchain.
+     * @param _sendCurrency             The currency code the user wants to send offchain. Must be provided in bytes32 format.
+     * @param _exactTokenAmount         Exact amount of tokens the user wants to receive. Decimal precision depends on the token.
      *
-     * @return bestDepositId The deposit ID with the best conversion rate.
-     * @return amountInput The amount of tokens received.
+     * @return bestDeposit              The deposit that asks for the lowest amount of fiat for the exact amount of tokens the user wants to receive.
+     * @return minFiatAmount            The minimum amount of fiat the user needs to send to receive the exact amount of tokens
      */
-    function quoteExactOutput(
+    function quoteMinFiatInputForExactTokenOutput(
         uint256[] calldata _depositIds,
-        address _tokenAddress,
-        address _verifierAddress,
-        address _gatingServiceAddress,
-        bytes32 _currencyCode,
-        uint256 _amountOutput
+        address _paymentVerifier,
+        address _gatingService,
+        address _receiveToken,
+        bytes32 _sendCurrency,
+        uint256 _exactTokenAmount   
     )
         external
         view
-        returns (uint256 bestDepositId, uint256 amountInput)
+        returns (IEscrow.DepositView memory bestDeposit, uint256 minFiatAmount)
     {
-        uint256 bestRate;
         QuoteData memory quoteData = QuoteData({
             depositIds: _depositIds,
-            tokenAddress: _tokenAddress,
-            verifierAddress: _verifierAddress,
-            gatingServiceAddress: _gatingServiceAddress,
-            currencyCode: _currencyCode,
-            amountInputOrOutput: _amountOutput,
-            isExactOutput: true
+            paymentVerifier: _paymentVerifier,
+            gatingService: _gatingService,
+            receiveToken: _receiveToken,
+            sendCurrency: _sendCurrency,
+            amount: _exactTokenAmount,
+            isTokenAmount: true
         });
-        (bestDepositId, bestRate) = _getBestRateInternal(quoteData);
+        
+        _validateQuoteData(quoteData);
 
-        amountInput = _amountOutput * bestRate / PRECISE_UNIT;
+        uint256 bestTokenToFiatConversionRate;
+        (bestDeposit, bestTokenToFiatConversionRate) = _getBestRate(quoteData);
+
+        minFiatAmount = _exactTokenAmount * bestTokenToFiatConversionRate / PRECISE_UNIT;
     }
 
     /**
-     * @notice Finds the best conversion rate from the provided deposit IDs for a given token, verifierAddress, and/or currency code in the specified Escrow contract.
-     * 
-     * @dev Amount of input MUST be same base units as token (if token is USDC, amountInput is 10e6)
+     * @notice Finds the deposit that gives the maximum amount of tokens for a exact amount of fiat the user wants to send.
+     * User can filter the deposits by their chosen payment service (aka verifier) and/or the client from which the intent was 
+     *created (aka gating service).
+     *
+     * @dev _exactFiatAmount MUST be same base units as token (if token is USDC, _exactFiatAmount is 10e6)
      *
      * @param _depositIds               An array of deposit IDs to consider.
-     * @param _tokenAddress             The token address to filter by.
-     * @param _verifierAddress          The verifierAddress address to filter by. Use address(0) to ignore this filter.
-     * @param _gatingServiceAddress     The gating service address to filter by.
-     * @param _currencyCode             The currency code to filter by. Must be provided in bytes32 format.
-     * @param _amountInput              Amount of tokens to convert.
+     * @param _receiveToken             The token address the user wants to receive onchain.
+     * @param _paymentVerifier          The payment service (aka verifier) the user has chosen. Use address(0) to ignore this filter.
+     * @param _gatingService            The gating service (aka client) address the user has chosen. Use address(0) to ignore this filter.
+     * @param _sendCurrency             The currency code the user wants to send offchain. Must be provided in bytes32 format.
+     * @param _exactFiatAmount          Exact amount of fiat the user wants to send. Decimal precision depends on the token.
      *
-     * @return bestDepositId The deposit ID with the best conversion rate.
-     * @return amountOutput The amount of tokens received.
+     * @return bestDeposit              The deposit that gives the maximum amount of tokens for the exact amount of fiat the user wants to send.
+     * @return maxTokenAmount           The maximum amount of tokens the user will receive.
      */
-    function quoteExactInput(
+    function quoteMaxTokenOutputForExactFiatInput(
         uint256[] calldata _depositIds,
-        address _tokenAddress,
-        address _verifierAddress,
-        address _gatingServiceAddress,
-        bytes32 _currencyCode,
-        uint256 _amountInput
+        address _paymentVerifier,
+        address _gatingService,
+        address _receiveToken,
+        bytes32 _sendCurrency,
+        uint256 _exactFiatAmount
     )
         external
         view
-        returns (uint256 bestDepositId, uint256 amountOutput)
+        returns (IEscrow.DepositView memory bestDeposit, uint256 maxTokenAmount)
     {
-        uint256 bestRate;
         QuoteData memory quoteData = QuoteData({
             depositIds: _depositIds,
-            tokenAddress: _tokenAddress,
-            verifierAddress: _verifierAddress,
-            gatingServiceAddress: _gatingServiceAddress,
-            currencyCode: _currencyCode,
-            amountInputOrOutput: _amountInput,
-            isExactOutput: false
+            paymentVerifier: _paymentVerifier,
+            gatingService: _gatingService,
+            receiveToken: _receiveToken,
+            sendCurrency: _sendCurrency,
+            amount: _exactFiatAmount,
+            isTokenAmount: false
         });
-        (bestDepositId, bestRate) = _getBestRateInternal(quoteData);
+        
+        _validateQuoteData(quoteData);
 
-        amountOutput = _amountInput * PRECISE_UNIT / bestRate;
+        uint256 bestTokenToFiatConversionRate;
+        (bestDeposit, bestTokenToFiatConversionRate) = _getBestRate(quoteData);
+
+        maxTokenAmount = _exactFiatAmount * PRECISE_UNIT / bestTokenToFiatConversionRate;
     }
 
     /* ============ Internal Functions ============ */
 
-    function _getBestRateInternal(
+    function _getBestRate(
         QuoteData memory _quoteData
     )
         internal
         view
-        returns (uint256 bestDepositId, uint256 bestRate)
+        returns (IEscrow.DepositView memory bestDeposit, uint256 bestTokenToFiatConversionRate)
     {
-        bestRate = type(uint256).max;
-
-        require(_quoteData.currencyCode != bytes32(0), "Currency code must be provided");
-        require(_quoteData.depositIds.length > 0, "Deposit IDs array cannot be empty");
-        require(_quoteData.tokenAddress != address(0), "Token address must be provided");
-        require(_quoteData.gatingServiceAddress != address(0), "Gating service address must be provided");
+        // As the user is taking token liquidity, we want to find the lowest tokenToFiatConversion rate. Hence, we initialize
+        // bestTokenToFiatConversionRate to type(uint256).max.
+        bestTokenToFiatConversionRate = type(uint256).max;
 
         IEscrow.DepositView[] memory deposits = escrow.getDepositFromIds(_quoteData.depositIds);
 
         for (uint256 i = 0; i < deposits.length; i++) {
             IEscrow.DepositView memory depositView = deposits[i];
-
-            // Skip deposits where the token address does not match
-            if (address(depositView.deposit.token) != _quoteData.tokenAddress) {
-                continue;
-            }
-
-            // Skip deposits that are not accepting intents
-            if (!depositView.deposit.acceptingIntents) {
+            if (!_isDepositValid(depositView, _quoteData)) {
                 continue;
             }
 
@@ -155,18 +157,7 @@ contract Quoter {
 
             for (uint256 j = 0; j < verifiers.length; j++) {
                 IEscrow.VerifierDataView memory verifierDataView = verifiers[j];
-                address verifier = verifierDataView.verifier;
-
-                // Skip verifiers where the gating service address does not match
-                if (verifierDataView.verificationData.intentGatingService != _quoteData.gatingServiceAddress) {
-                    continue;
-                }
-
-                // Skip if verifier address does not match
-                if (
-                    _quoteData.verifierAddress != address(0) &&
-                    verifier != _quoteData.verifierAddress
-                ) {
+                if (!_isVerifierValid(verifierDataView, _quoteData)) {
                     continue;
                 }
 
@@ -174,36 +165,91 @@ contract Quoter {
 
                 for (uint256 k = 0; k < currencies.length; k++) {
                     IEscrow.Currency memory currency = currencies[k];
-
-                    // Check if the currency code matches
-                    if (currency.code != _quoteData.currencyCode) {
+                    if (!_isCurrencyValid(currency, _quoteData)) {
                         continue;
                     }
 
-                    uint256 amount = _quoteData.isExactOutput ? _quoteData.amountInputOrOutput : _quoteData.amountInputOrOutput * PRECISE_UNIT / currency.conversionRate;
+                    uint256 tokenAmount = _quoteData.isTokenAmount ? 
+                        _quoteData.amount : 
+                        _getTokenAmount(_quoteData.amount, currency.conversionRate);
 
-                    // Skip deposits that are not within the intent amount range
-                    if (
-                        amount <= depositView.deposit.intentAmountRange.min ||
-                        amount >= depositView.deposit.intentAmountRange.max
-                    ) {
+                    if (!_isValidTokenAmount(tokenAmount, depositView)) {
                         continue;
                     }
 
-                    // Skip deposits if amount is greater than available liquidity
-                    if (amount > depositView.availableLiquidity) {
-                        continue;
-                    }
-
-                    // Update best rate and deposit ID if a better rate is found
-                    if (currency.conversionRate < bestRate) {
-                        bestRate = currency.conversionRate;
-                        bestDepositId = depositView.depositId;
+                    if (currency.conversionRate < bestTokenToFiatConversionRate) {
+                        bestTokenToFiatConversionRate = currency.conversionRate;
+                        bestDeposit = depositView;
                     }
                 }
             }
         }
 
-        require(bestRate != type(uint256).max, "No valid conversion rate found");
+        require(bestTokenToFiatConversionRate != type(uint256).max, "No valid deposit found");
+    }
+
+    function _validateQuoteData(QuoteData memory _quoteData) internal pure {
+        require(_quoteData.depositIds.length > 0, "Deposit IDs array cannot be empty");
+        require(_quoteData.sendCurrency != bytes32(0), "Currency code must be provided");
+        require(_quoteData.receiveToken != address(0), "Token address must be provided");
+        require(_quoteData.amount > 0, "Amount must be greater than 0");
+    }
+
+    function _isDepositValid(IEscrow.DepositView memory _depositView, QuoteData memory _quoteData) internal pure returns (bool) {
+        // Skip deposit if it is not accepting intents
+        if (!_depositView.deposit.acceptingIntents) {
+            return false;
+        }
+        // Skip deposit if the token does not match the receive token
+        if (address(_depositView.deposit.token) != _quoteData.receiveToken) {
+            return false;
+        }
+        return true;
+    }
+
+    function _isVerifierValid(IEscrow.VerifierDataView memory _verifierDataView, QuoteData memory _quoteData) internal pure returns (bool) {
+        // Skip verifier if verifier filter is provided and does not match
+        if (_quoteData.paymentVerifier != address(0) && _verifierDataView.verifier != _quoteData.paymentVerifier) {
+            return false;
+        }
+        // Skip verifier if gating service filter is provided and does not match
+        if (_quoteData.gatingService != address(0) && _verifierDataView.verificationData.intentGatingService != _quoteData.gatingService) {
+            return false;
+        }
+        return true;
+    }
+
+    function _isCurrencyValid(IEscrow.Currency memory _currency, QuoteData memory _quoteData) internal pure returns (bool) {
+        // Skip currency if deposit currency does not match the send currency
+        if (_currency.code != _quoteData.sendCurrency) {
+            return false;
+        }
+        return true;
+    }
+
+    function _isValidTokenAmount(uint256 _tokenAmount, IEscrow.DepositView memory _depositView) internal pure returns (bool) {
+        // Skip deposit if amount is not within the intent amount range
+        if (_tokenAmount < _depositView.deposit.intentAmountRange.min || _tokenAmount > _depositView.deposit.intentAmountRange.max) {
+            return false;
+        }
+        // Skip deposit if amount is greater than available liquidity
+        if (_tokenAmount > _depositView.availableLiquidity) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @notice Converts a token amount to a fiat amount given a token to fiat conversion rate
+     */
+    function _getFiatAmount(uint256 _tokenAmount, uint256 _tokenToFiatConversionRate) internal pure returns (uint256) {
+        return _tokenAmount * _tokenToFiatConversionRate / PRECISE_UNIT;
+    }
+
+    /**
+     * @notice Converts a fiat amount to a token amount given a token to fiat conversion rate
+     */
+    function _getTokenAmount(uint256 _fiatAmount, uint256 _tokenToFiatConversionRate) internal pure returns (uint256) {
+        return _fiatAmount * PRECISE_UNIT / _tokenToFiatConversionRate;
     }
 }

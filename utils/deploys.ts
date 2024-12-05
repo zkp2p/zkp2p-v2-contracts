@@ -25,7 +25,7 @@ import { NullifierRegistry__factory } from "../typechain/factories/contracts/ver
 import {
   ClaimVerifier__factory,
 } from "../typechain/factories/contracts/lib";
-import { Quoter__factory } from "../typechain/factories/contracts/periphery";
+import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
