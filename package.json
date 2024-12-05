@@ -21,7 +21,7 @@
     "etherscan:sepolia": "yarn hardhat --network sepolia etherscan-verify",
     "etherscan:base": "yarn hardhat --network base etherscan-verify",
     "etherscan:base_staging": "yarn hardhat --network base_staging etherscan-verify",
-    "test": "npx hardhat test test/libs/*.ts test/verifiers/*.ts test/periphery/*.ts test/escrow/*.ts test/integration/*.ts",
+    "test": "npx hardhat test test/libs/*.ts test/verifiers/*.ts test/periphery/*.ts test/escrow/*.ts",
     "test:integration": "npx hardhat test test/integration/*.ts",
     "test:clean": "yarn build && yarn test",
     "test:fast": "NO_COMPILE=true TS_NODE_TRANSPILE_ONLY=1 yarn test --no-compile",
