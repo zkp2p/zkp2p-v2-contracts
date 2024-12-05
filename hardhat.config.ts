@@ -27,6 +27,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
+      initialDate: "2024-01-20 01:15:15 PM",
       allowBlocksWithSameTimestamp: true,
     },
     localhost: {
