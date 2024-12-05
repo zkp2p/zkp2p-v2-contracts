@@ -29,7 +29,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("Escrow", () => {
+describe.only("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
@@ -128,11 +128,13 @@ describe("Escrow", () => {
       subjectAmount = usdc(100);
       subjectIntentAmountRange = { min: usdc(10), max: usdc(200) }; // Example range
       subjectVerifiers = [verifier.address];
-      subjectVerificationData = [{
-        intentGatingService: gatingService.address,
-        payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-        data: "0x"
-      }];
+      subjectVerificationData = [
+        {
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PaymentService1payeeDetails")),
+          data: "0x"
+        }
+      ];
       subjectCurrencies = [
         [
           { code: Currency.USD, conversionRate: ether(1.01) },
@@ -173,15 +175,18 @@ describe("Escrow", () => {
       expect(depositView.deposit.amount).to.eq(subjectAmount);
       expect(depositView.deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
+      expect(depositView.deposit.acceptingIntents).to.be.true;
+
+      expect(depositView.verifiers.length).to.eq(1);
       expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
       expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
       expect(depositView.verifiers[0].verificationData.payeeDetailsHash).to.eq(subjectVerificationData[0].payeeDetailsHash);
       expect(depositView.verifiers[0].verificationData.data).to.eq(subjectVerificationData[0].data);
+      expect(depositView.verifiers[0].currencies.length).to.eq(2);
       expect(depositView.verifiers[0].currencies[0].code).to.eq(subjectCurrencies[0][0].code);
       expect(depositView.verifiers[0].currencies[0].conversionRate).to.eq(subjectCurrencies[0][0].conversionRate);
       expect(depositView.verifiers[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
       expect(depositView.verifiers[0].currencies[1].conversionRate).to.eq(subjectCurrencies[0][1].conversionRate);
-      expect(depositView.deposit.acceptingIntents).to.be.true;
     });
 
     it("should increment the deposit counter", async () => {
@@ -213,7 +218,6 @@ describe("Escrow", () => {
       expect(currencyConversionRate2).to.eq(subjectCurrencies[0][1].conversionRate);
     });
 
-    // todo: figure out how to test this given that verifiers is an array
     it("should emit a DepositReceived event", async () => {
       await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
         ZERO, // depositId starts at 0
@@ -248,6 +252,59 @@ describe("Escrow", () => {
       expect(events[1].args.verifier).to.equal(subjectVerifiers[0]);
       expect(events[1].args.currency).to.equal(subjectCurrencies[0][1].code);
       expect(events[1].args.conversionRate).to.equal(subjectCurrencies[0][1].conversionRate);
+    });
+
+    describe("when there are multiple verifiers", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).addWhitelistedPaymentVerifier(otherVerifier.address, ZERO);
+
+        subjectVerifiers = [verifier.address, otherVerifier.address];
+        subjectVerificationData = [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            data: "0x"
+          },
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.formatBytes32String("test2"),
+            data: "0x"
+          }
+        ];
+        subjectCurrencies = [
+          [
+            { code: Currency.USD, conversionRate: ether(1.01) },
+            { code: Currency.EUR, conversionRate: ether(0.92) }
+          ],
+          [
+            { code: Currency.USD, conversionRate: ether(1.02) }
+          ]
+        ];
+      });
+
+      it("should correctly update mappings for all verifiers", async () => {
+        await subject();
+
+        // Check first verifier
+        const verificationData1 = await ramp.depositVerifierData(0, subjectVerifiers[0]);
+        expect(verificationData1.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
+        expect(verificationData1.payeeDetailsHash).to.eq(subjectVerificationData[0].payeeDetailsHash);
+        expect(verificationData1.data).to.eq(subjectVerificationData[0].data);
+
+        const currencyRate1_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
+        expect(currencyRate1_1).to.eq(subjectCurrencies[0][0].conversionRate);
+        const currencyRate1_2 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
+        expect(currencyRate1_2).to.eq(subjectCurrencies[0][1].conversionRate);
+
+        // Check second verifier
+        const verificationData2 = await ramp.depositVerifierData(0, subjectVerifiers[1]);
+        expect(verificationData2.intentGatingService).to.eq(subjectVerificationData[1].intentGatingService);
+        expect(verificationData2.payeeDetailsHash).to.eq(subjectVerificationData[1].payeeDetailsHash);
+        expect(verificationData2.data).to.eq(subjectVerificationData[1].data);
+
+        const currencyRate2_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
+        expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].conversionRate);
+      });
     });
 
     describe("when the length of the verifiers array is not equal to the length of the verifiersData array", async () => {

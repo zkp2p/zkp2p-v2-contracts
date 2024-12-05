@@ -22,7 +22,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("Quoter Deployment", () => {
+describe("Quoter Deployment", () => {
   let deployer: Account;
 
   let quoter: Quoter;

@@ -1,19 +1,17 @@
 //SPDX-License-Identifier: MIT
 
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
-import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
+import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
 import { StringArrayUtils } from "./external/StringArrayUtils.sol";
+import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 
 import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
-
-import "hardhat/console.sol";
 
 pragma solidity ^0.8.18;
 
@@ -21,12 +19,12 @@ pragma solidity ^0.8.18;
 
 contract Escrow is Ownable, IEscrow {
 
-    using Bytes32ArrayUtils for bytes32[];
-    using Uint256ArrayUtils for uint256[];
     using AddressArrayUtils for address[];
-    using StringArrayUtils for string[];
-    using SignatureChecker for address;
+    using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
+    using SignatureChecker for address;
+    using StringArrayUtils for string[];
+    using Uint256ArrayUtils for uint256[];
 
     /* ============ Events ============ */
     event DepositReceived(
@@ -312,7 +310,7 @@ contract Escrow is Ownable, IEscrow {
     }
 
     /**
-     * @notice Anyone can submit a fullfill intent transaction, even if caller isn't the intent owner. Upon submission the
+     * @notice Anyone can submit a fulfill intent transaction, even if caller isn't the intent owner. Upon submission the
      * offchain payment proof is verified, payment details are validated, intent is removed, and deposit state is updated. 
      * Deposit token is transferred to the intent.to address.
      *
@@ -357,7 +355,7 @@ contract Escrow is Ownable, IEscrow {
 
 
     /**
-     * @notice Allows depositor to release funds to the payer in case of a failed fullfill intent or because of some other arrangement
+     * @notice Allows depositor to release funds to the payer in case of a failed fulfill intent or because of some other arrangement
      * between the two parties. Upon submission we check to make sure the msg.sender is the depositor, the  intent is removed, and 
      * deposit state is updated. Deposit token is transferred to the payer.
      *
@@ -468,7 +466,7 @@ contract Escrow is Ownable, IEscrow {
 
     /**
      * @notice GOVERNANCE ONLY: Updates the sustainability fee. This fee is charged to takers upon a successful 
-     * fullfillment of an intent.
+     * fulfillment of an intent.
      *
      * @param _fee   The new sustainability fee in precise units (10**18, ie 10% = 1e17)
      */

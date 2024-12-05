@@ -4,7 +4,6 @@ import { Claims } from "../external/Claims.sol";
 
 pragma solidity ^0.8.18;
 
-import "hardhat/console.sol";
 
 library ClaimVerifier {
 
