@@ -24,5 +24,9 @@ jobs:
         run: yarn coverage
       - name: Check deploy
         run: yarn deploy:localhost
+      - name: Test deploy
+        run: yarn test:deploy
+        env:
+          network: localhost
 
 
