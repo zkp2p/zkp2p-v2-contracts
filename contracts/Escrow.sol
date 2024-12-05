@@ -101,7 +101,7 @@ contract Escrow is Ownable, IEscrow {
     uint256 immutable chainId;                                      // chainId of the chain the escrow is deployed on
 
     mapping(address => uint256[]) public accountDeposits;           // Mapping of address to depositIds
-    mapping(address => bytes32[]) public accountIntents;            // Mapping of address to intentHashes
+    mapping(address => bytes32) public accountIntent;               // Mapping of address to intentHash (Only one intent per address at a given time)
     
     // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
     // services. Each payment service has it's own verification data which includes the payee details hash and the data used for 
@@ -280,7 +280,7 @@ contract Escrow is Ownable, IEscrow {
             timestamp: block.timestamp
         });
 
-        accountIntents[msg.sender].push(intentHash);
+        accountIntent[msg.sender] = intentHash;
 
         deposit.remainingDeposits -= _amount;
         deposit.outstandingIntentAmount += _amount;
@@ -582,14 +582,9 @@ contract Escrow is Ownable, IEscrow {
         }
     }
 
-    function getAccountIntents(address _account) external view returns (IntentView[] memory intentArray) {
-        bytes32[] memory accountIntentHashes = accountIntents[_account];
-        intentArray = new IntentView[](accountIntentHashes.length);
-
-        for (uint256 i = 0; i < accountIntentHashes.length; ++i) {
-            bytes32 intentHash = accountIntentHashes[i];
-            intentArray[i] = getIntent(intentHash);
-        }
+    function getAccountIntent(address _account) external view returns (IntentView memory intentView) {
+        bytes32 intentHash = accountIntent[_account];
+        intentView = getIntent(intentHash);
     }
 
  
@@ -632,6 +627,7 @@ contract Escrow is Ownable, IEscrow {
         bytes32 _fiatCurrency,
         bytes calldata _gatingServiceSignature
     ) internal view {
+        require(accountIntent[msg.sender] == bytes32(0), "Account has unfulfilled intent");
         require(_deposit.depositor != address(0), "Deposit does not exist");
         require(_deposit.acceptingIntents, "Deposit is not accepting intents");
         require(_amount >= _deposit.intentAmountRange.min, "Signaled amount must be greater than min intent amount");
@@ -708,7 +704,7 @@ contract Escrow is Ownable, IEscrow {
     function _pruneIntent(Deposit storage _deposit, bytes32 _intentHash) internal {
         Intent memory intent = intents[_intentHash];
 
-        accountIntents[intent.owner].removeStorage(_intentHash);
+        delete accountIntent[intent.owner];
         delete intents[_intentHash];
         _deposit.intentHashes.removeStorage(_intentHash);
 

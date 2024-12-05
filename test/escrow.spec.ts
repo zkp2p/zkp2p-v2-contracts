@@ -527,9 +527,8 @@ describe.only("Escrow", () => {
         await blockchain.getCurrentTimestamp()
       );
 
-      const accountIntents = await ramp.getAccountIntents(subjectCaller.address);
-      const intents = accountIntents.map((intent) => intent.intentHash);
-      expect(intents).to.include(intentHash);
+      const accountIntent = await ramp.getAccountIntent(subjectCaller.address);
+      expect(accountIntent.intentHash).to.eq(intentHash);
     });
 
     it("should emit an IntentSignaled event", async () => {
@@ -639,6 +638,33 @@ describe.only("Escrow", () => {
       });
     });
 
+    describe("when the account has an unfulfilled intent", async () => {
+      beforeEach(async () => {
+        await subject();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Account has unfulfilled intent");
+      });
+
+      describe("when the intent is cancelled", async () => {
+        beforeEach(async () => {
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          const oldIntentHash = calculateIntentHash(
+            subjectCaller.address,
+            subjectVerifier,
+            subjectDepositId,
+            currentTimestamp
+          );
+          await ramp.connect(onRamper.wallet).cancelIntent(oldIntentHash);
+        });
+
+        it("should not revert", async () => {
+          expect(await subject()).to.not.be.reverted;
+        });
+      });
+    });
+
     describe("when the deposit does not exist", async () => {
       beforeEach(async () => {
         subjectDepositId = BigNumber.from(10); // Non-existent deposit ID
@@ -672,7 +698,7 @@ describe.only("Escrow", () => {
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Create and signal an intent first to lock some liquidity
-        await ramp.connect(onRamper.wallet).signalIntent(
+        await ramp.connect(onRamperOtherAddress.wallet).signalIntent(
           subjectDepositId,
           usdc(50),
           receiver.address,
@@ -1201,9 +1227,9 @@ describe.only("Escrow", () => {
     it("should remove the intent from the accountIntents mapping", async () => {
       await subject();
 
-      const accountIntents = await ramp.getAccountIntents(onRamper.address);
+      const accountIntent = await ramp.getAccountIntent(onRamper.address);
 
-      expect(accountIntents.map(intent => intent.intentHash).includes(subjectIntentHash)).to.be.false;
+      expect(accountIntent.intentHash).to.eq(ZERO_BYTES32);
     });
 
     it("should revert if the intent does not exist", async () => {
@@ -1715,7 +1741,6 @@ describe.only("Escrow", () => {
       });
     });
   });
-
 
   describe("#setSustainabilityFee", async () => {
     let subjectSustainabilityFee: BigNumber;
