@@ -118,6 +118,9 @@ contract Escrow is Ownable, IEscrow {
     mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) public depositCurrencyConversionRate;
     mapping(uint256 => mapping(address => bytes32[])) public depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
 
+    // Handy mapping to get all depositIds for a given verifier and payee details hash
+    mapping(address => mapping(bytes32 => uint256[])) public depositIdsByVerifierAndPayeeDetailsHash;
+
     mapping(uint256 => Deposit) public deposits;                    // Mapping of depositIds to deposit structs
     mapping(bytes32 => Intent) public intents;                      // Mapping of intentHashes to intent structs
 
@@ -204,7 +207,8 @@ contract Escrow is Ownable, IEscrow {
             );
             depositVerifierData[depositId][verifier] = _verifierData[i];
             depositVerifiers[depositId].push(verifier);
-         
+            depositIdsByVerifierAndPayeeDetailsHash[verifier][_verifierData[i].payeeDetailsHash].push(depositId);
+
             emit DepositVerifierAdded(depositId, verifier);
         }
 
@@ -587,6 +591,16 @@ contract Escrow is Ownable, IEscrow {
         intentView = getIntent(intentHash);
     }
 
+    function getDepositIdsForVerifierAndHash(
+        address _verifier,
+        bytes32 _payeeDetailsHash
+    )
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return depositIdsByVerifierAndPayeeDetailsHash[_verifier][_payeeDetailsHash];
+    }
  
     /* ============ Internal Functions ============ */
 
@@ -734,6 +748,7 @@ contract Escrow is Ownable, IEscrow {
         for (uint256 i = 0; i < verifiers.length; i++) {
             address verifier = verifiers[i];
             delete depositVerifierData[_depositId][verifier];
+            depositIdsByVerifierAndPayeeDetailsHash[verifier][depositVerifierData[_depositId][verifier].payeeDetailsHash].removeStorage(_depositId);
             bytes32[] memory currencies = depositCurrencies[_depositId][verifier];
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyConversionRate[_depositId][verifier][currencies[j]];
