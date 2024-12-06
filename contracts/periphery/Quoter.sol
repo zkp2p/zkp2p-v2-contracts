@@ -56,14 +56,14 @@ contract Quoter {
      * @return minFiatAmount            The minimum amount of fiat the user needs to send to receive the exact amount of tokens
      */
     function quoteMinFiatInputForExactTokenOutput(
-        uint256[] calldata _depositIds,
+        uint256[] memory _depositIds,
         address _paymentVerifier,
         address _gatingService,
         address _receiveToken,
         bytes32 _sendCurrency,
         uint256 _exactTokenAmount   
     )
-        external
+        public
         view
         returns (IEscrow.DepositView memory bestDeposit, uint256 minFiatAmount)
     {
@@ -103,14 +103,14 @@ contract Quoter {
      * @return maxTokenAmount           The maximum amount of tokens the user will receive.
      */
     function quoteMaxTokenOutputForExactFiatInput(
-        uint256[] calldata _depositIds,
+        uint256[] memory _depositIds,
         address _paymentVerifier,
         address _gatingService,
         address _receiveToken,
         bytes32 _sendCurrency,
         uint256 _exactFiatAmount
     )
-        external
+        public
         view
         returns (IEscrow.DepositView memory bestDeposit, uint256 maxTokenAmount)
     {
@@ -133,26 +133,87 @@ contract Quoter {
     }
 
     /**
-     * @notice Retrieves all deposit IDs for a given verifier and multiple payeeDetailsHashes in a batch, returning a flattened array.
-     * Deposit IDs are unique across different payeeDetailsHashes. These deposit IDs can then be passed into quote functions to fetch 
-     * the best rate.
+     * @notice Finds the deposit that asks for the lowest amount of fiat for a exact amount of tokens the user wants to receive.
+     * Starts search by payee details hashes rather than deposit IDs. User can filter the deposits by their chosen payment service
+     * (aka verifier) and/or the client from which the intent was created (aka gating service).
      *
-     * @param _verifier The verifier address to filter deposits.
-     * @param _payeeDetailsHashes An array of payeeDetailsHashes to retrieve deposit IDs for.
+     * @param _payeeDetailsHashes       An array of payee details hashes to consider.
+     * @param _paymentVerifier          The verifier address the user has chosen. Use address(0) to ignore this filter.
+     * @param _gatingService            The gating service address the user has chosen. Use address(0) to ignore this filter.
+     * @param _receiveToken             The token address the user wants to receive onchain.
+     * @param _sendCurrency             The currency code the user wants to send offchain. Must be provided in bytes32 format.
+     * @param _exactTokenAmount         Exact amount of tokens the user wants to receive. Decimal precision depends on the token.
      *
-     * @return depositIds A flattened array of deposit IDs corresponding to the provided payeeDetailsHashes.
+     * @return bestDeposit              The deposit that asks for the lowest amount of fiat for the exact amount of tokens the user wants to receive.
+     * @return minFiatAmount            The minimum amount of fiat the user needs to send to receive the exact amount of tokens
      */
-    function getDepositIdsForVerifierAndPayeeDetailsHashesFlattened(
-        address _verifier,
-        bytes32[] calldata _payeeDetailsHashes
+    function quoteMinFiatInputForExactTokenOutputByPayees(
+        bytes32[] calldata _payeeDetailsHashes,
+        address _paymentVerifier,
+        address _gatingService,
+        address _receiveToken,
+        bytes32 _sendCurrency,
+        uint256 _exactTokenAmount
     )
         external
         view
-        returns (uint256[] memory depositIds)
+        returns (IEscrow.DepositView memory bestDeposit, uint256 minFiatAmount)
     {
-        uint256 totalDepositLength = _getTotalDepositsLength(_verifier, _payeeDetailsHashes);
+        uint256 totalDepositLength = _getTotalDepositsLength(_paymentVerifier, _payeeDetailsHashes);
 
-        depositIds = _getFlattenedDepositIds(totalDepositLength, _verifier, _payeeDetailsHashes);
+        uint256[] memory depositIds = _getFlattenedDepositIds(totalDepositLength, _paymentVerifier, _payeeDetailsHashes);
+
+        return quoteMinFiatInputForExactTokenOutput(
+            depositIds,
+            _paymentVerifier,
+            _gatingService,
+            _receiveToken,
+            _sendCurrency,
+            _exactTokenAmount
+        );
+    }
+
+    /**
+     * @notice Finds the deposit that gives the maximum amount of tokens for a exact amount of fiat the user wants to send.
+     * Starts search by payee details hashes rather than deposit IDs. User can filter the deposits by their chosen payment service
+     * (aka verifier) and/or the client from which the intent was created (aka gating service).
+     *
+     * @dev _exactFiatAmount MUST be same base units as token (if token is USDC, _exactFiatAmount is 10e6)
+     *
+     * @param _payeeDetailsHashes       An array of payee details hashes to consider.
+     * @param _receiveToken             The token address the user wants to receive onchain.
+     * @param _paymentVerifier          The payment service (aka verifier) the user has chosen. Use address(0) to ignore this filter.
+     * @param _gatingService            The gating service (aka client) address the user has chosen. Use address(0) to ignore this filter.
+     * @param _sendCurrency             The currency code the user wants to send offchain. Must be provided in bytes32 format.
+     * @param _exactFiatAmount          Exact amount of fiat the user wants to send. Decimal precision depends on the token.
+     *
+     * @return bestDeposit              The deposit that gives the maximum amount of tokens for the exact amount of fiat the user wants to send.
+     * @return maxTokenAmount           The maximum amount of tokens the user will receive.
+     */
+    function quoteMaxTokenOutputForExactFiatInputByPayees(
+        bytes32[] calldata _payeeDetailsHashes,
+        address _paymentVerifier,
+        address _gatingService,
+        address _receiveToken,
+        bytes32 _sendCurrency,
+        uint256 _exactFiatAmount
+    )
+        external
+        view
+        returns (IEscrow.DepositView memory bestDeposit, uint256 maxTokenAmount)
+    {
+        uint256 totalDepositLength = _getTotalDepositsLength(_paymentVerifier, _payeeDetailsHashes);
+
+        uint256[] memory depositIds = _getFlattenedDepositIds(totalDepositLength, _paymentVerifier, _payeeDetailsHashes);
+
+        return quoteMaxTokenOutputForExactFiatInput(
+            depositIds,
+            _paymentVerifier,
+            _gatingService,
+            _receiveToken,
+            _sendCurrency,
+            _exactFiatAmount
+        );
     }
 
     /* ============ Internal Functions ============ */
