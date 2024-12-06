@@ -82,13 +82,13 @@ contract Quoter {
         uint256 bestTokenToFiatConversionRate;
         (bestDeposit, bestTokenToFiatConversionRate) = _getBestRate(quoteData);
 
-        minFiatAmount = _exactTokenAmount * bestTokenToFiatConversionRate / PRECISE_UNIT;
+        minFiatAmount = _getFiatAmount(_exactTokenAmount, bestTokenToFiatConversionRate);
     }
 
     /**
      * @notice Finds the deposit that gives the maximum amount of tokens for a exact amount of fiat the user wants to send.
      * User can filter the deposits by their chosen payment service (aka verifier) and/or the client from which the intent was 
-     *created (aka gating service).
+     * created (aka gating service).
      *
      * @dev _exactFiatAmount MUST be same base units as token (if token is USDC, _exactFiatAmount is 10e6)
      *
@@ -129,7 +129,30 @@ contract Quoter {
         uint256 bestTokenToFiatConversionRate;
         (bestDeposit, bestTokenToFiatConversionRate) = _getBestRate(quoteData);
 
-        maxTokenAmount = _exactFiatAmount * PRECISE_UNIT / bestTokenToFiatConversionRate;
+        maxTokenAmount = _getTokenAmount(_exactFiatAmount, bestTokenToFiatConversionRate);
+    }
+
+    /**
+     * @notice Retrieves all deposit IDs for a given verifier and multiple payeeDetailsHashes in a batch, returning a flattened array.
+     * Deposit IDs are unique across different payeeDetailsHashes. These deposit IDs can then be passed into quote functions to fetch 
+     * the best rate.
+     *
+     * @param _verifier The verifier address to filter deposits.
+     * @param _payeeDetailsHashes An array of payeeDetailsHashes to retrieve deposit IDs for.
+     *
+     * @return depositIds A flattened array of deposit IDs corresponding to the provided payeeDetailsHashes.
+     */
+    function getDepositIdsForVerifierAndPayeeDetailsHashesFlattened(
+        address _verifier,
+        bytes32[] calldata _payeeDetailsHashes
+    )
+        external
+        view
+        returns (uint256[] memory depositIds)
+    {
+        uint256 totalDepositLength = _getTotalDepositsLength(_verifier, _payeeDetailsHashes);
+
+        depositIds = _getFlattenedDepositIds(totalDepositLength, _verifier, _payeeDetailsHashes);
     }
 
     /* ============ Internal Functions ============ */
@@ -251,5 +274,43 @@ contract Quoter {
      */
     function _getTokenAmount(uint256 _fiatAmount, uint256 _tokenToFiatConversionRate) internal pure returns (uint256) {
         return _fiatAmount * PRECISE_UNIT / _tokenToFiatConversionRate;
+    }
+
+    /**
+     * @notice Calculates the total number of deposits that match the given verifier and payeeDetailsHashes
+     */
+    function _getTotalDepositsLength(
+        address _verifier,
+        bytes32[] memory _payeeDetailsHashes
+    )
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalDeposits = 0;
+        for (uint256 i = 0; i < _payeeDetailsHashes.length; i++) {
+            totalDeposits += escrow.getDepositIdsForVerifierAndPayeeDetailsHash(_verifier, _payeeDetailsHashes[i]).length;
+        }
+        return totalDeposits;
+    }
+
+    /**
+     * @notice Creates a flattened array of deposit IDs
+     */
+    function _getFlattenedDepositIds(
+        uint256 _totalDepositLength,
+        address _verifier,
+        bytes32[] memory _payeeDetailsHashes
+    ) internal view returns (uint256[] memory) {
+        uint256[] memory depositIds = new uint256[](_totalDepositLength);
+        uint256 currentIndex = 0;
+        for (uint256 i = 0; i < _payeeDetailsHashes.length; i++) {
+            uint256[] memory ids = escrow.getDepositIdsForVerifierAndPayeeDetailsHash(_verifier, _payeeDetailsHashes[i]);
+            for (uint256 j = 0; j < ids.length; j++) {
+                depositIds[currentIndex] = ids[j];
+                currentIndex++;
+            }
+        }
+        return depositIds;
     }
 }

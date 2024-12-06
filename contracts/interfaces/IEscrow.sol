@@ -68,4 +68,11 @@ interface IEscrow {
     }
 
     function getDepositFromIds(uint256[] memory _depositIds) external view returns (DepositView[] memory depositArray);
+    function getDepositIdsForVerifierAndPayeeDetailsHash(
+        address _verifier, 
+        bytes32 _payeeDetailsHash
+    )
+        external
+        view
+        returns (uint256[] memory);
 }

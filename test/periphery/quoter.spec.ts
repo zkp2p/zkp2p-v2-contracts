@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
-import { BigNumber, Contract } from "ethers";
+import { BigNumber, BytesLike, Contract } from "ethers";
 
 import {
   Address,
@@ -862,6 +862,251 @@ describe("Quoter", function () {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Amount must be greater than 0");
+      });
+    });
+  });
+
+  describe("getDepositIdsForVerifierAndPayeeDetailsHashesFlattened", function () {
+    let subjectVerifier: Address;
+    let subjectPayeeDetailsHashes: BytesLike[];
+
+    beforeEach(async () => {
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+      // Deposit 1: Worst rates for all verifiers
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(150),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address, otherVerifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            data: "0x",
+          },
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            data: "0x",
+          },
+        ],
+        [
+          [
+            { code: Currency.USD, conversionRate: ether(1.5) },
+            { code: Currency.EUR, conversionRate: ether(1.6) },
+            { code: Currency.GBP, conversionRate: ether(1.7) },
+          ],
+          [
+            { code: Currency.USD, conversionRate: ether(1.6) },
+            { code: Currency.EUR, conversionRate: ether(1.7) },
+            { code: Currency.GBP, conversionRate: ether(1.8) },
+          ],
+        ]
+      );
+
+      // Deposit 2: Best rate for USD
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(200),
+        { min: usdc(20), max: usdc(100) },
+        [verifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.USD, conversionRate: ether(0.98) }],
+        ]
+      );
+
+      // Deposit 3: Best rate for alternative verifier
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(200),
+        { min: usdc(20), max: usdc(100) },
+        [otherVerifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.USD, conversionRate: ether(0.99) }],
+        ]
+      );
+
+      // Deposit 4: Different token
+      const DummyTokenFactory = await ethers.getContractFactory("USDCMock");
+      dummyToken = await DummyTokenFactory.deploy(
+        ether(1000000),
+        "DAI",
+        "DAI"
+      );
+
+      await dummyToken.transfer(offRamper.address, ether(10000));
+      await dummyToken.connect(offRamper.wallet).approve(ramp.address, ether(10000));
+
+      await ramp.connect(offRamper.wallet).createDeposit(
+        dummyToken.address,
+        ether(300),
+        { min: ether(30), max: ether(400) },
+        [verifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.1) }],
+        ]
+      );
+
+      // Deposit 5 - Filled order
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(50),
+        { min: usdc(30), max: usdc(50) },
+        [verifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.2) }],
+        ]
+      );
+
+      await ramp.connect(onRamper.wallet).signalIntent(
+        BigNumber.from(4),
+        usdc(49),
+        onRamper.address,
+        verifier.address,
+        Currency.USD,
+        await generateGatingServiceSignature(
+          BigNumber.from(4),
+          usdc(49),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          chainId.toString()
+        )
+      );
+
+      // Deposit 6: Different currency
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(200),
+        { min: usdc(20), max: usdc(100) },
+        [verifier.address],
+        [
+          {
+            intentGatingService: gatingService.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.EUR, conversionRate: ether(1.05) }],
+        ]
+      );
+
+      // Deposit 7: Different gating service
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(200),
+        { min: usdc(20), max: usdc(100) },
+        [verifier.address],
+        [
+          {
+            intentGatingService: gatingServiceOther.address,
+            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
+            data: "0x",
+          },
+        ],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.04) }],
+        ]
+      );
+
+      subjectVerifier = verifier.address;
+      subjectPayeeDetailsHashes = [
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
+      ];
+    });
+
+    async function subject(): Promise<BigNumber[]> {
+      return quoter.getDepositIdsForVerifierAndPayeeDetailsHashesFlattened(
+        subjectVerifier,
+        subjectPayeeDetailsHashes
+      );
+    }
+
+    it("should return the deposit IDs for the verifier and payee details hashes", async () => {
+      const depositIds = await subject();
+
+      expect(depositIds).to.deep.equal([
+        ZERO,
+        ONE,
+        BigNumber.from(3),
+        BigNumber.from(4),
+        BigNumber.from(5),
+        BigNumber.from(6)
+      ]);
+    });
+
+    describe("when the verifier is the other verifier", function () {
+      beforeEach(async () => {
+        subjectVerifier = otherVerifier.address;
+      });
+
+      it("should return the deposit IDs for the verifier and payee details hashes", async () => {
+        const depositIds = await subject();
+
+        expect(depositIds).to.deep.equal([ZERO, BigNumber.from(2)]);
+      });
+    });
+
+    describe("when a payee details hash does not exist", function () {
+      beforeEach(async () => {
+        subjectPayeeDetailsHashes = [
+          ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+          ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee8"))
+        ];
+      });
+
+      it("should return the deposit IDs for the verifier and payee details hashes", async () => {
+        const depositIds = await subject();
+
+        expect(depositIds).to.deep.equal([ZERO]);
+      });
+    });
+
+    describe("when the verifier is not found", function () {
+      beforeEach(async () => {
+        subjectVerifier = ADDRESS_ZERO;
+      });
+
+      it("should return an empty array", async () => {
+        const depositIds = await subject();
+
+        expect(depositIds).to.deep.equal([]);
       });
     });
   });
