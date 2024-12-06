@@ -747,9 +747,8 @@ contract Escrow is Ownable, IEscrow {
         address[] memory verifiers = depositVerifiers[_depositId];
         for (uint256 i = 0; i < verifiers.length; i++) {
             address verifier = verifiers[i];
-            DepositVerifierData memory verifierData = depositVerifierData[_depositId][verifier];
-            depositIdsByVerifierAndPayeeDetailsHash[verifier][verifierData.payeeDetailsHash].removeStorage(_depositId);
-            delete verifierData;
+            depositIdsByVerifierAndPayeeDetailsHash[verifier][depositVerifierData[_depositId][verifier].payeeDetailsHash].removeStorage(_depositId);
+            delete depositVerifierData[_depositId][verifier];
             bytes32[] memory currencies = depositCurrencies[_depositId][verifier];
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyConversionRate[_depositId][verifier][currencies[j]];
