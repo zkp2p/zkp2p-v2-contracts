@@ -189,6 +189,17 @@ describe("Escrow", () => {
       expect(depositView.verifiers[0].currencies[1].conversionRate).to.eq(subjectCurrencies[0][1].conversionRate);
     });
 
+    it("should update the deposit by verifier and payee details hash mapping", async () => {
+      await subject();
+
+      const depositIds = await ramp.getDepositIdsForVerifierAndPayeeDetailsHash(
+        subjectVerifiers[0],
+        subjectVerificationData[0].payeeDetailsHash
+      );
+      expect(depositIds.length).to.eq(1);
+      expect(depositIds[0]).to.eq(ZERO);
+    });
+
     it("should increment the deposit counter", async () => {
       const preDepositCounter = await ramp.depositCounter();
 
@@ -304,6 +315,25 @@ describe("Escrow", () => {
 
         const currencyRate2_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].conversionRate);
+      });
+      
+      it("should update the deposit by verifier and payee details hash mapping", async () => {
+        await subject();
+  
+        const depositIdsFirstVerifier = await ramp.getDepositIdsForVerifierAndPayeeDetailsHash(
+          subjectVerifiers[0],
+          subjectVerificationData[0].payeeDetailsHash
+        );
+        expect(depositIdsFirstVerifier.length).to.eq(1);
+        expect(depositIdsFirstVerifier[0]).to.eq(ZERO);
+  
+        const depositIdsSecondVerifier = await ramp.getDepositIdsForVerifierAndPayeeDetailsHash(
+          subjectVerifiers[1],
+          subjectVerificationData[1].payeeDetailsHash
+        );
+        console.log("depositIdsSecondVerifier", depositIdsSecondVerifier);
+        expect(depositIdsSecondVerifier.length).to.eq(1);
+        expect(depositIdsSecondVerifier[0]).to.eq(ZERO);
       });
     });
 
@@ -1336,6 +1366,23 @@ describe("Escrow", () => {
       expect(postCurrencyConversionData).to.eq(ZERO);
     });
 
+    it("should delete the deposit by verifier and payee details hash mapping", async () => {
+      const preDepositIds = await ramp.getDepositIdsForVerifierAndPayeeDetailsHash(
+        verifier.address,
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"))
+      );
+      expect(preDepositIds.length).to.eq(1);
+      expect(preDepositIds[0]).to.eq(ZERO);
+
+      await subject();
+
+      const postDepositIds = await ramp.getDepositIdsForVerifierAndPayeeDetailsHash(
+        verifier.address,
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"))
+      );
+      expect(postDepositIds.length).to.eq(0);
+    });
+
     it("should emit a DepositWithdrawn event", async () => {
       const tx = await subject();
 
@@ -2281,6 +2328,132 @@ describe("Escrow", () => {
       it("should return intent with zero bytes hash", async () => {
         const intent = await subject();
         expect(intent.intentHash).to.eq(ZERO_BYTES32);
+      });
+    });
+  });
+
+  describe("#getDepositIdsForVerifierAndPayeeDetailsHash", async () => {
+    let subjectVerifier: string;
+    let subjectPayeeDetailsHash: string;
+
+    beforeEach(async () => {
+      // Create deposit and signal intent
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+      // Deposit 0
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        ]
+      );
+
+      // Deposit 1: same payee details hash
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        ]
+      );
+
+      // Deposit 2: different payee details hash
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        ]
+      );
+
+      // Deposit 3: different verifier
+      await ramp.addWhitelistedPaymentVerifier(otherVerifier.address, ZERO);
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [otherVerifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails3")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        ]
+      );
+
+      subjectVerifier = verifier.address;
+      subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.getDepositIdsForVerifierAndPayeeDetailsHash(subjectVerifier, subjectPayeeDetailsHash);
+    }
+
+    it("should return correct deposit IDs", async () => {
+      const depositIds = await subject();
+
+      expect(depositIds.length).to.eq(2);
+      expect(depositIds[0]).to.eq(ZERO);
+      expect(depositIds[1]).to.eq(ONE);
+    });
+
+    describe("when there is a different payee details hash", async () => {
+      beforeEach(async () => {
+        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2"));
+      });
+
+      it("should return correct deposit IDs", async () => {
+        const depositIds = await subject();
+        expect(depositIds.length).to.eq(1);
+        expect(depositIds[0]).to.eq(BigNumber.from(2));
+      });
+    });
+
+    describe("when there is a different verifier", async () => {
+      beforeEach(async () => {
+        subjectVerifier = otherVerifier.address;
+        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails3"));
+      });
+
+      it("should return correct deposit IDs", async () => {
+        const depositIds = await subject();
+        expect(depositIds.length).to.eq(1);
+        expect(depositIds[0]).to.eq(BigNumber.from(3));
+      });
+    });
+
+    describe("when there are no deposits for the verifier and payee details hash", async () => {
+      beforeEach(async () => {
+        subjectVerifier = ADDRESS_ZERO;
+      });
+
+      it("should return empty array", async () => {
+        const depositIds = await subject();
+        expect(depositIds.length).to.eq(0);
       });
     });
   });

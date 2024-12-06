@@ -591,7 +591,7 @@ contract Escrow is Ownable, IEscrow {
         intentView = getIntent(intentHash);
     }
 
-    function getDepositIdsForVerifierAndHash(
+    function getDepositIdsForVerifierAndPayeeDetailsHash(
         address _verifier,
         bytes32 _payeeDetailsHash
     )
@@ -747,8 +747,9 @@ contract Escrow is Ownable, IEscrow {
         address[] memory verifiers = depositVerifiers[_depositId];
         for (uint256 i = 0; i < verifiers.length; i++) {
             address verifier = verifiers[i];
-            delete depositVerifierData[_depositId][verifier];
-            depositIdsByVerifierAndPayeeDetailsHash[verifier][depositVerifierData[_depositId][verifier].payeeDetailsHash].removeStorage(_depositId);
+            DepositVerifierData memory verifierData = depositVerifierData[_depositId][verifier];
+            depositIdsByVerifierAndPayeeDetailsHash[verifier][verifierData.payeeDetailsHash].removeStorage(_depositId);
+            delete verifierData;
             bytes32[] memory currencies = depositCurrencies[_depositId][verifier];
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyConversionRate[_depositId][verifier][currencies[j]];
