@@ -7,13 +7,14 @@ import { ethers } from "hardhat";
 import {
   MULTI_SIG,
 } from "../deployments/parameters";
-import { addWritePermission, getDeployedContractAddress, setNewOwner } from "../deployments/helpers";
+import { addWhitelistedPaymentVerifier, addWritePermission, getDeployedContractAddress, setNewOwner } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
   VENMO_RECLAIM_PROVIDER_HASHES,
   VENMO_RECLAIM_CURRENCIES,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
 } from "../deployments/verifiers/venmo_reclaim";
+import { ZERO } from "../utils/constants";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -51,6 +52,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistryAddress);
   await addWritePermission(hre, nullifierRegistryContract, venmoVerifier.address);
+
+  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
+  await addWhitelistedPaymentVerifier(hre, escrowContract, venmoVerifier.address, ZERO);
 
   console.log("NullifierRegistry permissions added...");
 
