@@ -7,12 +7,18 @@ import { ethers } from "hardhat";
 import {
   MULTI_SIG,
 } from "../deployments/parameters";
-import { addWritePermission, getDeployedContractAddress, setNewOwner } from "../deployments/helpers";
+import {
+  addWritePermission,
+  addWhitelistedPaymentVerifier,
+  getDeployedContractAddress,
+  setNewOwner
+} from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
   VENMO_RECLAIM_PROVIDER_HASHES,
   VENMO_RECLAIM_CURRENCIES,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
+  VENMO_RECLAIM_FEE_SHARE,
 } from "../deployments/verifiers/venmo_reclaim";
 
 // Deployment Scripts
@@ -53,6 +59,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWritePermission(hre, nullifierRegistryContract, venmoVerifier.address);
 
   console.log("NullifierRegistry permissions added...");
+
+  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
+  await addWhitelistedPaymentVerifier(hre, escrowContract, venmoVerifier.address, VENMO_RECLAIM_FEE_SHARE);
+
+  console.log("VenmoReclaimVerifier added to whitelisted payment verifiers...");
 
   console.log("Transferring ownership of contracts...");
   await setNewOwner(

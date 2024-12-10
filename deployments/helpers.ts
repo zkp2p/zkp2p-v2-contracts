@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Address } from "../utils/types";
+import { BigNumber } from "ethers";
 
 export function getDeployedContractAddress(network: string, contractName: string): string {
   return require(`./${network}/${contractName}.json`).address;
@@ -42,6 +43,32 @@ export async function addWritePermission(
       console.log(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
         ${contract.interface.encodeFunctionData("addWritePermission", [newPermission])}
+        `
+      );
+    }
+  }
+}
+
+export async function addWhitelistedPaymentVerifier(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  newWhitelistedAddress: Address,
+  feeShare: BigNumber
+): Promise<void> {
+  const currentOwner = await contract.owner();
+  if (!(await contract.whitelistedPaymentVerifiers(newWhitelistedAddress))) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      const data = contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare]);
+
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare])}
         `
       );
     }

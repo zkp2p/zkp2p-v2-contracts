@@ -5,10 +5,12 @@ import { deployments, ethers } from "hardhat";
 import {
   VenmoReclaimVerifier,
   NullifierRegistry,
+  Escrow,
 } from "../../utils/contracts";
 import {
   VenmoReclaimVerifier__factory,
   NullifierRegistry__factory,
+  Escrow__factory,
 } from "../../typechain";
 
 import {
@@ -38,6 +40,7 @@ describe("VenmoReclaimVerifier Deployment", () => {
   let multiSig: Address;
   let escrowAddress: string;
 
+  let escrow: Escrow;
   let venmoReclaimVerifier: VenmoReclaimVerifier;
   let nullifierRegistry: NullifierRegistry;
 
@@ -55,6 +58,8 @@ describe("VenmoReclaimVerifier Deployment", () => {
     multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer.address;
 
     escrowAddress = getDeployedContractAddress(network, "Escrow");
+    escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
+
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
     const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
@@ -90,6 +95,13 @@ describe("VenmoReclaimVerifier Deployment", () => {
   describe("Write Permissions", async () => {
     it("should add write permissions to the NullifierRegistry", async () => {
       const hasWritePermission = await nullifierRegistry.isWriter(venmoReclaimVerifier.address);
+      expect(hasWritePermission).to.be.true;
+    });
+  });
+
+  describe("Whitelisted Payment Verifier", async () => {
+    it("should add the VenmoReclaimVerifier to the whitelisted payment verifiers", async () => {
+      const hasWritePermission = await escrow.whitelistedPaymentVerifiers(venmoReclaimVerifier.address);
       expect(hasWritePermission).to.be.true;
     });
   });
