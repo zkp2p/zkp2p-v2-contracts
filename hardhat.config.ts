@@ -9,6 +9,9 @@ import '@nomicfoundation/hardhat-chai-matchers'
 
 import { HardhatUserConfig } from "hardhat/config";
 
+import "./tasks/blockNumber";
+import "./tasks/createDeposit";
+
 dotenv.config();
 
 const config: HardhatUserConfig = {

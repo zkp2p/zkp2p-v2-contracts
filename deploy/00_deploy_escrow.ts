@@ -66,6 +66,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await usdcContract.transfer(USDC_RECIPIENT, USDC_MINT_AMOUNT);
   }
 
+  if (network == "localhost") {
+    const [owner] = await ethers.getSigners();
+    const usdcContract = await ethers.getContractAt("USDCMock", usdcAddress);
+    await usdcContract.transfer(owner.address, USDC_MINT_AMOUNT);
+    console.log("Transferred USDC to ", owner.address);
+  }
+
   console.log("Transferring ownership of contracts...");
   await setNewOwner(hre, escrowContract, multiSig);
   await setNewOwner(hre, nullifierRegistryContract, multiSig);
