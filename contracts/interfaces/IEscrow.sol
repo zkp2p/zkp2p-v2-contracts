@@ -46,6 +46,7 @@ interface IEscrow {
         address paymentVerifier;                    // Address of the payment verifier corresponding to payment service the owner is 
                                                     // going to pay with offchain
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
+        uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
     }
 
     struct VerifierDataView {

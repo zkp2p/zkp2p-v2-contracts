@@ -498,6 +498,22 @@ describe("Escrow", () => {
       expect(intent.fiatCurrency).to.eq(subjectFiatCurrency);
     });
 
+    it("should have stored the correct conversion rate in the intent", async () => {
+      await subject();
+      const currentTimestamp = await blockchain.getCurrentTimestamp();
+      const intentHash = calculateIntentHash(
+        subjectCaller.address,
+        subjectVerifier,
+        subjectDepositId,
+        currentTimestamp
+      );
+
+      const depositConversionRate = await ramp.depositCurrencyConversionRate(subjectDepositId, subjectVerifier, subjectFiatCurrency);
+
+      const intent = await ramp.intents(intentHash);
+      expect(intent.conversionRate).to.eq(depositConversionRate);
+    });
+
     it("should update the deposit mapping correctly", async () => {
       const preDeposit = await ramp.deposits(subjectDepositId);
 
@@ -814,6 +830,9 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
 
+      // Set the verifier to verify payment
+      await verifier.setShouldVerifyPayment(true);
+
       // Prepare the proof and processor for the onRamp function
       subjectProof = ethers.utils.defaultAbiCoder.encode(
         ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
@@ -864,6 +883,30 @@ describe("Escrow", () => {
         0,
         0
       );
+    });
+
+    describe("when the conversion rate is updated by depositor", async () => {
+      beforeEach(async () => {
+        await ramp.connect(offRamper.wallet).updateDepositConversionRate(ZERO, verifier.address, Currency.USD, ether(1.09));
+      });
+
+      it("should still transfer the correct amount to the on-ramper", async () => {
+        const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+        await subject();
+
+        const finalBalance = await usdcToken.balanceOf(onRamper.address);
+        expect(finalBalance.sub(initialBalance)).to.eq(usdc(50));
+      });
+
+      it("should update the deposit balances correctly", async () => {
+        const preDeposit = await ramp.deposits(ZERO);
+
+        await subject();
+
+        const postDeposit = await ramp.deposits(ZERO);
+        expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
+      });
     });
 
     describe("when the sustainability fee is set", async () => {
@@ -974,13 +1017,10 @@ describe("Escrow", () => {
           ["uint256", "uint256", "bytes32", "string", "bytes32"],
           [usdc(40), await blockchain.getCurrentTimestamp(), payeeDetailsHash, Currency.USD, intentHash]
         );
-
-        // await processor.setShouldVerifyPayment(true);
-        await verifier.setShouldReturnFalse(true);
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment verification failed");
+        await expect(subject()).to.be.revertedWith("Payment amount is less than intent amount");
       });
     });
   });
@@ -1249,6 +1289,100 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Sender must be the intent owner");
+      });
+    });
+  });
+
+  describe("#updateDepositConversionRate", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectVerifier: Address;
+    let subjectFiatCurrency: string;
+    let subjectNewConversionRate: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.01) }]
+        ]
+      );
+
+      subjectDepositId = ZERO;
+      subjectVerifier = verifier.address;
+      subjectFiatCurrency = Currency.USD;
+      subjectNewConversionRate = ether(1.05);
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).updateDepositConversionRate(
+        subjectDepositId,
+        subjectVerifier,
+        subjectFiatCurrency,
+        subjectNewConversionRate
+      );
+    }
+
+    it("should update the conversion rate", async () => {
+      await subject();
+
+      const newRate = await ramp.depositCurrencyConversionRate(
+        subjectDepositId,
+        subjectVerifier,
+        subjectFiatCurrency
+      );
+      expect(newRate).to.eq(subjectNewConversionRate);
+    });
+
+    it("should emit a DepositConversionRateUpdated event", async () => {
+      const tx = await subject();
+
+      expect(tx).to.emit(ramp, "DepositConversionRateUpdated").withArgs(
+        subjectDepositId,
+        subjectVerifier,
+        subjectFiatCurrency,
+        subjectNewConversionRate
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+      });
+    });
+
+    describe("when the currency or verifier is not supported", async () => {
+      beforeEach(async () => {
+        subjectFiatCurrency = Currency.EUR;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Currency or verifier not supported");
+      });
+    });
+
+    describe("when the new conversion rate is zero", async () => {
+      beforeEach(async () => {
+        subjectNewConversionRate = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
       });
     });
   });

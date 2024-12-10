@@ -46,6 +46,13 @@ contract Escrow is Ownable, IEscrow {
         uint256 conversionRate
     );
 
+    event DepositConversionRateUpdated(
+        uint256 indexed depositId,
+        address indexed verifier,
+        bytes32 indexed currency,
+        uint256 newConversionRate
+    );
+
     event IntentSignaled(
         bytes32 indexed intentHash,
         uint256 indexed depositId,
@@ -277,6 +284,7 @@ contract Escrow is Ownable, IEscrow {
             amount: _amount,
             paymentVerifier: _verifier,
             fiatCurrency: _fiatCurrency,
+            conversionRate: depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency],
             timestamp: block.timestamp
         });
 
@@ -330,7 +338,6 @@ contract Escrow is Ownable, IEscrow {
         require(verifier != address(0), "Intent does not exist");
         
         DepositVerifierData memory verifierData = depositVerifierData[intent.depositId][verifier];
-        uint256 conversionRate = depositCurrencyConversionRate[intent.depositId][verifier][intent.fiatCurrency];
         (bool success, bytes32 intentHash) = IPaymentVerifier(verifier).verifyPayment(
             _paymentProof,
             address(deposit.token),
@@ -338,7 +345,7 @@ contract Escrow is Ownable, IEscrow {
             intent.timestamp,
             verifierData.payeeDetailsHash,
             intent.fiatCurrency,
-            conversionRate,
+            intent.conversionRate,
             verifierData.data
         );
         require(success, "Payment verification failed");
@@ -375,6 +382,36 @@ contract Escrow is Ownable, IEscrow {
         _closeDepositIfNecessary(intent.depositId, deposit);
 
         _transferFunds(token, _intentHash, intent, address(0));
+    }
+
+    /**
+     * @notice Only callable by the depositor for a deposit. Allows depositor to update the conversion rate for a currency for a 
+     * payment verifier. Since intent's store the conversion rate at the time of intent, changing the conversion rate will not affect
+     * any intents that have already been signaled.
+     *
+     * @param _depositId                The deposit ID
+     * @param _verifier                 The payment verifier address to update the conversion rate for
+     * @param _fiatCurrency             The fiat currency code to update the conversion rate for
+     * @param _newConversionRate        The new conversion rate. Must be greater than 0.
+     */
+    function updateDepositConversionRate(
+        uint256 _depositId, 
+        address _verifier, 
+        bytes32 _fiatCurrency, 
+        uint256 _newConversionRate
+    )
+        external
+    {
+        Deposit storage deposit = deposits[_depositId];
+        uint256 oldConversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
+
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        require(oldConversionRate != 0, "Currency or verifier not supported");
+        require(_newConversionRate > 0, "Conversion rate must be greater than 0");
+
+        depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency] = _newConversionRate;
+
+        emit DepositConversionRateUpdated(_depositId, _verifier, _fiatCurrency, _newConversionRate);
     }
 
     /**
