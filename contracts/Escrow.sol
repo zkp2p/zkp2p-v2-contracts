@@ -3,6 +3,7 @@
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
@@ -15,9 +16,7 @@ import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-// todo: add circuit breakers!
-
-contract Escrow is Ownable, IEscrow {
+contract Escrow is Ownable, Pausable, IEscrow {
 
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
@@ -183,6 +182,7 @@ contract Escrow is Ownable, IEscrow {
         Currency[][] calldata _currencies
     )
         external
+        whenNotPaused
     {
         _validateCreateDeposit(_verifiers, _verifierData, _currencies);
 
@@ -257,6 +257,7 @@ contract Escrow is Ownable, IEscrow {
         bytes calldata _gatingServiceSignature
     )
         external
+        whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
 
@@ -330,6 +331,7 @@ contract Escrow is Ownable, IEscrow {
         bytes32 _intentHash
     )
         external
+        whenNotPaused
     {
         Intent memory intent = intents[_intentHash];
         Deposit storage deposit = deposits[intent.depositId];
@@ -401,6 +403,7 @@ contract Escrow is Ownable, IEscrow {
         uint256 _newConversionRate
     )
         external
+        whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
         uint256 oldConversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
@@ -537,6 +540,30 @@ contract Escrow is Ownable, IEscrow {
 
         intentExpirationPeriod = _intentExpirationPeriod;
         emit IntentExpirationPeriodSet(_intentExpirationPeriod);
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Pauses deposit creation, intent creation and intent fulfillment functionality for the escrow.
+     * Functionalities that are paused:
+     * - Deposit creation
+     * - Updating conversion rates
+     * - Intent creation
+     * - Intent fulfillment
+     *
+     * Functionalities that remain unpaused to allow users to retrieve funds in contract:
+     * - Intent cancellation
+     * - Deposit withdrawal
+     * - Manual intent fulfillment
+     */
+    function pauseEscrow() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Restarts paused functionality for the escrow.
+     */
+    function unpauseEscrow() external onlyOwner {
+        _unpause();
     }
 
     

@@ -404,6 +404,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Verifier data already exists");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
   });
 
   const generateGatingServiceSignature = async (
@@ -777,6 +787,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Invalid gating service signature");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
   });
 
   describe("#fulfillIntent", async () => {
@@ -1023,6 +1043,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Payment amount is less than intent amount");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
   });
 
   describe("#releaseFundsToPayer", async () => {
@@ -1198,6 +1228,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Caller must be the depositor");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should NOT revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
   });
 
   describe("#cancelIntent", async () => {
@@ -1289,6 +1329,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Sender must be the intent owner");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should NOT revert", async () => {
+        await expect(subject()).to.not.be.reverted;
       });
     });
   });
@@ -1383,6 +1433,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -1619,6 +1679,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should NOT revert", async () => {
+        await expect(subject()).to.not.be.reverted;
       });
     });
   });
