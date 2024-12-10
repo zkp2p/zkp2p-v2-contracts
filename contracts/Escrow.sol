@@ -351,7 +351,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             verifierData.data
         );
         require(success, "Payment verification failed");
-        require(intentHash == _intentHash, "Invalid intent hash");      // todo: Did revolut ramp do this?
+        require(intentHash == _intentHash, "Invalid intent hash");
 
         _pruneIntent(deposit, _intentHash);
 
