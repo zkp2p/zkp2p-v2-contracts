@@ -11,6 +11,7 @@ import { HardhatUserConfig } from "hardhat/config";
 
 import "./tasks/blockNumber";
 import "./tasks/createDeposit";
+import "./tasks/signalIntent";
 
 dotenv.config();
 

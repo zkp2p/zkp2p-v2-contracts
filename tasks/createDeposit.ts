@@ -1,15 +1,15 @@
 import { task } from "hardhat/config";
-// import { usdc } from "../utils/common/units";
-// import { Currency } from "../utils/protocolUtils";
+
+// > npx hardhat create-deposit --network localhost
 
 task("create-deposit", "Creates a deposit")
   .addParam("token", "The token to be deposited", "0x5FbDB2315678afecb367f032d93F642f64180aa3") // Default USDC address
   .addParam("amount", "The amount of token to deposit", "100")
-  .addParam("minAmount", "The minimum amount for intents", "10")
-  .addParam("maxAmount", "The maximum amount for intents", "100")
+  .addParam("minamount", "The minimum amount for intents", "10")
+  .addParam("maxamount", "The maximum amount for intents", "100")
   .addParam("verifiers", "Comma-separated list of payment verifiers", "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853") // comma separated list of verifier addresses
-  .addParam("verifierData", "Period-separated list of verifier data", `{
-    "intentGatingService":"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  .addParam("verifierdata", "Period-separated list of verifier data", `{
+    "intentGatingService":"0x0000000000000000000000000000000000000000",
     "payeeDetailsHash":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",
     "data":"0x00"}`
   )
@@ -23,11 +23,11 @@ task("create-deposit", "Creates a deposit")
 
     const token = await ethers.getContractAt("USDCMock", taskArgs.token);
     const amount = ethers.utils.parseUnits(taskArgs.amount, await token.decimals());
-    const minAmount = ethers.utils.parseUnits(taskArgs.minAmount, await token.decimals());
-    const maxAmount = ethers.utils.parseUnits(taskArgs.maxAmount, await token.decimals());
+    const minAmount = ethers.utils.parseUnits(taskArgs.minamount, await token.decimals());
+    const maxAmount = ethers.utils.parseUnits(taskArgs.maxamount, await token.decimals());
 
     const verifiers = taskArgs.verifiers.split(":");
-    const verifierData = taskArgs.verifierData.split(".").map(data => JSON.parse(data));
+    const verifierData = taskArgs.verifierdata.split(".").map(data => JSON.parse(data));
     const currencies = taskArgs.currencies.split("&").map(currencyGroup => {
       return currencyGroup.split(",").map(currency => {
         const [code, rate] = currency.split(":");
