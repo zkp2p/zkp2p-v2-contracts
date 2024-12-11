@@ -224,6 +224,7 @@ describe("Escrow", () => {
         offRamper.address,
         subjectToken,
         subjectAmount,
+        subjectIntentAmountRange
       );
     });
 
@@ -231,6 +232,8 @@ describe("Escrow", () => {
       await expect(subject()).to.emit(ramp, "DepositVerifierAdded").withArgs(
         ZERO, // depositId starts at 0
         subjectVerifiers[0],
+        subjectVerificationData[0].payeeDetailsHash,
+        subjectVerificationData[0].intentGatingService
       );
     });
 
@@ -440,9 +443,12 @@ describe("Escrow", () => {
     let subjectGatingServiceSignature: string;
     let subjectCaller: Account;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create a deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.01);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -454,7 +460,7 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.01) }]
+          [{ code: Currency.USD, conversionRate: depositConversionRate }]
         ]
       );
 
@@ -576,6 +582,7 @@ describe("Escrow", () => {
         subjectTo,
         subjectAmount,
         subjectFiatCurrency,
+        depositConversionRate,
         currentTimestamp
       );
     });

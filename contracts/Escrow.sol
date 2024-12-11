@@ -26,16 +26,22 @@ contract Escrow is Ownable, Pausable, IEscrow {
     using Uint256ArrayUtils for uint256[];
 
     /* ============ Events ============ */
+
+    // todo: migrate gating service signature to EIP712 signature?
+
     event DepositReceived(
         uint256 indexed depositId,
         address indexed depositor,
-        IERC20 token,
-        uint256 amount
+        IERC20 indexed token,
+        uint256 amount,
+        Range intentAmountRange
     );
 
     event DepositVerifierAdded(
         uint256 indexed depositId,
-        address indexed verifier
+        address indexed verifier,
+        bytes32 indexed payeeDetailsHash,
+        address intentGatingService
     );
 
     event DepositCurrencyAdded(
@@ -60,6 +66,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address to,
         uint256 amount,
         bytes32 fiatCurrency,
+        uint256 conversionRate,
         uint256 timestamp
     );
 
@@ -201,7 +208,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             outstandingIntentAmount: 0
         });
 
-        emit DepositReceived(depositId, msg.sender, _token, _amount);
+        emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange);
 
         for (uint256 i = 0; i < _verifiers.length; i++) {
             address verifier = _verifiers[i];
@@ -212,7 +219,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             depositVerifierData[depositId][verifier] = _verifierData[i];
             depositVerifiers[depositId].push(verifier);
          
-            emit DepositVerifierAdded(depositId, verifier);
+            emit DepositVerifierAdded(depositId, verifier, _verifierData[i].payeeDetailsHash, _verifierData[i].intentGatingService);
         }
 
         for (uint256 i = 0; i < _verifiers.length; i++) {
@@ -278,6 +285,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             deposit.outstandingIntentAmount -= reclaimableAmount;
         }
 
+        uint256 conversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
         intents[intentHash] = Intent({
             owner: msg.sender,
             to: _to,
@@ -285,7 +293,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _amount,
             paymentVerifier: _verifier,
             fiatCurrency: _fiatCurrency,
-            conversionRate: depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency],
+            conversionRate: conversionRate,
             timestamp: block.timestamp
         });
 
@@ -295,7 +303,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.outstandingIntentAmount += _amount;
         deposit.intentHashes.push(intentHash);
 
-        emit IntentSignaled(intentHash, _depositId, _verifier, msg.sender, _to, _amount, _fiatCurrency, block.timestamp);
+        emit IntentSignaled(intentHash, _depositId, _verifier, msg.sender, _to, _amount, _fiatCurrency, conversionRate, block.timestamp);
     }
 
     /**
