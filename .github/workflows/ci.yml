@@ -22,11 +22,12 @@ jobs:
         run: yarn test:clean --network localhost
       - name: Check deploy
         run: yarn deploy:localhost
-      - name: Run codecov
-        run: npx jest --coverage
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Run coverage
+        run: yarn coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
+          token: ${{ secrets.CODECOV_TOKEN }} 
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
 
