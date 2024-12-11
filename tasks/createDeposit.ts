@@ -27,9 +27,9 @@ task("create-deposit", "Creates a deposit")
     const maxAmount = ethers.utils.parseUnits(taskArgs.maxamount, await token.decimals());
 
     const verifiers = taskArgs.verifiers.split(":");
-    const verifierData = taskArgs.verifierdata.split(".").map(data => JSON.parse(data));
-    const currencies = taskArgs.currencies.split("&").map(currencyGroup => {
-      return currencyGroup.split(",").map(currency => {
+    const verifierData = taskArgs.verifierdata.split(".").map((data: string) => JSON.parse(data));
+    const currencies = taskArgs.currencies.split("&").map((currencyGroup: string) => {
+      return currencyGroup.split(",").map((currency: string) => {
         const [code, rate] = currency.split(":");
         return { code, conversionRate: ethers.utils.parseUnits(rate, 18) };
       });
