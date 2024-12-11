@@ -27,8 +27,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /* ============ Events ============ */
 
-    // todo: migrate gating service signature to EIP712 signature?
-
     event DepositReceived(
         uint256 indexed depositId,
         address indexed depositor,
