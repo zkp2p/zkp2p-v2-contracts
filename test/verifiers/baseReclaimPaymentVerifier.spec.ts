@@ -68,9 +68,7 @@ describe("BaseReclaimPaymentVerifier", () => {
         subjectNullifierRegistry,
         BigNumber.from(30),
         [Currency.USD],
-        subjectProviderHashes,
-        "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-        claimVerifier.address
+        subjectProviderHashes
       );
     }
 
