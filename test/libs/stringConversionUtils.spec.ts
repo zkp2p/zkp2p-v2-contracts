@@ -58,7 +58,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(123456));
       });
     });
@@ -71,7 +71,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(120459));
       });
     });
@@ -84,7 +84,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(123456));
       });
     });
@@ -143,7 +143,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(12345600));
       });
     });
@@ -155,7 +155,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(123456));
       });
     });
@@ -168,7 +168,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(120459));
       });
     });
@@ -181,7 +181,7 @@ describe("StringConversionUtils", () => {
 
       it("should return the correct value", async () => {
         const output = await subject();
-  
+
         expect(output).to.equal(BigNumber.from(123456));
       });
     });
@@ -203,6 +203,70 @@ describe("StringConversionUtils", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("String has multiple decimals");
+      });
+    });
+  });
+
+  describe("#stringComparison", async () => {
+    let subjectStringA: string;
+    let subjectStringB: string;
+
+    beforeEach(async () => {
+      subjectStringA = "test string";
+      subjectStringB = "test string";
+    });
+
+    async function subject(): Promise<any> {
+      return await stringUtils.stringComparison(subjectStringA, subjectStringB);
+    }
+
+    it("should return true when strings are equal", async () => {
+      const output = await subject();
+      expect(output).to.be.true;
+    });
+
+    describe("when strings are different", async () => {
+      beforeEach(async () => {
+        subjectStringB = "different string";
+      });
+
+      it("should return false", async () => {
+        const output = await subject();
+        expect(output).to.be.false;
+      });
+    });
+
+    describe("when strings have different case", async () => {
+      beforeEach(async () => {
+        subjectStringB = "TEST STRING";
+      });
+
+      it("should return false", async () => {
+        const output = await subject();
+        expect(output).to.be.false;
+      });
+    });
+
+    describe("when strings have different lengths", async () => {
+      beforeEach(async () => {
+        subjectStringB = "test string with more words";
+      });
+
+      it("should return false", async () => {
+        const output = await subject();
+        expect(output).to.be.false;
+      });
+    });
+
+    describe("when comparing empty strings", async () => {
+      beforeEach(async () => {
+        subjectStringA = "";
+        subjectStringB = "";
+      });
+
+      it("should return true", async () => {
+        const output = await subject();
+        expect(output).to.be.true;
       });
     });
   });

@@ -13,7 +13,9 @@ import {
   BasePaymentVerifier,
   StringConversionUtilsMock,
   ClaimVerifierMock,
-  Quoter
+  Quoter,
+  ManagedKeyHashAdapterV2,
+  BaseReclaimPaymentVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -25,6 +27,8 @@ import { NullifierRegistry__factory } from "../typechain/factories/contracts/ver
 import {
   ClaimVerifier__factory,
 } from "../typechain/factories/contracts/lib";
+import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
@@ -72,6 +76,22 @@ export default class DeployHelper {
     );
   }
 
+  public async deployBaseReclaimPaymentVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<BaseReclaimPaymentVerifier> {
+    return await new BaseReclaimPaymentVerifier__factory(this._deployerSigner).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
   public async deployVenmoReclaimVerifier(
     ramp: Address,
     nullifierRegistry: Address,
@@ -98,6 +118,10 @@ export default class DeployHelper {
 
   public async deployNullifierRegistry(): Promise<NullifierRegistry> {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployManagedKeyHashAdapterV2(keyHashes: string[]): Promise<ManagedKeyHashAdapterV2> {
+    return await new ManagedKeyHashAdapterV2__factory(this._deployerSigner).deploy(keyHashes);
   }
 
   public async deployQuoter(escrow: Address): Promise<Quoter> {

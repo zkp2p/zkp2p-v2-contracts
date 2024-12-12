@@ -38,7 +38,6 @@ contract BasePaymentVerifier is Ownable, IBasePaymentVerifier {
         escrow = _escrow;
         nullifierRegistry = _nullifierRegistry;
         timestampBuffer = _timestampBuffer;
-        
 
         for (uint256 i = 0; i < _currencies.length; i++) {
             addCurrency(_currencies[i]);

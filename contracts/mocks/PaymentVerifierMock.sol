@@ -23,7 +23,8 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
     /* ============ State Variables ============ */
     bool public shouldVerifyPayment;
-    
+    bool public shouldReturnFalse;
+
     /* ============ Constructor ============ */
     constructor(
         address _escrow,
@@ -36,6 +37,10 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
     function setShouldVerifyPayment(bool _shouldVerifyPayment) external {
         shouldVerifyPayment = _shouldVerifyPayment;
+    }
+
+    function setShouldReturnFalse(bool _shouldReturnFalse) external {
+        shouldReturnFalse = _shouldReturnFalse;
     }
 
     function extractIntentHash(bytes calldata _proof) external pure returns (bytes32) {
@@ -74,6 +79,10 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
             require(paymentDetails.fiatCurrency == _fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
+        if (shouldReturnFalse) {
+            return (false, bytes32(0));
+        }
+
         return (true, paymentDetails.intentHash);
     }
 

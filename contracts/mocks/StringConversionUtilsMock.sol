@@ -23,4 +23,8 @@ contract StringConversionUtilsMock {
     {
         return _s.stringToUint(_decimalCharacter, _desiredDecimals);
     }
+
+    function stringComparison(string memory _a, string memory _b) public pure returns (bool) {
+        return _a.stringComparison(_b);
+    }
 }

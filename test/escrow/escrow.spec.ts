@@ -380,6 +380,27 @@ describe("Escrow", () => {
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Payment verifier not whitelisted");
       });
+
+      describe("when accept all verifiers is true", async () => {
+        beforeEach(async () => {
+          await otherVerifier.addCurrency(Currency.EUR);
+          await ramp.connect(owner.wallet).updateAcceptAllPaymentVerifiers(true);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+    });
+
+    describe("when payee details hash is zero", async () => {
+      beforeEach(async () => {
+        subjectVerificationData[0].payeeDetailsHash = ZERO_BYTES32;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Payee details hash cannot be empty");
+      });
     });
 
     describe("when there are duplicate verifiers", async () => {
@@ -405,6 +426,27 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Verifier data already exists");
+      });
+    });
+
+    describe("when there are duplicate currencies for a verifier", async () => {
+      beforeEach(async () => {
+        subjectVerifiers = [verifier.address];
+        subjectVerificationData = [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+          data: "0x"
+        }];
+        subjectCurrencies = [
+          [
+            { code: Currency.USD, conversionRate: ether(1.01) },
+            { code: Currency.USD, conversionRate: ether(1.02) }
+          ]
+        ];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Currency conversion rate already exists");
       });
     });
 
@@ -1051,6 +1093,16 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the payment verification fails", async () => {
+      beforeEach(async () => {
+        await verifier.setShouldReturnFalse(true);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Payment verification failed");
+      });
+    });
+
     describe("when the escrow is paused", async () => {
       beforeEach(async () => {
         await ramp.connect(owner.wallet).pauseEscrow();
@@ -1058,6 +1110,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+
+      describe("when the escrow is unpaused", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).unpauseEscrow();
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
       });
     });
   });
@@ -1336,6 +1398,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Sender must be the intent owner");
+      });
+    });
+
+    describe("when the intent does not exist", async () => {
+      beforeEach(async () => {
+        subjectIntentHash = ethers.utils.formatBytes32String("nonexistent");
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Intent does not exist");
       });
     });
 
@@ -1701,6 +1773,93 @@ describe("Escrow", () => {
   });
 
   // GOVERNANCE FUNCTIONS
+
+  describe("#pauseEscrow", async () => {
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).pauseEscrow();
+    }
+
+    it("should pause the escrow", async () => {
+      await subject();
+
+      const isPaused = await ramp.paused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("should emit a Paused event", async () => {
+      await expect(subject()).to.emit(ramp, "Paused").withArgs(owner.address);
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+
+    describe("when the escrow is already paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+  describe("#unpauseEscrow", async () => {
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      await ramp.connect(owner.wallet).pauseEscrow();
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).unpauseEscrow();
+    }
+
+    it("should unpause the escrow", async () => {
+      await subject();
+
+      const isPaused = await ramp.paused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("should emit an Unpaused event", async () => {
+      await expect(subject()).to.emit(ramp, "Unpaused").withArgs(owner.address);
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+
+    describe("when the escrow is not paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).unpauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: not paused");
+      });
+    });
+  });
 
   describe("#addWhitelistedPaymentVerifier", async () => {
     let subjectVerifier: Address;
@@ -2492,6 +2651,93 @@ describe("Escrow", () => {
       it("should return intent with zero bytes hash", async () => {
         const intent = await subject();
         expect(intent.intentHash).to.eq(ZERO_BYTES32);
+      });
+    });
+  });
+
+  describe("#getPrunableIntents", async () => {
+    let subjectCaller: Account;
+    let subjectDepositId: BigNumber;
+
+    beforeEach(async () => {
+      // Create deposit and signal intent first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        ]
+      );
+
+      const gatingServiceSignature = await generateGatingServiceSignature(
+        ZERO,
+        usdc(50),
+        onRamper.address,
+        verifier.address,
+        Currency.USD,
+        chainId.toString()
+      );
+
+      await ramp.connect(onRamper.wallet).signalIntent(
+        ZERO,
+        usdc(50),
+        onRamper.address,
+        verifier.address,
+        Currency.USD,
+        gatingServiceSignature
+      );
+
+      subjectCaller = onRamper;
+      subjectDepositId = ZERO;
+    });
+
+    async function subject(): Promise<{ prunableIntents: string[], reclaimedAmount: BigNumber }> {
+      return ramp.connect(subjectCaller.wallet).getPrunableIntents(subjectDepositId);
+    }
+
+    describe("when timestamp is before intent expiry", async () => {
+      it("should return empty array", async () => {
+        const { prunableIntents, reclaimedAmount } = await subject();
+        expect(prunableIntents.length).to.eq(1);
+        expect(reclaimedAmount).to.eq(ZERO);
+      });
+    });
+
+    describe("when timestamp is after intent expiry", async () => {
+      it("should return prunable intents", async () => {
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        const { prunableIntents, reclaimedAmount } = await subject();
+
+        expect(prunableIntents.length).to.eq(1);
+        expect(reclaimedAmount).to.eq(usdc(50));
+      });
+    });
+
+    describe("when there are no intents", async () => {
+      beforeEach(async () => {
+        await ramp.connect(onRamper.wallet).cancelIntent(
+          calculateIntentHash(
+            onRamper.address,
+            verifier.address,
+            ZERO,
+            await blockchain.getCurrentTimestamp()
+          )
+        );
+      });
+
+      it("should return empty array", async () => {
+        const { prunableIntents, reclaimedAmount } = await subject();
+        expect(prunableIntents.length).to.eq(0);
+        expect(reclaimedAmount).to.eq(ZERO);
       });
     });
   });
