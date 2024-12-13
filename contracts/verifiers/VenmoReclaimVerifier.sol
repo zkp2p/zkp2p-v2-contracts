@@ -94,7 +94,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, hexStringToBytes32(paymentDetails.intentHash));
+        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
     }
 
     /* ============ Internal Functions ============ */
@@ -181,38 +181,5 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             intentHash: values[4],
             providerHash: values[5]
         });
-    }
-
-    // todo: Figure out if this is needed, or there's a cleaner way to do this. If needed, move to lib.
-
-    function hexStringToBytes32(string memory s) public pure returns (bytes32) {
-        bytes memory b = bytes(s);
-
-        // Check if the string has the correct length (66 characters: '0x' + 64 hex digits)
-        require(b.length == 66, "Invalid hex string length");
-
-        uint256 result = 0;
-
-        // Skip the '0x' prefix
-        for (uint256 i = 2; i < 66; i += 2) {
-            uint8 high = _fromHexChar(uint8(b[i]));
-            uint8 low = _fromHexChar(uint8(b[i + 1]));
-            uint8 byteValue = (high << 4) | low;
-            result = (result << 8) | byteValue;
-        }
-
-        return bytes32(result);
-    }
-
-    function _fromHexChar(uint8 c) internal pure returns (uint8) {
-        if (c >= uint8(bytes1('0')) && c <= uint8(bytes1('9'))) {
-            return c - uint8(bytes1('0'));
-        } else if (c >= uint8(bytes1('a')) && c <= uint8(bytes1('f'))) {
-            return 10 + c - uint8(bytes1('a'));
-        } else if (c >= uint8(bytes1('A')) && c <= uint8(bytes1('F'))) {
-            return 10 + c - uint8(bytes1('A'));
-        } else {
-            revert("Invalid hex character");
-        }
     }
 }
