@@ -33,7 +33,7 @@ const venmoPaymentProof = {
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe.only("VenmoReclaimVerifier", () => {
+describe("VenmoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -188,6 +188,58 @@ describe.only("VenmoReclaimVerifier", () => {
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
+    });
+
+    describe("when proof payee details is not hash but just raw venmo id", async () => {
+      beforeEach(async () => {
+        const venmoPaymentProof2 = {
+          provider: "http",
+          parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"receiver\\\":\\\\{\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[9].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.receiver\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].paymentId\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId=1168869611798528966\"}",
+          owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
+          timestampS: 1734114562,
+          context: "{\"extractedParameters\":{\"amount\":\"42.00\",\"date\":\"2024-10-27T18:16:11\",\"paymentId\":\"4188305907305244155\",\"receiverId\":\"1662743480369152806\"},\"intentHash\":\"14527918542887692994877265012607290228020786464417481864664720498778276484603\",\"providerHash\":\"0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04\"}",
+          identifier: "0x8a0af951fc18f323c5d883126113f3ff41c7769afaf65cc743e33d7ee9694695",
+          epoch: 1,
+          signature: { "0": 9, "1": 140, "2": 7, "3": 173, "4": 107, "5": 201, "6": 6, "7": 25, "8": 98, "9": 142, "10": 77, "11": 184, "12": 16, "13": 204, "14": 63, "15": 25, "16": 119, "17": 143, "18": 12, "19": 131, "20": 20, "21": 156, "22": 174, "23": 253, "24": 5, "25": 158, "26": 230, "27": 74, "28": 212, "29": 114, "30": 243, "31": 246, "32": 66, "33": 149, "34": 15, "35": 208, "36": 178, "37": 139, "38": 36, "39": 242, "40": 114, "41": 147, "42": 8, "43": 68, "44": 218, "45": 19, "46": 158, "47": 62, "48": 197, "49": 100, "50": 55, "51": 73, "52": 50, "53": 130, "54": 130, "55": 44, "56": 184, "57": 67, "58": 198, "59": 93, "60": 21, "61": 75, "62": 6, "63": 32, "64": 28 }
+        };
+
+        const proof2 = {
+          claimInfo: {
+            provider: venmoPaymentProof2.provider,
+            parameters: venmoPaymentProof2.parameters,
+            context: venmoPaymentProof2.context
+          },
+          signedClaim: {
+            claim: {
+              identifier: venmoPaymentProof2.identifier,
+              owner: venmoPaymentProof2.owner,
+              timestampS: BigNumber.from(venmoPaymentProof2.timestampS),
+              epoch: BigNumber.from(venmoPaymentProof2.epoch)
+            },
+            signatures: [convertSignatureToHex(venmoPaymentProof2.signature)]
+          }
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          [
+            "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
+          ],
+          [proof2]
+        );
+        subjectPayeeDetailsHash = "1662743480369152806";
+
+        await verifier.connect(owner.wallet).addProviderHash('0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04')
+      });
+
+      it("should verify the proof", async () => {
+        const [
+          verified,
+          intentHash
+        ] = await subjectCallStatic();
+
+        expect(verified).to.be.true;
+        expect(intentHash).to.eq("0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb");
+      });
     });
 
     describe("when the proof is invalid", async () => {
