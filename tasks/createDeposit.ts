@@ -13,7 +13,7 @@ task("create-deposit", "Creates a deposit")
     "payeeDetailsHash":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",
     "data":"0x00"}`
   )
-  .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `0xbba694ae319758680b969f5b850cf8e66124d6c2703374d628a18bd3d4bc75e9:1.0`)
+  .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `0xbba694ae319758680b969f5b850cf8e66124d6c2703374d628a18bd3d4bc75e9:0.9`)
   .setAction(async (taskArgs, hre) => {
     const { ethers } = hre;
     const [owner] = await ethers.getSigners();

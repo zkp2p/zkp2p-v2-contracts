@@ -211,13 +211,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         for (uint256 i = 0; i < _verifiers.length; i++) {
             address verifier = _verifiers[i];
             require(
-                depositVerifierData[depositId][verifier].payeeDetailsHash == bytes32(0),
+                bytes(depositVerifierData[depositId][verifier].payeeDetails).length == 0,
                 "Verifier data already exists"
             );
             depositVerifierData[depositId][verifier] = _verifierData[i];
             depositVerifiers[depositId].push(verifier);
          
-            emit DepositVerifierAdded(depositId, verifier, _verifierData[i].payeeDetailsHash, _verifierData[i].intentGatingService);
+            emit DepositVerifierAdded(
+                depositId,
+                verifier,
+                keccak256(abi.encodePacked(_verifierData[i].payeeDetails)),
+                _verifierData[i].intentGatingService
+            );
         }
 
         for (uint256 i = 0; i < _verifiers.length; i++) {
@@ -351,7 +356,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             address(deposit.token),
             intent.amount,
             intent.timestamp,
-            verifierData.payeeDetailsHash,
+            verifierData.payeeDetails,
             intent.fiatCurrency,
             intent.conversionRate,
             verifierData.data
@@ -676,7 +681,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             require(whitelistedPaymentVerifiers[verifier] || acceptAllPaymentVerifiers, "Payment verifier not whitelisted");
 
             // _verifierData.intentGatingService can be zero address, _verifierData.data can be empty
-            require(_verifierData[i].payeeDetailsHash != bytes32(0), "Payee details hash cannot be empty");
+            require(bytes(_verifierData[i].payeeDetails).length != 0, "Payee details cannot be empty");
 
             for (uint256 j = 0; j < _currencies[i].length; j++) {
                 require(
@@ -705,7 +710,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         require(_to != address(0), "Cannot send to zero address");
         
         DepositVerifierData memory verifierData = depositVerifierData[_depositId][_verifier];
-        require(verifierData.payeeDetailsHash != bytes32(0), "Payment verifier not supported");
+        require(bytes(verifierData.payeeDetails).length != 0, "Payment verifier not supported");
         require(depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency] != 0, "Currency not supported");
 
         address intentGatingService = verifierData.intentGatingService;

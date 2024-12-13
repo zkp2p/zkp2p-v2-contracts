@@ -11,7 +11,7 @@ interface IPaymentVerifier is IBasePaymentVerifier {
         address _depositToken,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        bytes32 _payeeDetailsHash,
+        string calldata _payeeDetails,
         bytes32 _fiatCurrency,
         uint256 _conversionRate,
         bytes calldata _data

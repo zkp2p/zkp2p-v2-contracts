@@ -3,6 +3,7 @@
 
 import { IPaymentVerifier } from "../verifiers/interfaces/IPaymentVerifier.sol";
 import { INullifierRegistry } from "../verifiers/nullifierRegistries/INullifierRegistry.sol";
+import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 
 import { BasePaymentVerifier } from "../verifiers/BasePaymentVerifier.sol";
 
@@ -11,10 +12,12 @@ pragma solidity ^0.8.18;
 
 contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
+    using StringConversionUtils for string;
+
     struct PaymentDetails {
         uint256 amount;
         uint256 timestamp;
-        bytes32 offRamperIdHash;
+        string offRamperId;
         bytes32 fiatCurrency;
         bytes32 intentHash;
     }
@@ -60,7 +63,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         address /*_depositToken*/,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        bytes32 _payeeDetailsHash,
+        string calldata _payeeDetails,
         bytes32 _fiatCurrency,
         uint256 _conversionRate,
         bytes calldata /*_data*/
@@ -75,7 +78,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         if (shouldVerifyPayment) {
             require(paymentDetails.timestamp >= _intentTimestamp, "Payment timestamp is before intent timestamp");
             require(paymentDetails.amount >= (_intentAmount * PRECISE_UNIT) / _conversionRate, "Payment amount is less than intent amount");
-            require(paymentDetails.offRamperIdHash == _payeeDetailsHash, "Payment offramper does not match intent relayer");
+            require(paymentDetails.offRamperId.stringComparison(_payeeDetails), "Payment offramper does not match intent relayer");
             require(paymentDetails.fiatCurrency == _fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
@@ -90,11 +93,11 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         (
             uint256 amount,
             uint256 timestamp,
-            bytes32 offRamperIdHash,
+            string memory offRamperId,
             bytes32 fiatCurrency,
             bytes32 intentHash
-        ) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32, bytes32));
+        ) = abi.decode(_proof, (uint256, uint256, string, bytes32, bytes32));
 
-        return PaymentDetails(amount, timestamp, offRamperIdHash, fiatCurrency, intentHash);
+        return PaymentDetails(amount, timestamp, offRamperId, fiatCurrency, intentHash);
     }
 }

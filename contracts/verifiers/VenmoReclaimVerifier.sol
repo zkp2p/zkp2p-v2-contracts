@@ -22,7 +22,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         string amountString;
         string dateString;
         string paymentId;
-        string recipientVenmoId;
+        string recipientId;
         string intentHash;
         string providerHash;
     }
@@ -60,7 +60,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * @param _depositToken     The deposit token locked in escrow
      * @param _intentAmount     Amount of deposit.token that the offchain payer wants to unlock from escrow
      * @param _intentTimestamp  The timestamp at which intent was created. Offchain payment must be made after this time.
-     * @param _payeeDetailsHash The payee details hash (hash of the payee's Venmo ID)
+     * @param _payeeDetails     The payee details (hash of the payee's Venmo ID or just raw Venmo ID; compared to recipientId in proof)
      * @param _conversionRate   The conversion rate for the deposit token to offchain USD
      * @param _depositData      Additional data required for proof verification. In this case, the attester's address.
      */
@@ -69,7 +69,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         address _depositToken,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        bytes32 _payeeDetailsHash,
+        string calldata _payeeDetails,
         bytes32 /*_fiatCurrency*/,
         uint256 _conversionRate,
         bytes calldata _depositData
@@ -87,7 +87,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             _depositToken, 
             _intentAmount, 
             _intentTimestamp, 
-            _payeeDetailsHash,
+            _payeeDetails,
             _conversionRate
         );
         
@@ -136,7 +136,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         address _depositToken,
         uint256 _intentAmount,
         uint256 _intentTimestamp,
-        bytes32 _payeeDetailsHash,
+        string calldata _payeeDetails,
         uint256 _conversionRate
     ) internal view {
 
@@ -145,8 +145,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
-        bytes32 paymentRecipient = hexStringToBytes32(paymentDetails.recipientVenmoId);
-        require(paymentRecipient == _payeeDetailsHash, "Incorrect payment recipient");
+        require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
         
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
         require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
@@ -178,7 +177,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             amountString: values[0],
             dateString: values[1],
             paymentId: values[2],
-            recipientVenmoId: values[3],
+            recipientId: values[3],
             intentHash: values[4],
             providerHash: values[5]
         });

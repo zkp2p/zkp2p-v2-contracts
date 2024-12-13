@@ -140,12 +140,12 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
             data: "0x",
           },
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
             data: "0x",
           },
         ],
@@ -172,7 +172,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
             data: "0x",
           },
         ],
@@ -190,7 +190,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
             data: "0x",
           },
         ],
@@ -218,7 +218,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
             data: "0x",
           },
         ],
@@ -236,7 +236,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
             data: "0x",
           },
         ],
@@ -270,7 +270,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
             data: "0x",
           },
         ],
@@ -288,7 +288,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingServiceOther.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
             data: "0x",
           },
         ],
@@ -513,12 +513,12 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
             data: "0x",
           },
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee1")),
             data: "0x",
           },
         ],
@@ -545,7 +545,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee2")),
             data: "0x",
           },
         ],
@@ -563,7 +563,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee3")),
             data: "0x",
           },
         ],
@@ -591,7 +591,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee4")),
             data: "0x",
           },
         ],
@@ -609,7 +609,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee5")),
             data: "0x",
           },
         ],
@@ -643,7 +643,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee6")),
             data: "0x",
           },
         ],
@@ -661,7 +661,7 @@ describe("Quoter", function () {
         [
           {
             intentGatingService: gatingServiceOther.address,
-            payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee7")),
             data: "0x",
           },
         ],

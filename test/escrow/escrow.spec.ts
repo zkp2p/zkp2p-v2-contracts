@@ -131,7 +131,7 @@ describe("Escrow", () => {
       subjectVerificationData = [
         {
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PaymentService1payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PaymentService1payeeDetails")),
           data: "0x"
         }
       ];
@@ -180,7 +180,7 @@ describe("Escrow", () => {
       expect(depositView.verifiers.length).to.eq(1);
       expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
       expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-      expect(depositView.verifiers[0].verificationData.payeeDetailsHash).to.eq(subjectVerificationData[0].payeeDetailsHash);
+      expect(depositView.verifiers[0].verificationData.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
       expect(depositView.verifiers[0].verificationData.data).to.eq(subjectVerificationData[0].data);
       expect(depositView.verifiers[0].currencies.length).to.eq(2);
       expect(depositView.verifiers[0].currencies[0].code).to.eq(subjectCurrencies[0][0].code);
@@ -204,7 +204,7 @@ describe("Escrow", () => {
       const verificationData = await ramp.depositVerifierData(0, subjectVerifiers[0]);
 
       expect(verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-      expect(verificationData.payeeDetailsHash).to.eq(subjectVerificationData[0].payeeDetailsHash);
+      expect(verificationData.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
       expect(verificationData.data).to.eq(subjectVerificationData[0].data);
     });
 
@@ -229,10 +229,11 @@ describe("Escrow", () => {
     });
 
     it("should emit a DepositVerifierAdded event", async () => {
+      const payeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string"], [subjectVerificationData[0].payeeDetails]));
       await expect(subject()).to.emit(ramp, "DepositVerifierAdded").withArgs(
         ZERO, // depositId starts at 0
         subjectVerifiers[0],
-        subjectVerificationData[0].payeeDetailsHash,
+        payeeDetailsHash,
         subjectVerificationData[0].intentGatingService
       );
     });
@@ -265,12 +266,12 @@ describe("Escrow", () => {
         subjectVerificationData = [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            payeeDetails: ethers.utils.formatBytes32String("test"),
             data: "0x"
           },
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test2"),
+            payeeDetails: ethers.utils.formatBytes32String("test2"),
             data: "0x"
           }
         ];
@@ -291,7 +292,7 @@ describe("Escrow", () => {
         // Check first verifier
         const verificationData1 = await ramp.depositVerifierData(0, subjectVerifiers[0]);
         expect(verificationData1.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-        expect(verificationData1.payeeDetailsHash).to.eq(subjectVerificationData[0].payeeDetailsHash);
+        expect(verificationData1.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
         expect(verificationData1.data).to.eq(subjectVerificationData[0].data);
 
         const currencyRate1_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
@@ -302,7 +303,7 @@ describe("Escrow", () => {
         // Check second verifier
         const verificationData2 = await ramp.depositVerifierData(0, subjectVerifiers[1]);
         expect(verificationData2.intentGatingService).to.eq(subjectVerificationData[1].intentGatingService);
-        expect(verificationData2.payeeDetailsHash).to.eq(subjectVerificationData[1].payeeDetailsHash);
+        expect(verificationData2.payeeDetails).to.eq(subjectVerificationData[1].payeeDetails);
         expect(verificationData2.data).to.eq(subjectVerificationData[1].data);
 
         const currencyRate2_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
@@ -326,12 +327,12 @@ describe("Escrow", () => {
         subjectVerificationData = [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            payeeDetails: ethers.utils.formatBytes32String("test"),
             data: "0x"
           },
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            payeeDetails: ethers.utils.formatBytes32String("test"),
             data: "0x"
           }
         ];
@@ -393,13 +394,13 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when payee details hash is zero", async () => {
+    describe("when payee details hash is empty", async () => {
       beforeEach(async () => {
-        subjectVerificationData[0].payeeDetailsHash = ZERO_BYTES32;
+        subjectVerificationData[0].payeeDetails = "";
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payee details hash cannot be empty");
+        await expect(subject()).to.be.revertedWith("Payee details cannot be empty");
       });
     });
 
@@ -409,12 +410,12 @@ describe("Escrow", () => {
         subjectVerificationData = [
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            payeeDetails: ethers.utils.formatBytes32String("test"),
             data: "0x"
           },
           {
             intentGatingService: gatingService.address,
-            payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+            payeeDetails: ethers.utils.formatBytes32String("test"),
             data: "0x"
           }
         ];
@@ -434,7 +435,7 @@ describe("Escrow", () => {
         subjectVerifiers = [verifier.address];
         subjectVerificationData = [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.formatBytes32String("test"),
+          payeeDetails: ethers.utils.formatBytes32String("test"),
           data: "0x"
         }];
         subjectCurrencies = [
@@ -498,7 +499,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -854,12 +855,12 @@ describe("Escrow", () => {
     let subjectCaller: Account;
 
     let intentHash: string;
-    let payeeDetailsHash: string;
+    let payeeDetails: string;
 
     beforeEach(async () => {
       // Create a deposit and signal an intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      payeeDetailsHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
+      payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
       const depositData = ethers.utils.defaultAbiCoder.encode(
         ["address"],
         [witness.address]
@@ -872,7 +873,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: payeeDetailsHash,
+          payeeDetails: payeeDetails,
           data: depositData
         }],
         [
@@ -904,8 +905,8 @@ describe("Escrow", () => {
 
       // Prepare the proof and processor for the onRamp function
       subjectProof = ethers.utils.defaultAbiCoder.encode(
-        ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
-        [usdc(50), currentTimestamp, payeeDetailsHash, Currency.USD, intentHash]
+        ["uint256", "uint256", "string", "bytes32", "bytes32"],
+        [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
       );
       subjectIntentHash = intentHash;
       subjectCaller = onRamper;
@@ -1070,8 +1071,8 @@ describe("Escrow", () => {
 
         subjectIntentHash = intentHash;
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
-          [usdc(50), currentTimestamp, payeeDetailsHash, Currency.USD, ZERO_BYTES32]
+          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          [usdc(50), currentTimestamp, payeeDetails, Currency.USD, ZERO_BYTES32]
         );
       });
 
@@ -1083,8 +1084,8 @@ describe("Escrow", () => {
     describe("when the payment is invalid", async () => {
       beforeEach(async () => {
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "bytes32", "string", "bytes32"],
-          [usdc(40), await blockchain.getCurrentTimestamp(), payeeDetailsHash, Currency.USD, intentHash]
+          ["uint256", "uint256", "string", "string", "bytes32"],
+          [usdc(40), await blockchain.getCurrentTimestamp(), payeeDetails, Currency.USD, intentHash]
         );
       });
 
@@ -1138,7 +1139,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -1323,7 +1324,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -1439,7 +1440,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -1540,7 +1541,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2224,7 +2225,7 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create a deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      const payeeDetailsHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
+      const payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
       const depositData = ethers.utils.defaultAbiCoder.encode(
         ["address"],
         [witness.address]
@@ -2237,7 +2238,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: payeeDetailsHash,
+          payeeDetails: payeeDetails,
           data: depositData
         }],
         [
@@ -2343,7 +2344,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2358,7 +2359,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2406,7 +2407,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2421,7 +2422,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2469,7 +2470,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2531,7 +2532,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2595,7 +2596,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
@@ -2669,7 +2670,7 @@ describe("Escrow", () => {
         [verifier.address],
         [{
           intentGatingService: gatingService.address,
-          payeeDetailsHash: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
         [
