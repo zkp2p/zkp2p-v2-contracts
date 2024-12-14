@@ -40,7 +40,38 @@ task("create-deposit", "Creates a deposit")
 
     // Call the createDeposit function
     const tx = await escrow.createDeposit(token.address, amount, { min: minAmount, max: maxAmount }, verifiers, verifierData, currencies);
-    await tx.wait();
+    const receipt = await tx.wait();
+
+    // Get the deposit ID from the DepositReceived event
+    const depositReceivedEvent = receipt.events?.find(e => e.event === "DepositReceived");
+    const depositId = depositReceivedEvent?.args?.depositId;
+
+    // Get the deposit view
+    const depositView = await escrow.getDepositFromIds([depositId]);
+    console.log("\nDeposit View:");
+    console.log(`- Deposit ID: ${depositView[0].depositId}`);
+    console.log(`  Depositor: ${depositView[0].deposit.depositor}`);
+    console.log(`  Token: ${depositView[0].deposit.token}`);
+    console.log(`  Amount: ${depositView[0].deposit.amount}`);
+    console.log(`  Intent amount range:`);
+    console.log(`    Min: ${depositView[0].deposit.intentAmountRange.min}`);
+    console.log(`    Max: ${depositView[0].deposit.intentAmountRange.max}`);
+    console.log(`  Accepting intents: ${depositView[0].deposit.acceptingIntents}`);
+    console.log(`  Remaining deposits: ${depositView[0].deposit.remainingDeposits}`);
+    console.log(`  Outstanding intent amount: ${depositView[0].deposit.outstandingIntentAmount}`);
+    console.log(`  Available liquidity: ${depositView[0].availableLiquidity}`);
+    console.log("    Verifiers:");
+    for (const verifier of depositView[0].verifiers) {
+      console.log(`    - Verifier address: ${verifier.verifier}`);
+      console.log(`      Intent gating service: ${verifier.verificationData.intentGatingService}`);
+      console.log(`      Payee details: ${verifier.verificationData.payeeDetails}`);
+      console.log("      Supported currencies:");
+      for (const currency of verifier.currencies) {
+        console.log(`        - Currency code: ${currency.code}`);
+        console.log(`    Conversion rate: ${currency.conversionRate}`);
+      }
+      console.log();
+    }
 
     console.log(`Deposit created with ID: ${tx.hash}`);
   });
