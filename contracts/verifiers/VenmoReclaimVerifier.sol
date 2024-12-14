@@ -52,7 +52,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
-     * USD was paid to _payeeDetailsHash after _intentTimestamp + timestampBuffer on Venmo.
+     * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Venmo.
      * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *

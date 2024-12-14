@@ -29,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ----------------------------------------------------------------------
     Escrow:                             ${getDeployedContractAddress(network, "Escrow")}
     NullifierRegistry:                  ${getDeployedContractAddress(network, "NullifierRegistry")}
+    VenmoReclaimVerifier:               ${getDeployedContractAddress(network, "VenmoReclaimVerifier")}
     USDC:                               ${USDC[network] ? USDC[network] : getDeployedContractAddress(network, "USDCMock")}
     `
   );

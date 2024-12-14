@@ -10,7 +10,7 @@ task("create-deposit", "Creates a deposit")
   .addParam("verifiers", "Comma-separated list of payment verifiers", "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853") // comma separated list of verifier addresses
   .addParam("verifierdata", "Period-separated list of verifier data", `{
     "intentGatingService":"0x0000000000000000000000000000000000000000",
-    "payeeDetailsHash":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",
+    "payeeDetails":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",
     "data":"0x00"}`
   )
   .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `0xbba694ae319758680b969f5b850cf8e66124d6c2703374d628a18bd3d4bc75e9:0.9`)

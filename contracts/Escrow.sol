@@ -117,8 +117,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
     // services. Each payment service has it's own verification data which includes the payee details hash and the data used for 
     // payment verification.
-    // Example: Deposit 1 => Venmo => payeeDetailsHash: 0x123, data: 0x456
-    //                    => Revolut => payeeDetailsHash: 0x789, data: 0xabc
+    // Example: Deposit 1 => Venmo => payeeDetails: 0x123, data: 0x456
+    //                    => Revolut => payeeDetails: 0x789, data: 0xabc
     mapping(uint256 => mapping(address => DepositVerifierData)) public depositVerifierData;
     mapping(uint256 => address[]) public depositVerifiers;          // Handy mapping to get all verifiers for a deposit
     
