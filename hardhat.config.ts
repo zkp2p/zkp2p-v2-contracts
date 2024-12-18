@@ -9,6 +9,7 @@ import '@nomicfoundation/hardhat-chai-matchers'
 
 import { HardhatUserConfig } from "hardhat/config";
 
+import "./tasks/accountIntent";
 import "./tasks/blockNumber";
 import "./tasks/createDeposit";
 import "./tasks/signalIntent";
