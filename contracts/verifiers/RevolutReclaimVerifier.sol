@@ -217,6 +217,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // For send transactions, the amount is prefixed with a '-' character, if the character doesn't exist then
         // it would be a receive transaction
         require(bytes(_amount)[0] == 0x2D, "Not a send transaction");   
-        return _amount.stringToUint(_decimals);
+        // Revolut amount is scaled by 100 (e.g. 20064 => 200.64)
+        return _amount.stringToUint(_decimals - 2);
     }
 }
