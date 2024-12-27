@@ -9,6 +9,7 @@ import {
   Escrow,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
+  RevolutReclaimVerifier,
   NullifierRegistry,
   BasePaymentVerifier,
   StringConversionUtilsMock,
@@ -33,6 +34,7 @@ import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
@@ -102,6 +104,30 @@ export default class DeployHelper {
     claimVerifierLibraryAddress: Address,
   ): Promise<VenmoReclaimVerifier> {
     return await new VenmoReclaimVerifier__factory(
+      // @ts-ignore
+      {
+        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
+      },
+      this._deployerSigner
+    ).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployRevolutReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[],
+    claimVerifierLibraryName: string,
+    claimVerifierLibraryAddress: Address,
+  ): Promise<RevolutReclaimVerifier> {
+    return await new RevolutReclaimVerifier__factory(
       // @ts-ignore
       {
         [claimVerifierLibraryName]: claimVerifierLibraryAddress,
