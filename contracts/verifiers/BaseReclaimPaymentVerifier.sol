@@ -94,17 +94,24 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
      * - Signatures are invalid (not from the witnesses)
      * 
      * DEV NOTE: This function does NOT validate that the claim provider hash is valid. That is the 
-     * responsibility of the caller.
+     * responsibility of the caller. Ensure witnesses are unique otherwise the threshold can be met 
+     * with duplicate witnesses.
      * 
      * Parts of the code are adapted from: https://basescan.org/address/0x7281630e4346dd4c0b7ae3b4689c1d0102741410#code
      *    
      * @param proof                 Proof to be verified
-     * @param _witnesses            Witnesses to be used for verification
+     * @param _witnesses            List of accepted witnesses
+     * @param _requiredThreshold    Minimum number of signatures required from accepted witnesses
      */
     function verifyProofSignatures(
         ReclaimProof memory proof, 
-        address[] memory _witnesses
+        address[] memory _witnesses,
+        uint256 _requiredThreshold
     ) public pure returns (bool) {
+
+        require(_requiredThreshold > 0, "Required threshold must be greater than 0");
+        require(_requiredThreshold <= _witnesses.length, "Required threshold must be less than or equal to number of witnesses");
+
         // create signed claim using claimData and signature.
         require(proof.signedClaim.signatures.length > 0, "No signatures");
 
@@ -116,14 +123,24 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
         // check if the hash from the claimInfo is equal to the infoHash in the claimData
         bytes32 hashed = Claims.hashClaimInfo(proof.claimInfo);
         require(proof.signedClaim.claim.identifier == hashed, "ClaimInfo hash doesn't match");
+        require(hashed != bytes32(0), "ClaimInfo hash is zero");
 
         // Recover signers of the signed claim
-        address[] memory signedWitnesses = Claims.recoverSignersOfSignedClaim(signed);
+        address[] memory claimSigners = Claims.recoverSignersOfSignedClaim(signed);
 
-        // Check signatures are from witnesses
-        for (uint256 i = 0; i < signed.signatures.length; i++) {
-            require(_isSignatureFromWitness(signedWitnesses[i], _witnesses), "Signature not appropriate");
+        // Count how many signers are accepted witnesses
+        uint256 validWitnessSignatures;
+        for (uint256 i = 0; i < claimSigners.length; i++) {
+            if (_witnesses.contains(claimSigners[i])) {
+                validWitnessSignatures++;
+            }
         }
+
+        // Check threshold
+        require(
+            validWitnessSignatures >= _requiredThreshold,
+            "Not enough valid witness signatures"
+        );
 
         return true;
     }
@@ -145,14 +162,5 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
         bytes32 nullifier = keccak256(abi.encode(_sigArray));
         require(!nullifierRegistry.isNullified(nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(nullifier);
-    }
-
-    function _isSignatureFromWitness(address signer, address[] memory _witnesses) internal pure returns (bool) {
-        for (uint j = 0; j < _witnesses.length; j++) {
-            if (signer == _witnesses[j]) {
-                return true;
-            }
-        }
-        return false;
     }
 }

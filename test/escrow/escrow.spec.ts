@@ -115,7 +115,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe.only("#createDeposit", async () => {
+  describe("#createDeposit", async () => {
     let subjectToken: Address;
     let subjectAmount: BigNumber;
     let subjectIntentAmountRange: IEscrow.RangeStruct;

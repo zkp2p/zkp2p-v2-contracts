@@ -204,6 +204,8 @@ describe("BaseReclaimPaymentVerifier", () => {
   describe("#verifyProofSignatures", async () => {
     let subjectProof: any;
     let subjectWitnesses: Address[];
+    let subjectRequiredThreshold: number;
+
     beforeEach(async () => {
       subjectWitnesses = [witnessAddress, otherWitness.address];
       subjectProof = {
@@ -222,10 +224,11 @@ describe("BaseReclaimPaymentVerifier", () => {
           signatures: ['0x95cdd30e518fc138c1f762b8ec4d33f9cc3048e315837774221ce14b98ccf3a54c0d489b64cef21d971d20eb84bf1f93c644eebc32cc22a2b5b2a6216dc2f6081c']
         }
       };
+      subjectRequiredThreshold = 1;
     });
 
     async function subject(): Promise<any> {
-      return proxyBaseProcessor.verifyProofSignatures(subjectProof, subjectWitnesses);
+      return proxyBaseProcessor.verifyProofSignatures(subjectProof, subjectWitnesses, subjectRequiredThreshold);
     };
 
     it("should verify proof", async () => {
@@ -252,15 +255,48 @@ describe("BaseReclaimPaymentVerifier", () => {
       });
     });
 
-    describe("when a signature is not from a witness", () => {
+    describe("when threshold signature required is not met", () => {
+      describe("when threhsold is higher than the number of signatures", () => {
+        beforeEach(async () => {
+          subjectRequiredThreshold = 2;
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Not enough valid witness signatures");
+        });
+      });
+
+      describe("when number of signatures is greater than or equal to threshold but not all signatures are from witnesses", () => {
+        beforeEach(async () => {
+          const nonWitnessWallet = ethers.Wallet.createRandom();
+          const message = "Hello Tickets";
+          subjectProof.signedClaim.signatures[0] = await nonWitnessWallet.signMessage(message);
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Not enough valid witness signatures");
+        });
+      });
+    });
+
+    describe("when required threshold is zero", () => {
       beforeEach(async () => {
-        const nonWitnessWallet = ethers.Wallet.createRandom();
-        const message = "Hello Tickets";
-        subjectProof.signedClaim.signatures[0] = await nonWitnessWallet.signMessage(message);
+        subjectRequiredThreshold = 0;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Signature not appropriate");
+        await expect(subject()).to.be.revertedWith("Required threshold must be greater than 0");
+      });
+    });
+
+    describe("when required threshold is greater than number of witnesses", () => {
+      beforeEach(async () => {
+        subjectRequiredThreshold = 3;
+        subjectWitnesses = [witnessAddress];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Required threshold must be less than or equal to number of witnesses");
       });
     });
   });
