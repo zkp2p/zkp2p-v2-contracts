@@ -14,7 +14,6 @@ import "./tasks/accountIntent";
 import "./tasks/blockNumber";
 import "./tasks/createDeposit";
 import "./tasks/signalIntent";
-import "./tasks/getFeeRecipient";
 import "./tasks/tokenBalance";
 import "./tasks/chainId";
 
