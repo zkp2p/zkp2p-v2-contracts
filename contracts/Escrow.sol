@@ -270,7 +270,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
-
+        
         _validateIntent(_depositId, deposit, _amount, _to, _verifier, _fiatCurrency, _gatingServiceSignature);
 
         bytes32 intentHash = _calculateIntentHash(msg.sender, _verifier, _depositId);
@@ -829,9 +829,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             fee = (_intent.amount * sustainabilityFee) / PRECISE_UNIT;
             if (_verifier != address(0)) {
                 verifierFee = (fee * paymentVerifierFeeShare[_verifier]) / PRECISE_UNIT;
+                _token.transfer(_verifier, verifierFee);
             }
             _token.transfer(sustainabilityFeeRecipient, fee - verifierFee);
-            _token.transfer(_verifier, verifierFee);
         }
 
         uint256 transferAmount = _intent.amount - fee;

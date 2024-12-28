@@ -1279,6 +1279,82 @@ describe("Escrow", () => {
       });
     });
 
+    describe.only("when the sustainability fee is set", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+      });
+
+      it("should transfer the correct amounts including fee", async () => {
+        const initialOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+        const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        await subject();
+
+        const finalOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+        const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(fee));
+        expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
+      });
+
+      it("should emit an IntentFulfilled event with fee details", async () => {
+        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          subjectIntentHash,
+          ZERO,
+          ADDRESS_ZERO,
+          onRamper.address,
+          receiver.address,
+          usdc(49),
+          fee,
+          0 // Assuming no verifier fee
+        );
+      });
+
+      describe("when the verifier fee share is set", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).updatePaymentVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
+        });
+
+        it("should still not transfer the verifier fee", async () => {
+          const initialOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const initialVerifierBalance = await usdcToken.balanceOf(verifier.address);
+
+          await subject();
+
+          const finalOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const finalVerifierBalance = await usdcToken.balanceOf(verifier.address);
+
+          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
+
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFee));
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(totalFee);
+          expect(finalVerifierBalance.sub(initialVerifierBalance)).to.eq(ZERO);
+        });
+
+        it("should emit an IntentFulfilled event with both fee details", async () => {
+          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+
+          await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+            subjectIntentHash,
+            ZERO,
+            ADDRESS_ZERO,
+            onRamper.address,
+            receiver.address,
+            usdc(50).sub(totalFee),
+            totalFee,
+            ZERO
+          );
+        });
+      });
+    });
+
+
     describe("when the intent does not exist", async () => {
       beforeEach(async () => {
         subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid"));
