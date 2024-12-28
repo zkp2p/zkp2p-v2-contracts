@@ -28,8 +28,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     }
 
     /* ============ Constants ============ */
-    uint8 internal constant MAX_EXTRACT_VALUES = 6;
-    uint256 internal constant PRECISE_UNIT = 1e18;    
+    
+    uint8 internal constant MAX_EXTRACT_VALUES = 6; 
 
     /* ============ Constructor ============ */
     constructor(
@@ -142,11 +142,15 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
         uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
+
+        // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
+        // Validate recipient
         require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
         
+        // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
         require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
     }

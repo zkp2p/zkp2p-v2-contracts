@@ -1,17 +1,17 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
+import { BigNumber, BytesLike } from "ethers";
 
-import { Account } from "@utils/test/types";
 import { NullifierRegistry, VenmoReclaimVerifier, USDCMock } from "@utils/contracts";
+import { Account } from "@utils/test/types";
+import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
-import { Address, GrothProof, ReclaimProof } from "@utils/types";
-import { getIdentifierFromClaimInfo, createSignDataForClaim } from "@utils/reclaimUtils";
-import { Blockchain, usdc, ether } from "@utils/common";
 import { Currency } from "@utils/protocolUtils";
-import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
-import { BytesLike } from "ethers";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex } from "@utils/reclaimUtils";
+import { Blockchain, usdc, ether } from "@utils/common";
+import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
+
 
 import {
   getWaffleExpect,
@@ -87,11 +87,6 @@ describe("VenmoReclaimVerifier", () => {
       expect(escrowAddress).to.eq(escrow.address);
     });
   });
-
-  function convertSignatureToHex(signature: { [key: string]: number }): string {
-    const byteArray = Object.values(signature);
-    return '0x' + Buffer.from(byteArray).toString('hex');
-  }
 
   describe("#verifyPayment", async () => {
     let proof: ReclaimProof;
@@ -269,7 +264,7 @@ describe("VenmoReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment was made after the intent", async () => {
+    describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
         subjectIntentTimestamp = BigNumber.from(1735323362).add(ONE_DAY_IN_SECONDS);
       });

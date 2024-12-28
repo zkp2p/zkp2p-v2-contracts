@@ -47,3 +47,14 @@ export function getIdentifierFromClaimInfo(info: ClaimInfo): string {
 		new TextEncoder().encode(str)
 	).toLowerCase()
 }
+
+
+/**
+ * Converts a signature uint8array returned by reclaim witness server to a hex string.
+ * @param signature
+ * @returns
+ */
+export function convertSignatureToHex(signature: { [key: string]: number }): string {
+	const byteArray = Object.values(signature);
+	return '0x' + Buffer.from(byteArray).toString('hex');
+}
