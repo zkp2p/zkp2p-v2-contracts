@@ -311,6 +311,38 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the intent amount range min is zero", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min intent amount cannot be zero");
+      });
+    });
+
+    describe("when the min intent amount is greater than max intent amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = usdc(2);
+        subjectIntentAmountRange.max = usdc(1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min intent amount must be less than max intent amount");
+      });
+    });
+
+    describe("when the amount is less than min intent amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = usdc(2);
+        subjectAmount = usdc(1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Amount must be greater than min intent amount");
+      });
+    });
+
     describe("when the length of the verifiers array is not equal to the length of the verifiersData array", async () => {
       beforeEach(async () => {
         subjectVerifiers = [verifier.address, otherVerifier.address];
