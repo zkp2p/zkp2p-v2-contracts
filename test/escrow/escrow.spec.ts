@@ -321,16 +321,6 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the intent amount range max is zero", async () => {
-      beforeEach(async () => {
-        subjectIntentAmountRange.max = ZERO;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Max intent amount cannot be zero");
-      });
-    });
-
     describe("when the min intent amount is greater than max intent amount", async () => {
       beforeEach(async () => {
         subjectIntentAmountRange.min = usdc(2);
@@ -350,18 +340,6 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Amount must be greater than min intent amount");
-      });
-    });
-
-    describe("when the amount is greater than max intent amount", async () => {
-      beforeEach(async () => {
-        subjectIntentAmountRange.min = usdc(1);
-        subjectIntentAmountRange.max = usdc(1);
-        subjectAmount = usdc(2);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Amount must be less than max intent amount");
       });
     });
 

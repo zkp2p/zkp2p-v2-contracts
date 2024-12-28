@@ -667,10 +667,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     ) internal view {
 
         require(_intentAmountRange.min != 0, "Min intent amount cannot be zero");
-        require(_intentAmountRange.max != 0, "Max intent amount cannot be zero");
         require(_intentAmountRange.min <= _intentAmountRange.max, "Min intent amount must be less than max intent amount");
         require(_amount >= _intentAmountRange.min, "Amount must be greater than min intent amount");
-        require(_amount <= _intentAmountRange.max, "Amount must be less than max intent amount");
 
         // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
         require(_verifiers.length == _verifierData.length, "Verifiers and depositVerifierData length mismatch");
