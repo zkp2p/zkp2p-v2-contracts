@@ -17,7 +17,7 @@ import { Currency } from "@utils/protocolUtils";
 
 const expect = getWaffleExpect();
 
-describe.only("BaseReclaimPaymentVerifier", () => {
+describe("BaseReclaimPaymentVerifier", () => {
   let owner: Account;
   let witnessAddress: Address;
   let otherWitness: Account;
