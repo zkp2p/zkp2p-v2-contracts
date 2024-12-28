@@ -1,17 +1,16 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
+import { BigNumber, BytesLike } from "ethers";
 
-import { Account } from "@utils/test/types";
 import { NullifierRegistry, RevolutReclaimVerifier, USDCMock } from "@utils/contracts";
+import { Account } from "@utils/test/types";
+import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
-import { Address, GrothProof, ReclaimProof } from "@utils/types";
-import { getIdentifierFromClaimInfo, createSignDataForClaim } from "@utils/reclaimUtils";
-import { Blockchain, usdc, ether } from "@utils/common";
 import { Currency } from "@utils/protocolUtils";
-import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
-import { BytesLike } from "ethers";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex } from "@utils/reclaimUtils";
+import { Blockchain, usdc, ether } from "@utils/common";
+import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
 import {
   getWaffleExpect,
@@ -20,14 +19,14 @@ import {
 
 const expect = getWaffleExpect();
 
-const venmoPaymentProof = {
+const paymentProof = {
   provider: "http",
   parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\-]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency\\\":\\\"(?<currency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"completedDate\\\":(?<completedDate>[0-9]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"username\\\":\\\"(?<username>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<id>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.[11].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].currency\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].completedDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].recipient.username\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].id\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].state\",\"xPath\":\"\"}],\"url\":\"https://app.revolut.com/api/retail/user/current/transactions/last?count=20\",\"writeRedactionMode\":\"zk\"}",
   owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
   timestampS: 1735331469,
-  context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"0x58a978214918c8ec81ce5a56fbf5cda2f85bb70376c7a253e9b246aba258b5f3\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xd5850d39a47e17f5a546e8de045c1bb3a22228beebf8f3f943db759f46e330c6\"}","identifier":"0x2dc54602bbf54e7a87641dbbce1fe7fb4c92b8b714c5ea9b2e533b5b46ead5a0",
+  context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"0x58a978214918c8ec81ce5a56fbf5cda2f85bb70376c7a253e9b246aba258b5f3\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xd5850d39a47e17f5a546e8de045c1bb3a22228beebf8f3f943db759f46e330c6\"}", "identifier": "0x2dc54602bbf54e7a87641dbbce1fe7fb4c92b8b714c5ea9b2e533b5b46ead5a0",
   epoch: 1,
-  signature: {"0":192,"1":182,"2":73,"3":198,"4":253,"5":247,"6":189,"7":147,"8":203,"9":238,"10":44,"11":28,"12":198,"13":146,"14":159,"15":89,"16":0,"17":172,"18":177,"19":177,"20":186,"21":152,"22":132,"23":236,"24":185,"25":78,"26":123,"27":90,"28":240,"29":155,"30":140,"31":7,"32":109,"33":162,"34":104,"35":178,"36":138,"37":40,"38":19,"39":234,"40":69,"41":156,"42":231,"43":160,"44":252,"45":129,"46":70,"47":38,"48":175,"49":28,"50":12,"51":37,"52":85,"53":30,"54":228,"55":78,"56":230,"57":7,"58":170,"59":185,"60":241,"61":160,"62":139,"63":53,"64":28}
+  signature: { "0": 192, "1": 182, "2": 73, "3": 198, "4": 253, "5": 247, "6": 189, "7": 147, "8": 203, "9": 238, "10": 44, "11": 28, "12": 198, "13": 146, "14": 159, "15": 89, "16": 0, "17": 172, "18": 177, "19": 177, "20": 186, "21": 152, "22": 132, "23": 236, "24": 185, "25": 78, "26": 123, "27": 90, "28": 240, "29": 155, "30": 140, "31": 7, "32": 109, "33": 162, "34": 104, "35": 178, "36": 138, "37": 40, "38": 19, "39": 234, "40": 69, "41": 156, "42": 231, "43": 160, "44": 252, "45": 129, "46": 70, "47": 38, "48": 175, "49": 28, "50": 12, "51": 37, "52": 85, "53": 30, "54": 228, "55": 78, "56": 230, "57": 7, "58": 170, "59": 185, "60": 241, "61": 160, "62": 139, "63": 53, "64": 28 }
 }
 
 
@@ -88,11 +87,6 @@ describe.only("RevolutReclaimVerifier", () => {
     });
   });
 
-  function convertSignatureToHex(signature: { [key: string]: number }): string {
-    const byteArray = Object.values(signature);
-    return '0x' + Buffer.from(byteArray).toString('hex');
-  }
-
   describe("#verifyPayment", async () => {
     let proof: ReclaimProof;
 
@@ -109,18 +103,18 @@ describe.only("RevolutReclaimVerifier", () => {
     beforeEach(async () => {
       proof = {
         claimInfo: {
-          provider: venmoPaymentProof.provider,
-          parameters: venmoPaymentProof.parameters,
-          context: venmoPaymentProof.context
+          provider: paymentProof.provider,
+          parameters: paymentProof.parameters,
+          context: paymentProof.context
         },
         signedClaim: {
           claim: {
-            identifier: venmoPaymentProof.identifier,
-            owner: venmoPaymentProof.owner,
-            timestampS: BigNumber.from(venmoPaymentProof.timestampS),
-            epoch: BigNumber.from(venmoPaymentProof.epoch)
+            identifier: paymentProof.identifier,
+            owner: paymentProof.owner,
+            timestampS: BigNumber.from(paymentProof.timestampS),
+            epoch: BigNumber.from(paymentProof.epoch)
           },
-          signatures: [convertSignatureToHex(venmoPaymentProof.signature)]
+          signatures: [convertSignatureToHex(paymentProof.signature)]
         }
       };
       subjectProof = ethers.utils.defaultAbiCoder.encode(
@@ -201,7 +195,7 @@ describe.only("RevolutReclaimVerifier", () => {
           context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"onurytjts\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xf09e9363bf18ae13ddc9ee52aefddc4456e719ce10c3e6d9ea6c4b663de311ba\"}",
           identifier: "0xc8ec85fc7a944f3952d0eba243e58f1e6f580798bce4b5a9b53b1324e053bdc8",
           epoch: 1,
-          signature: {"0":72,"1":46,"2":8,"3":25,"4":250,"5":119,"6":32,"7":41,"8":205,"9":53,"10":72,"11":32,"12":193,"13":200,"14":206,"15":103,"16":181,"17":157,"18":177,"19":209,"20":193,"21":29,"22":29,"23":161,"24":153,"25":28,"26":223,"27":135,"28":234,"29":98,"30":249,"31":163,"32":26,"33":1,"34":158,"35":195,"36":29,"37":112,"38":123,"39":231,"40":72,"41":189,"42":22,"43":199,"44":239,"45":15,"46":184,"47":1,"48":253,"49":71,"50":3,"51":60,"52":51,"53":109,"54":195,"55":247,"56":214,"57":198,"58":208,"59":217,"60":218,"61":206,"62":213,"63":61,"64":27}
+          signature: { "0": 72, "1": 46, "2": 8, "3": 25, "4": 250, "5": 119, "6": 32, "7": 41, "8": 205, "9": 53, "10": 72, "11": 32, "12": 193, "13": 200, "14": 206, "15": 103, "16": 181, "17": 157, "18": 177, "19": 209, "20": 193, "21": 29, "22": 29, "23": 161, "24": 153, "25": 28, "26": 223, "27": 135, "28": 234, "29": 98, "30": 249, "31": 163, "32": 26, "33": 1, "34": 158, "35": 195, "36": 29, "37": 112, "38": 123, "39": 231, "40": 72, "41": 189, "42": 22, "43": 199, "44": 239, "45": 15, "46": 184, "47": 1, "48": 253, "49": 71, "50": 3, "51": 60, "52": 51, "53": 109, "54": 195, "55": 247, "56": 214, "57": 198, "58": 208, "59": 217, "60": 218, "61": 206, "62": 213, "63": 61, "64": 27 }
         };
 
         const proof2 = {
@@ -271,9 +265,9 @@ describe.only("RevolutReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment was made after the intent", async () => {
+    describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(1735323362).add(ONE_DAY_IN_SECONDS);
+        subjectIntentTimestamp = BigNumber.from(1731488958).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
       });
 
       it("should revert", async () => {
