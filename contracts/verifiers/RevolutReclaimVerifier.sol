@@ -2,12 +2,13 @@
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
 import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
+import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
+
+import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
-import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 
 pragma solidity ^0.8.18;
 
