@@ -30,7 +30,8 @@ import {
 import {
   REVOLUT_RECLAIM_PROVIDER_HASHES,
   REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
-  REVOLUT_RECLAIM_CURRENCIES
+  REVOLUT_RECLAIM_CURRENCIES,
+  REVOLUT_RECLAIM_FEE_SHARE
 } from "../../deployments/verifiers/revolut_reclaim";
 
 const expect = getWaffleExpect();
@@ -103,6 +104,11 @@ describe("RevolutReclaimVerifier Deployment", () => {
     it("should add the RevolutReclaimVerifier to the whitelisted payment verifiers", async () => {
       const hasWritePermission = await escrow.whitelistedPaymentVerifiers(revolutReclaimVerifier.address);
       expect(hasWritePermission).to.be.true;
+    });
+
+    it("should set the correct fee share", async () => {
+      const feeShare = await escrow.paymentVerifierFeeShare(revolutReclaimVerifier.address);
+      expect(feeShare).to.eq(REVOLUT_RECLAIM_FEE_SHARE);
     });
   });
 });

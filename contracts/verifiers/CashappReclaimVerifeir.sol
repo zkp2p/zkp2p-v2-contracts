@@ -126,7 +126,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
         address[] memory witnesses = new address[](1);
         witnesses[0] = attester;
-        verifyProofSignatures(proof, witnesses);
+        verifyProofSignatures(proof, witnesses, 1);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
         paymentDetails = _extractValues(proof);
