@@ -15,13 +15,12 @@ import {
   setNewOwner
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
-
-const REVOLUT_CURRENCIES = [
-  Currency.EUR,
-  Currency.GBP,
-  Currency.SGD,
-  Currency.USD
-];
+import {
+  REVOLUT_RECLAIM_PROVIDER_HASHES,
+  REVOLUT_RECLAIM_CURRENCIES,
+  REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
+  REVOLUT_RECLAIM_FEE_SHARE,
+} from "../deployments/verifiers/revolut_reclaim";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -30,22 +29,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.RevolutMock;
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
+  const claimVerifier = await ethers.getContractAt("ClaimVerifier", getDeployedContractAddress(network, "ClaimVerifier"));
 
-  const revolutVerifier = await deploy("RevolutVerifierMock", {
-    contract: "PaymentVerifierMock",
+  const revolutVerifier = await deploy("RevolutReclaimVerifier", {
     from: deployer,
+    libraries: {
+      ClaimVerifier: claimVerifier.address,
+    },
     args: [
       escrowAddress,
       nullifierRegistryAddress,
-      "30",
-      REVOLUT_CURRENCIES
+      REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
+      REVOLUT_RECLAIM_CURRENCIES,
+      REVOLUT_RECLAIM_PROVIDER_HASHES,
     ],
   });
-  console.log("RevolutVerifierMock deployed at", revolutVerifier.address);
+  console.log("RevolutReclaimVerifier deployed at", revolutVerifier.address);
 
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistryAddress);
   await addWritePermission(hre, nullifierRegistryContract, revolutVerifier.address);
@@ -53,14 +55,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("NullifierRegistry permissions added...");
 
   const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, revolutVerifier.address, 0); // No fee share for mock
+  await addWhitelistedPaymentVerifier(hre, escrowContract, revolutVerifier.address, REVOLUT_RECLAIM_FEE_SHARE); // No fee share for mock
 
-  console.log("RevolutVerifierMock added to whitelisted payment verifiers...");
+  console.log("RevolutReclaimVerifier added to whitelisted payment verifiers...");
 
   console.log("Transferring ownership of contracts...");
   await setNewOwner(
     hre,
-    await ethers.getContractAt("PaymentVerifierMock", revolutVerifier.address),
+    await ethers.getContractAt("RevolutReclaimVerifier", revolutVerifier.address),
     multiSig
   );
 
@@ -70,7 +72,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
   const network = hre.network.name;
   if (network != "localhost") {
-    try { getDeployedContractAddress(hre.network.name, "RevolutVerifierMock") } catch (e) { return false; }
+    try { getDeployedContractAddress(hre.network.name, "RevolutReclaimVerifier") } catch (e) { return false; }
     return true;
   }
   return false;
