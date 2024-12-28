@@ -274,6 +274,16 @@ describe("RevolutReclaimVerifier", () => {
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment timestamp");
       });
+
+      describe("when the payment was made after the intent", async () => {
+        beforeEach(async () => {
+          subjectIntentTimestamp = BigNumber.from(1731488958).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
     });
 
     describe("when the payment recipient is incorrect", async () => {

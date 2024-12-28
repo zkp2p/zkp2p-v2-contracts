@@ -267,11 +267,21 @@ describe("VenmoReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(1735323362).add(ONE_DAY_IN_SECONDS);
+        subjectIntentTimestamp = BigNumber.from(1730052971).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment timestamp");
+      });
+
+      describe("when the payment was made after the intent", async () => {
+        beforeEach(async () => {
+          subjectIntentTimestamp = BigNumber.from(1730052971).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
       });
     });
 
