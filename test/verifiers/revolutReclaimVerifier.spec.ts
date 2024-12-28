@@ -33,7 +33,7 @@ const venmoPaymentProof = {
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("RevolutReclaimVerifier", () => {
+describe.only("RevolutReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -93,7 +93,7 @@ describe("RevolutReclaimVerifier", () => {
     return '0x' + Buffer.from(byteArray).toString('hex');
   }
 
-  describe.only("#verifyPayment", async () => {
+  describe("#verifyPayment", async () => {
     let proof: ReclaimProof;
 
     let subjectCaller: Account;
@@ -191,58 +191,58 @@ describe("RevolutReclaimVerifier", () => {
       expect(isNullified).to.be.true;
     });
 
-    // TODO
-    // describe("when proof payee details is not hash but just raw revolut id", async () => {
-    //   beforeEach(async () => {
-    //     const venmoPaymentProof2 = {
-    //       provider: "http",
-    //       parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"receiver\\\":\\\\{\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[9].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.receiver\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].paymentId\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId=1168869611798528966\"}",
-    //       owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    //       timestampS: 1734114562,
-    //       context: "{\"extractedParameters\":{\"amount\":\"42.00\",\"date\":\"2024-10-27T18:16:11\",\"paymentId\":\"4188305907305244155\",\"receiverId\":\"1662743480369152806\"},\"intentHash\":\"14527918542887692994877265012607290228020786464417481864664720498778276484603\",\"providerHash\":\"0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04\"}",
-    //       identifier: "0x8a0af951fc18f323c5d883126113f3ff41c7769afaf65cc743e33d7ee9694695",
-    //       epoch: 1,
-    //       signature: { "0": 9, "1": 140, "2": 7, "3": 173, "4": 107, "5": 201, "6": 6, "7": 25, "8": 98, "9": 142, "10": 77, "11": 184, "12": 16, "13": 204, "14": 63, "15": 25, "16": 119, "17": 143, "18": 12, "19": 131, "20": 20, "21": 156, "22": 174, "23": 253, "24": 5, "25": 158, "26": 230, "27": 74, "28": 212, "29": 114, "30": 243, "31": 246, "32": 66, "33": 149, "34": 15, "35": 208, "36": 178, "37": 139, "38": 36, "39": 242, "40": 114, "41": 147, "42": 8, "43": 68, "44": 218, "45": 19, "46": 158, "47": 62, "48": 197, "49": 100, "50": 55, "51": 73, "52": 50, "53": 130, "54": 130, "55": 44, "56": 184, "57": 67, "58": 198, "59": 93, "60": 21, "61": 75, "62": 6, "63": 32, "64": 28 }
-    //     };
+    describe("when proof payee details is not hash but just raw revolut id", async () => {
+      beforeEach(async () => {
+        const revolutPaymentProof2 = {
+          provider: "http",
+          parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\-]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency\\\":\\\"(?<currency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"completedDate\\\":(?<completedDate>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"username\\\":\\\"(?<username>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<id>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.[11].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].currency\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].completedDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].recipient.username\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].id\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].state\",\"xPath\":\"\"}],\"url\":\"https://app.revolut.com/api/retail/user/current/transactions/last?count=20\",\"writeRedactionMode\":\"zk\"}",
+          owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
+          timestampS: 1735358034,
+          context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"onurytjts\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xf09e9363bf18ae13ddc9ee52aefddc4456e719ce10c3e6d9ea6c4b663de311ba\"}",
+          identifier: "0xc8ec85fc7a944f3952d0eba243e58f1e6f580798bce4b5a9b53b1324e053bdc8",
+          epoch: 1,
+          signature: {"0":72,"1":46,"2":8,"3":25,"4":250,"5":119,"6":32,"7":41,"8":205,"9":53,"10":72,"11":32,"12":193,"13":200,"14":206,"15":103,"16":181,"17":157,"18":177,"19":209,"20":193,"21":29,"22":29,"23":161,"24":153,"25":28,"26":223,"27":135,"28":234,"29":98,"30":249,"31":163,"32":26,"33":1,"34":158,"35":195,"36":29,"37":112,"38":123,"39":231,"40":72,"41":189,"42":22,"43":199,"44":239,"45":15,"46":184,"47":1,"48":253,"49":71,"50":3,"51":60,"52":51,"53":109,"54":195,"55":247,"56":214,"57":198,"58":208,"59":217,"60":218,"61":206,"62":213,"63":61,"64":27}
+        };
 
-    //     const proof2 = {
-    //       claimInfo: {
-    //         provider: venmoPaymentProof2.provider,
-    //         parameters: venmoPaymentProof2.parameters,
-    //         context: venmoPaymentProof2.context
-    //       },
-    //       signedClaim: {
-    //         claim: {
-    //           identifier: venmoPaymentProof2.identifier,
-    //           owner: venmoPaymentProof2.owner,
-    //           timestampS: BigNumber.from(venmoPaymentProof2.timestampS),
-    //           epoch: BigNumber.from(venmoPaymentProof2.epoch)
-    //         },
-    //         signatures: [convertSignatureToHex(venmoPaymentProof2.signature)]
-    //       }
-    //     };
+        const proof2 = {
+          claimInfo: {
+            provider: revolutPaymentProof2.provider,
+            parameters: revolutPaymentProof2.parameters,
+            context: revolutPaymentProof2.context
+          },
+          signedClaim: {
+            claim: {
+              identifier: revolutPaymentProof2.identifier,
+              owner: revolutPaymentProof2.owner,
+              timestampS: BigNumber.from(revolutPaymentProof2.timestampS),
+              epoch: BigNumber.from(revolutPaymentProof2.epoch)
+            },
+            signatures: [convertSignatureToHex(revolutPaymentProof2.signature)]
+          }
+        };
 
-    //     subjectProof = ethers.utils.defaultAbiCoder.encode(
-    //       [
-    //         "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
-    //       ],
-    //       [proof2]
-    //     );
-    //     subjectPayeeDetailsHash = "1662743480369152806";
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          [
+            "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
+          ],
+          [proof2]
+        );
+        subjectPayeeDetailsHash = "onurytjts";
 
-    //     await verifier.connect(owner.wallet).addProviderHash('0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04')
-    //   });
+        await verifier.connect(owner.wallet).addProviderHash('0xf09e9363bf18ae13ddc9ee52aefddc4456e719ce10c3e6d9ea6c4b663de311ba')
+      });
 
-    //   it("should verify the proof", async () => {
-    //     const [
-    //       verified,
-    //       intentHash
-    //     ] = await subjectCallStatic();
+      it("should verify the proof", async () => {
+        const [
+          verified,
+          intentHash
+        ] = await subjectCallStatic();
 
-    //     expect(verified).to.be.true;
-    //     expect(intentHash).to.eq("0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb");
-    //   });
-    // });
+        expect(verified).to.be.true;
+        // 21888242871839275222246405745257275088548364400416034343698204186575808495617 converted to hex
+        expect(intentHash).to.eq("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");
+      });
+    });
 
     describe("when the proof is invalid", async () => {
       beforeEach(async () => {
@@ -288,6 +288,16 @@ describe("RevolutReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
+      });
+    });
+
+    describe("when the currency is not supported", async () => {
+      beforeEach(async () => {
+        subjectFiatCurrency = ZERO_BYTES32;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Incorrect payment currency");
       });
     });
 
