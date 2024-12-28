@@ -3,12 +3,12 @@ import "module-alias/register";
 import { deployments, ethers } from "hardhat";
 
 import {
-  VenmoReclaimVerifier,
+  CashappReclaimVerifier,
   NullifierRegistry,
   Escrow,
 } from "../../utils/contracts";
 import {
-  VenmoReclaimVerifier__factory,
+  CashappReclaimVerifier__factory,
   NullifierRegistry__factory,
   Escrow__factory,
 } from "../../typechain";
@@ -28,21 +28,21 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  VENMO_RECLAIM_PROVIDER_HASHES,
-  VENMO_RECLAIM_TIMESTAMP_BUFFER,
-  VENMO_RECLAIM_CURRENCIES,
-  VENMO_RECLAIM_FEE_SHARE
-} from "../../deployments/verifiers/venmo_reclaim";
+  CASHAPP_RECLAIM_PROVIDER_HASHES,
+  CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
+  CASHAPP_RECLAIM_CURRENCIES,
+  CASHAPP_RECLAIM_FEE_SHARE
+} from "../../deployments/verifiers/cashapp_reclaim";
 
 const expect = getWaffleExpect();
 
-describe("VenmoReclaimVerifier Deployment", () => {
+describe("CashAppReclaimVerifier Deployment", () => {
   let deployer: Account;
   let multiSig: Address;
   let escrowAddress: string;
 
   let escrow: Escrow;
-  let venmoReclaimVerifier: VenmoReclaimVerifier;
+  let cashappReclaimVerifier: CashappReclaimVerifier;
   let nullifierRegistry: NullifierRegistry;
 
   const network: string = deployments.getNetworkName();
@@ -64,51 +64,51 @@ describe("VenmoReclaimVerifier Deployment", () => {
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
     const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
-    const venmoReclaimVerifierAddress = getDeployedContractAddress(network, "VenmoReclaimVerifier");
-    venmoReclaimVerifier = new VenmoReclaimVerifier__factory(
+    const cashappReclaimVerifierAddress = getDeployedContractAddress(network, "CashAppReclaimVerifier");
+    cashappReclaimVerifier = new CashappReclaimVerifier__factory(
       {
         "contracts/lib/ClaimVerifier.sol:ClaimVerifier": claimVerifierAddress,
       },
       deployer.wallet,
-    ).attach(venmoReclaimVerifierAddress);
+    ).attach(cashappReclaimVerifierAddress);
 
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
   });
 
   describe("Constructor", async () => {
     it("should set the correct parameters set", async () => {
-      const actualOwner = await venmoReclaimVerifier.owner();
-      const actualEscrowAddress = await venmoReclaimVerifier.escrow();
-      const actualNullifierRegistryAddress = await venmoReclaimVerifier.nullifierRegistry();
-      const actualProviderHashes = await venmoReclaimVerifier.getProviderHashes();
-      const actualTimestampBuffer = await venmoReclaimVerifier.timestampBuffer();
-      const actualCurrencies = await venmoReclaimVerifier.getCurrencies();
+      const actualOwner = await cashappReclaimVerifier.owner();
+      const actualEscrowAddress = await cashappReclaimVerifier.escrow();
+      const actualNullifierRegistryAddress = await cashappReclaimVerifier.nullifierRegistry();
+      const actualProviderHashes = await cashappReclaimVerifier.getProviderHashes();
+      const actualTimestampBuffer = await cashappReclaimVerifier.timestampBuffer();
+      const actualCurrencies = await cashappReclaimVerifier.getCurrencies();
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(VENMO_RECLAIM_PROVIDER_HASHES);
-      expect(actualTimestampBuffer).to.eq(VENMO_RECLAIM_TIMESTAMP_BUFFER);
-      expect(actualCurrencies).to.deep.eq(VENMO_RECLAIM_CURRENCIES);
+      expect(actualProviderHashes).to.deep.eq(CASHAPP_RECLAIM_PROVIDER_HASHES);
+      expect(actualTimestampBuffer).to.eq(CASHAPP_RECLAIM_TIMESTAMP_BUFFER);
+      expect(actualCurrencies).to.deep.eq(CASHAPP_RECLAIM_CURRENCIES);
     });
   });
 
   describe("Write Permissions", async () => {
     it("should add write permissions to the NullifierRegistry", async () => {
-      const hasWritePermission = await nullifierRegistry.isWriter(venmoReclaimVerifier.address);
+      const hasWritePermission = await nullifierRegistry.isWriter(cashappReclaimVerifier.address);
       expect(hasWritePermission).to.be.true;
     });
   });
 
   describe("Whitelisted Payment Verifier", async () => {
-    it("should add the VenmoReclaimVerifier to the whitelisted payment verifiers", async () => {
-      const hasWritePermission = await escrow.whitelistedPaymentVerifiers(venmoReclaimVerifier.address);
+    it("should add the CashAppReclaimVerifier to the whitelisted payment verifiers", async () => {
+      const hasWritePermission = await escrow.whitelistedPaymentVerifiers(cashappReclaimVerifier.address);
       expect(hasWritePermission).to.be.true;
     });
 
     it("should set the correct fee share", async () => {
-      const feeShare = await escrow.paymentVerifierFeeShare(venmoReclaimVerifier.address);
-      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE);
+      const feeShare = await escrow.paymentVerifierFeeShare(cashappReclaimVerifier.address);
+      expect(feeShare).to.eq(CASHAPP_RECLAIM_FEE_SHARE);
     });
   });
 });
