@@ -17,7 +17,7 @@ import { Currency } from "@utils/protocolUtils";
 
 const expect = getWaffleExpect();
 
-describe("BaseReclaimPaymentVerifier", () => {
+describe.only("BaseReclaimPaymentVerifier", () => {
   let owner: Account;
   let witnessAddress: Address;
   let otherWitness: Account;
@@ -262,15 +262,19 @@ describe("BaseReclaimPaymentVerifier", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Not enough valid witness signatures");
+          await expect(subject()).to.be.revertedWith("Fewer signatures than required threshold");
         });
       });
 
-      describe("when number of signatures is greater than or equal to threshold but not all signatures are from witnesses", () => {
+      describe("when number of signatures is greater than or equal to threshold but not all signatures are from required witnesses", () => {
         beforeEach(async () => {
           const nonWitnessWallet = ethers.Wallet.createRandom();
           const message = "Hello Tickets";
           subjectProof.signedClaim.signatures[0] = await nonWitnessWallet.signMessage(message);
+          subjectProof.signedClaim.signatures[1] = await otherWitness.wallet.signMessage(message);
+
+          subjectWitnesses = [witnessAddress, otherWitness.address];
+          subjectRequiredThreshold = 2;
         });
 
         it("should revert", async () => {

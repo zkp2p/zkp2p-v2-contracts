@@ -127,6 +127,7 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
 
         // Recover signers of the signed claim
         address[] memory claimSigners = Claims.recoverSignersOfSignedClaim(signed);
+        require(claimSigners.length >= _requiredThreshold, "Fewer signatures than required threshold");
 
         // Count how many signers are accepted witnesses
         uint256 validWitnessSignatures;
