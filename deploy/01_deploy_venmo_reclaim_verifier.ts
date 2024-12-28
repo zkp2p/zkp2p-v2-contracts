@@ -15,7 +15,7 @@ import {
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
-  VENMO_RECLAIM_PROVIDER_HASHES,
+  getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_CURRENCIES,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
   VENMO_RECLAIM_FEE_SHARE,
@@ -40,6 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
   console.log("ClaimVerifier deployed at", claimVerifier.address);
 
+  const hashes = await getVenmoReclaimProviderHashes(100);
   const venmoVerifier = await deploy("VenmoReclaimVerifier", {
     from: deployer,
     libraries: {
@@ -50,7 +51,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       nullifierRegistryAddress,
       VENMO_RECLAIM_TIMESTAMP_BUFFER,
       VENMO_RECLAIM_CURRENCIES,
-      VENMO_RECLAIM_PROVIDER_HASHES,
+      hashes,
     ],
   });
   console.log("VenmoReclaimVerifier deployed at", venmoVerifier.address);
