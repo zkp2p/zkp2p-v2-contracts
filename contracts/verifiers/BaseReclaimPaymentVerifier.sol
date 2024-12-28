@@ -17,6 +17,10 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
     using AddressArrayUtils for address[];
     using StringArrayUtils for string[];
 
+    /* ============ Constants ============ */
+
+    uint256 internal constant PRECISE_UNIT = 1e18;
+
     /* ============ State Variables ============ */
     mapping(string => bool) public isProviderHash;
     string[] public providerHashes;                         // Set of provider hashes that these proofs should be for
