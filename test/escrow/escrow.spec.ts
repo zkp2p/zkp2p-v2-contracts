@@ -115,7 +115,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#createDeposit", async () => {
+  describe.only("#createDeposit", async () => {
     let subjectToken: Address;
     let subjectAmount: BigNumber;
     let subjectIntentAmountRange: IEscrow.RangeStruct;
@@ -308,6 +308,60 @@ describe("Escrow", () => {
 
         const currencyRate2_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].conversionRate);
+      });
+    });
+
+    describe("when the intent amount range min is zero", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min intent amount cannot be zero");
+      });
+    });
+
+    describe("when the intent amount range max is zero", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.max = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Max intent amount cannot be zero");
+      });
+    });
+
+    describe("when the min intent amount is greater than max intent amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = usdc(2);
+        subjectIntentAmountRange.max = usdc(1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min intent amount must be less than max intent amount");
+      });
+    });
+
+    describe("when the amount is less than min intent amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = usdc(2);
+        subjectAmount = usdc(1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Amount must be greater than min intent amount");
+      });
+    });
+
+    describe("when the amount is greater than max intent amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = usdc(1);
+        subjectIntentAmountRange.max = usdc(1);
+        subjectAmount = usdc(2);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Amount must be less than max intent amount");
       });
     });
 

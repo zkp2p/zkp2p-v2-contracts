@@ -189,7 +189,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
-        _validateCreateDeposit(_verifiers, _verifierData, _currencies);
+        _validateCreateDeposit(_amount, _intentAmountRange, _verifiers, _verifierData, _currencies);
 
         uint256 depositId = depositCounter++;
 
@@ -666,10 +666,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Internal Functions ============ */
 
     function _validateCreateDeposit(
+        uint256 _amount,
+        Range memory _intentAmountRange,
         address[] calldata _verifiers,
         DepositVerifierData[] calldata _verifierData,
         Currency[][] calldata _currencies
     ) internal view {
+
+        require(_intentAmountRange.min != 0, "Min intent amount cannot be zero");
+        require(_intentAmountRange.max != 0, "Max intent amount cannot be zero");
+        require(_intentAmountRange.min <= _intentAmountRange.max, "Min intent amount must be less than max intent amount");
+        require(_amount >= _intentAmountRange.min, "Amount must be greater than min intent amount");
+        require(_amount <= _intentAmountRange.max, "Amount must be less than max intent amount");
+
         // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
         require(_verifiers.length == _verifierData.length, "Verifiers and depositVerifierData length mismatch");
         require(_verifiers.length == _currencies.length, "Verifiers and currencies length mismatch");
