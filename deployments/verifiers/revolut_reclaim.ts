@@ -5,7 +5,6 @@ export const REVOLUT_RECLAIM_PROVIDER_HASHES: any = [
   "0xd5850d39a47e17f5a546e8de045c1bb3a22228beebf8f3f943db759f46e330c6",
 ];
 
-
 export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.EUR,
   Currency.GBP,
