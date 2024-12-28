@@ -3,6 +3,7 @@ import "module-alias/register";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
+import { Currency } from "../utils/protocolUtils";
 
 import {
   MULTI_SIG,
@@ -16,11 +17,11 @@ import {
 import { PaymentService } from "../utils/types";
 
 const PAYPAL_CURRENCIES = [
-  ethers.utils.formatBytes32String("INR"),
-  ethers.utils.formatBytes32String("ARS"),
-  ethers.utils.formatBytes32String("GBP"),
-  ethers.utils.formatBytes32String("USD"),
-  ethers.utils.formatBytes32String("EUR")
+  Currency.INR,
+  Currency.ARS,
+  Currency.GBP,
+  Currency.USD,
+  Currency.EUR
 ];
 
 // Deployment Scripts

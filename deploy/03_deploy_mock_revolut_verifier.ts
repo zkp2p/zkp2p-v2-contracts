@@ -3,6 +3,7 @@ import "module-alias/register";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers, BigNumber } from "hardhat";
+import { Currency } from "../utils/protocolUtils";
 
 import {
   MULTI_SIG,
@@ -16,10 +17,10 @@ import {
 import { PaymentService } from "../utils/types";
 
 const REVOLUT_CURRENCIES = [
-  ethers.utils.formatBytes32String("EUR"),
-  ethers.utils.formatBytes32String("GBP"),
-  ethers.utils.formatBytes32String("SGD"),
-  ethers.utils.formatBytes32String("USD")
+  Currency.EUR,
+  Currency.GBP,
+  Currency.SGD,
+  Currency.USD
 ];
 
 // Deployment Scripts

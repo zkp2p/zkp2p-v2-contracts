@@ -17,7 +17,8 @@ export const Currency = {
   EUR: getKeccak256Hash("EUR"),
   GBP: getKeccak256Hash("GBP"),
   INR: getKeccak256Hash("INR"),
-  SGD: getKeccak256Hash("SGD")
+  SGD: getKeccak256Hash("SGD"),
+  ARS: getKeccak256Hash("ARS")
 } as const;
 
 

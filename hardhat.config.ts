@@ -9,10 +9,14 @@ import '@nomicfoundation/hardhat-chai-matchers'
 
 import { HardhatUserConfig } from "hardhat/config";
 
+import "./tasks/releaseFundsToPayer";
 import "./tasks/accountIntent";
 import "./tasks/blockNumber";
 import "./tasks/createDeposit";
 import "./tasks/signalIntent";
+import "./tasks/getFeeRecipient";
+import "./tasks/tokenBalance";
+import "./tasks/chainId";
 
 dotenv.config();
 
