@@ -216,17 +216,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
             );
             depositVerifierData[depositId][verifier] = _verifierData[i];
             depositVerifiers[depositId].push(verifier);
-         
-            emit DepositVerifierAdded(
-                depositId,
-                verifier,
-                keccak256(abi.encodePacked(_verifierData[i].payeeDetails)),
-                _verifierData[i].intentGatingService
-            );
-        }
 
-        for (uint256 i = 0; i < _verifiers.length; i++) {
-            address verifier = _verifiers[i];
+            bytes32 payeeDetailsHash = keccak256(abi.encodePacked(_verifierData[i].payeeDetails));
+            emit DepositVerifierAdded(depositId, verifier, payeeDetailsHash, _verifierData[i].intentGatingService);
+        
             for (uint256 j = 0; j < _currencies[i].length; j++) {
                 Currency memory currency = _currencies[i][j];
                 require(
