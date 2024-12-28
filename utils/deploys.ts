@@ -16,7 +16,8 @@ import {
   ClaimVerifierMock,
   Quoter,
   ManagedKeyHashAdapterV2,
-  BaseReclaimPaymentVerifier
+  BaseReclaimPaymentVerifier,
+  CashappReclaimVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -36,6 +37,7 @@ import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { CashappReclaimVerifier__factory } from "@typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -128,6 +130,30 @@ export default class DeployHelper {
     claimVerifierLibraryAddress: Address,
   ): Promise<RevolutReclaimVerifier> {
     return await new RevolutReclaimVerifier__factory(
+      // @ts-ignore
+      {
+        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
+      },
+      this._deployerSigner
+    ).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployCashappReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[],
+    claimVerifierLibraryName: string,
+    claimVerifierLibraryAddress: Address,
+  ): Promise<CashappReclaimVerifier> {
+    return await new CashappReclaimVerifier__factory(
       // @ts-ignore
       {
         [claimVerifierLibraryName]: claimVerifierLibraryAddress,

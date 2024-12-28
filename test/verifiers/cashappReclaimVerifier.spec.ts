@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { NullifierRegistry, VenmoReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, CashappReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -12,7 +12,6 @@ import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToH
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
-
 import {
   getWaffleExpect,
   getAccounts
@@ -20,21 +19,21 @@ import {
 
 const expect = getWaffleExpect();
 
-const venmoPaymentProof = {
+const paymentProof = {
   provider: "http",
-  parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"receiver\\\":\\\\{\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[7].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[7].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[7].title.receiver\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[7].paymentId\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId=1168869611798528966\"}",
+  parameters: "{\"body\":\"{\\\"activity_token\\\":{\\\"activity_token_type\\\":\\\"CUSTOMER_TOKEN\\\",\\\"token\\\":\\\"{{SENDER_ID}}\\\"},\\\"activity_scope\\\":\\\"MY_ACTIVITY_WEB_V2\\\",\\\"caller_token\\\":\\\"{{SENDER_ID}}\\\",\\\"page_size\\\":15,\\\"request_context\\\":{}}\",\"method\":\"POST\",\"paramValues\":{\"SENDER_ID\":\"C_0twqj8ycc\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency_code\\\":\\\"(?<currency_code>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"display_date\\\":(?<date>[0-9]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"cashtag\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"token\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.payment.amount.amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.payment.amount.currency_code\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.payment.display_date\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.recipient.cashtag\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.payment.token\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[0].payment_history_inputs_row.payment.state\",\"xPath\":\"\"}],\"url\":\"https://cash.app/cash-app/activity/v1.0/page\"}",
   owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
-  timestampS: 1734031970,
-  context: "{\"extractedParameters\":{\"amount\":\"42.00\",\"date\":\"2024-10-27T18:16:11\",\"paymentId\":\"4188305907305244155\",\"receiverId\":\"0x7d017fe071884ed32040ce481e7561ab15da46c9478b566750e6617281172211\"},\"intentHash\":\"14527918542887692994877265012607290228020786464417481864664720498778276484603\",\"providerHash\":\"0x56a20cb9afab516f74191aa8a6e5f1dfd97c1514f7359975e75e364f022360fe\"}",
-  identifier: "0x1f1bc1682b1f54ab0d4a5ac7608c05ef931639d30cc37c8770f2c0d3569efc93",
+  timestampS: 1735332028,
+  context: "{\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735331910000\",\"paymentId\":\"kzkvq9e9f\",\"receiverId\":\"0x95ea91aec8d010b3e69df4a512d624e1e0c9b2f170c799e33e555dc1fa5c4503\",\"state\":\"WAITING_ON_RECIPIENT\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0x5e3b19d2559f94bb09ec06bb3b11a099f47af374d54c8b98ee21efa3054357b1\"}",
+  identifier: "0xea74f61810733d1394c432768e91d433e1ef81469e432a4c80d397273d3712a9",
   epoch: 1,
-  signature: { "0": 62, "1": 52, "2": 203, "3": 247, "4": 252, "5": 74, "6": 119, "7": 45, "8": 206, "9": 166, "10": 54, "11": 231, "12": 100, "13": 240, "14": 134, "15": 254, "16": 1, "17": 224, "18": 250, "19": 15, "20": 220, "21": 242, "22": 100, "23": 94, "24": 38, "25": 8, "26": 35, "27": 57, "28": 253, "29": 9, "30": 178, "31": 131, "32": 84, "33": 250, "34": 250, "35": 223, "36": 15, "37": 8, "38": 1, "39": 190, "40": 58, "41": 201, "42": 46, "43": 163, "44": 56, "45": 228, "46": 53, "47": 252, "48": 62, "49": 20, "50": 206, "51": 140, "52": 75, "53": 54, "54": 188, "55": 124, "56": 99, "57": 175, "58": 26, "59": 54, "60": 236, "61": 117, "62": 239, "63": 230, "64": 27 }
+  signature: { "0": 190, "1": 24, "2": 249, "3": 53, "4": 127, "5": 85, "6": 166, "7": 65, "8": 108, "9": 237, "10": 38, "11": 11, "12": 235, "13": 54, "14": 210, "15": 125, "16": 60, "17": 246, "18": 155, "19": 65, "20": 198, "21": 120, "22": 36, "23": 249, "24": 92, "25": 91, "26": 145, "27": 126, "28": 208, "29": 188, "30": 148, "31": 157, "32": 35, "33": 210, "34": 232, "35": 241, "36": 136, "37": 88, "38": 251, "39": 195, "40": 238, "41": 140, "42": 91, "43": 189, "44": 212, "45": 153, "46": 246, "47": 3, "48": 213, "49": 67, "50": 235, "51": 175, "52": 185, "53": 10, "54": 216, "55": 15, "56": 9, "57": 228, "58": 47, "59": 82, "60": 228, "61": 222, "62": 241, "63": 253, "64": 28 }
 }
 
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("VenmoReclaimVerifier", () => {
+describe.only("CashappReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -42,7 +41,7 @@ describe("VenmoReclaimVerifier", () => {
   let witnessAddress: Address;
 
   let nullifierRegistry: NullifierRegistry;
-  let verifier: VenmoReclaimVerifier;
+  let verifier: CashappReclaimVerifier;
   let usdcToken: USDCMock;
 
   let deployer: DeployHelper;
@@ -58,11 +57,11 @@ describe("VenmoReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnessAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-    providerHash = "0x56a20cb9afab516f74191aa8a6e5f1dfd97c1514f7359975e75e364f022360fe";
+    providerHash = "0x5e3b19d2559f94bb09ec06bb3b11a099f47af374d54c8b98ee21efa3054357b1";
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
     const claimVerifier = await deployer.deployClaimVerifier();
-    verifier = await deployer.deployVenmoReclaimVerifier(
+    verifier = await deployer.deployCashappReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
@@ -105,18 +104,18 @@ describe("VenmoReclaimVerifier", () => {
     beforeEach(async () => {
       proof = {
         claimInfo: {
-          provider: venmoPaymentProof.provider,
-          parameters: venmoPaymentProof.parameters,
-          context: venmoPaymentProof.context
+          provider: paymentProof.provider,
+          parameters: paymentProof.parameters,
+          context: paymentProof.context
         },
         signedClaim: {
           claim: {
-            identifier: venmoPaymentProof.identifier,
-            owner: venmoPaymentProof.owner,
-            timestampS: BigNumber.from(venmoPaymentProof.timestampS),
-            epoch: BigNumber.from(venmoPaymentProof.epoch)
+            identifier: paymentProof.identifier,
+            owner: paymentProof.owner,
+            timestampS: BigNumber.from(paymentProof.timestampS),
+            epoch: BigNumber.from(paymentProof.epoch)
           },
-          signatures: [convertSignatureToHex(venmoPaymentProof.signature)]
+          signatures: [convertSignatureToHex(paymentProof.signature)]
         }
       };
       subjectProof = ethers.utils.defaultAbiCoder.encode(
@@ -128,13 +127,13 @@ describe("VenmoReclaimVerifier", () => {
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(5);
+      subjectIntentAmount = usdc(1);
       subjectIntentTimestamp = BigNumber.from(1727914697);
       subjectConversionRate = ether(1);
       subjectPayeeDetailsHash = ethers.utils.keccak256(
-        ethers.utils.solidityPack(['string'], ['1662743480369152806'])
+        ethers.utils.solidityPack(['string'], ['onurytjts'])
       );
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address'],
         [witnessAddress]
@@ -174,68 +173,17 @@ describe("VenmoReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb");
+      // 21888242871839275222246405745257275088548364400416034343698204186575808495617 converted to hex
+      expect(intentHash).to.eq("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['4188305907305244155']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['kzkvq9e9f']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
-    });
-
-    describe("when proof payee details is not hash but just raw venmo id", async () => {
-      beforeEach(async () => {
-        const venmoPaymentProof2 = {
-          provider: "http",
-          parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"receiver\\\":\\\\{\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[9].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.receiver\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].paymentId\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId=1168869611798528966\"}",
-          owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
-          timestampS: 1734114562,
-          context: "{\"extractedParameters\":{\"amount\":\"42.00\",\"date\":\"2024-10-27T18:16:11\",\"paymentId\":\"4188305907305244155\",\"receiverId\":\"1662743480369152806\"},\"intentHash\":\"14527918542887692994877265012607290228020786464417481864664720498778276484603\",\"providerHash\":\"0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04\"}",
-          identifier: "0x8a0af951fc18f323c5d883126113f3ff41c7769afaf65cc743e33d7ee9694695",
-          epoch: 1,
-          signature: { "0": 9, "1": 140, "2": 7, "3": 173, "4": 107, "5": 201, "6": 6, "7": 25, "8": 98, "9": 142, "10": 77, "11": 184, "12": 16, "13": 204, "14": 63, "15": 25, "16": 119, "17": 143, "18": 12, "19": 131, "20": 20, "21": 156, "22": 174, "23": 253, "24": 5, "25": 158, "26": 230, "27": 74, "28": 212, "29": 114, "30": 243, "31": 246, "32": 66, "33": 149, "34": 15, "35": 208, "36": 178, "37": 139, "38": 36, "39": 242, "40": 114, "41": 147, "42": 8, "43": 68, "44": 218, "45": 19, "46": 158, "47": 62, "48": 197, "49": 100, "50": 55, "51": 73, "52": 50, "53": 130, "54": 130, "55": 44, "56": 184, "57": 67, "58": 198, "59": 93, "60": 21, "61": 75, "62": 6, "63": 32, "64": 28 }
-        };
-
-        const proof2 = {
-          claimInfo: {
-            provider: venmoPaymentProof2.provider,
-            parameters: venmoPaymentProof2.parameters,
-            context: venmoPaymentProof2.context
-          },
-          signedClaim: {
-            claim: {
-              identifier: venmoPaymentProof2.identifier,
-              owner: venmoPaymentProof2.owner,
-              timestampS: BigNumber.from(venmoPaymentProof2.timestampS),
-              epoch: BigNumber.from(venmoPaymentProof2.epoch)
-            },
-            signatures: [convertSignatureToHex(venmoPaymentProof2.signature)]
-          }
-        };
-
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          [
-            "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
-          ],
-          [proof2]
-        );
-        subjectPayeeDetailsHash = "1662743480369152806";
-
-        await verifier.connect(owner.wallet).addProviderHash('0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04')
-      });
-
-      it("should verify the proof", async () => {
-        const [
-          verified,
-          intentHash
-        ] = await subjectCallStatic();
-
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq("0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb");
-      });
     });
 
     describe("when the proof is invalid", async () => {
@@ -257,7 +205,7 @@ describe("VenmoReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(43);
+        subjectIntentAmount = usdc(101);
       });
 
       it("should revert", async () => {
@@ -267,7 +215,7 @@ describe("VenmoReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(1735323362).add(ONE_DAY_IN_SECONDS);
+        subjectIntentTimestamp = BigNumber.from(1735331910).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
       });
 
       it("should revert", async () => {
@@ -277,11 +225,21 @@ describe("VenmoReclaimVerifier", () => {
 
     describe("when the payment recipient is incorrect", async () => {
       beforeEach(async () => {
-        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['645716473020416187']));
+        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['random-recipient-id']));
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
+      });
+    });
+
+    describe("when the currency is not supported", async () => {
+      beforeEach(async () => {
+        subjectFiatCurrency = Currency.EUR;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Incorrect payment currency");
       });
     });
 
@@ -297,7 +255,7 @@ describe("VenmoReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"extractedParameters\":{\"amount\":\"5.00\",\"date\":\"2024-10-03T00:17:47\",\"paymentId\":\"4170368513012150718\",\"receiverId\":\"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d\"},\"intentHash\":\"0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb\",\"providerHash\":\"0x92da474c63ba5e4ce0b927c557dc78dfd4b6284c39c587725c41c55cf709cae6\"}";
+        proof.claimInfo.context = "{\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735331910000\",\"paymentId\":\"kzkvq9e9f\",\"receiverId\":\"0x95ea91aec8d010b3e69df4a512d624e1e0c9b2f170c799e33e555dc1fa5c4503\",\"state\":\"WAITING_ON_RECIPIENT\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0x5e3b19d2559f94bb09ec06bb3b11a099f47af374d54c8b98ee21efa3054357b2\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness

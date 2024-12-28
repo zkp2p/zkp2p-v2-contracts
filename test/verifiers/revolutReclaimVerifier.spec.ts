@@ -24,7 +24,8 @@ const paymentProof = {
   parameters: "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\-]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency\\\":\\\"(?<currency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"completedDate\\\":(?<completedDate>[0-9]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"username\\\":\\\"(?<username>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<id>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.[11].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].currency\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].completedDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].recipient.username\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].id\",\"xPath\":\"\"},{\"jsonPath\":\"$.[11].state\",\"xPath\":\"\"}],\"url\":\"https://app.revolut.com/api/retail/user/current/transactions/last?count=20\",\"writeRedactionMode\":\"zk\"}",
   owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
   timestampS: 1735331469,
-  context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"0x58a978214918c8ec81ce5a56fbf5cda2f85bb70376c7a253e9b246aba258b5f3\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xd5850d39a47e17f5a546e8de045c1bb3a22228beebf8f3f943db759f46e330c6\"}", "identifier": "0x2dc54602bbf54e7a87641dbbce1fe7fb4c92b8b714c5ea9b2e533b5b46ead5a0",
+  context: "{\"extractedParameters\":{\"amount\":\"-20064\",\"completedDate\":\"1731488958497\",\"currency\":\"EUR\",\"id\":\"67346cbe-6ac5-afaf-875c-232594d79729\",\"state\":\"COMPLETED\",\"username\":\"0x58a978214918c8ec81ce5a56fbf5cda2f85bb70376c7a253e9b246aba258b5f3\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xd5850d39a47e17f5a546e8de045c1bb3a22228beebf8f3f943db759f46e330c6\"}",
+  identifier: "0x2dc54602bbf54e7a87641dbbce1fe7fb4c92b8b714c5ea9b2e533b5b46ead5a0",
   epoch: 1,
   signature: { "0": 192, "1": 182, "2": 73, "3": 198, "4": 253, "5": 247, "6": 189, "7": 147, "8": 203, "9": 238, "10": 44, "11": 28, "12": 198, "13": 146, "14": 159, "15": 89, "16": 0, "17": 172, "18": 177, "19": 177, "20": 186, "21": 152, "22": 132, "23": 236, "24": 185, "25": 78, "26": 123, "27": 90, "28": 240, "29": 155, "30": 140, "31": 7, "32": 109, "33": 162, "34": 104, "35": 178, "36": 138, "37": 40, "38": 19, "39": 234, "40": 69, "41": 156, "42": 231, "43": 160, "44": 252, "45": 129, "46": 70, "47": 38, "48": 175, "49": 28, "50": 12, "51": 37, "52": 85, "53": 30, "54": 228, "55": 78, "56": 230, "57": 7, "58": 170, "59": 185, "60": 241, "61": 160, "62": 139, "63": 53, "64": 28 }
 }
@@ -32,7 +33,7 @@ const paymentProof = {
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe.only("RevolutReclaimVerifier", () => {
+describe("RevolutReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
