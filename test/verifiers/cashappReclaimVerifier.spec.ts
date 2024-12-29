@@ -127,9 +127,9 @@ describe("CashappReclaimVerifier", () => {
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(1);
+      subjectIntentAmount = usdc(1.11);
       subjectIntentTimestamp = BigNumber.from(1727914697);
-      subjectConversionRate = ether(1);
+      subjectConversionRate = ether(0.9);   // 1.11 * 0.9 = 0.999 (payment amount)
       subjectPayeeDetailsHash = ethers.utils.keccak256(
         ethers.utils.solidityPack(['string'], ['onurytjts'])
       );
@@ -205,11 +205,21 @@ describe("CashappReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(101);
+        subjectIntentAmount = usdc(1.12); // just 1 cent more than the actual ask amount (1.12 * 0.9 = 1.008) which is more than the payment amount (1.00)
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+      });
+
+      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
+        beforeEach(async () => {
+          subjectIntentAmount = usdc(1.11); // just 1 cent less than the actual ask amount (1.11 * 0.9 = 0.999) which is less than the payment amount (1.00)
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
       });
     });
 

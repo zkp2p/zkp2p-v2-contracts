@@ -127,9 +127,9 @@ describe("RevolutReclaimVerifier", () => {
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(5);
+      subjectIntentAmount = usdc(100.32);
       subjectIntentTimestamp = BigNumber.from(1727914697);
-      subjectConversionRate = ether(1);
+      subjectConversionRate = ether(2);     // 100.32 USDC * 2 EUR / USDC = 200.64 EUR required payment amount
       subjectPayeeDetailsHash = ethers.utils.keccak256(
         ethers.utils.solidityPack(['string'], ['onurytjts'])
       );
@@ -256,13 +256,23 @@ describe("RevolutReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the intent amount * conversion rate", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(210);
+        subjectIntentAmount = usdc(100.33);   // just 1 cent more than the actual ask amount (100.33 * 2 = 200.66) which is greater than the payment amount (200.64)
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+      });
+
+      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
+        beforeEach(async () => {
+          subjectIntentAmount = usdc(100.31);   // just 1 cent less than the actual ask amount (100.31 * 2 = 200.62) which is less than the payment amount (200.64)
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
       });
     });
 

@@ -150,7 +150,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         bytes32 _fiatCurrency,
         uint256 _conversionRate
     ) internal view {
-        uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
+        uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
 
         // Validate amount
