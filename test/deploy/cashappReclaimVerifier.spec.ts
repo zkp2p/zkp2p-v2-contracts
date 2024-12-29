@@ -28,7 +28,7 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  CASHAPP_RECLAIM_PROVIDER_HASHES,
+  getCashappReclaimProviderHashes,
   CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
   CASHAPP_RECLAIM_CURRENCIES,
   CASHAPP_RECLAIM_FEE_SHARE
@@ -83,11 +83,12 @@ describe("CashAppReclaimVerifier Deployment", () => {
       const actualProviderHashes = await cashappReclaimVerifier.getProviderHashes();
       const actualTimestampBuffer = await cashappReclaimVerifier.timestampBuffer();
       const actualCurrencies = await cashappReclaimVerifier.getCurrencies();
+      const hashes = await getCashappReclaimProviderHashes(15);
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(CASHAPP_RECLAIM_PROVIDER_HASHES);
+      expect(actualProviderHashes).to.deep.eq(hashes);
       expect(actualTimestampBuffer).to.eq(CASHAPP_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(CASHAPP_RECLAIM_CURRENCIES);
     });
