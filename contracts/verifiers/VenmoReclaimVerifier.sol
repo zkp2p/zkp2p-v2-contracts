@@ -30,7 +30,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 6; 
+    // todo: Fix this later when we remove SENDER_ID from the proof
+    uint8 internal constant MAX_EXTRACT_VALUES = 7; 
 
     /* ============ Constructor ============ */
     constructor(
@@ -93,9 +94,12 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
         
         // Nullify the payment
-        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
+        bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
+        _validateAndAddNullifier(nullifier);
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
+        
+        return (true, intentHash);
     }
 
     /* ============ Internal Functions ============ */
@@ -140,8 +144,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         string calldata _payeeDetails,
         uint256 _conversionRate
     ) internal view {
-
-        uint256 expectedAmount = _intentAmount * PRECISE_UNIT / _conversionRate;
+        uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
 
         // Validate amount
@@ -179,12 +182,12 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         return PaymentDetails({
-            amountString: values[0],
-            dateString: values[1],
-            paymentId: values[2],
-            recipientId: values[3],
-            intentHash: values[4],
-            providerHash: values[5]
+            amountString: values[1],
+            dateString: values[2],
+            paymentId: values[3],
+            recipientId: values[4],
+            intentHash: values[5],
+            providerHash: values[6]
         });
     }
 }
