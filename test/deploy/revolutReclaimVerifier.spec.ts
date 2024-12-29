@@ -28,7 +28,7 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  REVOLUT_RECLAIM_PROVIDER_HASHES,
+  getRevolutReclaimProviderHashes,
   REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
   REVOLUT_RECLAIM_CURRENCIES,
   REVOLUT_RECLAIM_FEE_SHARE
@@ -83,11 +83,12 @@ describe("RevolutReclaimVerifier Deployment", () => {
       const actualProviderHashes = await revolutReclaimVerifier.getProviderHashes();
       const actualTimestampBuffer = await revolutReclaimVerifier.timestampBuffer();
       const actualCurrencies = await revolutReclaimVerifier.getCurrencies();
+      const hashes = await getRevolutReclaimProviderHashes(20);
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(REVOLUT_RECLAIM_PROVIDER_HASHES);
+      expect(actualProviderHashes).to.deep.eq(hashes);
       expect(actualTimestampBuffer).to.eq(REVOLUT_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(REVOLUT_RECLAIM_CURRENCIES);
     });

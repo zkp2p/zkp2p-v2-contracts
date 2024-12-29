@@ -11,8 +11,8 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
         method: "GET",
         responseMatches: [
           {
-            type: "regex",
-            value: `"amount":"- \\$(?<amount>[^"]+)"`,
+            "type": "regex",
+            "value": `"amount":"- \\$(?<amount>[^"]+)"`,
           },
           {
             "type": "regex",
@@ -30,20 +30,20 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
         ],
         responseRedactions: [
           {
-            jsonPath: `$.stories[${i}].amount`,
-            xPath: ""
+            "jsonPath": `$.stories[${i}].amount`,
+            "xPath": ""
           },
           {
-            jsonPath: `$.stories[${i}].date`,
-            xPath: ""
+            "jsonPath": `$.stories[${i}].date`,
+            "xPath": ""
           },
           {
-            jsonPath: `$.stories[${i}].title.receiver`,
-            xPath: ""
+            "jsonPath": `$.stories[${i}].title.receiver`,
+            "xPath": ""
           },
           {
-            jsonPath: `$.stories[${i}].paymentId`,
-            xPath: ""
+            "jsonPath": `$.stories[${i}].paymentId`,
+            "xPath": ""
           }
         ]
       }

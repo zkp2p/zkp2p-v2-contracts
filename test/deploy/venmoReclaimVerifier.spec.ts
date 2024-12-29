@@ -28,7 +28,7 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  VENMO_RECLAIM_PROVIDER_HASHES,
+  getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
   VENMO_RECLAIM_CURRENCIES,
   VENMO_RECLAIM_FEE_SHARE
@@ -83,11 +83,12 @@ describe("VenmoReclaimVerifier Deployment", () => {
       const actualProviderHashes = await venmoReclaimVerifier.getProviderHashes();
       const actualTimestampBuffer = await venmoReclaimVerifier.timestampBuffer();
       const actualCurrencies = await venmoReclaimVerifier.getCurrencies();
+      const hashes = await getVenmoReclaimProviderHashes(10);
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(VENMO_RECLAIM_PROVIDER_HASHES);
+      expect(actualProviderHashes).to.deep.eq(hashes);
       expect(actualTimestampBuffer).to.eq(VENMO_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(VENMO_RECLAIM_CURRENCIES);
     });

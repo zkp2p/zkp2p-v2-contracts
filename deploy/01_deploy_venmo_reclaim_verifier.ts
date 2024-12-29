@@ -40,7 +40,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
   console.log("ClaimVerifier deployed at", claimVerifier.address);
 
-  const hashes = await getVenmoReclaimProviderHashes(100);
+  // Venmo only returns 10 stories at a time
+  const hashes = await getVenmoReclaimProviderHashes(10);
   const venmoVerifier = await deploy("VenmoReclaimVerifier", {
     from: deployer,
     libraries: {
