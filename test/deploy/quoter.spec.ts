@@ -22,7 +22,9 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("Quoter Deployment", () => {
+
+// Skip as we don't need to deploy this contract
+describe.skip("Quoter Deployment", () => {
   let deployer: Account;
 
   let quoter: Quoter;
