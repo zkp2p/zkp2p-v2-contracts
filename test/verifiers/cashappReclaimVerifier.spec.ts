@@ -33,7 +33,7 @@ const paymentProof = {
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe.only("CashappReclaimVerifier", () => {
+describe("CashappReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
