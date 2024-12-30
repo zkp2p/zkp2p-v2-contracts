@@ -11,6 +11,7 @@ export {
   RevolutReclaimVerifier,
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
-  ClaimVerifier
+  ClaimVerifier,
+  CashappReclaimVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";

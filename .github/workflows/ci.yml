@@ -10,6 +10,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.15.0'
+      - name: Enable Corepack
+        run: corepack enable
       - name: Install Dependencies
         run: yarn install
       - name: Set up env variables...

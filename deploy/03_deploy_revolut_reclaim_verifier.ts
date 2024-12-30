@@ -16,7 +16,7 @@ import {
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
-  REVOLUT_RECLAIM_PROVIDER_HASHES,
+  getRevolutReclaimProviderHashes,
   REVOLUT_RECLAIM_CURRENCIES,
   REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
   REVOLUT_RECLAIM_FEE_SHARE,
@@ -34,6 +34,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
   const claimVerifier = await ethers.getContractAt("ClaimVerifier", getDeployedContractAddress(network, "ClaimVerifier"));
 
+  // Revolut returns 20 transactions at a time
+  const hashes = await getRevolutReclaimProviderHashes(20);
   const revolutVerifier = await deploy("RevolutReclaimVerifier", {
     from: deployer,
     libraries: {
@@ -44,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       nullifierRegistryAddress,
       REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
       REVOLUT_RECLAIM_CURRENCIES,
-      REVOLUT_RECLAIM_PROVIDER_HASHES,
+      hashes,
     ],
   });
   console.log("RevolutReclaimVerifier deployed at", revolutVerifier.address);

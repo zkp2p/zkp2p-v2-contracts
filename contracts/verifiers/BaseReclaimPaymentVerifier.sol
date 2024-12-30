@@ -44,7 +44,6 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
             _currencies
         )
     {
-
         for (uint256 i = 0; i < _providerHashes.length; i++) {
             require(!isProviderHash[_providerHashes[i]], "Provider hash already added");
             isProviderHash[_providerHashes[i]] = true;

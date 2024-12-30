@@ -12,7 +12,7 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
+contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
 
@@ -32,8 +32,8 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 8;
-    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETED"));
+    uint8 internal constant MAX_EXTRACT_VALUES = 9;
+    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
     /* ============ Constructor ============ */
     
@@ -58,7 +58,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Revolut payment. Ensures the right _intentAmount * _conversionRate
      * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Revolut.
-     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
+     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETE.
      *
      * @param _proof            Proof to be verified
      * @param _depositToken     The deposit token locked in escrow
@@ -202,14 +202,15 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
-            amountString: values[0],
-            timestampString: values[1],
+            // values[0] is SENDER_ID
+            amountString: values[1],
             currencyCode: values[2],
-            paymentId: values[3],
-            paymentStatus: values[4],
+            timestampString: values[3],
+            paymentId: values[4],
             recipientId: values[5],
-            intentHash: values[6],
-            providerHash: values[7]
+            paymentStatus: values[6],
+            intentHash: values[7],
+            providerHash: values[8]
         });
     }
 
@@ -220,10 +221,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      * @param _decimals The decimals of the token.
      */
     function _parseAmount(string memory _amount, uint8 _decimals) internal pure returns(uint256) {
-        // For send transactions, the amount is prefixed with a '-' character, if the character doesn't exist then
-        // it would be a receive transaction
-        require(bytes(_amount)[0] == 0x2D, "Not a send transaction");   
-        // Revolut amount is scaled by 100 (e.g. 20064 => 200.64)
+        // Cashapp amount is scaled by 100 (e.g. $1 => 100)
         return _amount.stringToUint(_decimals - 2);
     }
 }
