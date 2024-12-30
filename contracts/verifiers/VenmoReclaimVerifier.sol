@@ -30,7 +30,6 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constants ============ */
     
-    // todo: Fix this later when we remove SENDER_ID from the proof
     uint8 internal constant MAX_EXTRACT_VALUES = 7; 
 
     /* ============ Constructor ============ */
@@ -182,6 +181,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         return PaymentDetails({
+            // values[0] is SENDER_ID
             amountString: values[1],
             dateString: values[2],
             paymentId: values[3],

@@ -32,8 +32,6 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    // TODO: MAKE THIS 8 ONCE PAYMENT PROOF IS UPDATED. ALSO UPDATE VALUE EXTRACTION FUNCTION.
-
     uint8 internal constant MAX_EXTRACT_VALUES = 9;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
@@ -158,10 +156,10 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        // require(
-        //     paymentDetails.recipientId.stringComparison(_payeeDetails), 
-        //     "Incorrect payment recipient"
-        // );
+        require(
+            paymentDetails.recipientId.stringComparison(_payeeDetails), 
+            "Incorrect payment recipient"
+        );
         
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps
@@ -175,10 +173,10 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         // Validate status
-        // require(
-        //     keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
-        //     "Payment status not confirmed as sent"
-        // );
+        require(
+            keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
+            "Payment status not confirmed as sent"
+        );
     }
 
     /**
@@ -204,6 +202,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
+            // values[0] is SENDER_ID
             amountString: values[1],
             currencyCode: values[2],
             timestampString: values[3],
