@@ -41,4 +41,4 @@ export const USDC: any = {
 
 // For Goerli and localhost
 export const USDC_MINT_AMOUNT = usdc(1000000);
-export const USDC_RECIPIENT = "0x1d2033DC6720e3eCC14aBB8C2349C7ED77E831ad";
+export const USDC_RECIPIENT = "0x84e113087C97Cd80eA9D78983D4B8Ff61ECa1929";
