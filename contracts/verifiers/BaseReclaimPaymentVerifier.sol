@@ -136,15 +136,13 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
 
         // Count how many signers are accepted witnesses, skipping duplicates
         for (uint256 i = 0; i < claimSigners.length; i++) {
-            bool isDuplicate = false;
-            for (uint256 j = 0; j < validWitnessSignatures; j++) {
-                if (seenSigners[j] == claimSigners[i]) {
-                    isDuplicate = true;
-                    break;
-                }
+            address currSigner = claimSigners[i];
+            if (seenSigners.contains(currSigner)) {
+                continue;
             }
-            if (!isDuplicate && _witnesses.contains(claimSigners[i])) {
-                seenSigners[validWitnessSignatures] = claimSigners[i];
+
+            if (_witnesses.contains(currSigner)) {
+                seenSigners[validWitnessSignatures] = currSigner;
                 validWitnessSignatures++;
             }
         }

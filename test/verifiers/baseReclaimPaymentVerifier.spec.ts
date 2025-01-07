@@ -14,6 +14,7 @@ import { Address } from "@utils/types";
 import { NullifierRegistry, BaseReclaimPaymentVerifier } from "@utils/contracts";
 import { ADDRESS_ZERO } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
+import { createSignDataForClaim } from "@utils/reclaimUtils";
 
 const expect = getWaffleExpect();
 
@@ -266,12 +267,32 @@ describe("BaseReclaimPaymentVerifier", () => {
 
       describe("when number of signatures is greater than or equal to threshold but not all signatures are from required witnesses", () => {
         beforeEach(async () => {
+          const message = createSignDataForClaim(subjectProof.signedClaim.claim);
           const nonWitnessWallet = ethers.Wallet.createRandom();
-          const message = "Hello Tickets";
-          subjectProof.signedClaim.signatures[0] = await nonWitnessWallet.signMessage(message);
-          subjectProof.signedClaim.signatures[1] = await otherWitness.wallet.signMessage(message);
+          subjectProof.signedClaim.signatures = [
+            await nonWitnessWallet.signMessage(message),
+            await otherWitness.wallet.signMessage(message)
+          ];
 
           subjectWitnesses = [witnessAddress, otherWitness.address];
+          subjectRequiredThreshold = 2;
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Not enough valid witness signatures");
+        });
+      });
+
+      describe("when there are duplicate signatures", () => {
+        beforeEach(async () => {
+          const message = createSignDataForClaim(subjectProof.signedClaim.claim);
+          const witnessWallet = ethers.Wallet.createRandom();
+          subjectProof.signedClaim.signatures = [
+            await witnessWallet.signMessage(message),
+            await witnessWallet.signMessage(message)
+          ];
+
+          subjectWitnesses = [witnessWallet.address, otherWitness.address];
           subjectRequiredThreshold = 2;
         });
 
