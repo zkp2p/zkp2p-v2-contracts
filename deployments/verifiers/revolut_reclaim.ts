@@ -16,16 +16,11 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": `"currency":"(?<currency>[^"]+)"`,
-          },
-          {
-            "type": "regex",
             "value": `"completedDate":(?<completedDate>[0-9]+)`,
           },
           {
             "type": "regex",
-            "value": `"username":"(?<username>[^"]+)"`,
-            "hash": true
+            "value": `"currency":"(?<currency>[^"]+)"`,
           },
           {
             "type": "regex",
@@ -35,6 +30,11 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
             "type": "regex",
             "value": `"state":"(?<state>[^"]+)"`,
           },
+          {
+            "type": "regex",
+            "value": `"username":"(?<username>[^"]+)"`,
+            "hash": true
+          },
         ],
         responseRedactions: [
           {
@@ -42,19 +42,19 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
             "xPath": ""
           },
           {
-            "jsonPath": `$.[${i}].currency`,
-            "xPath": ""
-          },
-          {
             "jsonPath": `$.[${i}].completedDate`,
             "xPath": ""
           },
           {
-            "jsonPath": `$.[${i}].recipient.username`,
+            "jsonPath": `$.[${i}].currency`,
             "xPath": ""
           },
           {
             "jsonPath": `$.[${i}].id`,
+            "xPath": ""
+          },
+          {
+            "jsonPath": `$.[${i}].recipient.username`,
             "xPath": ""
           },
           {

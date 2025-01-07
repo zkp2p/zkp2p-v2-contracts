@@ -30,11 +30,13 @@ library ClaimVerifier {
             return type(uint256).max;
         }
 
+        // Find start of target
         for (uint i = 0; i <= dataBytes.length - targetBytes.length; i++) {
             bool isMatch = true;
             for (uint j = 0; j < targetBytes.length && isMatch; j++) {
                 if (dataBytes[i + j] != targetBytes[j]) {
                     isMatch = false;
+                    break;
                 }
             }
             if (isMatch) {
@@ -238,7 +240,7 @@ library ClaimVerifier {
         string[] memory values = new string[](valuesFound);
         for (uint i = 0; i < valuesFound; i++) {
             startIndex = valueIndices[2 * i];
-            endIndex   = valueIndices[2 * i + 1];
+            endIndex = valueIndices[2 * i + 1];
             bytes memory contextValue = new bytes(endIndex - startIndex);
             for (uint j = startIndex; j < endIndex; j++) {
                 contextValue[j - startIndex] = dataBytes[j];

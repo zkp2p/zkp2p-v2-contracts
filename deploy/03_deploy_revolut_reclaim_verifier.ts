@@ -37,7 +37,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Revolut returns 20 transactions at a time
   const extensionProviderHashes = await getRevolutReclaimProviderHashes(20);
+  console.log("revolut extension provider hashes", extensionProviderHashes);
   const appclipProviderHashes = REVOLUT_APPCLIP_PROVIDER_HASHES;
+  console.log("revolut appclip provider hashes", appclipProviderHashes);
   const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const revolutVerifier = await deploy("RevolutReclaimVerifier", {
     from: deployer,

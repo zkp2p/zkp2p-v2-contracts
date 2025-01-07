@@ -36,7 +36,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Venmo only returns 10 stories at a time
   const extensionProviderHashes = await getVenmoReclaimProviderHashes(10);
+  console.log("venmo extension provider hashes", extensionProviderHashes);
+
   const appclipProviderHashes = VENMO_APPCLIP_PROVIDER_HASHES;
+  console.log("venmo appclip provider hashes", appclipProviderHashes);
   const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const venmoVerifier = await deploy("VenmoReclaimVerifier", {
     from: deployer,
