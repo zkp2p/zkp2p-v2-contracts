@@ -8,7 +8,7 @@ import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, parseAppclipProof, parseExtensionProof, encodeProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -20,25 +20,29 @@ import {
 const expect = getWaffleExpect();
 
 
-const paymentProof = {
-  provider: "http",
-  parameters: "{\"body\":\"{\\\"activity_token\\\":{\\\"activity_token_type\\\":\\\"CUSTOMER_TOKEN\\\",\\\"token\\\":\\\"{{SENDER_ID}}\\\"},\\\"activity_scope\\\":\\\"MY_ACTIVITY_WEB_V2\\\",\\\"caller_token\\\":\\\"{{SENDER_ID}}\\\",\\\"page_size\\\":15,\\\"request_context\\\":{}}\",\"method\":\"POST\",\"paramValues\":{\"SENDER_ID\":\"C_0twqj8ycc\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency_code\\\":\\\"(?<currency_code>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"display_date\\\":(?<date>[0-9]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"cashtag\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"token\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.amount.amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.amount.currency_code\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.display_date\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.recipient.cashtag\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.token\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.state\",\"xPath\":\"\"}],\"url\":\"https://cash.app/cash-app/activity/v1.0/page\"}",
-  owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
-  timestampS: 1735490203,
-  context: "{\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735398054000\",\"paymentId\":\"d9w96tzps\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"COMPLETE\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5\"}",
-  identifier: "0x256e8e2aaedcb0a4b7a691e9af3f5249e5c4547b0c5875e0be38fa6c69972c03",
-  epoch: 1,
-  signature: { "0": 176, "1": 39, "2": 73, "3": 22, "4": 143, "5": 138, "6": 101, "7": 236, "8": 89, "9": 91, "10": 140, "11": 170, "12": 95, "13": 150, "14": 199, "15": 232, "16": 13, "17": 236, "18": 35, "19": 246, "20": 185, "21": 88, "22": 57, "23": 110, "24": 41, "25": 167, "26": 49, "27": 242, "28": 159, "29": 59, "30": 82, "31": 64, "32": 1, "33": 187, "34": 104, "35": 63, "36": 195, "37": 72, "38": 161, "39": 85, "40": 88, "41": 42, "42": 65, "43": 15, "44": 47, "45": 89, "46": 113, "47": 96, "48": 123, "49": 59, "50": 183, "51": 50, "52": 167, "53": 143, "54": 171, "55": 89, "56": 248, "57": 221, "58": 25, "59": 53, "60": 152, "61": 124, "62": 46, "63": 33, "64": 27 }
+const cashappExtensionProof = {
+  "claim": {
+    "provider": "http",
+    "parameters": "{\"body\":\"{\\\"activity_token\\\":{\\\"activity_token_type\\\":\\\"CUSTOMER_TOKEN\\\",\\\"token\\\":\\\"{{SENDER_ID}}\\\"},\\\"activity_scope\\\":\\\"MY_ACTIVITY_WEB_V2\\\",\\\"caller_token\\\":\\\"{{SENDER_ID}}\\\",\\\"page_size\\\":15,\\\"request_context\\\":{}}\",\"method\":\"POST\",\"paramValues\":{\"SENDER_ID\":\"C_0twqj8ycc\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency_code\\\":\\\"(?<currency_code>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"display_date\\\":(?<date>[0-9]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"cashtag\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"token\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.amount.amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.amount.currency_code\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.display_date\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.recipient.cashtag\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.token\",\"xPath\":\"\"},{\"jsonPath\":\"$.activity_rows[1].payment_history_inputs_row.payment.state\",\"xPath\":\"\"}],\"url\":\"https://cash.app/cash-app/activity/v1.0/page\"}",
+    "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
+    "timestampS": 1736195952,
+    "context": "{\"contextAddress\":\"\",\"contextMessage\":\"12014506636571874886965000811776567979685927375542718613570391557275994688735\",\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735841166000\",\"paymentId\":\"7cwz2mgva\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"COMPLETE\"},\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5\"}",
+    "identifier": "0xcb509d621e58aa3c71f9b890aa76df29b5e77b974e5c070a4f4e0d7d414ff35e",
+    "epoch": 1
+  },
+  "signatures": {
+    "attestorAddress": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "claimSignature": { "0": 249, "1": 41, "2": 130, "3": 38, "4": 155, "5": 37, "6": 98, "7": 143, "8": 253, "9": 93, "10": 115, "11": 25, "12": 128, "13": 187, "14": 21, "15": 39, "16": 219, "17": 107, "18": 20, "19": 161, "20": 143, "21": 185, "22": 9, "23": 65, "24": 24, "25": 5, "26": 210, "27": 5, "28": 197, "29": 119, "30": 82, "31": 129, "32": 52, "33": 90, "34": 139, "35": 233, "36": 103, "37": 211, "38": 179, "39": 34, "40": 68, "41": 106, "42": 189, "43": 166, "44": 183, "45": 237, "46": 184, "47": 244, "48": 89, "49": 254, "50": 119, "51": 209, "52": 30, "53": 181, "54": 189, "55": 156, "56": 160, "57": 111, "58": 42, "59": 162, "60": 86, "61": 223, "62": 123, "63": 244, "64": 27 },
+    "resultSignature": { "0": 97, "1": 242, "2": 54, "3": 3, "4": 202, "5": 212, "6": 21, "7": 154, "8": 70, "9": 25, "10": 230, "11": 181, "12": 54, "13": 42, "14": 217, "15": 164, "16": 214, "17": 169, "18": 229, "19": 106, "20": 180, "21": 109, "22": 118, "23": 242, "24": 137, "25": 255, "26": 59, "27": 4, "28": 150, "29": 122, "30": 87, "31": 91, "32": 26, "33": 99, "34": 7, "35": 93, "36": 217, "37": 217, "38": 2, "39": 191, "40": 115, "41": 199, "42": 141, "43": 200, "44": 108, "45": 43, "46": 50, "47": 193, "48": 166, "49": 228, "50": 131, "51": 63, "52": 202, "53": 126, "54": 95, "55": 171, "56": 11, "57": 206, "58": 250, "59": 145, "60": 180, "61": 171, "62": 205, "63": 245, "64": 28 }
+  }
 }
-
-const blockchain = new Blockchain(ethers.provider);
 
 describe("CashappReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
-  let providerHash: string;
-  let witnessAddress: Address;
+  let providerHashes: string[];
+  let witnesses: Address[];
 
   let nullifierRegistry: NullifierRegistry;
   let verifier: CashappReclaimVerifier;
@@ -56,8 +60,8 @@ describe("CashappReclaimVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    witnessAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-    providerHash = "0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5";
+    witnesses = ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
+    providerHashes = ["0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
     const claimVerifier = await deployer.deployClaimVerifier();
@@ -66,7 +70,7 @@ describe("CashappReclaimVerifier", () => {
       nullifierRegistry.address,
       BigNumber.from(30),
       [Currency.USD],
-      [providerHash],
+      providerHashes,
       "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
       claimVerifier.address
     );
@@ -83,7 +87,7 @@ describe("CashappReclaimVerifier", () => {
 
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
       expect(timestampBuffer).to.eq(BigNumber.from(30));
-      expect(providerHashes).to.deep.eq([providerHash]);
+      expect(providerHashes).to.deep.eq(providerHashes);
       expect(escrowAddress).to.eq(escrow.address);
     });
   });
@@ -102,39 +106,19 @@ describe("CashappReclaimVerifier", () => {
     let subjectData: BytesLike;
 
     beforeEach(async () => {
-      proof = {
-        claimInfo: {
-          provider: paymentProof.provider,
-          parameters: paymentProof.parameters,
-          context: paymentProof.context
-        },
-        signedClaim: {
-          claim: {
-            identifier: paymentProof.identifier,
-            owner: paymentProof.owner,
-            timestampS: BigNumber.from(paymentProof.timestampS),
-            epoch: BigNumber.from(paymentProof.epoch)
-          },
-          signatures: [convertSignatureToHex(paymentProof.signature)]
-        }
-      };
-      subjectProof = ethers.utils.defaultAbiCoder.encode(
-        [
-          "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
-        ],
-        [proof]
-      );
+      proof = parseExtensionProof(cashappExtensionProof);
+      subjectProof = encodeProof(proof);
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(1.11);
-      subjectIntentTimestamp = BigNumber.from(1727914697);
+      subjectIntentTimestamp = BigNumber.from(1735841166);
       subjectConversionRate = ether(0.9);   // 1.11 * 0.9 = 0.999 (payment amount)
       subjectPayeeDetailsHash = '0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585'
       subjectFiatCurrency = Currency.USD;
       subjectData = ethers.utils.defaultAbiCoder.encode(
-        ['address'],
-        [witnessAddress]
+        ['address[]'],
+        [witnesses]
       );
     });
 
@@ -171,14 +155,13 @@ describe("CashappReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      // 21888242871839275222246405745257275088548364400416034343698204186575808495617 converted to hex
-      expect(intentHash).to.eq("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");
+      expect(intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['d9w96tzps']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['7cwz2mgva']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -188,12 +171,7 @@ describe("CashappReclaimVerifier", () => {
       beforeEach(async () => {
         proof.signedClaim.claim.identifier = ZERO_BYTES32;
 
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          [
-            "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
-          ],
-          [proof]
-        );
+        subjectProof = encodeProof(proof)
       });
 
       it("should revert", async () => {
@@ -223,7 +201,7 @@ describe("CashappReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(1735398054).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
+        subjectIntentTimestamp = BigNumber.from(1735841166).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
       });
 
       it("should revert", async () => {
@@ -232,7 +210,7 @@ describe("CashappReclaimVerifier", () => {
 
       describe("when the payment was made after the intent", async () => {
         beforeEach(async () => {
-          subjectIntentTimestamp = BigNumber.from(1735398054).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
+          subjectIntentTimestamp = BigNumber.from(1735841166).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
         });
 
         it("should not revert", async () => {
@@ -273,7 +251,7 @@ describe("CashappReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735398054000\",\"paymentId\":\"d9w96tzps\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"COMPLETE\"},\"intentHash\":\"21888242871839275222246405745257275088548364400416034343698204186575808495617\",\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a6\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"\",\"contextMessage\":\"12014506636571874886965000811776567979685927375542718613570391557275994688735\",\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735841166000\",\"paymentId\":\"7cwz2mgva\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"COMPLETE\"},\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a6\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -281,15 +259,10 @@ describe("CashappReclaimVerifier", () => {
         const witness = ethers.Wallet.createRandom();
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          [
-            "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim)"
-          ],
-          [proof]
-        );
+        subjectProof = encodeProof(proof);
         subjectData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [witness.address]
+          ['address[]'],
+          [[witness.address]]
         );
       });
 
