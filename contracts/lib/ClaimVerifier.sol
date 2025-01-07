@@ -113,11 +113,20 @@ library ClaimVerifier {
         }
         index += contextAddressBytes.length;
 
+        // Extract context address value if it exists
+        uint256 contextAddressStartIndex = index;
         while (index < dataBytes.length && !(dataBytes[index] == '"' && dataBytes[index - 1] != "\\")) {
             index++;
         }
         require(index < dataBytes.length, "Extraction failed. Malformed contextAddress");
-        // Don't add context address to valueIndices yet; TODO
+        uint256 contextAddressEndIndex = index;
+
+        if (contextAddressEndIndex - contextAddressStartIndex == 0) {
+            revert("Extraction failed. Empty contextAddress value");
+        }
+        valueIndices[2 * valuesFound] = contextAddressStartIndex;
+        valueIndices[2 * valuesFound + 1] = contextAddressEndIndex;
+        valuesFound++;
         index += 2;     // move past the closing quote and comma
 
         
@@ -127,14 +136,22 @@ library ClaimVerifier {
             require(dataBytes[index + i] == contextMessageBytes[i], "Extraction failed. Malformed contextMessage");
         }
         index += contextMessageBytes.length;
-        
-        valueIndices[2 * valuesFound] = index;
+
+        // Extract context message value if it exists
+        uint256 contextMessageStartIndex = index;
         while (index < dataBytes.length && !(dataBytes[index] == '"' && dataBytes[index - 1] != "\\")) {
             index++;
         }
         require(index < dataBytes.length, "Extraction failed. Malformed context message");
-        valueIndices[2 * valuesFound + 1] = index;
+        uint256 contextMessageEndIndex = index;
+
+        if (contextMessageEndIndex - contextMessageStartIndex == 0) {
+            revert("Extraction failed. Empty contextMessage value");
+        }
+        valueIndices[2 * valuesFound] = contextMessageStartIndex;
+        valueIndices[2 * valuesFound + 1] = contextMessageEndIndex;
         valuesFound++;
+        
         index += 2;     // move past the closing quote and comma
 
         bytes memory extractedParametersBytes = bytes('\"extractedParameters\":{\"');

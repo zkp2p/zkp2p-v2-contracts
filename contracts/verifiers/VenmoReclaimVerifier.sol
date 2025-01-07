@@ -201,13 +201,14 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         return PaymentDetails({
-            intentHash: values[0],
-            // values[1] is SENDER_ID
-            amountString: values[2],
-            dateString: values[3],
-            paymentId: values[4],
-            recipientId: values[5],
-            providerHash: values[6]
+            // values[0] is ContextAddress
+            intentHash: values[1],
+            // values[2] is SENDER_ID
+            amountString: values[3],
+            dateString: values[4],
+            paymentId: values[5],
+            recipientId: values[6],
+            providerHash: values[7]
         });
     }
 }

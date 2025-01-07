@@ -218,14 +218,15 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
-            intentHash: values[0],
-            amountString: values[1],
-            timestampString: values[2],
-            currencyCode: values[3],
-            paymentId: values[4],
-            paymentStatus: values[5],
-            recipientId: values[6],
-            providerHash: values[7]
+            // values[0] is ContextAddress
+            intentHash: values[1],
+            amountString: values[2],
+            timestampString: values[3],
+            currencyCode: values[4],
+            paymentId: values[5],
+            paymentStatus: values[6],
+            recipientId: values[7],
+            providerHash: values[8]
         });
     }
 

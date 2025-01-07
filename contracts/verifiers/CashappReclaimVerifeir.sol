@@ -219,8 +219,9 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
-            intentHash: values[0],
-            // values[1] is SENDER_ID
+            // values[0] is ContextAddress
+            intentHash: values[1],
+            // values[2] is SENDER_ID
             amountString: values[2],
             currencyCode: values[3],
             timestampString: values[4],
