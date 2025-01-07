@@ -34,7 +34,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 8;
+    uint8 internal constant MAX_EXTRACT_VALUES = 9;
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETED"));
 

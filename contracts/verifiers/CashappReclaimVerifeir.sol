@@ -34,7 +34,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 9;
+    uint8 internal constant MAX_EXTRACT_VALUES = 10;
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
@@ -222,13 +222,13 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
             // values[0] is ContextAddress
             intentHash: values[1],
             // values[2] is SENDER_ID
-            amountString: values[2],
-            currencyCode: values[3],
-            timestampString: values[4],
-            paymentId: values[5],
-            recipientId: values[6],
-            paymentStatus: values[7],
-            providerHash: values[8]
+            amountString: values[3],
+            currencyCode: values[4],
+            timestampString: values[5],
+            paymentId: values[6],
+            recipientId: values[7],
+            paymentStatus: values[8],
+            providerHash: values[9]
         });
     }
 

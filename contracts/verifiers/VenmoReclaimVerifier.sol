@@ -32,7 +32,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 7; 
+    uint8 internal constant MAX_EXTRACT_VALUES = 8; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
 
     /* ============ Constructor ============ */
@@ -88,7 +88,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_proof, _depositData);
-                
+        
         _verifyPaymentDetails(
             paymentDetails, 
             _depositToken, 
@@ -98,7 +98,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             _conversionRate,
             isAppclipProof
         );
-        
+
         // Nullify the payment
         bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
         _validateAndAddNullifier(nullifier);
@@ -161,9 +161,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         // Validate recipient
         if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
-            string memory hashedRecipientIdString = hashedRecipientId.toHexString();
             require(
-                hashedRecipientIdString.stringComparison(_payeeDetails), 
+                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
                 "Incorrect payment recipient"
             );
         } else {
