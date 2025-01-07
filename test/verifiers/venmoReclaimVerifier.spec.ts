@@ -8,7 +8,7 @@ import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof, parseAppclipProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -37,6 +37,27 @@ const venmoExtensionProof = {
 }
 
 const venmoAppclipProof = {
+  "claim": {
+    "identifier": "0x1625c2abaacc64e8f2be84f0b1600c10c82871f9680315ce07b1637035f76cdb",
+    "claimData": {
+      "provider": "http",
+      "parameters": { "additionalClientOptions": {}, "body": "", "geoLocation": "", "headers": { "Referer": "https://account.venmo.com/account/mfa/code-prompt?k=GaGokSMZ6HPHRbHjmKW1jCLEKvP1lz49F3YiDSW5hDHwQpFsHA00gi2HNanwIaDB&next=%2F%3Ffeed%3Dmine", "Sec-Fetch-Mode": "same-origin", "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1" }, "method": "GET", "paramValues": { "URL_PARAMS_GRD": "1168869611798528966", "amount": "1.01", "date": "2025-01-06T18:21:21", "paymentId": "4239767587180066226", "receiverId": "645716473020416186" }, "responseMatches": [{ "invert": false, "type": "contains", "value": "\"amount\":\"- ${{amount}}\"" }, { "invert": false, "type": "contains", "value": "\"date\":\"{{date}}\"" }, { "invert": false, "type": "contains", "value": "\"id\":\"{{receiverId}}\"" }, { "invert": false, "type": "contains", "value": "\"paymentId\":\"{{paymentId}}\"" }], "responseRedactions": [{ "jsonPath": "$.stories[0].amount", "regex": "\"amount\":\"- \\$(.*)\"", "xPath": "" }, { "jsonPath": "$.stories[0].date", "regex": "\"date\":\"(.*)\"", "xPath": "" }, { "jsonPath": "$.stories[0].title.receiver.id", "regex": "\"id\":\"(.*)\"", "xPath": "" }, { "jsonPath": "$.stories[0].paymentId", "regex": "\"paymentId\":\"(.*)\"", "xPath": "" }], "url": "https://account.venmo.com/api/stories?feedType=me&externalId={{URL_PARAMS_GRD}}" },
+      "owner": "0xa4f239ae872b61a640b232f2066f21862caef5c1",
+      "timestampS": 1736190917,
+      "context": { "contextAddress": "0x0", "contextMessage": "", "extractedParameters": { "URL_PARAMS_GRD": "1168869611798528966", "amount": "1.01", "date": "2025-01-06T18:21:21", "paymentId": "4239767587180066226", "receiverId": "645716473020416186" }, "providerHash": "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425" },
+      "epoch": 1
+    },
+    "signatures": {
+      "0": "0xd13dfb32a32ac2e91e9a54fc7d04faffa15f6facf3bed6033c775f8775dde0c771592c870b7406617d25f06cc7e620ac3de3a49769d8aba23532122bbc3508ef1c"
+    },
+    "witnesses": {
+      "0": {
+        "id": "0x244897572368eadf65bfbc5aec98d8e5443a9072",
+        "url": "wss://witness.reclaimprotocol.org/ws",
+        "publicData": ""
+      }
+    }
+  }
 };
 
 describe.only("VenmoReclaimVerifier", () => {
@@ -44,7 +65,7 @@ describe.only("VenmoReclaimVerifier", () => {
   let attacker: Account;
   let escrow: Account;
   let providerHashes: string[];
-  let witnessAddress: Address;
+  let witnesses: Address[];
 
   let nullifierRegistry: NullifierRegistry;
   let verifier: VenmoReclaimVerifier;
@@ -62,8 +83,8 @@ describe.only("VenmoReclaimVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    witnessAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-    providerHashes = ["0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd", "0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04"];
+    witnesses = ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
+    providerHashes = ["0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd", "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
     const claimVerifier = await deployer.deployClaimVerifier();
@@ -110,7 +131,7 @@ describe.only("VenmoReclaimVerifier", () => {
     let paymentTimestamp: number;
 
     beforeEach(async () => {
-      proof = parseExtensionProof(venmoExtensionProof, false);
+      proof = parseExtensionProof(venmoExtensionProof);
       subjectProof = encodeProof(proof);
 
       const paymentTimeString = '2025-01-06T18:21:21Z'; // Added Z to make UTC
@@ -127,8 +148,8 @@ describe.only("VenmoReclaimVerifier", () => {
       );
       subjectFiatCurrency = ZERO_BYTES32;
       subjectData = ethers.utils.defaultAbiCoder.encode(
-        ['address'],
-        [witnessAddress]
+        ['address[]'],
+        [witnesses]
       );
     });
 
@@ -178,13 +199,13 @@ describe.only("VenmoReclaimVerifier", () => {
       expect(isNullified).to.be.true;
     });
 
-    describe.skip("when the proof is an appclip proof", async () => {
+    describe("when the proof is an appclip proof", async () => {
       beforeEach(async () => {
-        proof = parseExtensionProof(venmoAppclipProof, true);
+        proof = parseAppclipProof(venmoAppclipProof);
         subjectProof = encodeProof(proof);
 
         subjectPayeeDetailsHash = ethers.utils.keccak256(
-          ethers.utils.solidityPack(['string'], ['1662743480369152806'])
+          ethers.utils.solidityPack(['string'], ['645716473020416186'])
         );
       });
 
@@ -195,6 +216,8 @@ describe.only("VenmoReclaimVerifier", () => {
         ] = await subjectCallStatic();
 
         expect(verified).to.be.true;
+
+        // expect(intentHash).to.eq(BigNumber.from('4550365876404035370013319374327198777228946732305032418394862064756897839843').toHexString());
       });
     });
 
@@ -248,9 +271,9 @@ describe.only("VenmoReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
       });
 
-      describe.skip("when the proof is an appclip proof", async () => {
+      describe("when the proof is an appclip proof", async () => {
         beforeEach(async () => {
-          proof = parseExtensionProof(venmoAppclipProof, true);
+          proof = parseAppclipProof(venmoAppclipProof);
           subjectProof = encodeProof(proof);
         });
 
@@ -282,8 +305,8 @@ describe.only("VenmoReclaimVerifier", () => {
 
         subjectProof = encodeProof(proof);
         subjectData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [witness.address]
+          ['address[]'],
+          [[witness.address]]
         );
       });
 

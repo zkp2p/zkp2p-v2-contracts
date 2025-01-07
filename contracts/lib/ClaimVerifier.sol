@@ -107,12 +107,20 @@ library ClaimVerifier {
         uint[] memory valueIndices = new uint[](2 * maxValues);
 
         // Extract context address
-        bytes memory contextAddressBytes = bytes('{\"contextAddress\":\"\",');
+        bytes memory contextAddressBytes = bytes('{\"contextAddress\":\"');
         for (uint i = 0; i < contextAddressBytes.length; i++) {
             require(dataBytes[index + i] == contextAddressBytes[i], "Extraction failed. Malformed contextAddress");
         }
         index += contextAddressBytes.length;
 
+        while (index < dataBytes.length && !(dataBytes[index] == '"' && dataBytes[index - 1] != "\\")) {
+            index++;
+        }
+        require(index < dataBytes.length, "Extraction failed. Malformed contextAddress");
+        // Don't add context address to valueIndices yet; TODO
+        index += 2;     // move past the closing quote and comma
+
+        
         // Extract context message
         bytes memory contextMessageBytes = bytes('\"contextMessage\":\"');
         for (uint i = 0; i < contextMessageBytes.length; i++) {

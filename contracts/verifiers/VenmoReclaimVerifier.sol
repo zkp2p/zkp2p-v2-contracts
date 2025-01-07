@@ -124,10 +124,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
 
         // Extract verification data
-        address attester = _decodeDepositData(_depositData);
+        address[] memory witnesses = _decodeDepositData(_depositData);
 
-        address[] memory witnesses = new address[](1);
-        witnesses[0] = attester;
         verifyProofSignatures(proof, witnesses, 1);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
@@ -174,13 +172,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     }
 
     /**
-     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the attester's address.
+     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the witnesses' addresses.
      * In case of a zkEmail proof, data contains the DKIM key hash. Can also contain additional data like currency code, etc.
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal view returns (address attester) {
-        attester = abi.decode(_data, (address));
+    function _decodeDepositData(bytes calldata _data) internal view returns (address[] memory witnesses) {
+        witnesses = abi.decode(_data, (address[]));
     }
 
     /**
