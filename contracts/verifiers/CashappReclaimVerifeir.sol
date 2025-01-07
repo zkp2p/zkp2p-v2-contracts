@@ -5,6 +5,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
@@ -15,6 +16,7 @@ pragma solidity ^0.8.18;
 contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
+    using Bytes32ConversionUtils for bytes32;
 
     /* ============ Structs ============ */
 
@@ -32,7 +34,8 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 9;
+    uint8 internal constant MAX_EXTRACT_VALUES = 10;
+    uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
     /* ============ Constructor ============ */
@@ -85,7 +88,10 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_proof, _depositData);
+        (
+            PaymentDetails memory paymentDetails,
+            bool isAppclipProof
+        ) = _verifyProofAndExtractValues(_proof, _depositData);
                 
         _verifyPaymentDetails(
             paymentDetails, 
@@ -94,13 +100,16 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
             _intentTimestamp, 
             _payeeDetails,
             _fiatCurrency,
-            _conversionRate
+            _conversionRate,
+            isAppclipProof
         );
         
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
+
+        return (true, intentHash);
     }
 
     /* ============ Internal Functions ============ */
@@ -114,23 +123,22 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails) 
+        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
 
         // Extract verification data
-        address attester = _decodeDepositData(_depositData);
-
-        address[] memory witnesses = new address[](1);
-        witnesses[0] = attester;
-        verifyProofSignatures(proof, witnesses, 1);     // claim must have at least 1 signature from witnesses
+        address[] memory witnesses = _decodeDepositData(_depositData);
+        verifyProofSignatures(proof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
         paymentDetails = _extractValues(proof);
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
+
+        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -146,7 +154,8 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         uint256 _intentTimestamp,
         string calldata _payeeDetails,
         bytes32 _fiatCurrency,
-        uint256 _conversionRate
+        uint256 _conversionRate,
+        bool _isAppclipProof
     ) internal view {
         uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
@@ -156,10 +165,18 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        require(
-            paymentDetails.recipientId.stringComparison(_payeeDetails), 
-            "Incorrect payment recipient"
-        );
+        if (_isAppclipProof) {
+            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
+            require(
+                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
+        } else {
+            require(
+                paymentDetails.recipientId.stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
+        }
         
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps
@@ -185,8 +202,8 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal pure returns (address attester) {
-        attester = abi.decode(_data, (address));
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
+        witnesses = abi.decode(_data, (address[]));
     }
 
     /**
@@ -202,15 +219,16 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
-            // values[0] is SENDER_ID
-            amountString: values[1],
-            currencyCode: values[2],
-            timestampString: values[3],
-            paymentId: values[4],
-            recipientId: values[5],
-            paymentStatus: values[6],
-            intentHash: values[7],
-            providerHash: values[8]
+            // values[0] is ContextAddress
+            intentHash: values[1],
+            // values[2] is SENDER_ID
+            amountString: values[3],
+            currencyCode: values[4],
+            timestampString: values[5],
+            paymentId: values[6],
+            recipientId: values[7],
+            paymentStatus: values[8],
+            providerHash: values[9]
         });
     }
 

@@ -33,11 +33,7 @@ describe("ClaimVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     witnessAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'    // hardhat 0
 
-    const claimVerifierLib = await deployer.deployClaimVerifier();
-    claimVerifier = await deployer.deployClaimVerifierMock(
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifierLib.address
-    );
+    claimVerifier = await deployer.deployClaimVerifierMock();
   });
 
   describe("#findSubstringEndIndex", async () => {
@@ -180,7 +176,7 @@ describe("ClaimVerifier", () => {
       "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?\u003Camount\u003E[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?\u003Cdate\u003E[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"receiver\\\":\\\\{\\\"id\\\":\\\"(?\u003CreceiverId\u003E[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?\u003CpaymentId\u003E[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[9].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.receiver\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].paymentId\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId=1168869611798528966\"}",
       "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
       "timestampS": 1732845455,
-      "context": "{\"extractedParameters\":{\"amount\":\"5.00\",\"date\":\"2024-10-03T00:17:47\",\"paymentId\":\"4170368513012150718\",\"receiverId\":\"645716473020416186\"},\"intentHash\":\"0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb\",\"providerHash\":\"0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04\"}",
+      "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4550365876404035370013319374327198777228946732305032418394862064756897839843\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"1.01\",\"date\":\"2025-01-06T18:21:21\",\"paymentId\":\"4239767587180066226\",\"receiverId\":\"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d\"},\"providerHash\":\"0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd\"}",
       "identifier": "0xa674f652426d77a02bcb5f4f2e58390bdb469194996280150b94c6161a1659a1",
       "epoch": 1
     };
@@ -220,20 +216,19 @@ describe("ClaimVerifier", () => {
       const values = await subject();
 
       const expectedValues = [
-        "5.00",
-        "2024-10-03T00:17:47",
-        "4170368513012150718",
-        "645716473020416186"
+        "0x0",
+        "4550365876404035370013319374327198777228946732305032418394862064756897839843",
+        "1168869611798528966",
+        "1.01",
+        "2025-01-06T18:21:21",
+        "4239767587180066226",
+        "0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d"
       ];
 
-      expect(values.length).to.equal(expectedValues.length);
-
-      for (let i = 0; i < values.length; i++) {
-        expect(values[i]).to.equal(expectedValues[i]);
-      }
+      expect(values).to.deep.equal(expectedValues);
     });
 
-    describe("when extract intent and provider hash is true", async () => {
+    describe("when extract provider hash is true", async () => {
       beforeEach(async () => {
         subjectExtractIntentAndProviderHash = true;
       });
@@ -241,40 +236,58 @@ describe("ClaimVerifier", () => {
       it("should return both hashes", async () => {
         const values = await subject();
 
-        const expectedIntentHash = "0x201e82b028debcfa4effc89d7e52d8023270ed9b1b1e99a8d2d7e1d53ca5d5fb";
-        const expectedProviderHash = "0x2c9c02c5327577be7f67a418eb97312c73b89323d1fd436e02de3510e6c8de04";
-        expect(values[values.length - 2]).to.equal(expectedIntentHash);
+        const expectedProviderHash = "0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd"
         expect(values[values.length - 1]).to.equal(expectedProviderHash);
       });
 
 
-      describe("intent hash is missing", async () => {
+      describe("when context address is missing", async () => {
         beforeEach(async () => {
-          subjectData = '{"extractedParameters":{"key1":"value1","key2":"value2"},\"otherHash\":\"0x1234\"}';
+          subjectData = '{\"contextMessage\":\"wow\",\{"extractedParameters":{"key1":"value1","key2":"value2"},\"otherHash\":\"0x1234\"}';
+        });
+
+        it("should revert with 'Extraction failed. Malformed contextAddress'", async () => {
+          await expect(subject()).to.be.revertedWith("Extraction failed. Malformed contextAddress");
+        });
+      });
+
+      describe("when context address is empty", async () => {
+        beforeEach(async () => {
+          subjectData = '{\"contextAddress\":\"\",\"contextMessage\":\"wow\",\{"extractedParameters":{"key1":"value1","key2":"value2"},\"otherHash\":\"0x1234\"}';
+        });
+
+        it("should revert with 'Extraction failed. Empty contextAddress value'", async () => {
+          await expect(subject()).to.be.revertedWith("Extraction failed. Empty contextAddress value");
+        });
+      });
+
+      describe("content message is missing", async () => {
+        beforeEach(async () => {
+          subjectData = '{\"contextAddress\":\"0x0\",\"extractedParameters\":{\"key1\":\"value1\",\"key2\":\"value2\"},\"otherHash\":\"0x1234\"}';
         });
 
         it("should revert with 'Extraction failed. Malformed data'", async () => {
-          await expect(subject()).to.be.revertedWith("Extraction failed. Malformed intentHash");
+          await expect(subject()).to.be.revertedWith("Extraction failed. Malformed contextMessage");
+        });
+      });
+
+      describe("content message is empty", async () => {
+        beforeEach(async () => {
+          subjectData = '{\"contextAddress\":\"0x0\",\"contextMessage\":\"\",\"extractedParameters\":{\"key1\":\"value1\",\"key2\":\"value2\"},\"otherHash\":\"0x1234\"}';
+        });
+
+        it("should revert with 'Extraction failed. Empty contextMessage value'", async () => {
+          await expect(subject()).to.be.revertedWith("Extraction failed. Empty contextMessage value");
         });
       });
 
       describe("provider hash is missing", async () => {
         beforeEach(async () => {
-          subjectData = '{"extractedParameters":{"key1":"value1","key2":"value2"},\"intentHash\":\"0x1234\",\"otherHash\":\"0x1234\"}';
+          subjectData = '{\"contextAddress\":\"0x0\",\"contextMessage\":\"wow\",\"extractedParameters\":{\"key1\":\"value1\",\"key2\":\"value2\"},\"otherHash\":\"0x1234\"}';
         });
 
         it("should revert with 'Extraction failed. Malformed data'", async () => {
           await expect(subject()).to.be.revertedWith("Extraction failed. Malformed providerHash");
-        });
-      });
-
-      describe("when both hashes are missing", async () => {
-        beforeEach(async () => {
-          subjectData = '{"extractedParameters":{"key1":"value1","key2":"value2"},\"otherHash\":\"0x1234\"}';
-        });
-
-        it("should revert with 'Extraction failed. Malformed intentHash'", async () => {
-          await expect(subject()).to.be.revertedWith("Extraction failed. Malformed intentHash");
         });
       });
     });
@@ -301,7 +314,7 @@ describe("ClaimVerifier", () => {
 
     describe("when the context data is malformed", async () => {
       beforeEach(async () => {
-        subjectData = '{"extractedParameters":{"key1":value1","key2":"value2"},\"providerHash\":\"0x1234\"}';
+        subjectData = '{\"contextAddress\":\"0x0\",\"contextMessage\":\"wow\",\"extractedParameters\":{\"key1:\"value1\",\"key2\":\"value2\"},\"otherHash\":\"0x1234\"}';
       });
 
       it("should revert with 'Extraction failed'", async () => {
@@ -309,19 +322,9 @@ describe("ClaimVerifier", () => {
       });
     });
 
-    describe("when the context data is malformed", async () => {
-      beforeEach(async () => {
-        subjectData = '{"extractedParameters":{"key1":"value1""key2":"value2"},\"providerHash\":\"0x1234\"}';
-      });
-
-      it("should revert with 'Extraction failed'", async () => {
-        await expect(subject()).to.be.revertedWith("Extraction failed. Malformed data 2");
-      });
-    });
-
     describe("when the context data doesn't start with '{\"extractedParameters\":{\"'", async () => {
       beforeEach(async () => {
-        subjectData = '{"wrongStart":{"key1":"value1","key2":"value2"},\"providerHash\":\"0x1234\"}';
+        subjectData = '{\"contextAddress\":\"0x0\",\"contextMessage\":\"wow\",\"wrongStart\":{\"wrongStart\":{\"key1\":\"value1\",\"key2\":\"value2\"},\"providerHash\":\"0x1234\"}';
       });
 
       it("should revert with 'Extraction failed. Malformed data", async () => {
@@ -331,12 +334,12 @@ describe("ClaimVerifier", () => {
 
     describe("when a value contains escaped quotes", async () => {
       beforeEach(async () => {
-        subjectData = '{"extractedParameters":{"key1":"value with \\"quotes\\"","key2":"normal value"},\"providerHash\":\"0x1234\"}';
+        subjectData = '{\"contextAddress\":\"0x0\",\"contextMessage\":\"wow\",\"extractedParameters\":{\"key1\":\"value with \\"quotes\\"\",\"key2\":\"normal value\"},\"providerHash\":\"0x1234\"}';
       });
 
       it("should correctly extract the value with escaped quotes", async () => {
         const values = await subject();
-        expect(values[0]).to.equal('value with \\"quotes\\"');
+        expect(values[2]).to.equal('value with \\"quotes\\"');
       });
     });
   });

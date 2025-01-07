@@ -114,8 +114,6 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
 
         require(_requiredThreshold > 0, "Required threshold must be greater than 0");
         require(_requiredThreshold <= _witnesses.length, "Required threshold must be less than or equal to number of witnesses");
-
-        // create signed claim using claimData and signature.
         require(proof.signedClaim.signatures.length > 0, "No signatures");
 
         Claims.SignedClaim memory signed = Claims.SignedClaim(
@@ -132,10 +130,19 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
         address[] memory claimSigners = Claims.recoverSignersOfSignedClaim(signed);
         require(claimSigners.length >= _requiredThreshold, "Fewer signatures than required threshold");
 
-        // Count how many signers are accepted witnesses
+        // Track unique signers using an array
+        address[] memory seenSigners = new address[](claimSigners.length);
         uint256 validWitnessSignatures;
+
+        // Count how many signers are accepted witnesses, skipping duplicates
         for (uint256 i = 0; i < claimSigners.length; i++) {
-            if (_witnesses.contains(claimSigners[i])) {
+            address currSigner = claimSigners[i];
+            if (seenSigners.contains(currSigner)) {
+                continue;
+            }
+
+            if (_witnesses.contains(currSigner)) {
+                seenSigners[validWitnessSignatures] = currSigner;
                 validWitnessSignatures++;
             }
         }

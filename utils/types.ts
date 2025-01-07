@@ -12,8 +12,8 @@ export type GrothProof = {
 export interface ReclaimProof {
   claimInfo: ClaimInfo;
   signedClaim: SignedClaim;
+  isAppclipProof: boolean;
 }
-
 
 export interface ClaimInfo {
   provider: string;

@@ -2,9 +2,10 @@
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
+import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
@@ -15,7 +16,8 @@ pragma solidity ^0.8.18;
 contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
-
+    using Bytes32ConversionUtils for bytes32;
+    
     /* ============ Structs ============ */
 
     // Struct to hold the payment details extracted from the proof
@@ -30,7 +32,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 7; 
+    uint8 internal constant MAX_EXTRACT_VALUES = 8; 
+    uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
 
     /* ============ Constructor ============ */
     constructor(
@@ -81,17 +84,21 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_proof, _depositData);
-                
+        (
+            PaymentDetails memory paymentDetails, 
+            bool isAppclipProof
+        ) = _verifyProofAndExtractValues(_proof, _depositData);
+        
         _verifyPaymentDetails(
             paymentDetails, 
             _depositToken, 
             _intentAmount, 
             _intentTimestamp, 
             _payeeDetails,
-            _conversionRate
+            _conversionRate,
+            isAppclipProof
         );
-        
+
         // Nullify the payment
         bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
         _validateAndAddNullifier(nullifier);
@@ -112,23 +119,23 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails) 
+        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
 
         // Extract verification data
-        address attester = _decodeDepositData(_depositData);
+        address[] memory witnesses = _decodeDepositData(_depositData);
 
-        address[] memory witnesses = new address[](1);
-        witnesses[0] = attester;
-        verifyProofSignatures(proof, witnesses, 1);     // claim must have at least 1 signature from witnesses
+        verifyProofSignatures(proof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
         paymentDetails = _extractValues(proof);
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
+
+        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -141,7 +148,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         uint256 _intentAmount,
         uint256 _intentTimestamp,
         string calldata _payeeDetails,
-        uint256 _conversionRate
+        uint256 _conversionRate,
+        bool _isAppclipProof
     ) internal view {
         uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
@@ -151,7 +159,18 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
+        if (_isAppclipProof) {
+            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
+            require(
+                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
+        } else {
+            require(
+                paymentDetails.recipientId.stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
+        }
         
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
@@ -159,13 +178,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     }
 
     /**
-     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the attester's address.
+     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the witnesses' addresses.
      * In case of a zkEmail proof, data contains the DKIM key hash. Can also contain additional data like currency code, etc.
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal pure returns (address attester) {
-        attester = abi.decode(_data, (address));
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
+        witnesses = abi.decode(_data, (address[]));
     }
 
     /**
@@ -181,13 +200,14 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         return PaymentDetails({
-            // values[0] is SENDER_ID
-            amountString: values[1],
-            dateString: values[2],
-            paymentId: values[3],
-            recipientId: values[4],
-            intentHash: values[5],
-            providerHash: values[6]
+            // values[0] is ContextAddress
+            intentHash: values[1],
+            // values[2] is SENDER_ID
+            amountString: values[3],
+            dateString: values[4],
+            paymentId: values[5],
+            recipientId: values[6],
+            providerHash: values[7]
         });
     }
 }

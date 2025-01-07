@@ -26,13 +26,9 @@ import {
   ClaimVerifierMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
-import {
-  ClaimVerifier__factory,
-} from "../typechain/factories/contracts/lib";
 import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
-import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -101,15 +97,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber = BigNumber.from(30),
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<VenmoReclaimVerifier> {
     return await new VenmoReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -125,15 +115,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber,
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<RevolutReclaimVerifier> {
     return await new RevolutReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -149,15 +133,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber,
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<CashappReclaimVerifier> {
     return await new CashappReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -180,10 +158,6 @@ export default class DeployHelper {
     return await new Quoter__factory(this._deployerSigner).deploy(escrow);
   }
 
-  public async deployClaimVerifier(): Promise<ClaimVerifier> {
-    return await new ClaimVerifier__factory(this._deployerSigner).deploy();
-  }
-
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
@@ -202,13 +176,7 @@ export default class DeployHelper {
     );
   }
 
-  public async deployClaimVerifierMock(libraryName: string, libraryAddress: Address): Promise<ClaimVerifierMock> {
-    return await new ClaimVerifierMock__factory(
-      // @ts-ignore
-      {
-        [libraryName]: libraryAddress,
-      },
-      this._deployerSigner
-    ).deploy();
+  public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
+    return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
   }
 }
