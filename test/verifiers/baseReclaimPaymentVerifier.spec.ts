@@ -11,7 +11,7 @@ import {
 
 import DeployHelper from "@utils/deploys";
 import { Address } from "@utils/types";
-import { NullifierRegistry, BaseReclaimPaymentVerifier, ClaimVerifier } from "@utils/contracts";
+import { NullifierRegistry, BaseReclaimPaymentVerifier } from "@utils/contracts";
 import { ADDRESS_ZERO } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
 
@@ -24,7 +24,6 @@ describe("BaseReclaimPaymentVerifier", () => {
 
   let deployer: DeployHelper;
   let providerHashes: string[];
-  let claimVerifier: ClaimVerifier;
 
   let proxyBaseProcessor: BaseReclaimPaymentVerifier;
   let nullifierRegistry: NullifierRegistry;
@@ -40,7 +39,6 @@ describe("BaseReclaimPaymentVerifier", () => {
     providerHashes = [];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    claimVerifier = await deployer.deployClaimVerifier();
     const currencies = [ethers.utils.formatBytes32String("USD")];
 
     proxyBaseProcessor = await deployer.deployBaseReclaimPaymentVerifier(

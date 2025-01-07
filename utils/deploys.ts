@@ -26,13 +26,9 @@ import {
   ClaimVerifierMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
-import {
-  ClaimVerifier__factory,
-} from "../typechain/factories/contracts/lib";
 import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
-import { ClaimVerifier } from "@typechain/contracts/lib/ClaimVerifier";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -160,10 +156,6 @@ export default class DeployHelper {
 
   public async deployQuoter(escrow: Address): Promise<Quoter> {
     return await new Quoter__factory(this._deployerSigner).deploy(escrow);
-  }
-
-  public async deployClaimVerifier(): Promise<ClaimVerifier> {
-    return await new ClaimVerifier__factory(this._deployerSigner).deploy();
   }
 
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {

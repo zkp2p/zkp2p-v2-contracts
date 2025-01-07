@@ -107,15 +107,12 @@ describe.skip("VenmoEscrow", () => {
     providerHash = "0x92da474c63ba5e4ce0b927c557dc78dfd4b6284c39c587725c41c55cf709cae5";
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    const claimVerifier = await deployer.deployClaimVerifier();
     verifier = await deployer.deployVenmoReclaimVerifier(
       ramp.address,
       nullifierRegistry.address,
       BigNumber.from(30),
       [Currency.USD],
-      [providerHash],
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifier.address
+      [providerHash]
     );
 
     await ramp.addWhitelistedPaymentVerifier(verifier.address, ZERO);
