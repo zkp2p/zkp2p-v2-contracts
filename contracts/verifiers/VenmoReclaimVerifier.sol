@@ -33,6 +33,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     /* ============ Constants ============ */
     
     uint8 internal constant MAX_EXTRACT_VALUES = 7; 
+    uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
 
     /* ============ Constructor ============ */
     constructor(
@@ -126,7 +127,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         // Extract verification data
         address[] memory witnesses = _decodeDepositData(_depositData);
 
-        verifyProofSignatures(proof, witnesses, 1);     // claim must have at least 1 signature from witnesses
+        verifyProofSignatures(proof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
         paymentDetails = _extractValues(proof);
@@ -148,7 +149,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         uint256 _intentTimestamp,
         string calldata _payeeDetails,
         uint256 _conversionRate,
-        bool isAppclipProof
+        bool _isAppclipProof
     ) internal view {
         uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
@@ -158,12 +159,18 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        if (isAppclipProof) {
+        if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
             string memory hashedRecipientIdString = hashedRecipientId.toHexString();
-            require(hashedRecipientIdString.stringComparison(_payeeDetails), "Incorrect payment recipient");
+            require(
+                hashedRecipientIdString.stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
         } else {
-            require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
+            require(
+                paymentDetails.recipientId.stringComparison(_payeeDetails), 
+                "Incorrect payment recipient"
+            );
         }
         
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps

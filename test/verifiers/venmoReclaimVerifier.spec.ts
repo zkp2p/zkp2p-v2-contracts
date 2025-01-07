@@ -60,7 +60,7 @@ const venmoAppclipProof = {
   }
 };
 
-describe.only("VenmoReclaimVerifier", () => {
+describe("VenmoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -217,6 +217,7 @@ describe.only("VenmoReclaimVerifier", () => {
 
         expect(verified).to.be.true;
 
+        // TODO: INSERT INTENT HASH IN APPCLIP PROOFS
         // expect(intentHash).to.eq(BigNumber.from('4550365876404035370013319374327198777228946732305032418394862064756897839843').toHexString());
       });
     });
