@@ -76,6 +76,10 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.SGD,
 ];
 
+export const REVOLUT_APPCLIP_PROVIDER_HASHES = [
+  "0x1aab313df15d1b43710e53ed95b1b6118305aa9312f28b747c6c16cf574fb616"
+]
+
 export const REVOLUT_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
 export const REVOLUT_RECLAIM_FEE_SHARE = BigNumber.from(30);  // 30% of sustainability fee

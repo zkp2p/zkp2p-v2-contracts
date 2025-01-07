@@ -19,6 +19,7 @@ import {
   VENMO_RECLAIM_CURRENCIES,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
   VENMO_RECLAIM_FEE_SHARE,
+  VENMO_APPCLIP_PROVIDER_HASHES,
 } from "../deployments/verifiers/venmo_reclaim";
 
 // Deployment Scripts
@@ -34,7 +35,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   // Venmo only returns 10 stories at a time
-  const hashes = await getVenmoReclaimProviderHashes(10);
+  const extensionProviderHashes = await getVenmoReclaimProviderHashes(10);
+  const appclipProviderHashes = VENMO_APPCLIP_PROVIDER_HASHES;
+  const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const venmoVerifier = await deploy("VenmoReclaimVerifier", {
     from: deployer,
     args: [
@@ -42,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       nullifierRegistryAddress,
       VENMO_RECLAIM_TIMESTAMP_BUFFER,
       VENMO_RECLAIM_CURRENCIES,
-      hashes,
+      providerHashes,
     ],
   });
   console.log("VenmoReclaimVerifier deployed at", venmoVerifier.address);
