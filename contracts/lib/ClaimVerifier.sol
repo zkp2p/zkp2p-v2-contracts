@@ -2,17 +2,22 @@
 pragma solidity ^0.8.18;
 
 library ClaimVerifier {
-    // Pull repeated string constants out of the function to reduce locals
+    
+    /* ============ Constants ============ */
+
     bytes constant CONTEXT_ADDRESS_BYTES      = bytes("{\"contextAddress\":\"");
     bytes constant CONTEXT_MESSAGE_BYTES      = bytes("\"contextMessage\":\"");
     bytes constant EXTRACTED_PARAMETERS_BYTES = bytes("\"extractedParameters\":{\"");
     bytes constant PROVIDER_HASH_PARAM_BYTES  = bytes("\"providerHash\":\"");
+
+    /* ============ Internal Functions ============ */
 
     /**
      * Find the end index of target string in the data string. Returns the end index + 1 if
      * the target string in the data string if found. Returns type(uint256).max if:
      * - Target is longer than data
      * - Target is not found
+     * Parts of the code are adapted from: https://basescan.org/address/0x7281630e4346dd4c0b7ae3b4689c1d0102741410#code
      */
     function findSubstringEndIndex(
         string memory data,
@@ -40,16 +45,22 @@ library ClaimVerifier {
     }
 
     /**
-     * Extracts a single field from a JSON-like context using prefix. 
+     * Extracts given target field value from context in claims. Extracts only ONE value.
+     * Pass prefix formatted with quotes, for example '"providerHash\":\"'
+     * Parts of the code are adapted from: https://basescan.org/address/0x7281630e4346dd4c0b7ae3b4689c1d0102741410#code
+     *
+     * @param data      Context string from which target value needs to be extracted
+     * @param prefix    Prefix of the target value that needs to be extracted            
      */
     function extractFieldFromContext(
         string memory data,
         string memory prefix
     ) internal pure returns (string memory) {
+        // Find end index of prefix; which is the start index of the value
         uint256 start = findSubstringEndIndex(data, prefix);
         bytes memory dataBytes = bytes(data);
         if (start == dataBytes.length) {
-            return ""; 
+            return ""; // Prefix not found. Malformed or missing message
         }
 
         // Find the end of the VALUE, assuming it ends with a quote not preceded by a backslash
@@ -61,7 +72,7 @@ library ClaimVerifier {
             end++;
         }
         if (end <= start) {
-            return "";
+            return ""; // Malformed or missing message
         }
         bytes memory contextMessage = new bytes(end - start);
         for (uint i = start; i < end; i++) {
@@ -71,9 +82,17 @@ library ClaimVerifier {
     }
 
     /**
-     * Extracts multiple values from serialized JSON.  
-     * - maxValues: maximum # of values from `extractedParameters` you want to allow.  
-     * - extractIntentAndProviderHash: if true, parse out providerHash.  
+     * Extracts ALL values from context in a single pass. Context is stored as serialized JSON string with 
+     * two keys: extractedParameters and providerHash. ExtractedParameters itself is a JSON string with 
+     * key-value pairs. This function returns extracted individual values from extractedParameters along 
+     * with providerHash (if extractProviderHash is true). Use maxValues to limit the number of expected values
+     * to be extracted from extractedParameters. In most cases, one would need to extract all values from
+     * extractedParameters and providerHash, hence use this function over calling extractFieldFromContext 
+     * multiple times.
+     * 
+     * @param data                  Context string from which target value needs to be extracted
+     * @param maxValues             Maximum number of values to be extracted from extractedParameters including intentHash and providerHash
+     * @param extractIntentAndProviderHash Extracts and returns intentHash and providerHash if true
      */
     function extractAllFromContext(
         string memory data,
@@ -83,19 +102,17 @@ library ClaimVerifier {
         require(maxValues > 0, "Max values must be greater than 0");
 
         bytes memory dataBytes = bytes(data);
-        // We'll reuse these variables to avoid "stack too deep"
+        
+        // Reuse variables to avoid "stack too deep"
         uint index = 0;
         uint valuesFound = 0;
         uint startIndex;
         uint endIndex;
         bool isValue;
 
-        // Pre-allocate memory to store [start,end] index pairs for each extracted value
         uint[] memory valueIndices = new uint[](2 * maxValues);
 
-        //
-        // 1) Verify and skip past: {"contextAddress":"
-        //
+        // Extract context address
         for (uint i = 0; i < CONTEXT_ADDRESS_BYTES.length; i++) {
             require(
                 dataBytes[index + i] == CONTEXT_ADDRESS_BYTES[i],
@@ -104,7 +121,7 @@ library ClaimVerifier {
         }
         index += CONTEXT_ADDRESS_BYTES.length;
 
-        // 2) Extract actual contextAddress
+        // Extract context address value if it exists
         startIndex = index;
         while (
             index < dataBytes.length &&
@@ -120,12 +137,9 @@ library ClaimVerifier {
         valueIndices[2 * valuesFound] = startIndex;
         valueIndices[2 * valuesFound + 1] = endIndex;
         valuesFound++;
-        // Skip `","`
-        index += 2; 
+        index += 2; // move past the closing quote and comma
 
-        //
-        // 3) Verify and skip: "contextMessage":"
-        //
+        // Extract context message
         for (uint i = 0; i < CONTEXT_MESSAGE_BYTES.length; i++) {
             require(
                 dataBytes[index + i] == CONTEXT_MESSAGE_BYTES[i],
@@ -134,7 +148,7 @@ library ClaimVerifier {
         }
         index += CONTEXT_MESSAGE_BYTES.length;
 
-        // 4) Extract actual contextMessage
+        // Extract context message value if it exists
         startIndex = index;
         while (
             index < dataBytes.length &&
@@ -150,12 +164,8 @@ library ClaimVerifier {
         valueIndices[2 * valuesFound] = startIndex;
         valueIndices[2 * valuesFound + 1] = endIndex;
         valuesFound++;
-        // Skip `","`
-        index += 2;
+        index += 2; // move past the closing quote and comma
 
-        //
-        // 5) Verify and skip: "extractedParameters":{
-        //
         for (uint i = 0; i < EXTRACTED_PARAMETERS_BYTES.length; i++) {
             require(
                 dataBytes[index + i] == EXTRACTED_PARAMETERS_BYTES[i],
@@ -163,57 +173,49 @@ library ClaimVerifier {
             );
         }
         index += EXTRACTED_PARAMETERS_BYTES.length;
-        isValue = false;
+        isValue = false; // starts with a key right after '{\"extractedParameters\":{\"'
 
-        //
-        // 6) Loop through extractedParameters
-        //
         while (index < dataBytes.length) {
-            // Not a quote or is an escaped quote? Just keep moving.
+            // Keep incrementing until '"', escaped quotes are not considered
             if (!(dataBytes[index] == '"' && dataBytes[index - 1] != "\\")) {
                 index++;
                 continue;
             }
             if (!isValue) {
-                // Next should be :"
+                // \":\" (3 chars)
                 require(
                     dataBytes[index + 1] == ":" && dataBytes[index + 2] == '"',
                     "Extraction failed. Malformed data 1"
                 );
-                // Move index after `:\"`
-                index += 3;
+                index += 3; // move it after \"
                 isValue = true;
                 // Mark start
-                valueIndices[2 * valuesFound] = index;
+                valueIndices[2 * valuesFound] = index; // start index
             } else {
-                // We expect either `",` or "\"},`
+                // \",\" (3 chars) or \"}, (3 chars)
+                // \"}} is not supported, there should always be a providerHash
                 bool commaThenQuote = (dataBytes[index + 1] == "," && dataBytes[index + 2] == '"');
                 bool braceThenComma = (dataBytes[index + 1] == '}' && dataBytes[index + 2] == ",");
                 require(
                     commaThenQuote || braceThenComma,
                     "Extraction failed. Malformed data 2"
                 );
-                // Mark end
-                valueIndices[2 * valuesFound + 1] = index;
+                valueIndices[2 * valuesFound + 1] = index; // end index
                 valuesFound++;
 
-                // If we got a comma, there is another pair. If brace, we are done with extractedParams.
+                // Revert if valuesFound == maxValues and next char is a comma as there will be more values
                 if (commaThenQuote) {
-                    // If we've hit the max, no more
+                    // Revert if valuesFound == maxValues and next char is a comma as there will be more values
                     require(valuesFound != maxValues, "Extraction failed. Exceeded max values");
                     index += 3;
                     isValue = false;
-                } else {
-                    // Move past "}, and break
+                } else { // index + 1 = "}"
                     index += 3;
-                    break;
+                    break; // end of extractedParameters
                 }
             }
         }
 
-        //
-        // 7) If required, parse providerHash
-        //
         if (extractIntentAndProviderHash) {
             for (uint i = 0; i < PROVIDER_HASH_PARAM_BYTES.length; i++) {
                 require(
@@ -223,9 +225,9 @@ library ClaimVerifier {
             }
             index += PROVIDER_HASH_PARAM_BYTES.length;
 
-            // Mark start
+            // final indices tuple in valueIndices will be for star and end indices of provider hash
             valueIndices[2 * valuesFound] = index;
-            // Move until next unescaped quote
+            // Keep incrementing until '"'
             while (index < dataBytes.length && dataBytes[index] != '"') {
                 index++;
             }
@@ -233,9 +235,6 @@ library ClaimVerifier {
             valuesFound++;
         }
 
-        //
-        // 8) Build return array
-        //
         string[] memory values = new string[](valuesFound);
         for (uint i = 0; i < valuesFound; i++) {
             startIndex = valueIndices[2 * i];
