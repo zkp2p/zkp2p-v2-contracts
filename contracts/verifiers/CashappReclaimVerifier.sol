@@ -34,7 +34,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 9;
+    uint8 internal constant MAX_EXTRACT_VALUES = 10;
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
@@ -74,15 +74,11 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        (
-            PaymentDetails memory paymentDetails,
-            bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
                 
         _verifyPaymentDetails(
             paymentDetails, 
-            _verifyPaymentData,
-            isAppclipProof
+            _verifyPaymentData
         );
         
         // Nullify the payment
@@ -104,13 +100,15 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
+        returns (PaymentDetails memory paymentDetails) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
 
         // Extract verification data
-        address[] memory witnesses = _decodeDepositData(_depositData);
+        address attester = _decodeDepositData(_depositData);
+        address[] memory witnesses = new address[](1);
+        witnesses[0] = attester;
         verifyProofSignatures(proof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
@@ -118,8 +116,6 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
-
-        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -130,8 +126,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        VerifyPaymentData memory _verifyPaymentData,
-        bool _isAppclipProof
+        VerifyPaymentData memory _verifyPaymentData
     ) internal view {
         uint256 expectedAmount = _verifyPaymentData.amount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
@@ -141,18 +136,10 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        if (_isAppclipProof) {
-            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
-            require(
-                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        } else {
-            require(
-                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        }
+        require(
+            paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
+            "Incorrect payment recipient"
+        );
         
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps
@@ -178,8 +165,8 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
-        witnesses = abi.decode(_data, (address[]));
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address attester) {
+        attester = abi.decode(_data, (address));
     }
 
     /**
@@ -195,16 +182,14 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         );
 
         return PaymentDetails({
-            // values[0] is ContextAddress
-            intentHash: values[1],
-            // values[2] is SENDER_ID
-            amountString: values[3],
-            currencyCode: values[4],
-            timestampString: values[5],
-            paymentId: values[6],
-            recipientId: values[7],
-            paymentStatus: values[8],
-            providerHash: values[9]
+            amountString: values[0],
+            timestampString: values[1],
+            currencyCode: values[2],
+            paymentId: values[3],
+            paymentStatus: values[4],
+            recipientId: values[5],
+            intentHash: values[6],
+            providerHash: values[7]
         });
     }
 
