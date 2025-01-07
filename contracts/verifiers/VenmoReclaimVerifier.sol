@@ -60,23 +60,10 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
-     * @param _proof            Proof to be verified
-     * @param _depositToken     The deposit token locked in escrow
-     * @param _intentAmount     Amount of deposit.token that the offchain payer wants to unlock from escrow
-     * @param _intentTimestamp  The timestamp at which intent was created. Offchain payment must be made after this time.
-     * @param _payeeDetails     The payee details (hash of the payee's Venmo ID or just raw Venmo ID; compared to recipientId in proof)
-     * @param _conversionRate   The conversion rate for the deposit token to offchain USD
-     * @param _depositData      Additional data required for proof verification. In this case, the attester's address.
+     * @param _verifyPaymentData The data to verify the payment with.
      */
     function verifyPayment(
-        bytes calldata _proof,
-        address _depositToken,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        bytes32 /*_fiatCurrency*/,
-        uint256 _conversionRate,
-        bytes calldata _depositData
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
@@ -87,15 +74,11 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         (
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_proof, _depositData);
-        
+        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+                
         _verifyPaymentDetails(
             paymentDetails, 
-            _depositToken, 
-            _intentAmount, 
-            _intentTimestamp, 
-            _payeeDetails,
-            _conversionRate,
+            _verifyPaymentData,
             isAppclipProof
         );
 
@@ -144,15 +127,11 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        address _depositToken,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        uint256 _conversionRate,
+        VerifyPaymentData memory _verifyPaymentData,
         bool _isAppclipProof
     ) internal view {
-        uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
-        uint8 decimals = IERC20Metadata(_depositToken).decimals();
+        uint256 expectedAmount = _verifyPaymentData.amount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
@@ -162,19 +141,19 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
             require(
-                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
+                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
                 "Incorrect payment recipient"
             );
         } else {
             require(
-                paymentDetails.recipientId.stringComparison(_payeeDetails), 
+                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
                 "Incorrect payment recipient"
             );
         }
         
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
-        require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
+        require(paymentTimestamp >= _verifyPaymentData.timestamp, "Incorrect payment timestamp");
     }
 
     /**

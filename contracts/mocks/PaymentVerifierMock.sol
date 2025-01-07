@@ -59,27 +59,20 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
 
 
     function verifyPayment(
-        bytes calldata _proof,
-        address /*_depositToken*/,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
-        bytes calldata /*_data*/
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external
         view 
         override
         returns (bool, bytes32)
     {
-        PaymentDetails memory paymentDetails = _extractPaymentDetails(_proof);
+        PaymentDetails memory paymentDetails = _extractPaymentDetails(_verifyPaymentData.paymentProof);
 
         if (shouldVerifyPayment) {
-            require(paymentDetails.timestamp >= _intentTimestamp, "Payment timestamp is before intent timestamp");
-            require(paymentDetails.amount >= (_intentAmount * PRECISE_UNIT) / _conversionRate, "Payment amount is less than intent amount");
-            require(paymentDetails.offRamperId.stringComparison(_payeeDetails), "Payment offramper does not match intent relayer");
-            require(paymentDetails.fiatCurrency == _fiatCurrency, "Payment fiat currency does not match intent fiat currency");
+            require(paymentDetails.timestamp >= _verifyPaymentData.timestamp, "Payment timestamp is before intent timestamp");
+            require(paymentDetails.amount >= (_verifyPaymentData.amount * PRECISE_UNIT) / _verifyPaymentData.conversionRate, "Payment amount is less than intent amount");
+            require(paymentDetails.offRamperId.stringComparison(_verifyPaymentData.payeeDetails), "Payment offramper does not match intent relayer");
+            require(paymentDetails.fiatCurrency == _verifyPaymentData.fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
         if (shouldReturnFalse) {
