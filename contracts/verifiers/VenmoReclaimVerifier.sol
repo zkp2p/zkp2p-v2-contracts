@@ -141,11 +141,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
             require(
-<<<<<<< Updated upstream
-                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
-=======
-                hashedRecipientIdString.stringComparison(_verifyPaymentData.payeeDetails), 
->>>>>>> Stashed changes
+                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
                 "Incorrect payment recipient"
             );
         } else {
