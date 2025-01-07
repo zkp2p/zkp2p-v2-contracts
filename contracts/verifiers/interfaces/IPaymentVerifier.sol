@@ -6,16 +6,25 @@ import { IBasePaymentVerifier } from "./IBasePaymentVerifier.sol";
 
 interface IPaymentVerifier is IBasePaymentVerifier {
 
+    /* ============ Structs ============ */
+
+    struct VerifyPaymentData {
+        bytes paymentProof;                     // Payment proof
+        address depositToken;                   // Address of deposit token
+        uint256 amount;                         // Amount of deposit token
+        uint256 timestamp;                      // Timestamp of payment
+        string payeeDetails;                    // Payee details
+        bytes32 fiatCurrency;                   // Fiat currency
+        uint256 conversionRate;                 // Conversion rate of deposit token to fiat currency
+        bytes data;                             // Additional data
+    }
+
+    /* ============ External Functions ============ */
+
     function verifyPayment(
-        bytes calldata _proof,
-        address _depositToken,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
-        bytes calldata _data
+        VerifyPaymentData calldata _verifyPaymentData
     )   
-        external returns(bool success, bytes32 intentHash);
+        external
+        returns(bool success, bytes32 intentHash);
 
 }

@@ -144,29 +144,29 @@ describe("RevolutReclaimVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await verifier.connect(subjectCaller.wallet).verifyPayment(
-        subjectProof,
-        subjectDepositToken,
-        subjectIntentAmount,
-        subjectIntentTimestamp,
-        subjectPayeeDetailsHash,
-        subjectFiatCurrency,
-        subjectConversionRate,
-        subjectData
-      );
+      return await verifier.connect(subjectCaller.wallet).verifyPayment({
+        paymentProof: subjectProof,
+        depositToken: subjectDepositToken,
+        amount: subjectIntentAmount,
+        timestamp: subjectIntentTimestamp,
+        payeeDetails: subjectPayeeDetailsHash,
+        fiatCurrency: subjectFiatCurrency,
+        conversionRate: subjectConversionRate,
+        data: subjectData
+      });
     }
 
     async function subjectCallStatic(): Promise<[boolean, string]> {
-      return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment(
-        subjectProof,
-        subjectDepositToken,
-        subjectIntentAmount,
-        subjectIntentTimestamp,
-        subjectPayeeDetailsHash,
-        subjectFiatCurrency,
-        subjectConversionRate,
-        subjectData
-      );
+      return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
+        paymentProof: subjectProof,
+        depositToken: subjectDepositToken,
+        amount: subjectIntentAmount,
+        timestamp: subjectIntentTimestamp,
+        payeeDetails: subjectPayeeDetailsHash,
+        fiatCurrency: subjectFiatCurrency,
+        conversionRate: subjectConversionRate,
+        data: subjectData
+      });
     }
 
     it("should verify the proof", async () => {

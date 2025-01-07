@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, BytesLike } from "ethers";
 
 export type Address = string;
 

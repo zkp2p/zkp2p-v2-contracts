@@ -13,7 +13,7 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
+contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
     using Bytes32ConversionUtils for bytes32;
@@ -36,7 +36,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     
     uint8 internal constant MAX_EXTRACT_VALUES = 9;
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
-    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETED"));
+    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETE"));
 
     /* ============ Constructor ============ */
     
@@ -61,7 +61,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Revolut payment. Ensures the right _intentAmount * _conversionRate
      * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Revolut.
-     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
+     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETE.
      *
      * @param _verifyPaymentData The data to verify the payment with.
      */
@@ -75,7 +75,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         require(msg.sender == escrow, "Only escrow can call");
 
         (
-            PaymentDetails memory paymentDetails, 
+            PaymentDetails memory paymentDetails,
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
                 
@@ -88,7 +88,9 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
+
+        return (true, intentHash);
     }
 
     /* ============ Internal Functions ============ */
@@ -109,7 +111,6 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
         // Extract verification data
         address[] memory witnesses = _decodeDepositData(_depositData);
-
         verifyProofSignatures(proof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);     // claim must have at least 1 signature from witnesses
         
         // Extract public values
@@ -196,12 +197,13 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
+            // values[2] is SENDER_ID
             amountString: values[2],
-            timestampString: values[3],
-            currencyCode: values[4],
+            currencyCode: values[3],
+            timestampString: values[4],
             paymentId: values[5],
-            paymentStatus: values[6],
-            recipientId: values[7],
+            recipientId: values[6],
+            paymentStatus: values[7],
             providerHash: values[8]
         });
     }
@@ -213,10 +215,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      * @param _decimals The decimals of the token.
      */
     function _parseAmount(string memory _amount, uint8 _decimals) internal pure returns(uint256) {
-        // For send transactions, the amount is prefixed with a '-' character, if the character doesn't exist then
-        // it would be a receive transaction
-        require(bytes(_amount)[0] == 0x2D, "Not a send transaction");   
-        // Revolut amount is scaled by 100 (e.g. 20064 => 200.64)
+        // Cashapp amount is scaled by 100 (e.g. $1 => 100)
         return _amount.stringToUint(_decimals - 2);
     }
 }
