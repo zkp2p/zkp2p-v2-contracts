@@ -2,7 +2,9 @@ import { utils } from 'ethers';
 import canonicalize from 'canonicalize';
 
 import { ClaimInfo, CompleteClaimData } from './types';
-import { ethers } from 'hardhat';
+import { ethers } from 'ethers';
+import { BigNumber } from 'ethers';
+import { ReclaimProof } from './types';
 
 /**
  * Creates the standard string to sign for a claim.
@@ -58,3 +60,33 @@ export function convertSignatureToHex(signature: { [key: string]: number }): str
 	const byteArray = Object.values(signature);
 	return '0x' + Buffer.from(byteArray).toString('hex');
 }
+
+
+export const parseExtensionProof = (proofObject: any, isAppclipProof: boolean) => {
+	return {
+		claimInfo: {
+			provider: proofObject.claim.provider,
+			parameters: proofObject.claim.parameters,
+			context: proofObject.claim.context
+		},
+		signedClaim: {
+			claim: {
+				identifier: proofObject.claim.identifier,
+				owner: proofObject.claim.owner,
+				timestampS: BigNumber.from(proofObject.claim.timestampS),
+				epoch: BigNumber.from(proofObject.claim.epoch)
+			},
+			signatures: [convertSignatureToHex(proofObject.signatures.claimSignature)]
+		},
+		isAppclipProof: isAppclipProof
+	} as ReclaimProof;
+};
+
+
+export const encodeProof = (proof: ReclaimProof) => {
+	const PROOF_ENCODING_STRING = "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim, bool isAppclipProof)";
+	return ethers.utils.defaultAbiCoder.encode(
+		[PROOF_ENCODING_STRING],
+		[proof]
+	);
+};

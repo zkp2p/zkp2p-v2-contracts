@@ -2,9 +2,10 @@
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
+import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
@@ -15,7 +16,8 @@ pragma solidity ^0.8.18;
 contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
-
+    using Bytes32ConversionUtils for bytes32;
+    
     /* ============ Structs ============ */
 
     // Struct to hold the payment details extracted from the proof
@@ -81,7 +83,10 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_proof, _depositData);
+        (
+            PaymentDetails memory paymentDetails, 
+            bool isAppclipProof
+        ) = _verifyProofAndExtractValues(_proof, _depositData);
                 
         _verifyPaymentDetails(
             paymentDetails, 
@@ -89,7 +94,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             _intentAmount, 
             _intentTimestamp, 
             _payeeDetails,
-            _conversionRate
+            _conversionRate,
+            isAppclipProof
         );
         
         // Nullify the payment
@@ -112,7 +118,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails) 
+        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
@@ -129,6 +135,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
+
+        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -141,7 +149,8 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         uint256 _intentAmount,
         uint256 _intentTimestamp,
         string calldata _payeeDetails,
-        uint256 _conversionRate
+        uint256 _conversionRate,
+        bool isAppclipProof
     ) internal view {
         uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_depositToken).decimals();
@@ -151,7 +160,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
+        if (isAppclipProof) {
+            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
+            string memory hashedRecipientIdString = hashedRecipientId.toHexString();
+            require(hashedRecipientIdString.stringComparison(_payeeDetails), "Incorrect payment recipient");
+        } else {
+            require(paymentDetails.recipientId.stringComparison(_payeeDetails), "Incorrect payment recipient");
+        }
         
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
@@ -164,7 +179,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal pure returns (address attester) {
+    function _decodeDepositData(bytes calldata _data) internal view returns (address attester) {
         attester = abi.decode(_data, (address));
     }
 
@@ -173,7 +188,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _proof The proof containing the context to extract values from.
      */
-    function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
+    function _extractValues(ReclaimProof memory _proof) internal view returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
             MAX_EXTRACT_VALUES, 
@@ -181,12 +196,12 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         return PaymentDetails({
-            // values[0] is SENDER_ID
-            amountString: values[1],
-            dateString: values[2],
-            paymentId: values[3],
-            recipientId: values[4],
-            intentHash: values[5],
+            intentHash: values[0],
+            // values[1] is SENDER_ID
+            amountString: values[2],
+            dateString: values[3],
+            paymentId: values[4],
+            recipientId: values[5],
             providerHash: values[6]
         });
     }

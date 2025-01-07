@@ -1,7 +1,5 @@
 //SPDX-License-Identifier: MIT
 
-import { Claims } from "../external/Claims.sol";
-
 pragma solidity ^0.8.18;
 
 
@@ -105,17 +103,39 @@ library ClaimVerifier {
 
         bytes memory dataBytes = bytes(data);
         uint index = 0;
+        uint valuesFound = 0;
+        uint[] memory valueIndices = new uint[](2 * maxValues);
 
-        bytes memory extractedParametersBytes = bytes('{\"extractedParameters\":{\"');
+        // Extract context address
+        bytes memory contextAddressBytes = bytes('{\"contextAddress\":\"\",');
+        for (uint i = 0; i < contextAddressBytes.length; i++) {
+            require(dataBytes[index + i] == contextAddressBytes[i], "Extraction failed. Malformed contextAddress");
+        }
+        index += contextAddressBytes.length;
+
+        // Extract context message
+        bytes memory contextMessageBytes = bytes('\"contextMessage\":\"');
+        for (uint i = 0; i < contextMessageBytes.length; i++) {
+            require(dataBytes[index + i] == contextMessageBytes[i], "Extraction failed. Malformed contextMessage");
+        }
+        index += contextMessageBytes.length;
+        
+        valueIndices[2 * valuesFound] = index;
+        while (index < dataBytes.length && !(dataBytes[index] == '"' && dataBytes[index - 1] != "\\")) {
+            index++;
+        }
+        require(index < dataBytes.length, "Extraction failed. Malformed context message");
+        valueIndices[2 * valuesFound + 1] = index;
+        valuesFound++;
+        index += 2;     // move past the closing quote and comma
+
+        bytes memory extractedParametersBytes = bytes('\"extractedParameters\":{\"');
         for (uint i = 0; i < extractedParametersBytes.length; i++) {
             require(dataBytes[index + i] == extractedParametersBytes[i], "Extraction failed. Malformed extractedParameters");
         }
         index += extractedParametersBytes.length;
 
         bool isValue = false;       // starts with a key right after '{\"extractedParameters\":{\"'
-        uint valuesFound = 0;
-    
-        uint[] memory valueIndices = new uint[](2 * maxValues);
 
         while (
             index < dataBytes.length
@@ -156,26 +176,6 @@ library ClaimVerifier {
         }
 
         if (extractIntentAndProviderHash) {
-            bytes memory intentHashParamBytes = bytes("\"intentHash\":\"");
-            for (uint i = 0; i < intentHashParamBytes.length; i++) {
-                require(dataBytes[index + i] == intentHashParamBytes[i], "Extraction failed. Malformed intentHash");
-            }
-            index += intentHashParamBytes.length;
-            
-            // Store start index for intentHash value
-            valueIndices[2 * valuesFound] = index;
-            // Keep incrementing until '"'
-            while (
-                index < dataBytes.length && dataBytes[index] != '"'
-            ) {
-                index++;
-            }
-            valueIndices[2 * valuesFound + 1] = index;
-            valuesFound++;
-            
-            // Move past the ,
-            index += 2;
-
             bytes memory providerHashParamBytes = bytes("\"providerHash\":\"");
             for (uint i = 0; i < providerHashParamBytes.length; i++) {
                 require(dataBytes[index + i] == providerHashParamBytes[i], "Extraction failed. Malformed providerHash");
