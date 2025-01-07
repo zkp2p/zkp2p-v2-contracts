@@ -62,15 +62,9 @@ describe("CashAppReclaimVerifier Deployment", () => {
     escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
 
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
-    const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
     const cashappReclaimVerifierAddress = getDeployedContractAddress(network, "CashAppReclaimVerifier");
-    cashappReclaimVerifier = new CashappReclaimVerifier__factory(
-      {
-        "contracts/lib/ClaimVerifier.sol:ClaimVerifier": claimVerifierAddress,
-      },
-      deployer.wallet,
-    ).attach(cashappReclaimVerifierAddress);
+    cashappReclaimVerifier = new CashappReclaimVerifier__factory(deployer.wallet).attach(cashappReclaimVerifierAddress);
 
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
   });

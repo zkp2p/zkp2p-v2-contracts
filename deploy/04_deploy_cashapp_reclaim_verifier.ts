@@ -30,15 +30,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
-  const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
   // Cashapp page size is 15
   const hashes = await getCashappReclaimProviderHashes(15);
   const cashappVerifier = await deploy("CashappReclaimVerifier", {
     from: deployer,
-    libraries: {
-      ClaimVerifier: claimVerifierAddress,
-    },
     args: [
       escrowAddress,
       nullifierRegistryAddress,

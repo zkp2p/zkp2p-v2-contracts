@@ -62,15 +62,9 @@ describe("VenmoReclaimVerifier Deployment", () => {
     escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
 
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
-    const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
     const venmoReclaimVerifierAddress = getDeployedContractAddress(network, "VenmoReclaimVerifier");
-    venmoReclaimVerifier = new VenmoReclaimVerifier__factory(
-      {
-        "contracts/lib/ClaimVerifier.sol:ClaimVerifier": claimVerifierAddress,
-      },
-      deployer.wallet,
-    ).attach(venmoReclaimVerifierAddress);
+    venmoReclaimVerifier = new VenmoReclaimVerifier__factory(deployer.wallet).attach(venmoReclaimVerifierAddress);
 
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
   });

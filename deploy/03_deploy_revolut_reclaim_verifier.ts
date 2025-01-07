@@ -32,15 +32,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
-  const claimVerifier = await ethers.getContractAt("ClaimVerifier", getDeployedContractAddress(network, "ClaimVerifier"));
+
 
   // Revolut returns 20 transactions at a time
   const hashes = await getRevolutReclaimProviderHashes(20);
   const revolutVerifier = await deploy("RevolutReclaimVerifier", {
     from: deployer,
-    libraries: {
-      ClaimVerifier: claimVerifier.address,
-    },
     args: [
       escrowAddress,
       nullifierRegistryAddress,

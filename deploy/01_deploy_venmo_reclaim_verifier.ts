@@ -33,20 +33,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
-  // Deploy ClaimVerifier
-  const claimVerifier = await deploy("ClaimVerifier", {
-    from: deployer,
-    args: [],
-  });
-  console.log("ClaimVerifier deployed at", claimVerifier.address);
-
   // Venmo only returns 10 stories at a time
   const hashes = await getVenmoReclaimProviderHashes(10);
   const venmoVerifier = await deploy("VenmoReclaimVerifier", {
     from: deployer,
-    libraries: {
-      ClaimVerifier: claimVerifier.address,
-    },
     args: [
       escrowAddress,
       nullifierRegistryAddress,

@@ -62,15 +62,9 @@ describe("RevolutReclaimVerifier Deployment", () => {
     escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
 
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
-    const claimVerifierAddress = getDeployedContractAddress(network, "ClaimVerifier");
 
     const revolutReclaimVerifierAddress = getDeployedContractAddress(network, "RevolutReclaimVerifier");
-    revolutReclaimVerifier = new RevolutReclaimVerifier__factory(
-      {
-        "contracts/lib/ClaimVerifier.sol:ClaimVerifier": claimVerifierAddress,
-      },
-      deployer.wallet,
-    ).attach(revolutReclaimVerifierAddress);
+    revolutReclaimVerifier = new RevolutReclaimVerifier__factory(deployer.wallet).attach(revolutReclaimVerifierAddress);
 
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
   });
