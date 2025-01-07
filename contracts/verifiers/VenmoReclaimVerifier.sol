@@ -184,7 +184,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _data The data to extract the verification data from.
      */
-    function _decodeDepositData(bytes calldata _data) internal view returns (address[] memory witnesses) {
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
         witnesses = abi.decode(_data, (address[]));
     }
 
@@ -193,7 +193,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _proof The proof containing the context to extract values from.
      */
-    function _extractValues(ReclaimProof memory _proof) internal view returns (PaymentDetails memory paymentDetails) {
+    function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
             MAX_EXTRACT_VALUES, 

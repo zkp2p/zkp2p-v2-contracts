@@ -15,7 +15,7 @@ library ClaimVerifier {
     function findSubstringEndIndex(
         string memory data,
         string memory target
-    ) public pure returns (uint256) {
+    ) internal pure returns (uint256) {
         bytes memory dataBytes = bytes(data);
         bytes memory targetBytes = bytes(target);
 
@@ -53,7 +53,7 @@ library ClaimVerifier {
     function extractFieldFromContext(
         string memory data,
         string memory prefix
-    ) public pure returns (string memory) {
+    ) internal pure returns (string memory) {
         // Find end index of prefix; which is the start index of the value
         uint256 start = findSubstringEndIndex(data, prefix);
 
@@ -98,7 +98,7 @@ library ClaimVerifier {
         string memory data,
         uint8 maxValues,
         bool extractIntentAndProviderHash
-    ) public pure returns (string[] memory) {
+    ) internal pure returns (string[] memory) {
         require(maxValues > 0, "Max values must be greater than 0");
 
         bytes memory dataBytes = bytes(data);

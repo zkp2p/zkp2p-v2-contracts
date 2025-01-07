@@ -33,11 +33,7 @@ describe("ClaimVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     witnessAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'    // hardhat 0
 
-    const claimVerifierLib = await deployer.deployClaimVerifier();
-    claimVerifier = await deployer.deployClaimVerifierMock(
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifierLib.address
-    );
+    claimVerifier = await deployer.deployClaimVerifierMock();
   });
 
   describe("#findSubstringEndIndex", async () => {

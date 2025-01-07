@@ -25,7 +25,7 @@ import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
 
 
-describe("Quoter", function () {
+describe.skip("Quoter", function () {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;

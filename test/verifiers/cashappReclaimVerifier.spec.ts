@@ -64,15 +64,12 @@ describe("CashappReclaimVerifier", () => {
     providerHashes = ["0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    const claimVerifier = await deployer.deployClaimVerifier();
     verifier = await deployer.deployCashappReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
       [Currency.USD],
-      providerHashes,
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifier.address
+      providerHashes
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);

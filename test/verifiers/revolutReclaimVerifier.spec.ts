@@ -90,15 +90,12 @@ describe("RevolutReclaimVerifier", () => {
     providerHashes = ["0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8", "0x1aab313df15d1b43710e53ed95b1b6118305aa9312f28b747c6c16cf574fb616"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    const claimVerifier = await deployer.deployClaimVerifier();
     verifier = await deployer.deployRevolutReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
       [Currency.EUR, Currency.USD, Currency.GBP, Currency.SGD],
-      providerHashes,
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifier.address
+      providerHashes
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);

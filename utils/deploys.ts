@@ -101,15 +101,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber = BigNumber.from(30),
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<VenmoReclaimVerifier> {
     return await new VenmoReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -125,15 +119,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber,
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<RevolutReclaimVerifier> {
     return await new RevolutReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -149,15 +137,9 @@ export default class DeployHelper {
     nullifierRegistry: Address,
     timestampBuffer: BigNumber,
     currencies: string[],
-    providerHashes: string[],
-    claimVerifierLibraryName: string,
-    claimVerifierLibraryAddress: Address,
+    providerHashes: string[]
   ): Promise<CashappReclaimVerifier> {
     return await new CashappReclaimVerifier__factory(
-      // @ts-ignore
-      {
-        [claimVerifierLibraryName]: claimVerifierLibraryAddress,
-      },
       this._deployerSigner
     ).deploy(
       ramp,
@@ -202,13 +184,7 @@ export default class DeployHelper {
     );
   }
 
-  public async deployClaimVerifierMock(libraryName: string, libraryAddress: Address): Promise<ClaimVerifierMock> {
-    return await new ClaimVerifierMock__factory(
-      // @ts-ignore
-      {
-        [libraryName]: libraryAddress,
-      },
-      this._deployerSigner
-    ).deploy();
+  public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
+    return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
   }
 }

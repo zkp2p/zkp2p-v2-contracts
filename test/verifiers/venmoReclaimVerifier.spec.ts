@@ -87,15 +87,13 @@ describe("VenmoReclaimVerifier", () => {
     providerHashes = ["0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd", "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    const claimVerifier = await deployer.deployClaimVerifier();
+
     verifier = await deployer.deployVenmoReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
       [Currency.USD],
-      providerHashes,
-      "contracts/lib/ClaimVerifier.sol:ClaimVerifier",
-      claimVerifier.address
+      providerHashes
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
