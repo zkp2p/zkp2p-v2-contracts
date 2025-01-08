@@ -63,7 +63,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Revolut.
      * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
      *
-     * @param _verifyPaymentData The data to verify the payment with.
+     * @param _verifyPaymentData Payment proof and intent details required for verification
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
@@ -132,7 +132,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         VerifyPaymentData memory _verifyPaymentData,
         bool _isAppclipProof
     ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.amount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
@@ -156,7 +156,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps
         uint256 paymentTimestamp = paymentDetails.timestampString.stringToUint(0) / 1000 + timestampBuffer;
-        require(paymentTimestamp >= _verifyPaymentData.timestamp, "Incorrect payment timestamp");
+        require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate currency
         require(

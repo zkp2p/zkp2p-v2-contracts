@@ -69,8 +69,8 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         PaymentDetails memory paymentDetails = _extractPaymentDetails(_verifyPaymentData.paymentProof);
 
         if (shouldVerifyPayment) {
-            require(paymentDetails.timestamp >= _verifyPaymentData.timestamp, "Payment timestamp is before intent timestamp");
-            require(paymentDetails.amount >= (_verifyPaymentData.amount * PRECISE_UNIT) / _verifyPaymentData.conversionRate, "Payment amount is less than intent amount");
+            require(paymentDetails.timestamp >= _verifyPaymentData.intentTimestamp, "Payment timestamp is before intent timestamp");
+            require(paymentDetails.amount >= (_verifyPaymentData.intentAmount * PRECISE_UNIT) / _verifyPaymentData.conversionRate, "Payment amount is less than intent amount");
             require(paymentDetails.offRamperId.stringComparison(_verifyPaymentData.payeeDetails), "Payment offramper does not match intent relayer");
             require(paymentDetails.fiatCurrency == _verifyPaymentData.fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }

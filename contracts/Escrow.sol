@@ -348,8 +348,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
             IPaymentVerifier.VerifyPaymentData({
                 paymentProof: _paymentProof,
                 depositToken: address(deposit.token),
-                amount: intent.amount,
-                timestamp: intent.timestamp,
+                intentAmount: intent.amount,
+                intentTimestamp: intent.timestamp,
                 payeeDetails: verifierData.payeeDetails,
                 fiatCurrency: intent.fiatCurrency,
                 conversionRate: intent.conversionRate,

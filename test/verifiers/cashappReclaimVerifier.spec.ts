@@ -122,8 +122,8 @@ describe("CashappReclaimVerifier", () => {
       return await verifier.connect(subjectCaller.wallet).verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
-        amount: subjectIntentAmount,
-        timestamp: subjectIntentTimestamp,
+        intentAmount: subjectIntentAmount,
+        intentTimestamp: subjectIntentTimestamp,
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
@@ -135,8 +135,8 @@ describe("CashappReclaimVerifier", () => {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
-        amount: subjectIntentAmount,
-        timestamp: subjectIntentTimestamp,
+        intentAmount: subjectIntentAmount,
+        intentTimestamp: subjectIntentTimestamp,
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
