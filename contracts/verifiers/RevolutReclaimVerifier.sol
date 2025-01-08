@@ -63,24 +63,10 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Revolut.
      * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
      *
-     * @param _proof            Proof to be verified
-     * @param _depositToken     The deposit token locked in escrow
-     * @param _intentAmount     Amount of deposit.token that the offchain payer wants to unlock from escrow
-     * @param _intentTimestamp  The timestamp at which intent was created. Offchain payment must be made after this time.
-     * @param _payeeDetails     The payee details (hash of the payee's Revolut username or just raw Revolut username; compared to recipientId in proof)
-     * @param _fiatCurrency     The currency ID of the payment
-     * @param _conversionRate   The conversion rate for the deposit token to offchain fiatCurrency
-     * @param _depositData      Additional data required for proof verification. In this case, the attester's address.
+     * @param _verifyPaymentData Payment proof and intent details required for verification
      */
     function verifyPayment(
-        bytes calldata _proof,
-        address _depositToken,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
-        bytes calldata _depositData
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
@@ -91,16 +77,11 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         (
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_proof, _depositData);
+        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
                 
         _verifyPaymentDetails(
             paymentDetails, 
-            _depositToken, 
-            _intentAmount, 
-            _intentTimestamp, 
-            _payeeDetails,
-            _fiatCurrency,
-            _conversionRate,
+            _verifyPaymentData,
             isAppclipProof
         );
         
@@ -148,16 +129,11 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        address _depositToken,
-        uint256 _intentAmount,
-        uint256 _intentTimestamp,
-        string calldata _payeeDetails,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
+        VerifyPaymentData memory _verifyPaymentData,
         bool _isAppclipProof
     ) internal view {
-        uint256 expectedAmount = _intentAmount * _conversionRate / PRECISE_UNIT;
-        uint8 decimals = IERC20Metadata(_depositToken).decimals();
+        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = _parseAmount(paymentDetails.amountString, decimals);
@@ -167,12 +143,12 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
             require(
-                hashedRecipientId.toHexString().stringComparison(_payeeDetails), 
+                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
                 "Incorrect payment recipient"
             );
         } else {
             require(
-                paymentDetails.recipientId.stringComparison(_payeeDetails), 
+                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
                 "Incorrect payment recipient"
             );
         }
@@ -180,11 +156,11 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps
         uint256 paymentTimestamp = paymentDetails.timestampString.stringToUint(0) / 1000 + timestampBuffer;
-        require(paymentTimestamp >= _intentTimestamp, "Incorrect payment timestamp");
+        require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate currency
         require(
-            keccak256(abi.encodePacked(paymentDetails.currencyCode)) == _fiatCurrency,
+            keccak256(abi.encodePacked(paymentDetails.currencyCode)) == _verifyPaymentData.fiatCurrency,
             "Incorrect payment currency"
         );
 

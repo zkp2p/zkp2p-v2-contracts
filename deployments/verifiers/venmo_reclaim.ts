@@ -20,12 +20,12 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": `"receiver":\\{"id":"(?<receiverId>[^"]+)"`,
-            "hash": true
+            "value": `"paymentId":"(?<paymentId>[^"]+)"`,
           },
           {
             "type": "regex",
-            "value": `"paymentId":"(?<paymentId>[^"]+)"`,
+            "value": `"id":"(?<receiverId>[^"]+)"`,
+            "hash": true
           },
         ],
         responseRedactions: [
@@ -38,13 +38,13 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
             "xPath": ""
           },
           {
-            "jsonPath": `$.stories[${i}].title.receiver`,
+            "jsonPath": `$.stories[${i}].paymentId`,
             "xPath": ""
           },
           {
-            "jsonPath": `$.stories[${i}].paymentId`,
-            "xPath": ""
-          }
+            "jsonPath": `$.stories[${i}].title.receiver.id`,
+            "xPath": "",
+          },
         ]
       }
     )

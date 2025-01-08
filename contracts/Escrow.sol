@@ -345,14 +345,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         DepositVerifierData memory verifierData = depositVerifierData[intent.depositId][verifier];
         (bool success, bytes32 intentHash) = IPaymentVerifier(verifier).verifyPayment(
-            _paymentProof,
-            address(deposit.token),
-            intent.amount,
-            intent.timestamp,
-            verifierData.payeeDetails,
-            intent.fiatCurrency,
-            intent.conversionRate,
-            verifierData.data
+            IPaymentVerifier.VerifyPaymentData({
+                paymentProof: _paymentProof,
+                depositToken: address(deposit.token),
+                intentAmount: intent.amount,
+                intentTimestamp: intent.timestamp,
+                payeeDetails: verifierData.payeeDetails,
+                fiatCurrency: intent.fiatCurrency,
+                conversionRate: intent.conversionRate,
+                data: verifierData.data
+            })
         );
         require(success, "Payment verification failed");
         require(intentHash == _intentHash, "Invalid intent hash");

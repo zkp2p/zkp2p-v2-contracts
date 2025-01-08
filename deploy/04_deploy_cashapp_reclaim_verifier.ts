@@ -34,7 +34,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Cashapp page size is 15
   const extensionProviderHashes = await getCashappReclaimProviderHashes(15);
+  console.log("cashapp extension provider hashes", extensionProviderHashes);
   const appclipProviderHashes = CASHAPP_APPCLIP_PROVIDER_HASHES;
+  console.log("cashapp appclip provider hashes", appclipProviderHashes);
   const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const cashappVerifier = await deploy("CashappReclaimVerifier", {
     from: deployer,
