@@ -2,8 +2,8 @@ import { BigNumber } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
-export const getVenmoReclaimProviderHashes = async (length: number) => {
-  const hashes = [];
+export const getWiseReclaimProviderHashes = async (length: number) => {
+  const hashes: string[] = [];
   for (let i = 0; i < length; i++) {
     const hashed = hashProviderParams(
       {
@@ -53,14 +53,14 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
   return hashes;
 }
 
-export const VENMO_APPCLIP_PROVIDER_HASHES = [
-  "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"
+export const WISE_APPCLIP_PROVIDER_HASHES = [
+  ""
 ]
 
-export const VENMO_RECLAIM_CURRENCIES: any = [
+export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.USD,
 ];
 
-export const VENMO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
+export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
-export const VENMO_RECLAIM_FEE_SHARE = BigNumber.from(0);  // 0% of sustainability fee
+export const WISE_RECLAIM_FEE_SHARE = BigNumber.from(0);  // 0% of sustainability fee

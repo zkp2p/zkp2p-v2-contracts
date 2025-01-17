@@ -17,7 +17,8 @@ import {
   Quoter,
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
-  CashappReclaimVerifier
+  CashappReclaimVerifier,
+  WiseReclaimVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -33,7 +34,8 @@ import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { CashappReclaimVerifier__factory } from "@typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
+import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
+import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -138,6 +140,22 @@ export default class DeployHelper {
     return await new CashappReclaimVerifier__factory(
       this._deployerSigner
     ).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployWiseReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<WiseReclaimVerifier> {
+    return await new WiseReclaimVerifier__factory(this._deployerSigner).deploy(
       ramp,
       nullifierRegistry,
       timestampBuffer,
