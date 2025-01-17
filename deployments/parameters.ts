@@ -23,15 +23,15 @@ export const SUSTAINABILITY_FEE_RECIPIENT: any = {
   "goerli": "",
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
-  "base_staging": "0xdd93E0f5fC32c86A568d87Cb4f08598f55E980F3",
+  "base_staging": "",
 };
 
 export const MULTI_SIG: any = {
-  "localhost": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "localhost": "",
   "goerli": "",
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
-  "base_staging": "0xdd93E0f5fC32c86A568d87Cb4f08598f55E980F3",
+  "base_staging": "",
 };
 
 export const USDC: any = {
