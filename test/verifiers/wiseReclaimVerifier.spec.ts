@@ -22,155 +22,23 @@ const expect = getWaffleExpect();
 const wiseExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":(?<paymentId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"paymentStatus\\\":\\\"(?<paymentStatus>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"recipient\\\":\\\\{\\\"id\\\":(?<recipientId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetCurrency\\\":\\\"(?<targetCurrency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"targetValue\\\":(?<targetValue>[0-9\\\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"transferredDate\\\":\\\"(?<transferredDate>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.paymentStatus\",\"xPath\":\"\"},{\"jsonPath\":\"$.recipient\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetCurrency\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetValue\",\"xPath\":\"\"},{\"jsonPath\":\"$.transferredDate\",\"xPath\":\"\"}],\"url\":\"https://wise.com/api/v3/payment/details?paymentId=1038880090&simplifiedResult=0\",\"writeRedactionMode\":\"zk\"}",
+    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":(?<paymentId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"OUTGOING_PAYMENT_SENT\\\",\\\"date\\\":(?<timestamp>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetAmount\\\":(?<targetAmount>[0-9\\\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetCurrency\\\":\\\"(?<targetCurrency>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"targetRecipientId\\\":(?<targetRecipientId>[0-9]+)\"}],\"responseRedactions\":[{\"jsonPath\":\"$.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.state\",\"xPath\":\"\"},{\"jsonPath\":\"$.stateHistory\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetAmount\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetCurrency\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetRecipientId\",\"xPath\":\"\"}],\"url\":\"https://wise.com/gateway/v3/profiles/41213881/transfers/1038880090\",\"writeRedactionMode\":\"zk\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1737279699,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"paymentStatus\":\"transferred\",\"recipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"targetCurrency\":\"EUR\",\"targetValue\":\"1.25\",\"transferredDate\":\"2024-04-17 22:34:06\"},\"providerHash\":\"0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8332\"}",
-    "identifier": "0x6afc4ec0447264f813e98b684eeb40f3a9057a3b581472fe5a67095dfde97783",
+    "timestampS": 1737295216,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894\"}",
+    "identifier": "0xac20c8afaa6aaf4d43d73b3e7691db2d9cc3023a22b07d0f243d03145d75e6c0",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-    "claimSignature": {
-      "0": 182,
-      "1": 11,
-      "2": 110,
-      "3": 194,
-      "4": 73,
-      "5": 200,
-      "6": 156,
-      "7": 68,
-      "8": 69,
-      "9": 251,
-      "10": 158,
-      "11": 124,
-      "12": 75,
-      "13": 172,
-      "14": 72,
-      "15": 207,
-      "16": 35,
-      "17": 153,
-      "18": 210,
-      "19": 162,
-      "20": 222,
-      "21": 75,
-      "22": 35,
-      "23": 233,
-      "24": 118,
-      "25": 88,
-      "26": 77,
-      "27": 41,
-      "28": 42,
-      "29": 145,
-      "30": 237,
-      "31": 218,
-      "32": 33,
-      "33": 11,
-      "34": 54,
-      "35": 43,
-      "36": 87,
-      "37": 187,
-      "38": 212,
-      "39": 115,
-      "40": 225,
-      "41": 52,
-      "42": 91,
-      "43": 201,
-      "44": 246,
-      "45": 113,
-      "46": 85,
-      "47": 208,
-      "48": 45,
-      "49": 38,
-      "50": 67,
-      "51": 34,
-      "52": 147,
-      "53": 204,
-      "54": 177,
-      "55": 231,
-      "56": 218,
-      "57": 92,
-      "58": 25,
-      "59": 17,
-      "60": 55,
-      "61": 85,
-      "62": 88,
-      "63": 68,
-      "64": 27
-    },
-    "resultSignature": {
-      "0": 71,
-      "1": 42,
-      "2": 159,
-      "3": 100,
-      "4": 182,
-      "5": 46,
-      "6": 129,
-      "7": 38,
-      "8": 254,
-      "9": 117,
-      "10": 185,
-      "11": 74,
-      "12": 8,
-      "13": 11,
-      "14": 189,
-      "15": 1,
-      "16": 149,
-      "17": 24,
-      "18": 157,
-      "19": 223,
-      "20": 192,
-      "21": 152,
-      "22": 46,
-      "23": 192,
-      "24": 172,
-      "25": 32,
-      "26": 201,
-      "27": 40,
-      "28": 72,
-      "29": 237,
-      "30": 237,
-      "31": 75,
-      "32": 61,
-      "33": 217,
-      "34": 115,
-      "35": 205,
-      "36": 61,
-      "37": 78,
-      "38": 148,
-      "39": 68,
-      "40": 210,
-      "41": 5,
-      "42": 87,
-      "43": 110,
-      "44": 233,
-      "45": 160,
-      "46": 242,
-      "47": 199,
-      "48": 191,
-      "49": 155,
-      "50": 18,
-      "51": 103,
-      "52": 59,
-      "53": 37,
-      "54": 44,
-      "55": 2,
-      "56": 93,
-      "57": 69,
-      "58": 47,
-      "59": 10,
-      "60": 114,
-      "61": 240,
-      "62": 159,
-      "63": 36,
-      "64": 28
-    }
+    "claimSignature": { "0": 179, "1": 131, "2": 98, "3": 104, "4": 177, "5": 151, "6": 224, "7": 57, "8": 140, "9": 58, "10": 6, "11": 41, "12": 146, "13": 50, "14": 10, "15": 177, "16": 61, "17": 85, "18": 200, "19": 91, "20": 59, "21": 201, "22": 116, "23": 106, "24": 195, "25": 236, "26": 74, "27": 35, "28": 192, "29": 214, "30": 95, "31": 232, "32": 120, "33": 196, "34": 126, "35": 38, "36": 145, "37": 102, "38": 227, "39": 109, "40": 148, "41": 179, "42": 49, "43": 88, "44": 18, "45": 95, "46": 167, "47": 147, "48": 91, "49": 63, "50": 215, "51": 90, "52": 176, "53": 92, "54": 38, "55": 199, "56": 217, "57": 243, "58": 104, "59": 183, "60": 237, "61": 78, "62": 181, "63": 81, "64": 27 },
+    "resultSignature": { "0": 84, "1": 50, "2": 186, "3": 187, "4": 147, "5": 252, "6": 149, "7": 143, "8": 133, "9": 236, "10": 3, "11": 98, "12": 125, "13": 220, "14": 126, "15": 210, "16": 155, "17": 27, "18": 231, "19": 17, "20": 63, "21": 111, "22": 219, "23": 216, "24": 193, "25": 206, "26": 192, "27": 16, "28": 127, "29": 165, "30": 134, "31": 16, "32": 15, "33": 46, "34": 44, "35": 10, "36": 29, "37": 66, "38": 161, "39": 253, "40": 214, "41": 3, "42": 121, "43": 135, "44": 113, "45": 63, "46": 118, "47": 27, "48": 187, "49": 203, "50": 228, "51": 66, "52": 163, "53": 238, "54": 222, "55": 197, "56": 99, "57": 79, "58": 159, "59": 249, "60": 92, "61": 186, "62": 139, "63": 109, "64": 27 }
   }
 }
 
 const wiseAppclipProof = {}
 
-describe.only("WiseReclaimVerifier", () => {
+describe("WiseReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -194,7 +62,7 @@ describe.only("WiseReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
-    providerHashes = ["0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8332"];
+    providerHashes = ["0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -242,9 +110,7 @@ describe.only("WiseReclaimVerifier", () => {
       proof = parseExtensionProof(wiseExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2024-04-17 22:34:06Z'; // Added Z to make UTC
-      const paymentTime = new Date(paymentTimeString);
-      paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
+      paymentTimestamp = 1713393246;
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;

@@ -36,7 +36,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     
     uint8 internal constant MAX_EXTRACT_VALUES = 9; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
-    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("transferred"));
+    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("OUTGOING_PAYMENT_SENT"));
 
     /* ============ Constructor ============ */
     constructor(
@@ -155,7 +155,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         }
 
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
-        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.timestampString) + timestampBuffer;
+        uint256 paymentTimestamp = paymentDetails.timestampString.stringToUint(0) / 1000 + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate currency
@@ -198,9 +198,9 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             intentHash: values[1],
             paymentId: values[2],
             paymentStatus: values[3],
-            recipientId: values[4],
+            amountString: values[4],
             currencyCode: values[5],
-            amountString: values[6],
+            recipientId: values[6],
             timestampString: values[7],
             providerHash: values[8]
         });
