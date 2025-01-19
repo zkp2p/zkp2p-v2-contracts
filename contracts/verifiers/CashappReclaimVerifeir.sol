@@ -168,7 +168,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // Validate status
         require(
             keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
-            "Payment status not confirmed as sent"
+            "Invalid payment status"
         );
     }
 

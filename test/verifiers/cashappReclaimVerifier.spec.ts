@@ -36,7 +36,7 @@ const cashappExtensionProof = {
   }
 }
 
-describe("CashappReclaimVerifier", () => {
+describe.only("CashappReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -264,6 +264,28 @@ describe("CashappReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("No valid providerHash");
+      });
+    });
+
+    describe("when the payment status is not correct", async () => {
+      beforeEach(async () => {
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"12014506636571874886965000811776567979685927375542718613570391557275994688735\",\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"100\",\"currency_code\":\"USD\",\"date\":\"1735841166000\",\"paymentId\":\"7cwz2mgva\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"INCOMPLETE\"},\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // sign the updated claim with a witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid payment status");
       });
     });
 

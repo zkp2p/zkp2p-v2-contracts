@@ -38,7 +38,7 @@ const wiseExtensionProof = {
 
 const wiseAppclipProof = {}
 
-describe("WiseReclaimVerifier", () => {
+describe.only("WiseReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -287,7 +287,7 @@ describe("WiseReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"paymentStatus\":\"transferred\",\"recipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"targetCurrency\":\"EUR\",\"targetValue\":\"1.25\",\"transferredDate\":\"2024-04-17 22:34:06\"},\"providerHash\":\"0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8331\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295895\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -307,15 +307,27 @@ describe("WiseReclaimVerifier", () => {
       });
     });
 
-    // describe("when the payment status is not transferred", async () => {
-    //   beforeEach(async () => {
-    //     subjectPayeeDetailsHash = 'incorrect_payment_status';
-    //   });
+    describe("when the payment status is not correct", async () => {
+      beforeEach(async () => {
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"INCOMPLETE\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
-    //   it("should revert", async () => {
-    //     await expect(subject()).to.be.revertedWith("Incorrect payment status");
-    //   });
-    // });
+        // sign the updated claim with a witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid payment status");
+      });
+    });
 
     describe("when the caller is not the escrow", async () => {
       beforeEach(async () => {

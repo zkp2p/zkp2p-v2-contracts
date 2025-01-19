@@ -24,7 +24,8 @@ const revolutExtensionProof = {
     "provider": "http",
     "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\-]+)\"},{\"type\":\"regex\",\"value\":\"\\\"completedDate\\\":(?<completedDate>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"currency\\\":\\\"(?<currency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<id>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"username\\\":\\\"(?<username>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.[1].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.[1].completedDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.[1].currency\",\"xPath\":\"\"},{\"jsonPath\":\"$.[1].id\",\"xPath\":\"\"},{\"jsonPath\":\"$.[1].recipient.username\",\"xPath\":\"\"},{\"jsonPath\":\"$.[1].state\",\"xPath\":\"\"}],\"url\":\"https://app.revolut.com/api/retail/user/current/transactions/last?count=20\",\"writeRedactionMode\":\"zk\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1736260735, "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"2618855330259351132643749738312276409026917421853980101201034599731745761128\",\"extractedParameters\":{\"amount\":\"-98\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"COMPLETED\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8\"}",
+    "timestampS": 1736260735,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"2618855330259351132643749738312276409026917421853980101201034599731745761128\",\"extractedParameters\":{\"amount\":\"-98\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"COMPLETED\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8\"}",
     "identifier": "0x1d6c3c320ff12f7924516496e213b8a1b49b4834644b92c9405a0b47a0461f9f",
     "epoch": 1
   },
@@ -59,7 +60,7 @@ const revolutAppclipProof = {
 }
 
 
-describe("RevolutReclaimVerifier", () => {
+describe.only("RevolutReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -322,6 +323,28 @@ describe("RevolutReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("No valid providerHash");
+      });
+    });
+
+    describe("when the payment status is not correct", async () => {
+      beforeEach(async () => {
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"17987314991900533465386579731694410438546809091389467293995987266679315178333\",\"extractedParameters\":{\"amount\":\"-98\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"INCOMPLETE\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // sign the updated claim with a witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof)
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid payment status");
       });
     });
 
