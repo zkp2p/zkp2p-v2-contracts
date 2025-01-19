@@ -7,43 +7,59 @@ export const getWiseReclaimProviderHashes = async (length: number) => {
   for (let i = 0; i < length; i++) {
     const hashed = hashProviderParams(
       {
-        url: "https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}",
+        url: "https://wise.com/gateway/v3/profiles/{PROFILE_ID}/transfers/{TRANSACTION_ID}",
         method: "GET",
         responseMatches: [
           {
             "type": "regex",
-            "value": `"amount":"- \\$(?<amount>[^"]+)"`,
+            "value": `"id":(?<paymentId>[0-9]+)`,
           },
           {
             "type": "regex",
-            "value": `"date":"(?<date>[^"]+)"`,
+            "value": `"state":"(?<state>[^"]+)"`,
           },
           {
             "type": "regex",
-            "value": `"paymentId":"(?<paymentId>[^"]+)"`,
+            "value": `"state":"OUTGOING_PAYMENT_SENT","date":(?<timestamp>[0-9]+)`,
           },
           {
             "type": "regex",
-            "value": `"id":"(?<receiverId>[^"]+)"`,
+            "value": `"targetAmount":(?<targetAmount>[0-9\\.]+)`,
+          },
+          {
+            "type": "regex",
+            "value": `"targetCurrency":"(?<targetCurrency>[^"]+)"`,
+          },
+          {
+            "type": "regex",
+            "value": `"targetRecipientId":(?<targetRecipientId>[0-9]+)`,
             "hash": true
           },
         ],
         responseRedactions: [
           {
-            "jsonPath": `$.stories[${i}].amount`,
+            "jsonPath": `$.id`,
             "xPath": ""
           },
           {
-            "jsonPath": `$.stories[${i}].date`,
+            "jsonPath": `$.state`,
             "xPath": ""
           },
           {
-            "jsonPath": `$.stories[${i}].paymentId`,
+            "jsonPath": `$.stateHistory`,
             "xPath": ""
           },
           {
-            "jsonPath": `$.stories[${i}].title.receiver.id`,
-            "xPath": "",
+            "jsonPath": `$.targetAmount`,
+            "xPath": ""
+          },
+          {
+            "jsonPath": `$.targetCurrency`,
+            "xPath": ""
+          },
+          {
+            "jsonPath": `$.targetRecipientId`,
+            "xPath": ""
           },
         ]
       }
@@ -58,7 +74,7 @@ export const WISE_APPCLIP_PROVIDER_HASHES = [
 ]
 
 export const WISE_RECLAIM_CURRENCIES: any = [
-  Currency.USD,
+  Currency.EUR,
 ];
 
 export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
