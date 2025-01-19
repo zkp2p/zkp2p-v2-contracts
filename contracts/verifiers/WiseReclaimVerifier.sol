@@ -2,8 +2,8 @@
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
+import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
@@ -13,11 +13,11 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
+contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
     using Bytes32ConversionUtils for bytes32;
-
+    
     /* ============ Structs ============ */
 
     // Struct to hold the payment details extracted from the proof
@@ -34,12 +34,11 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 9;
+    uint8 internal constant MAX_EXTRACT_VALUES = 11; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
-    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETED"));
+    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("OUTGOING_PAYMENT_SENT"));
 
     /* ============ Constructor ============ */
-    
     constructor(
         address _escrow,
         INullifierRegistry _nullifierRegistry,
@@ -59,9 +58,10 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     /* ============ External Functions ============ */
 
     /**
-     * ONLY RAMP: Verifies a reclaim proof of an offchain Revolut payment. Ensures the right _intentAmount * _conversionRate
-     * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Revolut.
-     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
+     * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
+     * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Venmo.
+     * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
+     * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
      */
@@ -84,11 +84,14 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
             _verifyPaymentData,
             isAppclipProof
         );
-        
-        // Nullify the payment
-        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        // Nullify the payment
+        bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
+        _validateAndAddNullifier(nullifier);
+
+        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
+        
+        return (true, intentHash);
     }
 
     /* ============ Internal Functions ============ */
@@ -123,9 +126,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
     /**
      * Verifies the right _intentAmount * _conversionRate is paid to _payeeDetailsHash after 
-     * _intentTimestamp + timestampBuffer on Revolut. 
-     * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
-     * Reverts if any of the conditions are not met.
+     * _intentTimestamp + timestampBuffer on Venmo. Reverts if any of the conditions are not met.
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
@@ -136,7 +137,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
-        uint256 paymentAmount = _parseAmount(paymentDetails.amountString, decimals);
+        uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
@@ -152,9 +153,8 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
                 "Incorrect payment recipient"
             );
         }
-        
-        // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
-        // for L2 timestamps
+
+        // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = paymentDetails.timestampString.stringToUint(0) / 1000 + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
@@ -172,7 +172,7 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     }
 
     /**
-     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the attester's address.
+     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the witnesses' addresses.
      * In case of a zkEmail proof, data contains the DKIM key hash. Can also contain additional data like currency code, etc.
      *
      * @param _data The data to extract the verification data from.
@@ -196,27 +196,15 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
-            amountString: values[2],
-            timestampString: values[3],
-            currencyCode: values[4],
-            paymentId: values[5],
-            paymentStatus: values[6],
-            recipientId: values[7],
-            providerHash: values[8]
+            // values[2] is profileId,
+            // values[3] is transactionId,
+            paymentId: values[4],
+            paymentStatus: values[5],
+            amountString: values[6],
+            currencyCode: values[7],
+            recipientId: values[8],
+            timestampString: values[9],
+            providerHash: values[10]
         });
-    }
-
-    /**
-     * Parses the amount from the proof.
-     *
-     * @param _amount The amount to parse.
-     * @param _decimals The decimals of the token.
-     */
-    function _parseAmount(string memory _amount, uint8 _decimals) internal pure returns(uint256) {
-        // For send transactions, the amount is prefixed with a '-' character, if the character doesn't exist then
-        // it would be a receive transaction
-        require(bytes(_amount)[0] == 0x2D, "Not a send transaction");   
-        // Revolut amount is scaled by 100 (e.g. 20064 => 200.64)
-        return _amount.stringToUint(_decimals - 2);
     }
 }

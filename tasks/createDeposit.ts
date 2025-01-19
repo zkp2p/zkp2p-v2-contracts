@@ -8,13 +8,13 @@ task("create-deposit", "Creates a deposit")
   .addParam("amount", "The amount of token to deposit", "100")
   .addParam("minamount", "The minimum amount for intents", "0.1")
   .addParam("maxamount", "The maximum amount for intents", "100")
-  .addParam("verifiers", "Comma-separated list of payment verifiers", "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853") // comma separated list of verifier addresses
+  .addParam("verifiers", "Comma-separated list of payment verifiers", "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82") // comma separated list of verifier addresses
   .addParam("verifierdata", "Period-separated list of verifier data", `{
     "intentGatingService":"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-    "payeeDetails":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",
-    "data":"0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"}`
+    "payeeDetails":"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4",
+    "data":"0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000636c417755e3ae25c6c166d181c0607f4c572a3000000000000000000000000244897572368eadf65bfbc5aec98d8e5443a9072"}`
   )
-  .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `${Currency.USD}:0.9`)
+  .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `${Currency.USD}:0.9,${Currency.EUR}:1.1,${Currency.GBP}:1.3,${Currency.SGD}:1.4,${Currency.AUD}:1.5,${Currency.NZD}:1.6,${Currency.CAD}:1.7`)
   .setAction(async (taskArgs, hre) => {
     const { ethers } = hre;
     const [owner] = await ethers.getSigners();
