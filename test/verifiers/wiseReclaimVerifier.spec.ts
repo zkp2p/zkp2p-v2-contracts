@@ -22,17 +22,17 @@ const expect = getWaffleExpect();
 const wiseExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":(?<paymentId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"OUTGOING_PAYMENT_SENT\\\",\\\"date\\\":(?<timestamp>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetAmount\\\":(?<targetAmount>[0-9\\\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetCurrency\\\":\\\"(?<targetCurrency>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"targetRecipientId\\\":(?<targetRecipientId>[0-9]+)\"}],\"responseRedactions\":[{\"jsonPath\":\"$.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.state\",\"xPath\":\"\"},{\"jsonPath\":\"$.stateHistory\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetAmount\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetCurrency\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetRecipientId\",\"xPath\":\"\"}],\"url\":\"https://wise.com/gateway/v3/profiles/41213881/transfers/1038880090\",\"writeRedactionMode\":\"zk\"}",
+    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"paramValues\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":(?<paymentId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"OUTGOING_PAYMENT_SENT\\\",\\\"date\\\":(?<timestamp>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetAmount\\\":(?<targetAmount>[0-9\\\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetCurrency\\\":\\\"(?<targetCurrency>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"targetRecipientId\\\":(?<targetRecipientId>[0-9]+)\"}],\"responseRedactions\":[{\"jsonPath\":\"$.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.state\",\"xPath\":\"\"},{\"jsonPath\":\"$.stateHistory\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetAmount\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetCurrency\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetRecipientId\",\"xPath\":\"\"}],\"url\":\"https://wise.com/gateway/v3/profiles/{{PROFILE_ID}}/transfers/{{TRANSACTION_ID}}\",\"writeRedactionMode\":\"zk\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1737295216,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894\"}",
-    "identifier": "0xac20c8afaa6aaf4d43d73b3e7691db2d9cc3023a22b07d0f243d03145d75e6c0",
+    "timestampS": 1737300588,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"3255272855445122854259407670991079284015086279635495324568586132056928581139\",\"extractedParameters\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\",\"paymentId\":\"1036122853\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"0.11\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4\",\"timestamp\":\"1713200478000\"},\"providerHash\":\"0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9646\"}",
+    "identifier": "0xc1c633299549ee8779de99e3af3d50174d5b3544232d8d9b745067f82f03d1f9",
     "epoch": 1
   },
   "signatures": {
-    "attestorAddress": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-    "claimSignature": { "0": 179, "1": 131, "2": 98, "3": 104, "4": 177, "5": 151, "6": 224, "7": 57, "8": 140, "9": 58, "10": 6, "11": 41, "12": 146, "13": 50, "14": 10, "15": 177, "16": 61, "17": 85, "18": 200, "19": 91, "20": 59, "21": 201, "22": 116, "23": 106, "24": 195, "25": 236, "26": 74, "27": 35, "28": 192, "29": 214, "30": 95, "31": 232, "32": 120, "33": 196, "34": 126, "35": 38, "36": 145, "37": 102, "38": 227, "39": 109, "40": 148, "41": 179, "42": 49, "43": 88, "44": 18, "45": 95, "46": 167, "47": 147, "48": 91, "49": 63, "50": 215, "51": 90, "52": 176, "53": 92, "54": 38, "55": 199, "56": 217, "57": 243, "58": 104, "59": 183, "60": 237, "61": 78, "62": 181, "63": 81, "64": 27 },
-    "resultSignature": { "0": 84, "1": 50, "2": 186, "3": 187, "4": 147, "5": 252, "6": 149, "7": 143, "8": 133, "9": 236, "10": 3, "11": 98, "12": 125, "13": 220, "14": 126, "15": 210, "16": 155, "17": 27, "18": 231, "19": 17, "20": 63, "21": 111, "22": 219, "23": 216, "24": 193, "25": 206, "26": 192, "27": 16, "28": 127, "29": 165, "30": 134, "31": 16, "32": 15, "33": 46, "34": 44, "35": 10, "36": 29, "37": 66, "38": 161, "39": 253, "40": 214, "41": 3, "42": 121, "43": 135, "44": 113, "45": 63, "46": 118, "47": 27, "48": 187, "49": 203, "50": 228, "51": 66, "52": 163, "53": 238, "54": 222, "55": 197, "56": 99, "57": 79, "58": 159, "59": 249, "60": 92, "61": 186, "62": 139, "63": 109, "64": 27 }
+    "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
+    "claimSignature": { "0": 190, "1": 92, "2": 174, "3": 41, "4": 66, "5": 221, "6": 222, "7": 130, "8": 218, "9": 56, "10": 29, "11": 55, "12": 179, "13": 111, "14": 174, "15": 98, "16": 219, "17": 61, "18": 204, "19": 184, "20": 78, "21": 64, "22": 249, "23": 33, "24": 117, "25": 66, "26": 176, "27": 107, "28": 103, "29": 225, "30": 21, "31": 44, "32": 100, "33": 80, "34": 116, "35": 239, "36": 13, "37": 162, "38": 59, "39": 157, "40": 101, "41": 78, "42": 111, "43": 183, "44": 116, "45": 228, "46": 240, "47": 132, "48": 94, "49": 219, "50": 200, "51": 41, "52": 146, "53": 2, "54": 208, "55": 145, "56": 168, "57": 87, "58": 184, "59": 28, "60": 131, "61": 68, "62": 210, "63": 22, "64": 27 },
+    "resultSignature": { "0": 6, "1": 39, "2": 146, "3": 240, "4": 60, "5": 116, "6": 211, "7": 181, "8": 93, "9": 6, "10": 206, "11": 76, "12": 144, "13": 236, "14": 6, "15": 8, "16": 3, "17": 29, "18": 255, "19": 152, "20": 151, "21": 105, "22": 95, "23": 188, "24": 242, "25": 91, "26": 164, "27": 79, "28": 130, "29": 250, "30": 186, "31": 193, "32": 110, "33": 126, "34": 123, "35": 181, "36": 220, "37": 203, "38": 221, "39": 57, "40": 190, "41": 251, "42": 61, "43": 6, "44": 208, "45": 165, "46": 255, "47": 66, "48": 226, "49": 156, "50": 171, "51": 100, "52": 244, "53": 112, "54": 75, "55": 103, "56": 236, "57": 72, "58": 148, "59": 63, "60": 206, "61": 9, "62": 59, "63": 58, "64": 28 }
   }
 }
 
@@ -61,8 +61,8 @@ describe.only("WiseReclaimVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    witnesses = ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
-    providerHashes = ["0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894"];
+    witnesses = ["0x0636c417755e3ae25c6c166d181c0607f4c572a3"];
+    providerHashes = ["0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9646"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -110,15 +110,15 @@ describe.only("WiseReclaimVerifier", () => {
       proof = parseExtensionProof(wiseExtensionProof);
       subjectProof = encodeProof(proof);
 
-      paymentTimestamp = 1713393246;
+      paymentTimestamp = 1713200478;
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(1.1);
+      subjectIntentAmount = usdc(0.1);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
-      subjectConversionRate = ether(1.13);   // 1.1 * 1.13 = 1.243 [intent amount * conversion rate = payment amount]
+      subjectConversionRate = ether(1.1);   // 0.1 * 1.1 = 0.11 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = ethers.utils.keccak256(
-        ethers.utils.solidityPack(['string'], ['403384647'])
+        ethers.utils.solidityPack(['string'], ['402863684'])
       );
       subjectFiatCurrency = Currency.EUR;
       subjectData = ethers.utils.defaultAbiCoder.encode(
@@ -160,13 +160,13 @@ describe.only("WiseReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('4080818544341039229495851033825904336592969679461569916639133799093374442763').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['1038880090']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['1036122853']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -206,7 +206,7 @@ describe.only("WiseReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount * conversion rate", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1.11);   // just 1 cent more than the actual ask amount (1.11 * 1.13 = 1.2543) which is greater than the payment amount (1.25)
+        subjectIntentAmount = usdc(0.11);   // just 1 cent more than the actual ask amount (0.11 * 1.1 = 0.121) which is greater than the payment amount (0.12)
       });
 
       it("should revert", async () => {
@@ -215,7 +215,7 @@ describe.only("WiseReclaimVerifier", () => {
 
       describe("when the payment amount is more than the intent amount * conversion rate", async () => {
         beforeEach(async () => {
-          subjectIntentAmount = usdc(1.10);   // just 1 cent less than the actual ask amount (1.10 * 1.13 = 1.243) which is less than the payment amount (1.25)
+          subjectIntentAmount = usdc(0.10);   // just 1 cent less than the actual ask amount (0.10 * 1.1 = 0.11) which is less than the payment amount (0.12)
         });
 
         it("should not revert", async () => {
@@ -287,7 +287,7 @@ describe.only("WiseReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295895\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"3255272855445122854259407670991079284015086279635495324568586132056928581139\",\"extractedParameters\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\",\"paymentId\":\"1036122853\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"0.11\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4\",\"timestamp\":\"1713200478000\"},\"providerHash\":\"0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9647\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -309,7 +309,7 @@ describe.only("WiseReclaimVerifier", () => {
 
     describe("when the payment status is not correct", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"state\":\"INCOMPLETE\",\"targetAmount\":\"1.25\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"timestamp\":\"1713393246000\"},\"providerHash\":\"0x29d924de3db7eb3733ff16e1cd8be3cf2b070909f15c88c1d4128eb4f2295894\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"3255272855445122854259407670991079284015086279635495324568586132056928581139\",\"extractedParameters\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\",\"paymentId\":\"1036122853\",\"state\":\"INCOMPLETE\",\"targetAmount\":\"0.11\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4\",\"timestamp\":\"1713200478000\"},\"providerHash\":\"0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9646\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness

@@ -60,7 +60,7 @@ const revolutAppclipProof = {
 }
 
 
-describe.only("RevolutReclaimVerifier", () => {
+describe("RevolutReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
