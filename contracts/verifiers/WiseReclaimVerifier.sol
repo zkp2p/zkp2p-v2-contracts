@@ -23,8 +23,10 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     // Struct to hold the payment details extracted from the proof
     struct PaymentDetails {
         string amountString;
-        string dateString;
+        string timestampString;
+        string currencyCode;
         string paymentId;
+        string paymentStatus;
         string recipientId;
         string intentHash;
         string providerHash;
@@ -32,8 +34,9 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 8; 
+    uint8 internal constant MAX_EXTRACT_VALUES = 9; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
+    bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("transferred"));
 
     /* ============ Constructor ============ */
     constructor(
@@ -152,8 +155,20 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         }
 
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
-        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
+        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.timestampString) + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
+
+        // Validate currency
+        require(
+            keccak256(abi.encodePacked(paymentDetails.currencyCode)) == _verifyPaymentData.fiatCurrency,
+            "Incorrect payment currency"
+        );
+
+        // Validate status
+        require(
+            keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
+            "Invalid payment status"
+        );
     }
 
     /**
@@ -181,12 +196,13 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
-            // values[2] is SENDER_ID
-            amountString: values[3],
-            dateString: values[4],
-            paymentId: values[5],
-            recipientId: values[6],
-            providerHash: values[7]
+            paymentId: values[2],
+            paymentStatus: values[3],
+            recipientId: values[4],
+            currencyCode: values[5],
+            amountString: values[6],
+            timestampString: values[7],
+            providerHash: values[8]
         });
     }
 }

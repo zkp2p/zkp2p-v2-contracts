@@ -23,7 +23,12 @@ library DateParsing {
         uint256 breakCounter;
         uint256 lastBreak;
         for (uint256 i = 0; i < bytes(_dateString).length; i++) {
-            if (bytes(_dateString)[i] == 0x2d || bytes(_dateString)[i] == 0x3a || bytes(_dateString)[i] == 0x54) {
+            if (
+                bytes(_dateString)[i] == 0x2d       // dash (-)
+                || bytes(_dateString)[i] == 0x3a    // colon (:)
+                || bytes(_dateString)[i] == 0x54    // T
+                || bytes(_dateString)[i] == 0x20    // space
+            ) {
                 extractedStrings[breakCounter] = _dateString.substring(lastBreak, i);
                 lastBreak = i + 1;
                 breakCounter++;

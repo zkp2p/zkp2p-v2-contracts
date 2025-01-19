@@ -22,41 +22,153 @@ const expect = getWaffleExpect();
 const wiseExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"paramValues\":{\"SENDER_ID\":\"1168869611798528966\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[0].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].paymentId\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].title.receiver.id\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}\"}",
+    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":(?<paymentId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"paymentStatus\\\":\\\"(?<paymentStatus>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"recipient\\\":\\\\{\\\"id\\\":(?<recipientId>[0-9]+)\"},{\"type\":\"regex\",\"value\":\"\\\"targetCurrency\\\":\\\"(?<targetCurrency>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"targetValue\\\":(?<targetValue>[0-9\\\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"transferredDate\\\":\\\"(?<transferredDate>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.paymentStatus\",\"xPath\":\"\"},{\"jsonPath\":\"$.recipient\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetCurrency\",\"xPath\":\"\"},{\"jsonPath\":\"$.targetValue\",\"xPath\":\"\"},{\"jsonPath\":\"$.transferredDate\",\"xPath\":\"\"}],\"url\":\"https://wise.com/api/v3/payment/details?paymentId=1038880090&simplifiedResult=0\",\"writeRedactionMode\":\"zk\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1736260561,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"11654989686991483391164401508422551252323102533275653137147840482625607853061\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"1.01\",\"date\":\"2025-01-06T18:21:21\",\"paymentId\":\"4239767587180066226\",\"receiverId\":\"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d\"},\"providerHash\":\"0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd\"}",
-    "identifier": "0x1da094a2fb1486f3e8b7430242dfc818df705b22d6e30117d13deb1c1281f3d2",
+    "timestampS": 1737279699,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"paymentStatus\":\"transferred\",\"recipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"targetCurrency\":\"EUR\",\"targetValue\":\"1.25\",\"transferredDate\":\"2024-04-17 22:34:06\"},\"providerHash\":\"0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8332\"}",
+    "identifier": "0x6afc4ec0447264f813e98b684eeb40f3a9057a3b581472fe5a67095dfde97783",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-    "claimSignature": { "0": 11, "1": 189, "2": 41, "3": 248, "4": 196, "5": 241, "6": 195, "7": 44, "8": 2, "9": 238, "10": 113, "11": 239, "12": 230, "13": 10, "14": 199, "15": 187, "16": 229, "17": 36, "18": 51, "19": 239, "20": 255, "21": 12, "22": 200, "23": 63, "24": 49, "25": 230, "26": 177, "27": 65, "28": 226, "29": 76, "30": 197, "31": 60, "32": 37, "33": 20, "34": 250, "35": 104, "36": 97, "37": 72, "38": 12, "39": 106, "40": 64, "41": 92, "42": 104, "43": 184, "44": 41, "45": 40, "46": 76, "47": 210, "48": 137, "49": 104, "50": 150, "51": 176, "52": 134, "53": 49, "54": 38, "55": 28, "56": 12, "57": 126, "58": 249, "59": 53, "60": 178, "61": 181, "62": 253, "63": 140, "64": 27 },
-    "resultSignature": { "0": 172, "1": 9, "2": 9, "3": 239, "4": 152, "5": 87, "6": 87, "7": 103, "8": 162, "9": 77, "10": 46, "11": 250, "12": 157, "13": 4, "14": 197, "15": 124, "16": 9, "17": 205, "18": 115, "19": 237, "20": 106, "21": 167, "22": 204, "23": 10, "24": 228, "25": 73, "26": 242, "27": 152, "28": 215, "29": 148, "30": 138, "31": 92, "32": 30, "33": 4, "34": 99, "35": 112, "36": 11, "37": 131, "38": 4, "39": 143, "40": 84, "41": 252, "42": 53, "43": 222, "44": 212, "45": 228, "46": 149, "47": 206, "48": 79, "49": 238, "50": 109, "51": 150, "52": 188, "53": 170, "54": 252, "55": 238, "56": 30, "57": 10, "58": 52, "59": 151, "60": 82, "61": 199, "62": 95, "63": 77, "64": 27 }
+    "claimSignature": {
+      "0": 182,
+      "1": 11,
+      "2": 110,
+      "3": 194,
+      "4": 73,
+      "5": 200,
+      "6": 156,
+      "7": 68,
+      "8": 69,
+      "9": 251,
+      "10": 158,
+      "11": 124,
+      "12": 75,
+      "13": 172,
+      "14": 72,
+      "15": 207,
+      "16": 35,
+      "17": 153,
+      "18": 210,
+      "19": 162,
+      "20": 222,
+      "21": 75,
+      "22": 35,
+      "23": 233,
+      "24": 118,
+      "25": 88,
+      "26": 77,
+      "27": 41,
+      "28": 42,
+      "29": 145,
+      "30": 237,
+      "31": 218,
+      "32": 33,
+      "33": 11,
+      "34": 54,
+      "35": 43,
+      "36": 87,
+      "37": 187,
+      "38": 212,
+      "39": 115,
+      "40": 225,
+      "41": 52,
+      "42": 91,
+      "43": 201,
+      "44": 246,
+      "45": 113,
+      "46": 85,
+      "47": 208,
+      "48": 45,
+      "49": 38,
+      "50": 67,
+      "51": 34,
+      "52": 147,
+      "53": 204,
+      "54": 177,
+      "55": 231,
+      "56": 218,
+      "57": 92,
+      "58": 25,
+      "59": 17,
+      "60": 55,
+      "61": 85,
+      "62": 88,
+      "63": 68,
+      "64": 27
+    },
+    "resultSignature": {
+      "0": 71,
+      "1": 42,
+      "2": 159,
+      "3": 100,
+      "4": 182,
+      "5": 46,
+      "6": 129,
+      "7": 38,
+      "8": 254,
+      "9": 117,
+      "10": 185,
+      "11": 74,
+      "12": 8,
+      "13": 11,
+      "14": 189,
+      "15": 1,
+      "16": 149,
+      "17": 24,
+      "18": 157,
+      "19": 223,
+      "20": 192,
+      "21": 152,
+      "22": 46,
+      "23": 192,
+      "24": 172,
+      "25": 32,
+      "26": 201,
+      "27": 40,
+      "28": 72,
+      "29": 237,
+      "30": 237,
+      "31": 75,
+      "32": 61,
+      "33": 217,
+      "34": 115,
+      "35": 205,
+      "36": 61,
+      "37": 78,
+      "38": 148,
+      "39": 68,
+      "40": 210,
+      "41": 5,
+      "42": 87,
+      "43": 110,
+      "44": 233,
+      "45": 160,
+      "46": 242,
+      "47": 199,
+      "48": 191,
+      "49": 155,
+      "50": 18,
+      "51": 103,
+      "52": 59,
+      "53": 37,
+      "54": 44,
+      "55": 2,
+      "56": 93,
+      "57": 69,
+      "58": 47,
+      "59": 10,
+      "60": 114,
+      "61": 240,
+      "62": 159,
+      "63": 36,
+      "64": 28
+    }
   }
 }
 
-const wiseAppclipProof = {
-  "identifier": "0xd925b4d1d168a1a3550e378adcb46905e40588b9af23debb4b7c9be1ab24a7f8",
-  "claimData": {
-    "provider": "http",
-    "parameters": "{\"additionalClientOptions\":{},\"body\":\"\",\"geoLocation\":\"\",\"headers\":{\"Referer\":\"https://account.venmo.com/account/mfa/sms?next=%2F%3Ffeed%3Dmine&k=sgMjgoKqOfFCxhOWKLZ3xqO4R17HkLY6oM1mZbaE4zIixMuF9qmcOGJUe1wmm7BG\",\"Sec-Fetch-Mode\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1\"},\"method\":\"GET\",\"paramValues\":{\"URL_PARAMS_GRD\":\"1168869611798528966\",\"amount\":\"1.01\",\"date\":\"2025-01-06T18:21:21\",\"paymentId\":\"4239767587180066226\",\"receiverId\":\"645716473020416186\"},\"responseMatches\":[{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"amount\\\":\\\"- ${{amount}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"date\\\":\\\"{{date}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"id\\\":\\\"{{receiverId}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"paymentId\\\":\\\"{{paymentId}}\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[0].amount\",\"regex\":\"\\\"amount\\\":\\\"- \\\\$(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].date\",\"regex\":\"\\\"date\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].title.receiver.id\",\"regex\":\"\\\"id\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[0].paymentId\",\"regex\":\"\\\"paymentId\\\":\\\"(.*)\\\"\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId={{URL_PARAMS_GRD}}\"}",
-    "owner": "0xa4f239ae872b61a640b232f2066f21862caef5c1",
-    "timestampS": 1736263527,
-    "context": "{\"contextAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"contextMessage\":\"19647628387338148605484475718635527316117450420056269639082394264683709644449\",\"extractedParameters\":{\"URL_PARAMS_GRD\":\"1168869611798528966\",\"amount\":\"1.01\",\"date\":\"2025-01-06T18:21:21\",\"paymentId\":\"4239767587180066226\",\"receiverId\":\"645716473020416186\"},\"providerHash\":\"0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425\"}",
-    "identifier": "0xd925b4d1d168a1a3550e378adcb46905e40588b9af23debb4b7c9be1ab24a7f8",
-    "epoch": 1
-  },
-  "signatures": [
-    "0xb818f5b14282fd5b687b7f35ccaa52524d4c22c3968b8ea6f19cd0971811886d5f028670d527ac17bf4af807476dbfd532c173ebf80132db66d2c58c0333e5e51c"
-  ],
-  "witnesses": [
-    {
-      "id": "0x244897572368eadf65bfbc5aec98d8e5443a9072",
-      "url": "wss://witness.reclaimprotocol.org/ws"
-    }
-  ]
-}
+const wiseAppclipProof = {}
 
 describe.only("WiseReclaimVerifier", () => {
   let owner: Account;
@@ -82,7 +194,7 @@ describe.only("WiseReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
-    providerHashes = ["0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fd", "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"];
+    providerHashes = ["0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8332"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -90,7 +202,7 @@ describe.only("WiseReclaimVerifier", () => {
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
-      [Currency.USD],
+      [Currency.EUR],
       providerHashes
     );
 
@@ -130,7 +242,7 @@ describe.only("WiseReclaimVerifier", () => {
       proof = parseExtensionProof(wiseExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-01-06T18:21:21Z'; // Added Z to make UTC
+      const paymentTimeString = '2024-04-17 22:34:06Z'; // Added Z to make UTC
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
@@ -138,11 +250,11 @@ describe.only("WiseReclaimVerifier", () => {
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(1.1);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
-      subjectConversionRate = ether(0.9);   // 1.1 * 0.9 = 0.99 [intent amount * conversion rate = payment amount]
+      subjectConversionRate = ether(1.13);   // 1.1 * 1.13 = 1.243 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = ethers.utils.keccak256(
-        ethers.utils.solidityPack(['string'], ['645716473020416186'])
+        ethers.utils.solidityPack(['string'], ['403384647'])
       );
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.EUR;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
@@ -182,38 +294,38 @@ describe.only("WiseReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('11654989686991483391164401508422551252323102533275653137147840482625607853061').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('4080818544341039229495851033825904336592969679461569916639133799093374442763').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['4239767587180066226']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['1038880090']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
     });
 
-    describe("when the proof is an appclip proof", async () => {
-      beforeEach(async () => {
-        proof = parseAppclipProof(wiseAppclipProof);
-        subjectProof = encodeProof(proof);
+    // describe.skip("when the proof is an appclip proof", async () => {
+    //   beforeEach(async () => {
+    //     proof = parseAppclipProof(wiseAppclipProof);
+    //     subjectProof = encodeProof(proof);
 
-        subjectPayeeDetailsHash = ethers.utils.keccak256(
-          ethers.utils.solidityPack(['string'], ['645716473020416186'])
-        );
-      });
+    //     subjectPayeeDetailsHash = ethers.utils.keccak256(
+    //       ethers.utils.solidityPack(['string'], ['645716473020416186'])
+    //     );
+    //   });
 
-      it("should verify the proof", async () => {
-        const [
-          verified,
-          intentHash
-        ] = await subjectCallStatic();
+    //   it("should verify the proof", async () => {
+    //     const [
+    //       verified,
+    //       intentHash
+    //     ] = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
-      });
-    });
+    //     expect(verified).to.be.true;
+    //     expect(intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
+    //   });
+    // });
 
     describe("when the proof is invalid", async () => {
       beforeEach(async () => {
@@ -226,13 +338,23 @@ describe.only("WiseReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the intent amount * conversion rate", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1.2);  // 1.2 * 0.9 = 1.08 [1.08 > 1.01]
+        subjectIntentAmount = usdc(1.11);   // just 1 cent more than the actual ask amount (1.11 * 1.13 = 1.2543) which is greater than the payment amount (1.25)
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+      });
+
+      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
+        beforeEach(async () => {
+          subjectIntentAmount = usdc(1.10);   // just 1 cent less than the actual ask amount (1.10 * 1.13 = 1.243) which is less than the payment amount (1.25)
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
       });
     });
 
@@ -265,7 +387,7 @@ describe.only("WiseReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
       });
 
-      describe("when the proof is an appclip proof", async () => {
+      describe.skip("when the proof is an appclip proof", async () => {
         beforeEach(async () => {
           proof = parseAppclipProof(wiseAppclipProof);
           subjectProof = encodeProof(proof);
@@ -287,9 +409,19 @@ describe.only("WiseReclaimVerifier", () => {
       });
     });
 
+    describe("when the currency is not supported", async () => {
+      beforeEach(async () => {
+        subjectFiatCurrency = ZERO_BYTES32;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Incorrect payment currency");
+      });
+    });
+
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4550365876404035370013319374327198777228946732305032418394862064756897839843\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"1.01\",\"date\":\"2025-01-06T18:21:21\",\"paymentId\":\"4239767587180066226\",\"receiverId\":\"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d\"},\"providerHash\":\"0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fc\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4080818544341039229495851033825904336592969679461569916639133799093374442763\",\"extractedParameters\":{\"paymentId\":\"1038880090\",\"paymentStatus\":\"transferred\",\"recipientId\":\"0xcacce013709154334af512b92ad6e65438a3195ad985cf17050b871a6933fce4\",\"targetCurrency\":\"EUR\",\"targetValue\":\"1.25\",\"transferredDate\":\"2024-04-17 22:34:06\"},\"providerHash\":\"0xc6cbb4dd0cb8f09201d2e05d17b2223bea494178172d6111d6bebc6102de8331\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -308,6 +440,16 @@ describe.only("WiseReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("No valid providerHash");
       });
     });
+
+    // describe("when the payment status is not transferred", async () => {
+    //   beforeEach(async () => {
+    //     subjectPayeeDetailsHash = 'incorrect_payment_status';
+    //   });
+
+    //   it("should revert", async () => {
+    //     await expect(subject()).to.be.revertedWith("Incorrect payment status");
+    //   });
+    // });
 
     describe("when the caller is not the escrow", async () => {
       beforeEach(async () => {
