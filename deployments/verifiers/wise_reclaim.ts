@@ -13,7 +13,13 @@ export const WISE_APPCLIP_PROVIDER_HASHES = [
 ]
 
 export const WISE_RECLAIM_CURRENCIES: any = [
+  Currency.USD,
   Currency.EUR,
+  Currency.GBP,
+  Currency.SGD,
+  Currency.AUD,
+  Currency.NZD,
+  Currency.CAD
 ];
 
 export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

@@ -11,7 +11,7 @@ let abiCoder = new AbiCoder();
 export const getKeccak256Hash = (value: string): string => {
   // Convert the string to UTF-8 bytes
   const bytes = ethers.utils.toUtf8Bytes(value);
-  
+
   // Compute keccak256 hash of the packed bytes
   return ethers.utils.keccak256(bytes);
 }
@@ -22,7 +22,10 @@ export const Currency = {
   GBP: getKeccak256Hash("GBP"),
   INR: getKeccak256Hash("INR"),
   SGD: getKeccak256Hash("SGD"),
-  ARS: getKeccak256Hash("ARS")
+  ARS: getKeccak256Hash("ARS"),
+  CAD: getKeccak256Hash("CAD"),
+  AUD: getKeccak256Hash("AUD"),
+  NZD: getKeccak256Hash("NZD"),
 } as const;
 
 
