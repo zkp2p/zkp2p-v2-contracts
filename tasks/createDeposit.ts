@@ -8,7 +8,7 @@ task("create-deposit", "Creates a deposit")
   .addParam("amount", "The amount of token to deposit", "100")
   .addParam("minamount", "The minimum amount for intents", "0.1")
   .addParam("maxamount", "The maximum amount for intents", "100")
-  .addParam("verifiers", "Comma-separated list of payment verifiers", "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853") // comma separated list of verifier addresses
+  .addParam("verifiers", "Comma-separated list of payment verifiers", "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82") // comma separated list of verifier addresses
   .addParam("verifierdata", "Period-separated list of verifier data", `{
     "intentGatingService":"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "payeeDetails":"0x92d30391a78fc6c9849a17fbcb598c3d33f589553c5339537ab3e0fa58d7c14d",

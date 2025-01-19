@@ -33,8 +33,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
-  // Wise only returns 10 stories at a time
-  const extensionProviderHashes = await getWiseReclaimProviderHashes(10);
+  // Wise only returns 1 transaction at a time
+  const extensionProviderHashes = await getWiseReclaimProviderHashes(1);
   console.log("wise extension provider hashes", extensionProviderHashes);
 
   const appclipProviderHashes = WISE_APPCLIP_PROVIDER_HASHES;
