@@ -70,11 +70,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 
   console.log("Deploy finished...");
-
-  // FINALLY TRANSFER OWNERSHIP OF ESCROW AND NULLIFIER REGISTRY
-  console.log("Transferring ownership of contracts...");
-  await setNewOwner(hre, escrowContract, multiSig);
-  await setNewOwner(hre, nullifierRegistryContract, multiSig);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

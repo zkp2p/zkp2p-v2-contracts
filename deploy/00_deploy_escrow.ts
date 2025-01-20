@@ -73,6 +73,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log("Transferred USDC to ", owner.address);
   }
 
+  console.log("Transferring ownership of contracts...");
+  await setNewOwner(hre, escrowContract, multiSig);
+  await setNewOwner(hre, nullifierRegistryContract, multiSig);
+
   console.log("Deploy finished...");
 };
 
