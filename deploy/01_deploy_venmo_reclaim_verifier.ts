@@ -59,7 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("NullifierRegistry permissions added...");
 
   const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, venmoVerifier.address, VENMO_RECLAIM_FEE_SHARE);
+  await addWhitelistedPaymentVerifier(hre, escrowContract, venmoVerifier.address, VENMO_RECLAIM_FEE_SHARE[network]);
 
   console.log("VenmoReclaimVerifier added to whitelisted payment verifiers...");
 

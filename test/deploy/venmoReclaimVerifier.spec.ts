@@ -31,7 +31,8 @@ import {
   getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
   VENMO_RECLAIM_CURRENCIES,
-  VENMO_RECLAIM_FEE_SHARE
+  VENMO_RECLAIM_FEE_SHARE,
+  VENMO_APPCLIP_PROVIDER_HASHES
 } from "../../deployments/verifiers/venmo_reclaim";
 
 const expect = getWaffleExpect();
@@ -78,11 +79,13 @@ describe("VenmoReclaimVerifier Deployment", () => {
       const actualTimestampBuffer = await venmoReclaimVerifier.timestampBuffer();
       const actualCurrencies = await venmoReclaimVerifier.getCurrencies();
       const hashes = await getVenmoReclaimProviderHashes(10);
+      const appclipHashes = VENMO_APPCLIP_PROVIDER_HASHES;
+      const allHashes = [...hashes, ...appclipHashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(hashes);
+      expect(actualProviderHashes).to.deep.eq(allHashes);
       expect(actualTimestampBuffer).to.eq(VENMO_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(VENMO_RECLAIM_CURRENCIES);
     });
@@ -103,7 +106,7 @@ describe("VenmoReclaimVerifier Deployment", () => {
 
     it("should set the correct fee share", async () => {
       const feeShare = await escrow.paymentVerifierFeeShare(venmoReclaimVerifier.address);
-      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE);
+      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE[network]);
     });
   });
 });

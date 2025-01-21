@@ -17,17 +17,35 @@ export const getKeccak256Hash = (value: string): string => {
 }
 
 export const Currency = {
-  USD: getKeccak256Hash("USD"),
+  AED: getKeccak256Hash("AED"),
+  AUD: getKeccak256Hash("AUD"),
+  CAD: getKeccak256Hash("CAD"),
+  CHF: getKeccak256Hash("CHF"),
+  CNY: getKeccak256Hash("CNY"),
   EUR: getKeccak256Hash("EUR"),
   GBP: getKeccak256Hash("GBP"),
-  INR: getKeccak256Hash("INR"),
-  SGD: getKeccak256Hash("SGD"),
-  ARS: getKeccak256Hash("ARS"),
-  CAD: getKeccak256Hash("CAD"),
-  AUD: getKeccak256Hash("AUD"),
+  HKD: getKeccak256Hash("HKD"),
+  IDR: getKeccak256Hash("IDR"),
+  ILS: getKeccak256Hash("ILS"),
+  JPY: getKeccak256Hash("JPY"),
+  KES: getKeccak256Hash("KES"),
+  MXN: getKeccak256Hash("MXN"),
+  MYR: getKeccak256Hash("MYR"),
   NZD: getKeccak256Hash("NZD"),
+  PLN: getKeccak256Hash("PLN"),
+  SAR: getKeccak256Hash("SAR"),
+  SGD: getKeccak256Hash("SGD"),
+  THB: getKeccak256Hash("THB"),
+  TRY: getKeccak256Hash("TRY"),
+  USD: getKeccak256Hash("USD"),
+  VND: getKeccak256Hash("VND"),
+  ZAR: getKeccak256Hash("ZAR"),
 } as const;
 
+
+export const getCurrencyCodeFromHash = (hash: string): string => {
+  return Object.keys(Currency).find(key => Currency[key as keyof typeof Currency] === hash) || "";
+}
 
 export const calculateIntentHash = (
   onRamper: string,

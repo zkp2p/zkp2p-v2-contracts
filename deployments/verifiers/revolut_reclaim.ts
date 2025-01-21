@@ -70,10 +70,23 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
 };
 
 export const REVOLUT_RECLAIM_CURRENCIES: any = [
+  Currency.USD,
   Currency.EUR,
   Currency.GBP,
-  Currency.USD,
   Currency.SGD,
+  Currency.NZD,
+  Currency.AUD,
+  Currency.CAD,
+  Currency.JPY,
+  Currency.HKD,
+  Currency.MXN,
+  Currency.SAR,
+  Currency.AED,
+  Currency.THB,
+  Currency.TRY,
+  Currency.PLN,
+  Currency.CHF,
+  Currency.ZAR
 ];
 
 export const REVOLUT_APPCLIP_PROVIDER_HASHES = [
@@ -82,4 +95,9 @@ export const REVOLUT_APPCLIP_PROVIDER_HASHES = [
 
 export const REVOLUT_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
-export const REVOLUT_RECLAIM_FEE_SHARE = BigNumber.from(0);  // 0% of sustainability fee
+export const REVOLUT_RECLAIM_FEE_SHARE: any = {
+  "base": BigNumber.from(0),  // 0% of sustainability fee
+  "base_staging": BigNumber.from(30),  // 30% of sustainability fee
+  "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
+  "localhost": BigNumber.from(0),  // 0% of sustainability fee
+}

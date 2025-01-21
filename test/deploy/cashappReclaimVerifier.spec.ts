@@ -31,7 +31,8 @@ import {
   getCashappReclaimProviderHashes,
   CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
   CASHAPP_RECLAIM_CURRENCIES,
-  CASHAPP_RECLAIM_FEE_SHARE
+  CASHAPP_RECLAIM_FEE_SHARE,
+  CASHAPP_APPCLIP_PROVIDER_HASHES
 } from "../../deployments/verifiers/cashapp_reclaim";
 
 const expect = getWaffleExpect();
@@ -78,11 +79,13 @@ describe("CashAppReclaimVerifier Deployment", () => {
       const actualTimestampBuffer = await cashappReclaimVerifier.timestampBuffer();
       const actualCurrencies = await cashappReclaimVerifier.getCurrencies();
       const hashes = await getCashappReclaimProviderHashes(15);
+      const appclipHashes = CASHAPP_APPCLIP_PROVIDER_HASHES;
+      const allHashes = [...hashes, ...appclipHashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(hashes);
+      expect(actualProviderHashes).to.deep.eq(allHashes);
       expect(actualTimestampBuffer).to.eq(CASHAPP_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(CASHAPP_RECLAIM_CURRENCIES);
     });
@@ -103,7 +106,7 @@ describe("CashAppReclaimVerifier Deployment", () => {
 
     it("should set the correct fee share", async () => {
       const feeShare = await escrow.paymentVerifierFeeShare(cashappReclaimVerifier.address);
-      expect(feeShare).to.eq(CASHAPP_RECLAIM_FEE_SHARE);
+      expect(feeShare).to.eq(CASHAPP_RECLAIM_FEE_SHARE[network]);
     });
   });
 });
