@@ -8,9 +8,7 @@ export const getWiseReclaimProviderHashes = async (length: number) => {
   ]
 }
 
-export const WISE_APPCLIP_PROVIDER_HASHES = [
-  ""
-]
+export const WISE_APPCLIP_PROVIDER_HASHES = []
 
 export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.USD,

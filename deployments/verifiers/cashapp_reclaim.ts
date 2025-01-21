@@ -73,9 +73,7 @@ export const CASHAPP_RECLAIM_CURRENCIES: any = [
   Currency.USD,
 ];
 
-export const CASHAPP_APPCLIP_PROVIDER_HASHES = [
-  ""
-]
+export const CASHAPP_APPCLIP_PROVIDER_HASHES = []
 
 export const CASHAPP_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
