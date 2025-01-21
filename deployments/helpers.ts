@@ -95,6 +95,7 @@ export async function addCurrency(
       console.log(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
         ${contract.interface.encodeFunctionData("addCurrency", [currency])}
+        contract address: ${contract.address}
         `
       );
     }

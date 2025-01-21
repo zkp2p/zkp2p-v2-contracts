@@ -377,7 +377,7 @@ describe("Escrow", () => {
 
     describe("when the accepted currencies is not supported by the verifier", async () => {
       beforeEach(async () => {
-        subjectCurrencies[0][0].code = Currency.INR;
+        subjectCurrencies[0][0].code = Currency.AED;
       });
 
       it("should revert", async () => {
