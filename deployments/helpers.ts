@@ -74,3 +74,28 @@ export async function addWhitelistedPaymentVerifier(
     }
   }
 }
+
+export async function addCurrency(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  currency: string
+): Promise<void> {
+  const currentOwner = await contract.owner();
+  const existingCurrencies = await contract.getCurrencies();
+  if (!existingCurrencies.includes(currency)) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      const data = contract.interface.encodeFunctionData("addCurrency", [currency]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("addCurrency", [currency])}
+        `
+      );
+    }
+  }
+}

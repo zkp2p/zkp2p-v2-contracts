@@ -70,10 +70,22 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
 };
 
 export const REVOLUT_RECLAIM_CURRENCIES: any = [
+  Currency.USD,
   Currency.EUR,
   Currency.GBP,
-  Currency.USD,
-  Currency.SGD,
+  Currency.NZD,
+  Currency.AUD,
+  Currency.CAD,
+  Currency.JPY,
+  Currency.HKD,
+  Currency.MXN,
+  Currency.SAR,
+  Currency.AED,
+  Currency.THB,
+  Currency.TRY,
+  Currency.PLN,
+  Currency.CHF,
+  Currency.ZAR,
 ];
 
 export const REVOLUT_APPCLIP_PROVIDER_HASHES = [
