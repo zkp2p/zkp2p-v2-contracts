@@ -44,7 +44,7 @@ describe("BasePaymentVerifier", () => {
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
-      [Currency.USD, Currency.EUR, Currency.INR]
+      [Currency.USD, Currency.EUR, Currency.AED]
     );
   });
 
@@ -61,7 +61,7 @@ describe("BasePaymentVerifier", () => {
 
     it("should set the correct currencies", async () => {
       const currencies = await basePaymentVerifier.getCurrencies();
-      expect(currencies).to.deep.equal([Currency.USD, Currency.EUR, Currency.INR]);
+      expect(currencies).to.deep.equal([Currency.USD, Currency.EUR, Currency.AED]);
     });
   });
 
