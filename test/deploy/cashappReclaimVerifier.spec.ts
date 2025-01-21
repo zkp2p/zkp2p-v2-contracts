@@ -106,7 +106,7 @@ describe("CashAppReclaimVerifier Deployment", () => {
 
     it("should set the correct fee share", async () => {
       const feeShare = await escrow.paymentVerifierFeeShare(cashappReclaimVerifier.address);
-      expect(feeShare).to.eq(CASHAPP_RECLAIM_FEE_SHARE);
+      expect(feeShare).to.eq(CASHAPP_RECLAIM_FEE_SHARE[network]);
     });
   });
 });

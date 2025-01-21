@@ -63,4 +63,9 @@ export const VENMO_RECLAIM_CURRENCIES: any = [
 
 export const VENMO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
-export const VENMO_RECLAIM_FEE_SHARE = BigNumber.from(0);  // 0% of sustainability fee
+export const VENMO_RECLAIM_FEE_SHARE: any = {
+  "base": BigNumber.from(0),  // 0% of sustainability fee
+  "base_staging": BigNumber.from(30),  // 30% of sustainability fee
+  "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
+  "localhost": BigNumber.from(0),  // 0% of sustainability fee
+}

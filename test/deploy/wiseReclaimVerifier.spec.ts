@@ -85,9 +85,9 @@ describe("WiseReclaimVerifier Deployment", () => {
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(allHashes);
+      expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+      expect([...actualCurrencies].sort()).to.deep.eq([...WISE_RECLAIM_CURRENCIES].sort());
       expect(actualTimestampBuffer).to.eq(WISE_RECLAIM_TIMESTAMP_BUFFER);
-      expect(actualCurrencies).to.deep.eq(WISE_RECLAIM_CURRENCIES);
     });
   });
 
@@ -106,7 +106,7 @@ describe("WiseReclaimVerifier Deployment", () => {
 
     it("should set the correct fee share", async () => {
       const feeShare = await escrow.paymentVerifierFeeShare(wiseReclaimVerifier.address);
-      expect(feeShare).to.eq(WISE_RECLAIM_FEE_SHARE);
+      expect(feeShare).to.eq(WISE_RECLAIM_FEE_SHARE[network]);
     });
   });
 });

@@ -2,7 +2,7 @@ import "module-alias/register";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers, BigNumber } from "hardhat";
+import { ethers } from "hardhat";
 import { Currency } from "../utils/protocolUtils";
 
 import {
@@ -59,7 +59,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("NullifierRegistry permissions added...");
 
   const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, revolutVerifier.address, REVOLUT_RECLAIM_FEE_SHARE); // No fee share for mock
+  await addWhitelistedPaymentVerifier(
+    hre,
+    escrowContract,
+    revolutVerifier.address,
+    REVOLUT_RECLAIM_FEE_SHARE[network]
+  );
 
   console.log("RevolutReclaimVerifier added to whitelisted payment verifiers...");
 

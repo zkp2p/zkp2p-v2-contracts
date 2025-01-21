@@ -56,7 +56,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("NullifierRegistry permissions added...");
 
   const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, cashappVerifier.address, CASHAPP_RECLAIM_FEE_SHARE);
+  await addWhitelistedPaymentVerifier(
+    hre,
+    escrowContract,
+    cashappVerifier.address,
+    CASHAPP_RECLAIM_FEE_SHARE[network]
+  );
 
   console.log("CashappReclaimVerifier added to whitelisted payment verifiers...");
 

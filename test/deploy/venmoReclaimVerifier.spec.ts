@@ -106,7 +106,7 @@ describe("VenmoReclaimVerifier Deployment", () => {
 
     it("should set the correct fee share", async () => {
       const feeShare = await escrow.paymentVerifierFeeShare(venmoReclaimVerifier.address);
-      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE);
+      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE[network]);
     });
   });
 });
