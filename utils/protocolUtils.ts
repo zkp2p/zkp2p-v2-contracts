@@ -43,6 +43,10 @@ export const Currency = {
 } as const;
 
 
+export const getCurrencyCodeFromHash = (hash: string): string => {
+  return Object.keys(Currency).find(key => Currency[key as keyof typeof Currency] === hash) || "";
+}
+
 export const calculateIntentHash = (
   onRamper: string,
   verifier: string,

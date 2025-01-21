@@ -16,6 +16,7 @@ import "./tasks/createDeposit";
 import "./tasks/signalIntent";
 import "./tasks/tokenBalance";
 import "./tasks/chainId";
+import "./tasks/logCurrencies";
 
 dotenv.config();
 
