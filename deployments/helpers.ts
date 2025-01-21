@@ -84,6 +84,7 @@ export async function addCurrency(
   const existingCurrencies = await contract.getCurrencies();
   if (!existingCurrencies.includes(currency)) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      console.log("Adding currency ", currency, "to", contract.address);
       const data = contract.interface.encodeFunctionData("addCurrency", [currency]);
       await hre.deployments.rawTx({
         from: currentOwner,
