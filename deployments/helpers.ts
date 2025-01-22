@@ -128,3 +128,31 @@ export async function removeProviderHash(
     }
   }
 }
+
+export async function addProviderHash(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  providerHash: string
+): Promise<void> {
+  const currentOwner = await contract.owner();
+  const data = contract.interface.encodeFunctionData("addProviderHash", [providerHash]);
+  if (!(await contract.isProviderHash(providerHash))) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      console.log("Adding provider hash ", providerHash, "to", contract.address);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("addProviderHash", [providerHash])}
+        contract address: ${contract.address}
+        `
+      );
+    }
+  } else {
+    console.log("Provider hash", providerHash, "already exists in", contract.address);
+  }
+}
