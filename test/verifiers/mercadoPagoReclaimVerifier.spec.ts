@@ -23,18 +23,18 @@ const mercadoExtensionProof = {
 }
 
 const mercadoAppclipProof = {
-  "identifier": "0x7ad0e838c26b748d00586c919ec02cf5ca20feff358d5b1c84882eed96139509",
+  "identifier": "0xb32f8051d78e49b8b75332d31262942e8bfaf5b164da0267ae3d950e88f77315",
   "claimData": {
     "provider": "http",
-    "parameters": '{"additionalClientOptions":{},"body":"","geoLocation":"","headers":{"Sec-Fetch-Mode":"same-origin","Sec-Fetch-Site":"same-origin","User-Agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1"},"method":"GET","paramValues":{"URL_PARAMS_1":"p2p_money_transfer-4e89751e1a887bb8c646b5c2c7cdf5faa15f362c","URL_PARAMS_GRD":"mp-home","amt":"100","cents":"00","curr":"ARS","date":"2025-02-07T12:24:57.000Z","paymentStatus":"approved","paymentType":"p2p_money_transfer","paymetnId":"101584251600","recipientId":"0000003100016901185863"},"responseMatches":[{"invert":false,"type":"contains","value":"v2__detail\">CVU: {{recipientId}}</li>"},{"invert":false,"type":"contains","value":"<span class=\"andes-money-amount__fraction\" aria-hidden=\"true\">{{amt}}</span><span aria-hidden=\"true\">,</span><span class=\"andes-money-amount__cents\" aria-hidden=\"true\">{{cents}}</span>"},{"invert":false,"type":"contains","value":"Total\",\"amount\":{\"currency_id\":\"{{curr}}\""},{"invert":false,"type":"contains","value":",\"date\":\"{{date}}\",\"sections\""},{"invert":false,"type":"contains","value":"\"operationId\":\"{{paymetnId}}\",\"activityName\":\"{{paymentType}}\",\"activityStatus\":\"{{paymentStatus}}\""}],"responseRedactions":[{"jsonPath":"","regex":"v2__detail\">CVU: (.*?)</li>","xPath":""},{"jsonPath":null,"regex":"<span class=\"andes-money-amount__fraction\" aria-hidden=\"true\">(.*?)<\\/span><span aria-hidden=\"true\">,<\\/span><span class=\"andes-money-amount__cents\" aria-hidden=\"true\">(.*?)<\\/span>","xPath":null},{"jsonPath":null,"regex":"\"Total\",\"amount\":{\"currency_id\":\"(.*?)\"","xPath":null},{"jsonPath":null,"regex":",\"date\":\"(.*)\",\"sections\"","xPath":null},{"jsonPath":null,"regex":"\"operationId\":\"(.*?)\",\"activityName\":\"(.*?)\",\"activityStatus\":\"(.*?)\"","xPath":null}],"url":"https://www.mercadopago.com.ar/activities/detail/{{URL_PARAMS_1}}?from={{URL_PARAMS_GRD}}"}',
+    "parameters": "{\"additionalClientOptions\":{},\"body\":\"\",\"geoLocation\":\"\",\"headers\":{\"Sec-Fetch-Mode\":\"same-origin\",\"Sec-Fetch-Site\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1\"},\"method\":\"GET\",\"paramValues\":{\"URL_PARAMS_1\":\"p2p_money_transfer-c2a624545946e41e5a069f7f652b47251c877fce\",\"URL_PARAMS_GRD\":\"mp-home\",\"amt\":\"420\",\"cents\":\"00\",\"curr\":\"ARS\",\"date\":\"2025-02-07T12:47:00.000Z\",\"paymentStatus\":\"approved\",\"paymentType\":\"p2p_money_transfer\",\"paymetnId\":\"101586128026\",\"recipientId\":\"0000003100016901185863\"},\"responseMatches\":[{\"invert\":false,\"type\":\"contains\",\"value\":\"v2__detail\\\">CVU: {{recipientId}}</li>\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"<span class=\\\"andes-money-amount__fraction\\\" aria-hidden=\\\"true\\\">{{amt}}</span><span aria-hidden=\\\"true\\\">,</span><span class=\\\"andes-money-amount__cents\\\" aria-hidden=\\\"true\\\">{{cents}}</span>\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"Total\\\",\\\"amount\\\":{\\\"currency_id\\\":\\\"{{curr}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\",\\\"date\\\":\\\"{{date}}\\\",\\\"sections\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"operationId\\\":\\\"{{paymetnId}}\\\",\\\"activityName\\\":\\\"{{paymentType}}\\\",\\\"activityStatus\\\":\\\"{{paymentStatus}}\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"\",\"regex\":\"v2__detail\\\">CVU: (.*?)</li>\",\"xPath\":\"\"},{\"jsonPath\":null,\"regex\":\"<span class=\\\"andes-money-amount__fraction\\\" aria-hidden=\\\"true\\\">(.*?)<\\\\/span><span aria-hidden=\\\"true\\\">,<\\\\/span><span class=\\\"andes-money-amount__cents\\\" aria-hidden=\\\"true\\\">(.*?)<\\\\/span>\",\"xPath\":null},{\"jsonPath\":null,\"regex\":\"\\\"Total\\\",\\\"amount\\\":{\\\"currency_id\\\":\\\"(.*?)\\\"\",\"xPath\":null},{\"jsonPath\":null,\"regex\":\",\\\"date\\\":\\\"(.*)\\\",\\\"sections\\\"\",\"xPath\":null},{\"jsonPath\":null,\"regex\":\"\\\"operationId\\\":\\\"(.*?)\\\",\\\"activityName\\\":\\\"(.*?)\\\",\\\"activityStatus\\\":\\\"(.*?)\\\"\",\"xPath\":null}],\"url\":\"https://www.mercadopago.com.ar/activities/detail/{{URL_PARAMS_1}}?from={{URL_PARAMS_GRD}}\"}",
     "owner": "0x26a6a591e79956709e16bead9ae6611af8f90c8d",
-    "timestampS": 1740122392,
-    "context": '{"contextAddress":"0x0","contextMessage":"","extractedParameters":{"URL_PARAMS_1":"p2p_money_transfer-4e89751e1a887bb8c646b5c2c7cdf5faa15f362c","URL_PARAMS_GRD":"mp-home","amt":"100","cents":"00","curr":"ARS","date":"2025-02-07T12:24:57.000Z","paymentStatus":"approved","paymentType":"p2p_money_transfer","paymetnId":"101584251600","recipientId":"0000003100016901185863"},"providerHash":"0x7b7114ae280564c2b832837ddeb836001d813ba3572325497fe87a1ad59ab548"}',
-    "identifier": "0x7ad0e838c26b748d00586c919ec02cf5ca20feff358d5b1c84882eed96139509",
+    "timestampS": 1740137543,
+    "context": "{\"contextAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"contextMessage\":\"20756922327599730735100651558696756420291259037277175062116341256901210969027\",\"extractedParameters\":{\"URL_PARAMS_1\":\"p2p_money_transfer-c2a624545946e41e5a069f7f652b47251c877fce\",\"URL_PARAMS_GRD\":\"mp-home\",\"amt\":\"420\",\"cents\":\"00\",\"curr\":\"ARS\",\"date\":\"2025-02-07T12:47:00.000Z\",\"paymentStatus\":\"approved\",\"paymentType\":\"p2p_money_transfer\",\"paymetnId\":\"101586128026\",\"recipientId\":\"0000003100016901185863\"},\"providerHash\":\"0x7b7114ae280564c2b832837ddeb836001d813ba3572325497fe87a1ad59ab548\"}",
+    "identifier": "0xb32f8051d78e49b8b75332d31262942e8bfaf5b164da0267ae3d950e88f77315",
     "epoch": 1
   },
   "signatures": [
-    "0xf3ce1dad59db5eafb79dbca038c11a5928f0cae7184bb896d1c6e702c70e432a473ebc080ed37a5e187ca0c26c8e4fc3ff81e41cfe4035f3462e13fa7366c6ac1b"
+    "0x2276d8a4f02b5642edc07e2ddadf7ee46330a48d25a8a3e870b2729b30e0ce484021efdaeb5426c45d51af1b7af6cd55557f9b96e4de5fb0ceac31a09eae32ec1c"
   ],
   "witnesses": [
     {
@@ -42,7 +42,7 @@ const mercadoAppclipProof = {
       "url": "wss://attestor.reclaimprotocol.org/ws"
     }
   ],
-  "publicData": {}
+  "publicData": null
 }
 
 
@@ -84,7 +84,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
   });
 
-  describe.only("#constructor", async () => {
+  describe("#constructor", async () => {
     it("should set the correct state", async () => {
       const escrowAddress = await verifier.escrow();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
@@ -111,20 +111,25 @@ describe.only("MercadoPagoReclaimVerifier", () => {
     let subjectFiatCurrency: BytesLike;
     let subjectData: BytesLike;
 
+    let paymentTimestamp: number;
+
     beforeEach(async () => {
       // proof = parseExtensionProof(mercadoExtensionProof);
       proof = parseAppclipProof(mercadoAppclipProof);
       subjectProof = encodeProof(proof);
 
+      const paymentTimeString = '2025-02-07T12:47:00Z'; // Added Z to make UTC
+      const paymentTime = new Date(paymentTimeString);
+      paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
+
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(1);
-      subjectIntentTimestamp = BigNumber.from(1735758706);
-      subjectConversionRate = ether(100);     // 1 USDC * 100 ARS / USDC = 100 ARS required payment amount
-      // subjectPayeeDetailsHash = ethers.utils.keccak256(
-      //   ethers.utils.solidityPack(['string'], ['alexgx7gy'])
-      // );
-      subjectPayeeDetailsHash = '0000003100016901185863';
+      subjectIntentAmount = usdc(2);
+      subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
+      subjectConversionRate = ether(210);     // 2 USDC * 210 ARS / USDC = 420 ARS required payment amount
+      subjectPayeeDetailsHash = ethers.utils.keccak256(
+        ethers.utils.solidityPack(['string'], ['0000003100016901185863'])
+      );
       subjectFiatCurrency = Currency.ARS;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -165,27 +170,24 @@ describe.only("MercadoPagoReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      // expect(intentHash).to.eq(BigNumber.from('2618855330259351132643749738312276409026917421853980101201034599731745761128').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('20756922327599730735100651558696756420291259037277175062116341256901210969027').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['101584251600']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['101586128026']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
     });
 
-    describe.only("when the proof is an appclip proof", async () => {
+    describe("when the proof is an appclip proof", async () => {
       beforeEach(async () => {
         proof = parseAppclipProof(mercadoAppclipProof);
         subjectProof = encodeProof(proof);
 
-        subjectFiatCurrency = Currency.USD;
-        subjectPayeeDetailsHash = ethers.utils.keccak256(
-          ethers.utils.solidityPack(['string'], ['alexgx7gy'])
-        );
+        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['0000003100016901185863']));
       });
 
       it("should verify the proof", async () => {
@@ -195,7 +197,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
         ] = await subjectCallStatic();
 
         expect(verified).to.be.true;
-        // expect(intentHash).to.eq(BigNumber.from('21138964711553769010780423915557687380568289483182695160148231659899695028258').toHexString());
+        expect(intentHash).to.eq(BigNumber.from('20756922327599730735100651558696756420291259037277175062116341256901210969027').toHexString());
       });
     });
 
@@ -213,7 +215,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount * conversion rate", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1.01);   // just 1 cent more than the actual ask amount (1.01 * 0.98 = 0.9898) which is greater than the payment amount (0.98)
+        subjectIntentAmount = usdc(2.02);   // just 1 cent more than the actual ask amount (2.02 * 210 = 424.2) which is greater than the payment amount (420)
       });
 
       it("should revert", async () => {
@@ -222,7 +224,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
       describe("when the payment amount is more than the intent amount * conversion rate", async () => {
         beforeEach(async () => {
-          subjectIntentAmount = usdc(0.99);   // just 1 cent less than the actual ask amount (0.99 * 0.98 = 0.9702) which is less than the payment amount (0.98)
+          subjectIntentAmount = usdc(1.99);   // just 1 cent less than the actual ask amount (1.99 * 210 = 417.9) which is less than the payment amount (420)
         });
 
         it("should not revert", async () => {
@@ -233,7 +235,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(1735758706).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
+        subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
       });
 
       it("should revert", async () => {
@@ -242,7 +244,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
       describe("when the payment was made after the intent", async () => {
         beforeEach(async () => {
-          subjectIntentTimestamp = BigNumber.from(1735758706).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
+          subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(0).add(BigNumber.from(30));  // payment timestamp + 0 + 30 seconds (buffer)
         });
 
         it("should not revert", async () => {
@@ -253,7 +255,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
     describe("when the payment recipient is incorrect", async () => {
       beforeEach(async () => {
-        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['645716473020416187']));
+        subjectPayeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['invalid_recipient']));
       });
 
       it("should revert", async () => {
@@ -294,7 +296,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"17987314991900533465386579731694410438546809091389467293995987266679315178333\",\"extractedParameters\":{\"amount\":\"-98\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"COMPLETED\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c9\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"contextMessage\":\"20756922327599730735100651558696756420291259037277175062116341256901210969027\",\"extractedParameters\":{\"URL_PARAMS_1\":\"p2p_money_transfer-c2a624545946e41e5a069f7f652b47251c877fce\",\"URL_PARAMS_GRD\":\"mp-home\",\"amt\":\"420\",\"cents\":\"00\",\"curr\":\"ARS\",\"date\":\"2025-02-07T12:47:00.000Z\",\"paymentStatus\":\"not-approved\",\"paymentType\":\"p2p_money_transfer\",\"paymetnId\":\"101586128026\",\"recipientId\":\"0000003100016901185863\"},\"providerHash\":\"0x7b7114ae280564c2b832837ddeb836001d813ba3572325497fe87a1ad59ab547\"}"; // changed last char to 7
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -316,7 +318,7 @@ describe.only("MercadoPagoReclaimVerifier", () => {
 
     describe("when the payment status is not correct", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"17987314991900533465386579731694410438546809091389467293995987266679315178333\",\"extractedParameters\":{\"amount\":\"-98\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"INCOMPLETE\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"contextMessage\":\"20756922327599730735100651558696756420291259037277175062116341256901210969027\",\"extractedParameters\":{\"URL_PARAMS_1\":\"p2p_money_transfer-c2a624545946e41e5a069f7f652b47251c877fce\",\"URL_PARAMS_GRD\":\"mp-home\",\"amt\":\"420\",\"cents\":\"00\",\"curr\":\"ARS\",\"date\":\"2025-02-07T12:47:00.000Z\",\"paymentStatus\":\"not-approved\",\"paymentType\":\"p2p_money_transfer\",\"paymetnId\":\"101586128026\",\"recipientId\":\"0000003100016901185863\"},\"providerHash\":\"0x7b7114ae280564c2b832837ddeb836001d813ba3572325497fe87a1ad59ab548\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -335,6 +337,8 @@ describe.only("MercadoPagoReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("Invalid payment status");
       });
     });
+
+    // todo: add tests for when payment type is not correct, payment is not a send transaction, etc.
 
     describe("when the caller is not the escrow", async () => {
       beforeEach(async () => {

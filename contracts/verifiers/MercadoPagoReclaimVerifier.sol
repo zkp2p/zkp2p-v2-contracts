@@ -36,7 +36,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
 
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 12;        // 10 + 2 url params
+    uint8 internal constant MAX_EXTRACT_VALUES = 13;        // 11 + 2 url params + 1 context address
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("approved"));
@@ -82,17 +82,18 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
-                
+        
         _verifyPaymentDetails(
             paymentDetails, 
             _verifyPaymentData,
             isAppclipProof
         );
         
-        // Nullify the payment
-        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
+        bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
+        _validateAndAddNullifier(nullifier);
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        bytes32 intentHashBytes = bytes32(paymentDetails.intentHash.stringToUint(0));
+        return (true, intentHashBytes);
     }
 
     /* ============ Internal Functions ============ */
@@ -139,11 +140,9 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
-        // Validate amount
         uint256 paymentAmount = _parseAmount(paymentDetails.amountString, paymentDetails.amountCentsString, decimals);
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
-        // Validate recipient
         if (_isAppclipProof) {
             bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
             require(
@@ -157,29 +156,19 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
             );
         }
         
-        // Validate payment timestamp
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
-        // Validate currency
-        require(
-            keccak256(abi.encodePacked(paymentDetails.currencyCode)) == _verifyPaymentData.fiatCurrency,
-            "Incorrect payment currency"
-        );
+        bytes32 paymentCurrencyHash = keccak256(abi.encodePacked(paymentDetails.currencyCode));
+        require(paymentCurrencyHash == _verifyPaymentData.fiatCurrency, "Incorrect payment currency");
 
-        // Validate payment type
-        require(
-            keccak256(abi.encodePacked(paymentDetails.paymentType)) == P2P_PAYMENT_TYPE,
-            "Invalid payment type"
-        );
+        bytes32 paymentTypeHash = keccak256(abi.encodePacked(paymentDetails.paymentType));
+        require(paymentTypeHash == P2P_PAYMENT_TYPE, "Invalid payment type");
 
-        // Validate payment status
-        require(
-            keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
-            "Invalid payment status"
-        );
+        bytes32 paymentStatusHash = keccak256(abi.encodePacked(paymentDetails.paymentStatus));
+        require(paymentStatusHash == COMPLETE_PAYMENT_STATUS, "Invalid payment status");
 
-        // Todo: Validate proof is by sender
+        // todo: validate proof is by sender
     }
 
     /**
@@ -207,17 +196,17 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
-            // values[1] is url_params_1
-            // values[2] is url_params_2
-            amountString: values[3],
-            amountCentsString: values[4],
-            currencyCode: values[5],
-            dateString: values[6],
-            paymentStatus: values[7],
-            paymentType: values[8],
-            paymentId: values[9],
-            recipientId: values[10],
-            providerHash: values[11]
+            // values[2] is url_params_1
+            // values[3] is url_params_2
+            amountString: values[4],
+            amountCentsString: values[5],
+            currencyCode: values[6],
+            dateString: values[7],
+            paymentStatus: values[8],
+            paymentType: values[9],
+            paymentId: values[10],
+            recipientId: values[11],
+            providerHash: values[12]
         });
     }
 
