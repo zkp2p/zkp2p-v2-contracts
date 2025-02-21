@@ -12,6 +12,7 @@ export {
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
-  WiseReclaimVerifier
+  WiseReclaimVerifier,
+  MercadoPagoReclaimVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
