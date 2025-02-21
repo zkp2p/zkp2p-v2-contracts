@@ -18,7 +18,8 @@ import {
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
-  WiseReclaimVerifier
+  WiseReclaimVerifier,
+  MercadoPagoReclaimVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -36,7 +37,7 @@ import { RevolutReclaimVerifier__factory } from "../typechain/factories/contract
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
 import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-
+import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 export default class DeployHelper {
   private _deployerSigner: Signer;
 
@@ -120,6 +121,24 @@ export default class DeployHelper {
     providerHashes: string[]
   ): Promise<RevolutReclaimVerifier> {
     return await new RevolutReclaimVerifier__factory(
+      this._deployerSigner
+    ).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployMercadoPagoReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<MercadoPagoReclaimVerifier> {
+    return await new MercadoPagoReclaimVerifier__factory(
       this._deployerSigner
     ).deploy(
       ramp,
