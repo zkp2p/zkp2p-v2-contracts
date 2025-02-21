@@ -46,7 +46,7 @@ const mercadoAppclipProof = {
 }
 
 
-describe.only("MercadoPagoReclaimVerifier", () => {
+describe("MercadoPagoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
