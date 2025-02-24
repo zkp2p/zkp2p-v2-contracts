@@ -202,9 +202,9 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
             amountCentsString: values[5],
             currencyCode: values[6],
             dateString: values[7],
-            paymentStatus: values[8],
-            paymentType: values[9],
-            paymentId: values[10],
+            paymentId: values[8],
+            paymentStatus: values[9],
+            paymentType: values[10],
             recipientId: values[11],
             providerHash: values[12]
         });
