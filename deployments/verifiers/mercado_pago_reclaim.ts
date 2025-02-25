@@ -9,7 +9,7 @@ export const getMercadoReclaimProviderHashes = async (length: number) => {
 }
 
 export const MERCADO_APPCLIP_PROVIDER_HASHES = [
-  '0x7b7114ae280564c2b832837ddeb836001d813ba3572325497fe87a1ad59ab548'
+  '0xb7dcbcc5b413ad040ee9d02eafb9794e6472647b8e50247813fa2d3392727203'
 ]
 
 export const MERCADO_RECLAIM_CURRENCIES: any = [
