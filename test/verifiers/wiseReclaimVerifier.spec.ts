@@ -38,7 +38,7 @@ const wiseExtensionProof = {
 
 const wiseAppclipProof = {}
 
-describe.only("WiseReclaimVerifier", () => {
+describe("WiseReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
