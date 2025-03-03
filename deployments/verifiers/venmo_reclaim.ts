@@ -27,10 +27,6 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
             "value": `"id":"(?<receiverId>[^"]+)"`,
             "hash": true
           },
-          {
-            "type": "regex",
-            "value": `"subType":"p2p"`, // This is to prevent business payments which charge 2% fees
-          },
         ],
         responseRedactions: [
           {
@@ -47,10 +43,6 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           },
           {
             "jsonPath": `$.stories[${i}].title.receiver.id`,
-            "xPath": "",
-          },
-          {
-            "jsonPath": `$.stories[${i}].title.payload.subType`,
             "xPath": "",
           },
         ]
