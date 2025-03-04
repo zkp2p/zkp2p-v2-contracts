@@ -4,7 +4,7 @@ import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
 export const getMercadoReclaimProviderHashes = async (length: number) => {
   return [
-    '0x19d7a93c70b8cd149bb6ffc5497b64d62b5073be0f734a16395e938440362ac6'
+    '0xef587a1bff6a93867da994cb1c61ef8d5225391adc3096455386acf87c4ab1f2'
   ]
 }
 
