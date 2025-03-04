@@ -218,7 +218,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
      * @param _decimals The decimals of the token.
      */
     function _parseAmount(string memory _amount, string memory _amountCents, uint8 _decimals) internal pure returns(uint256) {
-        uint256 baseAmount = _amount.stringToUint(_decimals);
+        uint256 baseAmount = _amount.stringToUint(0x2C, _decimals);
         uint256 centsAmount = _amountCents.stringToUint(_decimals - 2);
         return baseAmount + centsAmount;
     }
