@@ -4,13 +4,11 @@ import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
 export const getMercadoReclaimProviderHashes = async (length: number) => {
   return [
-    '0x496c6289b4a6aab1c733d4bc871837266e6096172d92a1870f73c46bd37e2aed'
+    '0x19d7a93c70b8cd149bb6ffc5497b64d62b5073be0f734a16395e938440362ac6'
   ]
 }
 
-export const MERCADO_APPCLIP_PROVIDER_HASHES = [
-  '0xb7dcbcc5b413ad040ee9d02eafb9794e6472647b8e50247813fa2d3392727203'
-]
+export const MERCADO_APPCLIP_PROVIDER_HASHES = []
 
 export const MERCADO_RECLAIM_CURRENCIES: any = [
   Currency.ARS
