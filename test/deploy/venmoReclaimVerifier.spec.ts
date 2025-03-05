@@ -80,7 +80,7 @@ describe("VenmoReclaimVerifier Deployment", () => {
       const actualCurrencies = await venmoReclaimVerifier.getCurrencies();
       const hashes = await getVenmoReclaimProviderHashes(10);
       const appclipHashes = VENMO_APPCLIP_PROVIDER_HASHES;
-      const allHashes = [...hashes, ...appclipHashes];
+      const allHashes = [...appclipHashes, ...hashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
