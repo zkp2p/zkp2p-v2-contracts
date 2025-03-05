@@ -37,7 +37,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("WiseReclaimVerifier Deployment", () => {
+describe("MercadoPagoReclaimVerifier Deployment", () => {
   let deployer: Account;
   let multiSig: Address;
   let escrowAddress: string;
