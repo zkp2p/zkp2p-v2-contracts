@@ -18,6 +18,7 @@ export const getKeccak256Hash = (value: string): string => {
 
 export const Currency = {
   AED: getKeccak256Hash("AED"),
+  ARS: getKeccak256Hash("ARS"),
   AUD: getKeccak256Hash("AUD"),
   CAD: getKeccak256Hash("CAD"),
   CHF: getKeccak256Hash("CHF"),

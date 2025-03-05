@@ -13,8 +13,9 @@ library DateParsing {
     /**
      * @notice Iterates through every character in the date string and splits the string at each dash, "T", or colon. Function will revert
      * if there are not 6 substrings formed from the split. The substrings are then converted to uints and passed to the DateTime lib
-     * to get the unix timestamp. This function is SPECIFIC TO THE DATE FORMAT YYYY-MM-DDTHH:MM:SS, not suitable for use with other date
-     * formats. It returns UTC timestamps.
+     * to get the unix timestamp. This function is SPECIFIC TO THE DATE FORMAT YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SS.SSSZ, not suitable for 
+     * use with other date formats. It skips the milliseconds and timezone offset, as they are not present in all date strings. It returns UTC 
+     * timestamps.
      *
      * @param _dateString       Date string to be converted to a UTC timestamp
      */
@@ -22,7 +23,8 @@ library DateParsing {
         string[6] memory extractedStrings;
         uint256 breakCounter;
         uint256 lastBreak;
-        for (uint256 i = 0; i < bytes(_dateString).length; i++) {
+        uint256 lastIndex = bytes(_dateString).length;
+        for (uint256 i = 0; i < lastIndex; i++) {
             if (
                 bytes(_dateString)[i] == 0x2d       // dash (-)
                 || bytes(_dateString)[i] == 0x3a    // colon (:)
@@ -33,9 +35,14 @@ library DateParsing {
                 lastBreak = i + 1;
                 breakCounter++;
             }
+
+            if (bytes(_dateString)[i] == 0x2e) {    // dot (.)
+                lastIndex = i;
+                break;
+            }
         }
         // Add last substring to array
-        extractedStrings[breakCounter] = _dateString.substring(lastBreak, bytes(_dateString).length);
+        extractedStrings[breakCounter] = _dateString.substring(lastBreak, lastIndex);
 
         // Check that exactly 6 substrings were found (string is split at 5 different places)
         require(breakCounter == 5, "Invalid date string");
