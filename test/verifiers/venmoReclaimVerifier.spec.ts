@@ -22,17 +22,17 @@ const expect = getWaffleExpect();
 const venmoExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"paramValues\":{\"SENDER_ID\":\"1168869611798528966\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"subType\\\":\\\"p2p\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[9].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].paymentId\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.receiver.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[9].title.payload.subType\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}\"}",
+    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"paramValues\":{\"SENDER_ID\":\"1168869611798528966\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"- \\\\$(?<amount>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"date\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentId\\\":\\\"(?<paymentId>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<receiverId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"subType\\\":\\\"none\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.stories[2].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[2].date\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[2].paymentId\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[2].title.receiver.id\",\"xPath\":\"\"},{\"jsonPath\":\"$.stories[2].subType\",\"xPath\":\"\"}],\"url\":\"https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1741040819,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"17241995089265347562856273348407681006860445337286977787103845200506914238674\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"850.00\",\"date\":\"2025-02-26T22:18:57\",\"paymentId\":\"4276850732895209976\",\"receiverId\":\"0xc70eb85ded26d9377e4f0b244c638ee8f7e731114911bf547bff27f7d8fc3bfa\"},\"providerHash\":\"0x1f9bb657d328715a31789af4a1a2f6c1e970ff2e370ae5cd62d8c4f26997fa49\"}",
-    "identifier": "0xd12eace7c770051b4e5dea41914f4ba5ee773642910f8900bd3543e8e0c7ec32",
+    "timestampS": 1741289466,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"1130949156358289030228004429378196774671616229922798947763187449647160396233\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"1.00\",\"date\":\"2025-03-06T18:36:45\",\"paymentId\":\"4282537099205562654\",\"receiverId\":\"0xc70eb85ded26d9377e4f0b244c638ee8f7e731114911bf547bff27f7d8fc3bfa\"},\"providerHash\":\"0x709569cc5850c23c4d8966524137d40b82d3056949fb0912be29a10803784a75\"}",
+    "identifier": "0x2392a6dbec48a64c9a0234d001837232fcfc80d4f79f2f53b0cf02605eeb7aad",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": {"0":113,"1":187,"2":72,"3":135,"4":202,"5":30,"6":205,"7":4,"8":126,"9":5,"10":83,"11":180,"12":41,"13":16,"14":255,"15":161,"16":165,"17":20,"18":206,"19":191,"20":98,"21":130,"22":252,"23":1,"24":135,"25":239,"26":30,"27":222,"28":16,"29":217,"30":89,"31":5,"32":58,"33":245,"34":20,"35":224,"36":111,"37":106,"38":52,"39":9,"40":145,"41":5,"42":40,"43":116,"44":248,"45":234,"46":172,"47":191,"48":199,"49":70,"50":16,"51":233,"52":72,"53":138,"54":173,"55":104,"56":150,"57":230,"58":70,"59":249,"60":238,"61":150,"62":209,"63":139,"64":27},
-    "resultSignature": {"0":71,"1":66,"2":92,"3":230,"4":246,"5":90,"6":149,"7":125,"8":129,"9":104,"10":30,"11":165,"12":133,"13":117,"14":95,"15":120,"16":234,"17":141,"18":4,"19":149,"20":67,"21":223,"22":237,"23":99,"24":144,"25":252,"26":203,"27":43,"28":42,"29":123,"30":191,"31":173,"32":66,"33":171,"34":107,"35":44,"36":122,"37":98,"38":134,"39":250,"40":25,"41":161,"42":64,"43":78,"44":14,"45":133,"46":30,"47":254,"48":147,"49":69,"50":33,"51":18,"52":182,"53":21,"54":168,"55":62,"56":180,"57":17,"58":130,"59":18,"60":107,"61":32,"62":67,"63":34,"64":27}
+    "claimSignature": {"0":184,"1":85,"2":253,"3":138,"4":89,"5":107,"6":15,"7":33,"8":78,"9":222,"10":100,"11":150,"12":144,"13":70,"14":141,"15":160,"16":179,"17":45,"18":226,"19":191,"20":42,"21":203,"22":152,"23":24,"24":215,"25":175,"26":18,"27":26,"28":204,"29":190,"30":151,"31":94,"32":121,"33":107,"34":95,"35":245,"36":176,"37":169,"38":164,"39":25,"40":126,"41":142,"42":152,"43":156,"44":125,"45":13,"46":89,"47":63,"48":77,"49":179,"50":20,"51":87,"52":47,"53":110,"54":68,"55":104,"56":118,"57":182,"58":130,"59":2,"60":68,"61":13,"62":211,"63":228,"64":27},
+    "resultSignature": {"0":182,"1":9,"2":118,"3":147,"4":66,"5":156,"6":239,"7":12,"8":146,"9":76,"10":46,"11":93,"12":102,"13":241,"14":223,"15":20,"16":95,"17":108,"18":28,"19":204,"20":209,"21":117,"22":33,"23":69,"24":197,"25":89,"26":228,"27":35,"28":179,"29":1,"30":140,"31":129,"32":10,"33":30,"34":224,"35":53,"36":64,"37":190,"38":14,"39":140,"40":62,"41":46,"42":234,"43":33,"44":62,"45":86,"46":116,"47":228,"48":140,"49":244,"50":8,"51":102,"52":246,"53":43,"54":100,"55":47,"56":37,"57":190,"58":183,"59":37,"60":13,"61":249,"62":83,"63":129,"64":27}
   }
 }
 
@@ -82,7 +82,7 @@ describe("VenmoReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0x0636c417755e3ae25c6c166d181c0607f4c572a3", "0x244897572368eadf65bfbc5aec98d8e5443a9072"];
-    providerHashes = ["0x1f9bb657d328715a31789af4a1a2f6c1e970ff2e370ae5cd62d8c4f26997fa49", "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"];
+    providerHashes = ["0x709569cc5850c23c4d8966524137d40b82d3056949fb0912be29a10803784a75", "0x14de8b5503a4a6973bbaa9aa301ec7843e9bcaa3af05e6610b54c6fcc56aa425"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -130,7 +130,7 @@ describe("VenmoReclaimVerifier", () => {
       proof = parseExtensionProof(venmoExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-02-26T22:18:57Z'; // Added Z to make UTC
+      const paymentTimeString = '2025-03-06T18:36:45Z'; // Added Z to make UTC
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
@@ -180,13 +180,13 @@ describe("VenmoReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('17241995089265347562856273348407681006860445337286977787103845200506914238674').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['4276850732895209976']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['4282537099205562654']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
