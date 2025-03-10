@@ -61,7 +61,7 @@ const config: HardhatUserConfig = {
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
       ],
-      gasPrice: 50000000000, // 50 gwei
+      gasPrice: 300000000000, // 300 gwei
       gas: 8000000, // 8 million gas limit
       verify: {
         etherscan: {
