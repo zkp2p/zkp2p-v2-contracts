@@ -29,7 +29,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": `"subType":"p2p"`, // This is to prevent business payments which charge 2% fees
+            "value": `"subType":"none"`, // This is to prevent business payments which charge 2% fees
           },
         ],
         responseRedactions: [
@@ -50,7 +50,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
             "xPath": "",
           },
           {
-            "jsonPath": `$.stories[${i}].title.payload.subType`,
+            "jsonPath": `$.stories[${i}].subType`,
             "xPath": "",
           },
         ]
