@@ -59,7 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
-  return true;  // always run
+  return true;  // always skip
 };
 
 export default func;
