@@ -41,6 +41,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
     
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("approved"));
     bytes32 public constant P2P_PAYMENT_TYPE = keccak256(abi.encodePacked("p2p_money_transfer"));
+    bytes32 public constant ONLINE_TRANSFER_TYPE = keccak256(abi.encodePacked("transfer_online"));
 
     /* ============ Constructor ============ */
     
@@ -163,7 +164,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         require(paymentCurrencyHash == _verifyPaymentData.fiatCurrency, "Incorrect payment currency");
 
         bytes32 paymentTypeHash = keccak256(abi.encodePacked(paymentDetails.paymentType));
-        require(paymentTypeHash == P2P_PAYMENT_TYPE, "Invalid payment type");
+        require(paymentTypeHash == P2P_PAYMENT_TYPE || paymentTypeHash == ONLINE_TRANSFER_TYPE, "Invalid payment type");
 
         bytes32 paymentStatusHash = keccak256(abi.encodePacked(paymentDetails.paymentStatus));
         require(paymentStatusHash == COMPLETE_PAYMENT_STATUS, "Invalid payment status");
