@@ -2837,7 +2837,7 @@ export default {
       ]
     },
     "MercadoPagoReclaimVerifier": {
-      "address": "0x00D003C73EAB8fEaec04bab976235915fE7641e3",
+      "address": "0xf2AC5be14F32Cbe6A613CFF8931d95460D6c33A3",
       "abi": [
         {
           "inputs": [
@@ -2957,6 +2957,19 @@ export default {
         {
           "inputs": [],
           "name": "COMPLETE_PAYMENT_STATUS",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "ONLINE_TRANSFER_TYPE",
           "outputs": [
             {
               "internalType": "bytes32",

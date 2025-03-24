@@ -56,12 +56,12 @@ const config: HardhatUserConfig = {
       },
     },
     sepolia: {
-      url: "https://sepolia.infura.io/v3/" + process.env.INFURA_TOKEN,
+      url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
       // @ts-ignore
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
       ],
-      gasPrice: 300000000000, // 300 gwei
+      gasPrice: 100000000000, // 300 gwei
       gas: 8000000, // 8 million gas limit
       verify: {
         etherscan: {
