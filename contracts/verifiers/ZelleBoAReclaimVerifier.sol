@@ -57,9 +57,9 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier
     /* ============ External Functions ============ */
 
     /**
-     * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
-     * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Venmo.
-     * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
+     * ONLY RAMP: Verifies a reclaim proof of an offchain Bank of America Zelle payment. Ensures the right _intentAmount * _conversionRate
+     * USD was paid to _aliasToken after _intentTimestamp + timestampBuffer on Bank of America Zelle.
+     * Note: For Bank of America Zelle fiat currency is always USD. For other verifiers which support multiple currencies,
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
@@ -121,7 +121,7 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier
     }
 
     /**
-     * Verifies the right _intentAmount * _conversionRate is paid to _payeeDetailsHash after 
+     * Verifies the right _intentAmount * _conversionRate is paid to hashed _aliasToken after 
      * _intentTimestamp + timestampBuffer on Zelle. Reverts if any of the conditions are not met.
      */
     function _verifyPaymentDetails(
