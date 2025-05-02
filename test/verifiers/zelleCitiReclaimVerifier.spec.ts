@@ -120,7 +120,6 @@ describe("ZelleCitiReclaimVerifier", () => {
       proof = parseExtensionProof(zelleCitiExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '04/28/2025'; 
       const paymentTime = new Date('2025-04-28');  // Convert to YYYY-MM-DD for JS Date
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
@@ -275,6 +274,31 @@ describe("ZelleCitiReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Payment not delivered");
+      });
+    });
+
+    describe("when the date format is invalid", async () => {
+      beforeEach(async () => {
+        // Replace the valid date "04/28/2025" with an invalid format "4/28/2025" (9 characters)
+        proof.claimInfo.context = proof.claimInfo.context.replace(
+          "\"updatedTimeStamp\":\"04/28/2025\"",
+          "\"updatedTimeStamp\":\"4/28/2025\""
+        );
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Invalid date format");
       });
     });
 

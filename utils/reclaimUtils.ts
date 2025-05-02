@@ -110,3 +110,11 @@ export const encodeProof = (proof: ReclaimProof) => {
 		[proof]
 	);
 };
+
+export const encodeTwoProofs = (proof1: ReclaimProof, proof2: ReclaimProof) => {
+    const PROOF_ENCODING_STRING = "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim, bool isAppclipProof)";
+    return ethers.utils.defaultAbiCoder.encode(
+        [PROOF_ENCODING_STRING, PROOF_ENCODING_STRING],
+        [proof1, proof2]
+    );
+};
