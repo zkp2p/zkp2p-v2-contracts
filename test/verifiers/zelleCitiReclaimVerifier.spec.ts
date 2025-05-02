@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { NullifierRegistry, ZelleBoAReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, ZelleCitiReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -19,24 +19,36 @@ import {
 
 const expect = getWaffleExpect();
 
-const zelleBoAExtensionProof = {
-  "claim": {
-    "provider": "http",
-    "parameters": "{\"body\":\"{\\\"filterV1\\\":{\\\"dateFilter\\\":{\\\"timeframeForHistory\\\":\\\"DEFAULTDAYS\\\"}},\\\"sortCriteriaV1\\\":{\\\"fieldName\\\":\\\"DATE\\\",\\\"order\\\":\\\"DESCENDING\\\"},\\\"pageInfo\\\":{\\\"pageNum\\\":1,\\\"pageSize\\\":\\\"\\\"}}\",\"headers\":{\"Accept\":\"application/json\",\"Accept-Language\":\"en-US\",\"Content-Type\":\"application/json\",\"Origin\":\"https://secure.bankofamerica.com\",\"Referer\":\"https://secure.bankofamerica.com/pay-transfer-pay-portal/?request_locale=en-us&returnSiteIndicator=GAIEC&target=paymentactivity\",\"Sec-Fetch-Dest\":\"empty\",\"Sec-Fetch-Mode\":\"cors\",\"Sec-Fetch-Site\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36\",\"X-Requested-With\":\"XMLHttpRequest\",\"sec-ch-ua\":\"\\\"Chromium\\\";v=\\\"136\\\", \\\"Google Chrome\\\";v=\\\"136\\\", \\\"Not.A/Brand\\\";v=\\\"99\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\"},\"method\":\"POST\",\"paramValues\":{},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"confirmationNumber\\\":\\\"(?<confirmationNumber>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"transactionDate\\\":\\\"(?<transactionDate>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\.]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"aliasToken\\\":\\\"(?<aliasToken>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.completedTransactions[0].confirmationNumber\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].status\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].transactionDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].targetAccount.aliasToken\",\"xPath\":\"\"}],\"url\":\"https://secure.bankofamerica.com/ogateway/payment-activity/api/v4/activity\"}",
-    "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1746132575,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"aliasToken\":\"0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303\",\"amount\":\"100.0\",\"confirmationNumber\":\"n5izkhusa\",\"status\":\"COMPLETED\",\"transactionDate\":\"2025-04-18\"},\"providerHash\":\"0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd\"}",
-    "identifier": "0x222e8d48a28ee89aa6b99766594e8a4daa6188c7a530ce8ec617e3d868863260",
-    "epoch": 1
+const zelleCitiExtensionProof = {
+  claim: {
+    provider: "http",
+    parameters: "{\"body\":\"\",\"headers\":{\"Accept\":\"application/json\",\"Accept-language\":\"en_US\",\"Content-Type\":\"application/json\",\"Referer\":\"https://online.citi.com/US/nga/zelle/transfer\",\"Sec-Fetch-Dest\":\"empty\",\"Sec-Fetch-Mode\":\"cors\",\"Sec-Fetch-Site\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36\",\"appVersion\":\"CBOL-ANG-2025-04-01\",\"businessCode\":\"GCB\",\"channelId\":\"CBOL\",\"client_id\":\"4a51fb19-a1a7-4247-bc7e-18aa56dd1c40\",\"countryCode\":\"US\",\"sec-ch-ua\":\"\\\"Chromium\\\";v=\\\"136\\\", \\\"Google Chrome\\\";v=\\\"136\\\", \\\"Not.A/Brand\\\";v=\\\"99\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\"},\"method\":\"GET\",\"paramValues\":{},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"paymentID\\\":\\\"(?<paymentID>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"paymentStatus\\\":\\\"(?<paymentStatus>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"updatedTimeStamp\\\":\\\"(?<updatedTimeStamp>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"amount\\\":\\\"(?<amount>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"partyToken\\\":\\\"(?<partyToken>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.content.paymentTransactionsData[1].paymentID\",\"xPath\":\"\"},{\"jsonPath\":\"$.content.paymentTransactionsData[1].paymentStatus\",\"xPath\":\"\"},{\"jsonPath\":\"$.content.paymentTransactionsData[1].updatedTimeStamp\",\"xPath\":\"\"},{\"jsonPath\":\"$.content.paymentTransactionsData[1].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.content.paymentTransactionsData[1].partyToken\",\"xPath\":\"\"}],\"url\":\"https://online.citi.com/gcgapi/prod/public/v1/p2ppayments/pastActivityTransactions?transactionCount=20&pageId=0&tab=All\"}",
+    owner: "0xf9f25d1b846625674901ace47d6313d1ac795265",
+    timestampS: 1746152327,
+    context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"amount\":\"10.00\",\"partyToken\":\"0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303\",\"paymentID\":\"CTIwjcKauxso\",\"paymentStatus\":\"DELIVERED\",\"updatedTimeStamp\":\"04/28/2025\"},\"providerHash\":\"0x3a3d23f3f3c5063af7fa0bd48aa98f4cd4658770aa5de971924fda7ef92ea743\"}",
+    identifier: "0x3694f804d9aabaab9a31bda50e6a1491c73d1067d9bec558ba0dba6e34d8c0c1",
+    epoch: 1
   },
-  "signatures": {
-    "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": {"0":104,"1":151,"2":79,"3":218,"4":75,"5":10,"6":115,"7":191,"8":196,"9":181,"10":208,"11":121,"12":149,"13":195,"14":187,"15":12,"16":220,"17":253,"18":0,"19":80,"20":35,"21":229,"22":221,"23":102,"24":76,"25":144,"26":42,"27":96,"28":8,"29":72,"30":132,"31":204,"32":111,"33":206,"34":48,"35":38,"36":177,"37":246,"38":252,"39":38,"40":127,"41":133,"42":157,"43":170,"44":105,"45":184,"46":107,"47":186,"48":190,"49":0,"50":52,"51":9,"52":96,"53":42,"54":73,"55":119,"56":254,"57":121,"58":146,"59":138,"60":201,"61":178,"62":134,"63":226,"64":27},
-    "resultSignature": {"0":141,"1":48,"2":96,"3":49,"4":69,"5":77,"6":17,"7":183,"8":8,"9":244,"10":237,"11":41,"12":161,"13":212,"14":48,"15":27,"16":132,"17":200,"18":68,"19":235,"20":237,"21":17,"22":230,"23":223,"24":199,"25":128,"26":105,"27":51,"28":200,"29":119,"30":101,"31":99,"32":38,"33":27,"34":201,"35":229,"36":70,"37":162,"38":68,"39":77,"40":92,"41":111,"42":147,"43":141,"44":99,"45":125,"46":129,"47":164,"48":211,"49":11,"50":209,"51":204,"52":165,"53":234,"54":81,"55":157,"56":4,"57":68,"58":113,"59":96,"60":130,"61":196,"62":187,"63":153,"64":28}
+  signatures: {
+    attestorAddress: "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
+    claimSignature: [
+      57, 148, 209, 226, 97, 236, 95, 190, 18, 226, 221, 93, 3, 198, 5, 37,
+      26, 240, 232, 94, 239, 88, 167, 95, 203, 144, 57, 45, 44, 173, 113, 154,
+      69, 45, 240, 5, 89, 231, 124, 226, 229, 145, 71, 212, 12, 145, 18, 172,
+      42, 149, 206, 165, 180, 103, 20, 82, 38, 216, 48, 146, 3, 102, 72, 166,
+      27
+    ],
+    resultSignature: [
+      17, 242, 170, 113, 221, 222, 14, 161, 137, 83, 210, 215, 33, 132, 6, 35,
+      250, 214, 225, 115, 179, 43, 192, 116, 223, 228, 166, 6, 157, 78, 39, 99,
+      57, 100, 221, 158, 121, 58, 154, 173, 110, 92, 207, 109, 123, 233, 215, 49,
+      34, 68, 116, 80, 220, 180, 205, 57, 217, 218, 218, 112, 48, 145, 251, 30,
+      28
+    ]
   }
 };
 
-describe("ZelleBoAReclaimVerifier", () => {
+describe("ZelleCitiReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -44,7 +56,7 @@ describe("ZelleBoAReclaimVerifier", () => {
   let witnesses: Address[];
 
   let nullifierRegistry: NullifierRegistry;
-  let verifier: ZelleBoAReclaimVerifier;
+  let verifier: ZelleCitiReclaimVerifier;
   let usdcToken: USDCMock;
 
   let deployer: DeployHelper;
@@ -60,11 +72,11 @@ describe("ZelleBoAReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0x0636c417755e3ae25c6c166d181c0607f4c572a3"];
-    providerHashes = ["0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd"];
+    providerHashes = ["0x3a3d23f3f3c5063af7fa0bd48aa98f4cd4658770aa5de971924fda7ef92ea743"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    verifier = await deployer.deployZelleBoAReclaimVerifier(
+    verifier = await deployer.deployZelleCitiReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
@@ -105,18 +117,18 @@ describe("ZelleBoAReclaimVerifier", () => {
     let paymentTimestamp: number;
 
     beforeEach(async () => {
-      proof = parseExtensionProof(zelleBoAExtensionProof);
+      proof = parseExtensionProof(zelleCitiExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-04-18'; 
-      const paymentTime = new Date(paymentTimeString);
+      const paymentTimeString = '04/28/2025'; 
+      const paymentTime = new Date('2025-04-28');  // Convert to YYYY-MM-DD for JS Date
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(110);
-      subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
-      subjectConversionRate = ether(0.9);   // 110 * 0.9 = 99 [intent amount * conversion rate = payment amount]
+      subjectIntentAmount = usdc(11);  // 11 * 0.9 = 9.9 [less than payment amount of 10]
+      subjectIntentTimestamp = BigNumber.from(paymentTimestamp - 86400); // 1 day before
+      subjectConversionRate = ether(0.9);
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
       subjectFiatCurrency = ZERO_BYTES32;
       subjectData = ethers.utils.defaultAbiCoder.encode(
@@ -164,7 +176,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['n5izkhusa']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['CTIwjcKauxso']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -183,7 +195,7 @@ describe("ZelleBoAReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1000);  // 1000 * 0.9 = 900 [900 > 100]
+        subjectIntentAmount = usdc(1000);  // 1000 * 0.9 = 900 [900 > 10]
       });
 
       it("should revert", async () => {
@@ -224,7 +236,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
         proof.claimInfo.context = proof.claimInfo.context.replace(
-          "0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd",
+          "0x3a3d23f3f3c5063af7fa0bd48aa98f4cd4658770aa5de971924fda7ef92ea743",
           "0xbbb4d6813c1ccac7253673094ce4c1e122fe358682392851cfa332fe8359b8fc"
         );
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
@@ -245,9 +257,9 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment status is not COMPLETED", async () => {
+    describe("when the payment status is not DELIVERED", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = proof.claimInfo.context.replace("COMPLETED", "PENDING");
+        proof.claimInfo.context = proof.claimInfo.context.replace("DELIVERED", "PENDING");
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         const digest = createSignDataForClaim(proof.signedClaim.claim);
@@ -262,7 +274,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment not completed");
+        await expect(subject()).to.be.revertedWith("Payment not delivered");
       });
     });
 
@@ -276,4 +288,4 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
     });
   });
-});
+}); 

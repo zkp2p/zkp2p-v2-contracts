@@ -14,6 +14,7 @@ export {
   CashappReclaimVerifier,
   WiseReclaimVerifier,
   MercadoPagoReclaimVerifier,
-  ZelleBoAReclaimVerifier
+  ZelleBoAReclaimVerifier,
+  ZelleCitiReclaimVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";

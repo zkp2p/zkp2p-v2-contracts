@@ -20,7 +20,8 @@ import {
   CashappReclaimVerifier,
   WiseReclaimVerifier,
   MercadoPagoReclaimVerifier,
-  ZelleBoAReclaimVerifier
+  ZelleBoAReclaimVerifier,
+  ZelleCitiReclaimVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -40,6 +41,7 @@ import { CashappReclaimVerifier__factory } from "../typechain/factories/contract
 import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -194,6 +196,22 @@ export default class DeployHelper {
     providerHashes: string[]
   ): Promise<ZelleBoAReclaimVerifier> {
     return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployZelleCitiReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<ZelleCitiReclaimVerifier> {
+    return await new ZelleCitiReclaimVerifier__factory(this._deployerSigner).deploy(
       ramp,
       nullifierRegistry,
       timestampBuffer,
