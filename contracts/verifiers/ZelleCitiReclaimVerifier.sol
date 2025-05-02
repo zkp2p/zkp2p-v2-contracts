@@ -198,13 +198,4 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifie
         
         return string(result);
     }
-
-    function substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory result = new bytes(endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = strBytes[i];
-        }
-        return string(result);
-    }
 }
