@@ -28,6 +28,7 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
     uint8 internal constant MAX_EXTRACT_VALUES_DETAIL = 5;  // for detail proof
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETED_STATUS = keccak256(abi.encodePacked("COMPLETED"));
+    bytes32 public constant DELIVERED_STATUS = keccak256(abi.encodePacked("DELIVERED"));
 
     constructor(
         address _escrow,
@@ -176,8 +177,9 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
 
         // Validate status
         require(
-            keccak256(abi.encodePacked(paymentDetails.status)) == COMPLETED_STATUS,
-            "Payment not completed"
+            keccak256(abi.encodePacked(paymentDetails.status)) == COMPLETED_STATUS ||
+            keccak256(abi.encodePacked(paymentDetails.status)) == DELIVERED_STATUS,
+            "Payment not completed or delivered"
         );
     }
 

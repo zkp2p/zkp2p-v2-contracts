@@ -75,7 +75,7 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": "\"status\":\"(?<status>[^\"]+)\""
+            "value": "\"verboseStatus\":\"(?<verboseStatus>[^\"]+)\""
           },
           {
             "type": "regex",
@@ -92,7 +92,7 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
             "xPath": ""
           },
           {
-            "jsonPath": `$.listItems[${i}].status`,
+            "jsonPath": `$.listItems[${i}].verboseStatus`,
             "xPath": ""
           },
           {
