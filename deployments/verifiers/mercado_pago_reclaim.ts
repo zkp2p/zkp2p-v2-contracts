@@ -11,7 +11,8 @@ export const getMercadoReclaimProviderHashes = async (length: number) => {
 export const MERCADO_APPCLIP_PROVIDER_HASHES = []
 
 export const MERCADO_RECLAIM_CURRENCIES: any = [
-  Currency.ARS
+  Currency.ARS,
+  Currency.BRL
 ];
 
 export const MERCADO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

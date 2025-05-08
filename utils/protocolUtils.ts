@@ -20,6 +20,7 @@ export const Currency = {
   AED: getKeccak256Hash("AED"),
   ARS: getKeccak256Hash("ARS"),
   AUD: getKeccak256Hash("AUD"),
+  BRL: getKeccak256Hash("BRL"),
   CAD: getKeccak256Hash("CAD"),
   CHF: getKeccak256Hash("CHF"),
   CNY: getKeccak256Hash("CNY"),
