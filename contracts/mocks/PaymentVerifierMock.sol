@@ -5,7 +5,7 @@ import { IPaymentVerifier } from "../verifiers/interfaces/IPaymentVerifier.sol";
 import { INullifierRegistry } from "../verifiers/nullifierRegistries/INullifierRegistry.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 
-import { BasePaymentVerifier } from "../verifiers/BasePaymentVerifier.sol";
+import { BasePaymentVerifier } from "../verifiers/BaseVerifiers/BasePaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 

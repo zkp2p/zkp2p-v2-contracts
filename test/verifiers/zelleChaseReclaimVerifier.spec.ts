@@ -616,7 +616,7 @@ const chaseDetailCompletedProof = {
 
 describe("ZelleChaseReclaimVerifier", () => {
   let owner: Account;
-  let escrow: Account;
+  let baseVerifier: Account;
   let providerHashes: string[];
   let witnesses: Address[];
 
@@ -629,7 +629,7 @@ describe("ZelleChaseReclaimVerifier", () => {
   beforeEach(async () => {
     [
       owner,
-      escrow
+      baseVerifier
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -645,14 +645,24 @@ describe("ZelleChaseReclaimVerifier", () => {
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
     verifier = await deployer.deployZelleChaseReclaimVerifier(
-      escrow.address,
+      baseVerifier.address,
       nullifierRegistry.address,
-      BigNumber.from(30),
-      [Currency.USD],
       providerHashes
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
+  });
+
+  describe("#constructor", async () => {
+    it("should set the correct state", async () => {
+      const baseVerifierAddress = await verifier.baseVerifier();
+      const nullifierRegistryAddress = await verifier.nullifierRegistry();
+      const providerHashes = await verifier.getProviderHashes();
+
+      expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
+      expect(providerHashes).to.deep.eq(providerHashes);
+      expect(baseVerifierAddress).to.eq(baseVerifier.address);
+    });
   });
 
   describe("#verifyPayment", async () => {
@@ -682,7 +692,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.floor(paymentTime.getTime() / 1000);
 
-      subjectCaller = escrow;
+      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(10);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
@@ -890,13 +900,13 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     });
 
-    describe("when the caller is not the escrow", async () => {
+    describe("when the caller is not the base verifier", async () => {
       beforeEach(async () => {
         subjectCaller = owner;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only escrow can call");
+        await expect(subject()).to.be.revertedWith("Only base verifier can call");
       });
     });
   });

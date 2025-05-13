@@ -12,6 +12,7 @@ import { StringArrayUtils } from "./external/StringArrayUtils.sol";
 import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 
 import { IEscrow } from "./interfaces/IEscrow.sol";
+import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
@@ -687,7 +688,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
             for (uint256 j = 0; j < _currencies[i].length; j++) {
                 require(
-                    IPaymentVerifier(verifier).isCurrency(_currencies[i][j].code), 
+                    IBasePaymentVerifier(verifier).isCurrency(_currencies[i][j].code), 
                     "Currency not supported by verifier"
                 );
                 require(_currencies[i][j].conversionRate > 0, "Conversion rate must be greater than 0");

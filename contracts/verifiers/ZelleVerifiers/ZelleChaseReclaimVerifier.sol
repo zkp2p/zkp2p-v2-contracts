@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MIT
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { DateParsing } from "../lib/DateParsing.sol";
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
-import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
-import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
-import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+import { DateParsing } from "../../lib/DateParsing.sol";
+import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
+import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
+
+import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
+
+import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
+contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     using StringConversionUtils for string;
     using Bytes32ConversionUtils for bytes32;
 
@@ -30,21 +32,23 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
     bytes32 public constant COMPLETED_STATUS = keccak256(abi.encodePacked("COMPLETED"));
     bytes32 public constant DELIVERED_STATUS = keccak256(abi.encodePacked("DELIVERED"));
 
+    /* ============ State Variables ============ */
+
+    address public baseVerifier;
+    INullifierRegistry public nullifierRegistry;
+
     constructor(
-        address _escrow,
+        address _baseVerifier,
         INullifierRegistry _nullifierRegistry,
-        uint256 _timestampBuffer,
-        bytes32[] memory _currencies,
         string[] memory _providerHashes
     )
-        BaseReclaimPaymentVerifier(
-            _escrow,
-            _nullifierRegistry,
-            _timestampBuffer,
-            _currencies,
+        BaseReclaimVerifier(
             _providerHashes
         )
-    { }
+    { 
+        baseVerifier = _baseVerifier;
+        nullifierRegistry = INullifierRegistry(_nullifierRegistry);
+    }
 
     /**
      * Verifies two Reclaim proofs for a Chase Zelle payment.
@@ -57,7 +61,7 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
         override
         returns (bool, bytes32)
     {
-        require(msg.sender == escrow, "Only escrow can call");
+        require(msg.sender == baseVerifier, "Only base verifier can call");
 
         (
             PaymentDetails memory paymentDetails
@@ -172,7 +176,7 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
         ));
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
             string.concat(paymentDate, "T23:59:59")
-        ) + timestampBuffer;
+        );
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate status
@@ -185,5 +189,10 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifi
 
     function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
         witnesses = abi.decode(_data, (address[]));
+    }
+
+    function _validateAndAddNullifier(bytes32 _nullifier) internal {
+        require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
+        nullifierRegistry.addNullifier(_nullifier);
     }
 }

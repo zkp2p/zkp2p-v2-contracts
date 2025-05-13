@@ -7,7 +7,7 @@ import { DateParsing } from "../lib/DateParsing.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
-import { BaseReclaimPaymentVerifier } from "./BaseReclaimPaymentVerifier.sol";
+import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 

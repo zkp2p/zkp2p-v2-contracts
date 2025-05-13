@@ -22,7 +22,8 @@ import {
   MercadoPagoReclaimVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
-  ZelleChaseReclaimVerifier
+  ZelleChaseReclaimVerifier,
+  ZelleBaseVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -31,19 +32,19 @@ import {
   ClaimVerifierMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
-import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
-import { VenmoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
 import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
+import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
+import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -190,50 +191,52 @@ export default class DeployHelper {
     );
   }
 
-  public async deployZelleBoAReclaimVerifier(
+  public async deployZelleBaseVerifier(
     ramp: Address,
     nullifierRegistry: Address,
     timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<ZelleBoAReclaimVerifier> {
-    return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
+    currencies: string[]
+  ): Promise<ZelleBaseVerifier> {
+    return await new ZelleBaseVerifier__factory(this._deployerSigner).deploy(
       ramp,
       nullifierRegistry,
       timestampBuffer,
-      currencies,
+      currencies
+    );
+  }
+
+  public async deployZelleBoAReclaimVerifier(
+    baseVerifier: Address,
+    nullifierRegistry: Address,
+    providerHashes: string[]
+  ): Promise<ZelleBoAReclaimVerifier> {
+    return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
+      baseVerifier,
+      nullifierRegistry,
       providerHashes
     );
   }
 
   public async deployZelleCitiReclaimVerifier(
-    ramp: Address,
+    baseVerifier: Address,
     nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
     providerHashes: string[]
   ): Promise<ZelleCitiReclaimVerifier> {
     return await new ZelleCitiReclaimVerifier__factory(this._deployerSigner).deploy(
-      ramp,
+      baseVerifier,
       nullifierRegistry,
-      timestampBuffer,
-      currencies,
       providerHashes
     );
   }
 
   public async deployZelleChaseReclaimVerifier(
-    ramp: Address,
+    baseVerifier: Address,
     nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
     providerHashes: string[]
   ): Promise<ZelleChaseReclaimVerifier> {
     return await new ZelleChaseReclaimVerifier__factory(this._deployerSigner).deploy(
-      ramp,
+      baseVerifier,
       nullifierRegistry,
-      timestampBuffer,
-      currencies,
       providerHashes
     );
   }

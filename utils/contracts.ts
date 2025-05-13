@@ -14,6 +14,7 @@ export {
   CashappReclaimVerifier,
   WiseReclaimVerifier,
   MercadoPagoReclaimVerifier,
+  ZelleBaseVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier

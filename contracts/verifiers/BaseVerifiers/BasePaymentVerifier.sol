@@ -2,9 +2,9 @@
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
-import { IBasePaymentVerifier } from "./interfaces/IBasePaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
+import { Bytes32ArrayUtils } from "../../external/Bytes32ArrayUtils.sol";
+import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 

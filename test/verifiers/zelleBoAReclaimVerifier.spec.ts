@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { NullifierRegistry, ZelleBoAReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, ZelleBaseVerifier, ZelleBoAReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -31,18 +31,19 @@ const zelleBoAExtensionProof = {
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": {"0":104,"1":151,"2":79,"3":218,"4":75,"5":10,"6":115,"7":191,"8":196,"9":181,"10":208,"11":121,"12":149,"13":195,"14":187,"15":12,"16":220,"17":253,"18":0,"19":80,"20":35,"21":229,"22":221,"23":102,"24":76,"25":144,"26":42,"27":96,"28":8,"29":72,"30":132,"31":204,"32":111,"33":206,"34":48,"35":38,"36":177,"37":246,"38":252,"39":38,"40":127,"41":133,"42":157,"43":170,"44":105,"45":184,"46":107,"47":186,"48":190,"49":0,"50":52,"51":9,"52":96,"53":42,"54":73,"55":119,"56":254,"57":121,"58":146,"59":138,"60":201,"61":178,"62":134,"63":226,"64":27},
-    "resultSignature": {"0":141,"1":48,"2":96,"3":49,"4":69,"5":77,"6":17,"7":183,"8":8,"9":244,"10":237,"11":41,"12":161,"13":212,"14":48,"15":27,"16":132,"17":200,"18":68,"19":235,"20":237,"21":17,"22":230,"23":223,"24":199,"25":128,"26":105,"27":51,"28":200,"29":119,"30":101,"31":99,"32":38,"33":27,"34":201,"35":229,"36":70,"37":162,"38":68,"39":77,"40":92,"41":111,"42":147,"43":141,"44":99,"45":125,"46":129,"47":164,"48":211,"49":11,"50":209,"51":204,"52":165,"53":234,"54":81,"55":157,"56":4,"57":68,"58":113,"59":96,"60":130,"61":196,"62":187,"63":153,"64":28}
+    "claimSignature": { "0": 104, "1": 151, "2": 79, "3": 218, "4": 75, "5": 10, "6": 115, "7": 191, "8": 196, "9": 181, "10": 208, "11": 121, "12": 149, "13": 195, "14": 187, "15": 12, "16": 220, "17": 253, "18": 0, "19": 80, "20": 35, "21": 229, "22": 221, "23": 102, "24": 76, "25": 144, "26": 42, "27": 96, "28": 8, "29": 72, "30": 132, "31": 204, "32": 111, "33": 206, "34": 48, "35": 38, "36": 177, "37": 246, "38": 252, "39": 38, "40": 127, "41": 133, "42": 157, "43": 170, "44": 105, "45": 184, "46": 107, "47": 186, "48": 190, "49": 0, "50": 52, "51": 9, "52": 96, "53": 42, "54": 73, "55": 119, "56": 254, "57": 121, "58": 146, "59": 138, "60": 201, "61": 178, "62": 134, "63": 226, "64": 27 },
+    "resultSignature": { "0": 141, "1": 48, "2": 96, "3": 49, "4": 69, "5": 77, "6": 17, "7": 183, "8": 8, "9": 244, "10": 237, "11": 41, "12": 161, "13": 212, "14": 48, "15": 27, "16": 132, "17": 200, "18": 68, "19": 235, "20": 237, "21": 17, "22": 230, "23": 223, "24": 199, "25": 128, "26": 105, "27": 51, "28": 200, "29": 119, "30": 101, "31": 99, "32": 38, "33": 27, "34": 201, "35": 229, "36": 70, "37": 162, "38": 68, "39": 77, "40": 92, "41": 111, "42": 147, "43": 141, "44": 99, "45": 125, "46": 129, "47": 164, "48": 211, "49": 11, "50": 209, "51": 204, "52": 165, "53": 234, "54": 81, "55": 157, "56": 4, "57": 68, "58": 113, "59": 96, "60": 130, "61": 196, "62": 187, "63": 153, "64": 28 }
   }
 };
 
 describe("ZelleBoAReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let escrow: Account;
+  let baseVerifier: Account;
   let providerHashes: string[];
   let witnesses: Address[];
 
+  let zelleBaseVerifier: ZelleBaseVerifier;
   let nullifierRegistry: NullifierRegistry;
   let verifier: ZelleBoAReclaimVerifier;
   let usdcToken: USDCMock;
@@ -53,7 +54,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     [
       owner,
       attacker,
-      escrow
+      baseVerifier
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -65,10 +66,8 @@ describe("ZelleBoAReclaimVerifier", () => {
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
     verifier = await deployer.deployZelleBoAReclaimVerifier(
-      escrow.address,
+      baseVerifier.address,
       nullifierRegistry.address,
-      BigNumber.from(30),
-      [Currency.USD],
       providerHashes
     );
 
@@ -77,15 +76,13 @@ describe("ZelleBoAReclaimVerifier", () => {
 
   describe("#constructor", async () => {
     it("should set the correct state", async () => {
-      const escrowAddress = await verifier.escrow();
+      const baseVerifierAddress = await verifier.baseVerifier();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
-      const timestampBuffer = await verifier.timestampBuffer();
       const providerHashes = await verifier.getProviderHashes();
 
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(timestampBuffer).to.eq(BigNumber.from(30));
       expect(providerHashes).to.deep.eq(providerHashes);
-      expect(escrowAddress).to.eq(escrow.address);
+      expect(baseVerifierAddress).to.eq(baseVerifier.address);
     });
   });
 
@@ -108,11 +105,11 @@ describe("ZelleBoAReclaimVerifier", () => {
       proof = parseExtensionProof(zelleBoAExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-04-18'; 
+      const paymentTimeString = '2025-04-18';
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
-      subjectCaller = escrow;
+      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(110);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
@@ -272,7 +269,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only escrow can call");
+        await expect(subject()).to.be.revertedWith("Only base verifier can call");
       });
     });
   });

@@ -1,14 +1,15 @@
 //SPDX-License-Identifier: MIT
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
-import { Claims } from "../external/Claims.sol";
-import { StringArrayUtils } from "../external/StringArrayUtils.sol";
+import { AddressArrayUtils } from "../../external/AddressArrayUtils.sol";
+import { Claims } from "../../external/Claims.sol";
+import { StringArrayUtils } from "../../external/StringArrayUtils.sol";
 
-import { BasePaymentVerifier } from "./BasePaymentVerifier.sol";
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
-import { IReclaimVerifier } from "./interfaces/IReclaimVerifier.sol";
+import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
+import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { IReclaimVerifier } from "../interfaces/IReclaimVerifier.sol";
+
+import { BasePaymentVerifier } from "../BaseVerifiers/BasePaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 
@@ -167,11 +168,5 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
 
     function _validateProviderHash(string memory _providerHash) internal view returns (bool) {
         return isProviderHash[_providerHash];
-    }
-
-    function _validateAndAddSigNullifier(bytes[] memory _sigArray) internal {
-        bytes32 nullifier = keccak256(abi.encode(_sigArray));
-        require(!nullifierRegistry.isNullified(nullifier), "Nullifier has already been used");
-        nullifierRegistry.addNullifier(nullifier);
     }
 }

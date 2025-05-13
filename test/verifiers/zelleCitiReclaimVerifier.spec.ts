@@ -51,7 +51,7 @@ const zelleCitiExtensionProof = {
 describe("ZelleCitiReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let escrow: Account;
+  let baseVerifier: Account;
   let providerHashes: string[];
   let witnesses: Address[];
 
@@ -65,7 +65,7 @@ describe("ZelleCitiReclaimVerifier", () => {
     [
       owner,
       attacker,
-      escrow
+      baseVerifier
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -77,10 +77,8 @@ describe("ZelleCitiReclaimVerifier", () => {
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
     verifier = await deployer.deployZelleCitiReclaimVerifier(
-      escrow.address,
+      baseVerifier.address,
       nullifierRegistry.address,
-      BigNumber.from(30),
-      [Currency.USD],
       providerHashes
     );
 
@@ -89,15 +87,13 @@ describe("ZelleCitiReclaimVerifier", () => {
 
   describe("#constructor", async () => {
     it("should set the correct state", async () => {
-      const escrowAddress = await verifier.escrow();
+      const baseVerifierAddress = await verifier.baseVerifier();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
-      const timestampBuffer = await verifier.timestampBuffer();
       const providerHashes = await verifier.getProviderHashes();
 
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(timestampBuffer).to.eq(BigNumber.from(30));
       expect(providerHashes).to.deep.eq(providerHashes);
-      expect(escrowAddress).to.eq(escrow.address);
+      expect(baseVerifierAddress).to.eq(baseVerifier.address);
     });
   });
 
@@ -123,7 +119,7 @@ describe("ZelleCitiReclaimVerifier", () => {
       const paymentTime = new Date('2025-04-28');  // Convert to YYYY-MM-DD for JS Date
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
-      subjectCaller = escrow;
+      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(11);  // 11 * 0.9 = 9.9 [less than payment amount of 10]
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp - 86400); // 1 day before
@@ -302,13 +298,13 @@ describe("ZelleCitiReclaimVerifier", () => {
       });
     });
 
-    describe("when the caller is not the escrow", async () => {
+    describe("when the caller is not the base verifier", async () => {
       beforeEach(async () => {
         subjectCaller = owner;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only escrow can call");
+        await expect(subject()).to.be.revertedWith("Only base verifier can call");
       });
     });
   });

@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.18;
 
-import { IBasePaymentVerifier } from "./IBasePaymentVerifier.sol";
 
-interface IPaymentVerifier is IBasePaymentVerifier {
+interface IPaymentVerifier {
 
     /* ============ Structs ============ */
 
