@@ -79,14 +79,22 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
 
     /* ============ Governance Functions ============ */
 
+    /**
+     * @notice ONLY OWNER: Sets the verifier for a payment method.
+     * @param _paymentMethod The payment method to set the verifier for.
+     * @param _verifier The address of the verifier to set.
+     */
     function setPaymentMethodVerifier(uint8 _paymentMethod, address _verifier) external onlyOwner {
-        // Todo: Can _paymentMethod be 0?
         require(_verifier != address(0), "Invalid verifier address");
 
         paymentMethodToVerifier[_paymentMethod] = _verifier;
         emit PaymentMethodVerifierSet(_paymentMethod, _verifier);
     }
 
+    /**
+     * @notice ONLY OWNER: Removes the verifier for a payment method.
+     * @param _paymentMethod The payment method to remove the verifier for.
+     */
     function removePaymentMethodVerifier(uint8 _paymentMethod) external onlyOwner {
         require(paymentMethodToVerifier[_paymentMethod] != address(0), "Verifier not set");
 

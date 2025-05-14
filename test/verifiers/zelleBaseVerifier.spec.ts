@@ -48,7 +48,7 @@ const zelleBoAExtensionProof = {
   }
 };
 
-describe.only("ZelleBaseVerifier Tests", () => {
+describe("ZelleBaseVerifier Tests", () => {
   let owner: Account;
   let user: Account;
   let escrow: Account;
@@ -114,7 +114,7 @@ describe.only("ZelleBaseVerifier Tests", () => {
 
     beforeEach(async () => {
       subjectCaller = owner;
-      subjectVerifier = mockVerifier.address;
+      subjectVerifier = zelleBoAReclaimVerifier.address;
       subjectPaymentMethod = 1;
     });
 
@@ -174,7 +174,7 @@ describe.only("ZelleBaseVerifier Tests", () => {
       // First set up a payment method verifier so we can remove it
       await zelleBaseVerifier.connect(owner.wallet).setPaymentMethodVerifier(
         subjectPaymentMethod,
-        mockVerifier.address
+        zelleBoAReclaimVerifier.address
       );
     });
 
@@ -223,7 +223,7 @@ describe.only("ZelleBaseVerifier Tests", () => {
   });
 
 
-  describe.only("Payment Verification", async () => {
+  describe("Payment Verification", async () => {
     let proof: ReclaimProof;
 
     let subjectCaller: Account;

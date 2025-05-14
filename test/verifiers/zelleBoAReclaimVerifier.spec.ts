@@ -43,7 +43,6 @@ describe("ZelleBoAReclaimVerifier", () => {
   let providerHashes: string[];
   let witnesses: Address[];
 
-  let zelleBaseVerifier: ZelleBaseVerifier;
   let nullifierRegistry: NullifierRegistry;
   let verifier: ZelleBoAReclaimVerifier;
   let usdcToken: USDCMock;

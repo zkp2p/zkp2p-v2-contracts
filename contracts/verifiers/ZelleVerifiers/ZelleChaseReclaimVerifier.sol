@@ -160,20 +160,8 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             "Incorrect payment recipient"
         );
 
-        // Validate timestamp; add in buffer to build flexibility for L2 timestamps
-        bytes memory dateBytes = bytes(paymentDetails.transactionDate);
-        string memory paymentDate = string(abi.encodePacked(
-            bytes1(dateBytes[0]),
-            bytes1(dateBytes[1]),
-            bytes1(dateBytes[2]),
-            bytes1(dateBytes[3]),
-            "-",
-            bytes1(dateBytes[4]),
-            bytes1(dateBytes[5]),
-            "-",
-            bytes1(dateBytes[6]),
-            bytes1(dateBytes[7])
-        ));
+        // Validate timestamp; convert chase date string from YYYYMMDD to YYYY-MM-DD
+        string memory paymentDate = _addHyphensToDateString(paymentDetails.transactionDate);
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
             string.concat(paymentDate, "T23:59:59")
         );
@@ -189,6 +177,22 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
         witnesses = abi.decode(_data, (address[]));
+    }
+
+    function _addHyphensToDateString(string memory yyyymmdd) internal pure returns (string memory yyyymmddWithHyphens) {
+        bytes memory dateBytes = bytes(yyyymmdd);
+        yyyymmddWithHyphens = string(abi.encodePacked(
+            bytes1(dateBytes[0]),
+            bytes1(dateBytes[1]),
+            bytes1(dateBytes[2]),
+            bytes1(dateBytes[3]),
+            "-",
+            bytes1(dateBytes[4]),
+            bytes1(dateBytes[5]),
+            "-",
+            bytes1(dateBytes[6]),
+            bytes1(dateBytes[7])
+        ));
     }
 
     function _validateAndAddNullifier(bytes32 _nullifier) internal {
