@@ -23,7 +23,8 @@ import {
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier,
-  ZelleBaseVerifier
+  ZelleBaseVerifier,
+  BaseReclaimVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -32,7 +33,7 @@ import {
   ClaimVerifierMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
-import { BaseReclaimPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
+import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
@@ -102,6 +103,15 @@ export default class DeployHelper {
       providerHashes
     );
   }
+
+  public async deployBaseReclaimVerifier(
+    providerHashes: string[]
+  ): Promise<BaseReclaimVerifier> {
+    return await new BaseReclaimVerifier__factory(this._deployerSigner).deploy(
+      providerHashes
+    );
+  }
+
 
   public async deployVenmoReclaimVerifier(
     ramp: Address,

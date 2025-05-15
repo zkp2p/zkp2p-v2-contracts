@@ -5,6 +5,7 @@ export {
   ClaimVerifierMock,
   Escrow,
   BasePaymentVerifier,
+  BaseReclaimVerifier,
   NullifierRegistry,
   Quoter,
   VenmoReclaimVerifier,
