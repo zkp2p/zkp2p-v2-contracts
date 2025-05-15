@@ -26,7 +26,7 @@ import { Currency } from "@utils/protocolUtils";
 import DeployHelper from "@utils/deploys";
 import { ADDRESS_ZERO } from "@utils/constants";
 import { ZERO_BYTES32 } from "@utils/constants";
-import { parseExtensionProof } from "@utils/reclaimUtils";
+import { encodeProofWithPaymentMethod, parseExtensionProof } from "@utils/reclaimUtils";
 import { encodeProof } from "@utils/reclaimUtils";
 
 const expect = getWaffleExpect();
@@ -248,11 +248,7 @@ describe("ZelleBaseVerifier Tests", () => {
       );
 
       proof = parseExtensionProof(zelleBoAExtensionProof);
-      const PROOF_ENCODING_STRING = "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim, bool isAppclipProof)";
-      subjectProof = ethers.utils.defaultAbiCoder.encode(
-        [PROOF_ENCODING_STRING, "uint8"],
-        [proof, paymentMethod]
-      );
+      subjectProof = encodeProofWithPaymentMethod(proof, paymentMethod);
 
       const paymentTimeString = '2025-04-18';
       const paymentTime = new Date(paymentTimeString);
