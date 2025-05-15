@@ -289,5 +289,27 @@ describe("ZelleBaseVerifier Tests", () => {
       expect(verified).to.be.true;
       expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
     });
+
+    describe("when caller is not escrow", async () => {
+      beforeEach(async () => {
+        subjectCaller = user; // Use a non-escrow account
+      });
+
+      it("should revert with 'Only escrow can call'", async () => {
+        await expect(subjectCallStatic()).to.be.revertedWith("Only escrow can call");
+      });
+    });
+
+    describe("when payment method verifier is not set", async () => {
+      beforeEach(async () => {
+        // Use an unregistered payment method
+        const unregisteredPaymentMethod = 2;
+        subjectProof = encodeProofWithPaymentMethod(proof, unregisteredPaymentMethod);
+      });
+
+      it("should revert with 'Verifier not set'", async () => {
+        await expect(subjectCallStatic()).to.be.revertedWith("Verifier not set");
+      });
+    });
   });
 });
