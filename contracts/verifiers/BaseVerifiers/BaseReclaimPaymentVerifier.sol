@@ -169,4 +169,10 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
     function _validateProviderHash(string memory _providerHash) internal view returns (bool) {
         return isProviderHash[_providerHash];
     }
+
+    function _validateAndAddSigNullifier(bytes[] memory _sigArray) internal {
+        bytes32 nullifier = keccak256(abi.encode(_sigArray));
+        require(!nullifierRegistry.isNullified(nullifier), "Nullifier has already been used");
+        nullifierRegistry.addNullifier(nullifier);
+    }
 }
