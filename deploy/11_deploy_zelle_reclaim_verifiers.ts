@@ -47,13 +47,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("ZelleBaseVerifier deployed at", zelleBaseVerifier.address);
 
   // Get the provider hashes for each bank's verifier
-  // Chase Verifier
-  const chaseExtensionProviderHashes = await getZelleChaseReclaimProviderHashes(10);
-  console.log("chase extension provider hashes", chaseExtensionProviderHashes);
-  const chaseAppclipProviderHashes = ZELLE_APPCLIP_PROVIDER_HASHES;
-  console.log("chase appclip provider hashes", chaseAppclipProviderHashes);
-  const chaseProviderHashes = [...chaseExtensionProviderHashes, ...chaseAppclipProviderHashes];
-
   // Citi Verifier
   const citiExtensionProviderHashes = await getZelleCitiReclaimProviderHashes(20);
   console.log("citi extension provider hashes", citiExtensionProviderHashes);
@@ -69,17 +62,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const boaProviderHashes = [...boaExtensionProviderHashes, ...boaAppclipProviderHashes];
 
   // Deploy individual verifiers that connect to ZelleBaseVerifier
-  // Chase
-  const chaseVerifier = await deploy("ZelleChaseReclaimVerifier", {
-    from: deployer,
-    args: [
-      zelleBaseVerifier.address, // Using ZelleBaseVerifier instead of direct escrow connection
-      nullifierRegistryAddress,
-      chaseProviderHashes,
-    ],
-  });
-  console.log("ZelleChaseReclaimVerifier deployed at", chaseVerifier.address);
-
   // Citi
   const citiVerifier = await deploy("ZelleCitiReclaimVerifier", {
     from: deployer,
@@ -106,14 +88,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const baseVerifierContract = await ethers.getContractAt("ZelleBaseVerifier", zelleBaseVerifier.address);
 
   // Payment method IDs for each bank (use specific enum values or constants if they exist)
-  const CHASE_PAYMENT_METHOD = 0; // Example payment method ID for Chase
-  const CITI_PAYMENT_METHOD = 1;  // Example payment method ID for Citi
-  const BOA_PAYMENT_METHOD = 2;   // Example payment method ID for Bank of America
+  const CITI_PAYMENT_METHOD = 0;  // Example payment method ID for Citi
+  const BOA_PAYMENT_METHOD = 1;   // Example payment method ID for Bank of America
 
   // Add mappings to ZelleBaseVerifier
-  await baseVerifierContract.setPaymentMethodVerifier(CHASE_PAYMENT_METHOD, chaseVerifier.address);
-  console.log(`Added Chase verifier as payment method ${CHASE_PAYMENT_METHOD} to ZelleBaseVerifier`);
-
   await baseVerifierContract.setPaymentMethodVerifier(CITI_PAYMENT_METHOD, citiVerifier.address);
   console.log(`Added Citi verifier as payment method ${CITI_PAYMENT_METHOD} to ZelleBaseVerifier`);
 
@@ -122,7 +100,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Add write permissions to NullifierRegistry
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistryAddress);
-  await addWritePermission(hre, nullifierRegistryContract, chaseVerifier.address);
   await addWritePermission(hre, nullifierRegistryContract, citiVerifier.address);
   await addWritePermission(hre, nullifierRegistryContract, boaVerifier.address);
   console.log("NullifierRegistry permissions added for Chase, Citi, and BoA verifiers...");
@@ -137,11 +114,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await setNewOwner(
     hre,
     await ethers.getContractAt("ZelleBaseVerifier", zelleBaseVerifier.address),
-    multiSig
-  );
-  await setNewOwner(
-    hre,
-    await ethers.getContractAt("ZelleChaseReclaimVerifier", chaseVerifier.address),
     multiSig
   );
   await setNewOwner(

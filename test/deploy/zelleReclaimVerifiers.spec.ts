@@ -76,8 +76,8 @@ describe("Zelle Reclaim Verifier Deployments", () => {
     const zelleBaseVerifierAddress = getDeployedContractAddress(network, "ZelleBaseVerifier");
     zelleBaseVerifier = new ZelleBaseVerifier__factory(deployer.wallet).attach(zelleBaseVerifierAddress);
 
-    const chaseVerifierAddress = getDeployedContractAddress(network, "ZelleChaseReclaimVerifier");
-    chaseVerifier = new ZelleChaseReclaimVerifier__factory(deployer.wallet).attach(chaseVerifierAddress);
+    // const chaseVerifierAddress = getDeployedContractAddress(network, "ZelleChaseReclaimVerifier");
+    // chaseVerifier = new ZelleChaseReclaimVerifier__factory(deployer.wallet).attach(chaseVerifierAddress);
 
     const citiVerifierAddress = getDeployedContractAddress(network, "ZelleCitiReclaimVerifier");
     citiVerifier = new ZelleCitiReclaimVerifier__factory(deployer.wallet).attach(citiVerifierAddress);
@@ -116,19 +116,19 @@ describe("Zelle Reclaim Verifier Deployments", () => {
       const citiVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CITI_PAYMENT_METHOD);
       const boaVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(BOA_PAYMENT_METHOD);
 
-      expect(chaseVerifierAddress).to.eq(chaseVerifier.address);
+      // expect(chaseVerifierAddress).to.eq(chaseVerifier.address);
       expect(citiVerifierAddress).to.eq(citiVerifier.address);
       expect(boaVerifierAddress).to.eq(boaVerifier.address);
     });
   });
 
-  describe("ZelleChaseReclaimVerifier", () => {
-    testVerifier(
-      "ZelleChaseReclaimVerifier",
-      () => chaseVerifier,
-      getZelleChaseReclaimProviderHashes
-    );
-  });
+  // describe("ZelleChaseReclaimVerifier", () => {
+  //   testVerifier(
+  //     "ZelleChaseReclaimVerifier",
+  //     () => chaseVerifier,
+  //     getZelleChaseReclaimProviderHashes
+  //   );
+  // });
 
   describe("ZelleCitiReclaimVerifier", () => {
     testVerifier(
