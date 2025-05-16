@@ -2,18 +2,19 @@
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { DateParsing } from "../lib/DateParsing.sol";
-import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
-import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
+import { DateParsing } from "../../lib/DateParsing.sol";
+import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
+import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
-import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
-import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
+
+import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";
 
 pragma solidity ^0.8.18;
 
-contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
+contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     using StringConversionUtils for string;
     using Bytes32ConversionUtils for bytes32;
@@ -23,9 +24,10 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     // Struct to hold the payment details extracted from the proof
     struct PaymentDetails {
         string amountString;
-        string dateString;
+        string transactionDate;
         string paymentId;
-        string recipientId;
+        string status;
+        string partyToken;
         string intentHash;
         string providerHash;
     }
@@ -34,30 +36,33 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     
     uint8 internal constant MAX_EXTRACT_VALUES = 8; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
+    bytes32 public constant DELIVERED_STATUS = keccak256(abi.encodePacked("DELIVERED"));
 
+    /* ============ State Variables ============ */
+
+    address public immutable baseVerifier;
+    INullifierRegistry public nullifierRegistry;
+    
     /* ============ Constructor ============ */
     constructor(
-        address _escrow,
+        address _baseVerifier,
         INullifierRegistry _nullifierRegistry,
-        uint256 _timestampBuffer,
-        bytes32[] memory _currencies,
         string[] memory _providerHashes
     )   
-        BaseReclaimPaymentVerifier(
-            _escrow, 
-            _nullifierRegistry, 
-            _timestampBuffer, 
-            _currencies,
+        BaseReclaimVerifier(
             _providerHashes
         )
-    { }
+    { 
+        baseVerifier = _baseVerifier;
+        nullifierRegistry = INullifierRegistry(_nullifierRegistry);
+    }
 
     /* ============ External Functions ============ */
 
     /**
-     * ONLY RAMP: Verifies a reclaim proof of an offchain Venmo payment. Ensures the right _intentAmount * _conversionRate
-     * USD was paid to _payeeDetails after _intentTimestamp + timestampBuffer on Venmo.
-     * Note: For Venmo fiat currency is always USD. For other verifiers which support multiple currencies,
+     * ONLY RAMP: Verifies a reclaim proof of an offchain Citi Zelle payment. Ensures the right _intentAmount * _conversionRate
+     * USD was paid to _partyToken after _intentTimestamp + timestampBuffer on Citi Zelle.
+     * Note: For Citi Zelle fiat currency is always USD. For other verifiers which support multiple currencies,
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
@@ -69,7 +74,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         override
         returns (bool, bytes32)
     {
-        require(msg.sender == escrow, "Only escrow can call");
+        require(msg.sender == baseVerifier, "Only base verifier can call");
 
         (
             PaymentDetails memory paymentDetails, 
@@ -83,22 +88,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         );
 
         // Nullify the payment
-        bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
-        _validateAndAddNullifier(nullifier);
+        _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
-        
-        return (true, intentHash);
+        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
     }
 
     /* ============ Internal Functions ============ */
 
-    /**
-     * Verifies the proof and extracts the public values from the proof and _depositData.
-     *
-     * @param _proof The proof to verify.
-     * @param _depositData The deposit data to extract the verification data from.
-     */
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
@@ -121,14 +117,10 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         isAppclipProof = proof.isAppclipProof;
     }
 
-    /**
-     * Verifies the right _intentAmount * _conversionRate is paid to _payeeDetailsHash after 
-     * _intentTimestamp + timestampBuffer on Venmo. Reverts if any of the conditions are not met.
-     */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
         VerifyPaymentData memory _verifyPaymentData,
-        bool _isAppclipProof
+        bool /* _isAppclipProof */
     ) internal view {
         uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
@@ -138,39 +130,31 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         // Validate recipient
-        if (_isAppclipProof) {
-            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
-            require(
-                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        } else {
-            require(
-                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        }
+        require(
+            paymentDetails.partyToken.stringComparison(_verifyPaymentData.payeeDetails), 
+            "Incorrect payment recipient"
+        );
 
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
-        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
+        // Append T23:59:59 to the date string to capture end of day because Zelle only shows day precision
+        // Note: Citi date format is MM/DD/YYYY, need to convert to YYYY-MM-DD
+        string memory formattedDate = _convertDateFormat(paymentDetails.transactionDate);
+        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
+            string.concat(formattedDate, "T23:59:59")
+        );
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
+
+        // Validate status
+        require(
+            keccak256(abi.encodePacked(paymentDetails.status)) == DELIVERED_STATUS,
+            "Payment not delivered"
+        );
     }
 
-    /**
-     * Extracts the verification data from the data. In case of a Reclaim/TLSN/ZK proof, data contains the witnesses' addresses.
-     * In case of a zkEmail proof, data contains the DKIM key hash. Can also contain additional data like currency code, etc.
-     *
-     * @param _data The data to extract the verification data from.
-     */
     function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
         witnesses = abi.decode(_data, (address[]));
     }
 
-    /**
-     * Extracts all values from the proof context.
-     *
-     * @param _proof The proof containing the context to extract values from.
-     */
     function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
@@ -181,12 +165,45 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
-            // values[2] is SENDER_ID
-            amountString: values[3],
-            dateString: values[4],
-            paymentId: values[5],
-            recipientId: values[6],
+            amountString: values[2],
+            partyToken: values[3],
+            paymentId: values[4],
+            status: values[5],
+            transactionDate: values[6],
             providerHash: values[7]
         });
+    }
+
+    function _convertDateFormat(string memory mmddyyyy) internal pure returns (string memory) {
+        // Convert MM/DD/YYYY to YYYY-MM-DD
+        // Input format: "04/28/2025"
+        // Output format: "2025-04-28"
+        
+        bytes memory dateBytes = bytes(mmddyyyy);
+        require(dateBytes.length == 10, "Invalid date format");
+        
+        // Pre-allocate memory for the result
+        bytes memory result = new bytes(10);
+        
+        // Copy year
+        result[0] = dateBytes[6];
+        result[1] = dateBytes[7];
+        result[2] = dateBytes[8];
+        result[3] = dateBytes[9];
+        result[4] = '-';
+        // Copy month
+        result[5] = dateBytes[0];
+        result[6] = dateBytes[1];
+        result[7] = '-';
+        // Copy day
+        result[8] = dateBytes[3];
+        result[9] = dateBytes[4];
+        
+        return string(result);
+    }
+
+    function _validateAndAddNullifier(bytes32 _nullifier) internal {
+        require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
+        nullifierRegistry.addNullifier(_nullifier);
     }
 }

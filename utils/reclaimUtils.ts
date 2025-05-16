@@ -103,10 +103,26 @@ export const parseAppclipProof = (proofObject: any) => {
 	} as ReclaimProof;
 }
 
+
+const PROOF_ENCODING_STRING = "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim, bool isAppclipProof)";
+
 export const encodeProof = (proof: ReclaimProof) => {
-	const PROOF_ENCODING_STRING = "(tuple(string provider, string parameters, string context) claimInfo, tuple(tuple(bytes32 identifier, address owner, uint32 timestampS, uint32 epoch) claim, bytes[] signatures) signedClaim, bool isAppclipProof)";
 	return ethers.utils.defaultAbiCoder.encode(
 		[PROOF_ENCODING_STRING],
 		[proof]
+	);
+};
+
+export const encodeTwoProofs = (proof1: ReclaimProof, proof2: ReclaimProof) => {
+	return ethers.utils.defaultAbiCoder.encode(
+		[PROOF_ENCODING_STRING, PROOF_ENCODING_STRING],
+		[proof1, proof2]
+	);
+};
+
+export const encodeProofWithPaymentMethod = (proof: ReclaimProof, paymentMethod: number) => {
+	return ethers.utils.defaultAbiCoder.encode(
+		[PROOF_ENCODING_STRING, "uint8"],
+		[proof, paymentMethod]
 	);
 };

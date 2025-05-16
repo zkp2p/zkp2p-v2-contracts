@@ -53,7 +53,7 @@ const mercadoP2PMoneyTransferExtensionProof = {
   }
 }
 
-describe.only("MercadoPagoReclaimVerifier", () => {
+describe("MercadoPagoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;

@@ -34,6 +34,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     CashappReclaimVerifier:             ${getDeployedContractAddress(network, "CashappReclaimVerifier")}
     WiseReclaimVerifier:                ${getDeployedContractAddress(network, "WiseReclaimVerifier")}
     MercadoPagoReclaimVerifier:         ${getDeployedContractAddress(network, "MercadoPagoReclaimVerifier")}
+    ZelleCitiReclaimVerifier:           ${getDeployedContractAddress(network, "ZelleCitiReclaimVerifier")}
+    ZelleBoAReclaimVerifier:            ${getDeployedContractAddress(network, "ZelleBoAReclaimVerifier")}
+    ZelleBaseVerifier:                  ${getDeployedContractAddress(network, "ZelleBaseVerifier")}
     USDC:                               ${USDC[network] ? USDC[network] : getDeployedContractAddress(network, "USDCMock")}
     `
   );

@@ -5,6 +5,7 @@ export {
   ClaimVerifierMock,
   Escrow,
   BasePaymentVerifier,
+  BaseReclaimVerifier,
   NullifierRegistry,
   Quoter,
   VenmoReclaimVerifier,
@@ -13,6 +14,10 @@ export {
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
   WiseReclaimVerifier,
-  MercadoPagoReclaimVerifier
+  MercadoPagoReclaimVerifier,
+  ZelleBaseVerifier,
+  ZelleBoAReclaimVerifier,
+  ZelleCitiReclaimVerifier,
+  ZelleChaseReclaimVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
