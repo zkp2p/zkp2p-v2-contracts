@@ -168,7 +168,7 @@ const zelleCitiExtensionProof = {
   }
 }
 
-describe.only("ZelleCitiReclaimVerifier", () => {
+describe("ZelleCitiReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let baseVerifier: Account;

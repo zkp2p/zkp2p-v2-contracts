@@ -36,7 +36,7 @@ const zelleBoAExtensionProof = {
   }
 };
 
-describe.only("ZelleBoAReclaimVerifier", () => {
+describe("ZelleBoAReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let baseVerifier: Account;
