@@ -53,9 +53,9 @@ describe("Zelle Reclaim Verifier Deployments", () => {
   let boaVerifier: ZelleBoAReclaimVerifier;
 
   // Payment method IDs for each bank - must match deploy script
-  const CHASE_PAYMENT_METHOD = 1;
-  const CITI_PAYMENT_METHOD = 2;
-  const BOA_PAYMENT_METHOD = 3;
+  // const CHASE_PAYMENT_METHOD = 1;
+  const CITI_PAYMENT_METHOD = 0;
+  const BOA_PAYMENT_METHOD = 1;
 
   const network: string = deployments.getNetworkName();
 
@@ -112,7 +112,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
     });
 
     it("should have the correct payment method mappings", async () => {
-      const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
+      // const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
       const citiVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CITI_PAYMENT_METHOD);
       const boaVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(BOA_PAYMENT_METHOD);
 
