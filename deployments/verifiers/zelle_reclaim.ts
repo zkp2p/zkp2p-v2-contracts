@@ -198,7 +198,7 @@ export const ZELLE_RECLAIM_CURRENCIES: any = [
   Currency.USD
 ];
 
-export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
+export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(86400); // 1 day
 
 export const ZELLE_RECLAIM_FEE_SHARE: any = {
   "base": BigNumber.from(0),  // 0% of sustainability fee

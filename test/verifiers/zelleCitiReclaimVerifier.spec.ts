@@ -1,9 +1,9 @@
 import "module-alias/register";
-
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
+import hre from "hardhat";
 
-import { NullifierRegistry, ZelleCitiReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, ZelleCitiReclaimVerifier, USDCMock, ZelleBaseVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -171,9 +171,10 @@ const zelleCitiExtensionProof = {
 describe("ZelleCitiReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let baseVerifier: Account;
+  let baseVerifier: ZelleBaseVerifier;
   let providerHashes: string[];
   let witnesses: Address[];
+  let subjectCaller: Account;
 
   let nullifierRegistry: NullifierRegistry;
   let verifier: ZelleCitiReclaimVerifier;
@@ -184,8 +185,7 @@ describe("ZelleCitiReclaimVerifier", () => {
   beforeEach(async () => {
     [
       owner,
-      attacker,
-      baseVerifier
+      attacker
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -196,6 +196,13 @@ describe("ZelleCitiReclaimVerifier", () => {
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
+    baseVerifier = await deployer.deployZelleBaseVerifier(
+      attacker.address,
+      nullifierRegistry.address,
+      BigNumber.from(30),
+      [Currency.USD]
+    );
+
     verifier = await deployer.deployZelleCitiReclaimVerifier(
       baseVerifier.address,
       nullifierRegistry.address,
@@ -203,6 +210,25 @@ describe("ZelleCitiReclaimVerifier", () => {
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
+
+    // Set up impersonated signer for base verifier
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [baseVerifier.address],
+    });
+    
+    const baseVerifierSigner = await ethers.getSigner(baseVerifier.address);
+    
+    // Set balance for base verifier for gas
+    await hre.network.provider.send("hardhat_setBalance", [
+      baseVerifier.address,
+      "0x56BC75E2D63100000" // 100 ETH in hex
+    ]);
+
+    subjectCaller = {
+      address: baseVerifier.address,
+      wallet: baseVerifierSigner
+    };
   });
 
   describe("#constructor", async () => {
@@ -220,7 +246,6 @@ describe("ZelleCitiReclaimVerifier", () => {
   describe("#verifyPayment", async () => {
     let proof: ReclaimProof;
 
-    let subjectCaller: Account;
     let subjectProof: BytesLike;
     let subjectDepositToken: Address;
     let subjectIntentAmount: BigNumber;
@@ -239,7 +264,6 @@ describe("ZelleCitiReclaimVerifier", () => {
       const paymentTime = new Date('2025-04-28');  // Convert to YYYY-MM-DD for JS Date
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
-      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(11);  // 11 * 0.9 = 9.9 [less than payment amount of 10]
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp - 86400); // 1 day before

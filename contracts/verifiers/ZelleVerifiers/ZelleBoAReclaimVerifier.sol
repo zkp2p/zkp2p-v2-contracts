@@ -7,6 +7,7 @@ import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
+import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
 import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";
 import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
@@ -148,7 +149,7 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
         // Append T23:59:59 to the date string to capture end of day because Zelle only shows day precision
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
             string.concat(paymentDetails.transactionDate, "T23:59:59")
-        );
+        ) + IBasePaymentVerifier(baseVerifier).timestampBuffer();
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate status

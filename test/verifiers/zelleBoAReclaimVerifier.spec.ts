@@ -2,6 +2,7 @@ import "module-alias/register";
 
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
+import hre from "hardhat";
 
 import { NullifierRegistry, ZelleBaseVerifier, ZelleBoAReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
@@ -39,11 +40,13 @@ const zelleBoAExtensionProof = {
 describe("ZelleBoAReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let baseVerifier: Account;
+  let escrow: Account;
   let providerHashes: string[];
   let witnesses: Address[];
+  let subjectCaller: Account;
 
   let nullifierRegistry: NullifierRegistry;
+  let baseVerifier: ZelleBaseVerifier;
   let verifier: ZelleBoAReclaimVerifier;
   let usdcToken: USDCMock;
 
@@ -53,7 +56,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     [
       owner,
       attacker,
-      baseVerifier
+      escrow
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -64,6 +67,13 @@ describe("ZelleBoAReclaimVerifier", () => {
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
+    baseVerifier = await deployer.deployZelleBaseVerifier(
+      escrow.address,
+      nullifierRegistry.address,
+      BigNumber.from(30),
+      [Currency.USD]
+    );
+
     verifier = await deployer.deployZelleBoAReclaimVerifier(
       baseVerifier.address,
       nullifierRegistry.address,
@@ -71,6 +81,25 @@ describe("ZelleBoAReclaimVerifier", () => {
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
+
+    // Set up impersonated signer for base verifier
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [baseVerifier.address],
+    });
+    
+    const baseVerifierSigner = await ethers.getSigner(baseVerifier.address);
+    
+    // Set balance for base verifier for gas
+    await hre.network.provider.send("hardhat_setBalance", [
+      baseVerifier.address,
+      "0x56BC75E2D63100000" // 100 ETH in hex
+    ]);
+
+    subjectCaller = {
+      address: baseVerifier.address,
+      wallet: baseVerifierSigner
+    };
   });
 
   describe("#constructor", async () => {
@@ -88,7 +117,6 @@ describe("ZelleBoAReclaimVerifier", () => {
   describe("#verifyPayment", async () => {
     let proof: ReclaimProof;
 
-    let subjectCaller: Account;
     let subjectProof: BytesLike;
     let subjectDepositToken: Address;
     let subjectIntentAmount: BigNumber;
@@ -108,7 +136,6 @@ describe("ZelleBoAReclaimVerifier", () => {
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
-      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(5);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
