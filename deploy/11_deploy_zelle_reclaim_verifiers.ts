@@ -116,9 +116,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const baseVerifierContract = await ethers.getContractAt("ZelleBaseVerifier", zelleBaseVerifier.address);
 
   // Payment method IDs for each bank
-  const CITI_PAYMENT_METHOD = 0;
+  const CHASE_PAYMENT_METHOD = 0;
   const BOA_PAYMENT_METHOD = 1;
-  const CHASE_PAYMENT_METHOD = 2;
+  const CITI_PAYMENT_METHOD = 2;
 
   // Add mappings to ZelleBaseVerifier
   await baseVerifierContract.setPaymentMethodVerifier(CITI_PAYMENT_METHOD, citiVerifier.address);

@@ -54,9 +54,9 @@ describe("Zelle Reclaim Verifier Deployments", () => {
   let boaVerifier: ZelleBoAReclaimVerifier;
 
   // Payment method IDs for each bank - must match deploy script
-  const CITI_PAYMENT_METHOD = 0;
+  const CHASE_PAYMENT_METHOD = 0;
   const BOA_PAYMENT_METHOD = 1;
-  const CHASE_PAYMENT_METHOD = 2;
+  const CITI_PAYMENT_METHOD = 2;
 
   const network: string = deployments.getNetworkName();
 
