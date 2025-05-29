@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
+import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 
 export const getZelleCitiReclaimProviderHashes = async (length: number) => {
   const hashes: string[] = [];
@@ -198,7 +199,13 @@ export const ZELLE_RECLAIM_CURRENCIES: any = [
   Currency.USD
 ];
 
-export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(86400); // 1 day
+
+
+export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = {
+  'citi': ONE_DAY_IN_SECONDS,
+  'chase': ONE_DAY_IN_SECONDS,
+  'bofa': ONE_DAY_IN_SECONDS,
+}
 
 export const ZELLE_RECLAIM_FEE_SHARE: any = {
   "base": BigNumber.from(0),  // 0% of sustainability fee
