@@ -17,6 +17,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
 
     using StringConversionUtils for string;
     using Bytes32ConversionUtils for bytes32;
+    using { StringConversionUtils.substring } for string;
 
     /* ============ Structs ============ */
 
@@ -141,7 +142,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
-        uint256 paymentAmount = _parseAmount(paymentDetails.amountString, paymentDetails.amountCentsString, decimals);
+        uint256 paymentAmount = _parseAmount(paymentDetails.amountString, paymentDetails.amountCentsString, paymentDetails.currencyCode, decimals);
         require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
         if (_isAppclipProof) {
@@ -218,12 +219,31 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
      * @param _amountCents The cents amount to parse.
      * @param _decimals The decimals of the token.
      */
-    function _parseAmount(string memory _amount, string memory _amountCents, uint8 _decimals) internal pure returns(uint256) {
-        uint256 baseAmount = _amount.stringToUint(
-            0x2C,  // period character, which is the decimal character for ARS amounts
+    function _parseAmount(string memory _amount, string memory _amountCents, string memory _currencyCode, uint8 _decimals) internal pure returns(uint256) {
+        // Check if the amount is negative (starts with '-')
+        bytes memory amountBytes = bytes(_amount);
+        bool isNegative = amountBytes.length > 0 && amountBytes[0] == 0x2D; // '-' character
+        
+        // Different currencies may represent outgoing payments differently
+        // BRL uses negative values for outgoing payments
+        // ARS uses positive values for outgoing payments
+        bool isBRL = keccak256(abi.encodePacked(_currencyCode)) == keccak256(abi.encodePacked("BRL"));
+        
+        // If negative and it's BRL, remove the '-' sign for parsing
+        // For other currencies, use the value as is
+        string memory amountToProcess;
+        if (isNegative && isBRL) {
+            amountToProcess = substring(_amount, 1, amountBytes.length);
+        } else {
+            amountToProcess = _amount;
+        }
+            
+        uint256 baseAmount = amountToProcess.stringToUint(
+            0x2C,  // comma character, which is the decimal character for both ARS and BRL amounts
             _decimals
         );
         uint256 centsAmount = _amountCents.stringToUint(_decimals - 2);
+        
         return baseAmount + centsAmount;
     }
 }
