@@ -110,25 +110,7 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
     hashes.push(listHashes);
   }
 
-  const detailsHash = hashProviderParams(
-    {
-      url: "https://secure.chase.com/svc/rr/payments/secure/v1/quickpay/payment/activity/detail/list",
-      method: "POST",
-      responseMatches: [
-        {
-          "type": "regex",
-          "value": "\"recipientEmail\":\"(?<recipientEmail>[^\"]+)\"",
-          "hash": true
-        }
-      ],
-      responseRedactions: [
-        {
-          "jsonPath": "$.recipientEmail",
-          "xPath": ""
-        }
-      ]
-    }
-  )
+  const detailsHash = "0x0f50cfe682d82acfcff1140cfca303d627a9d468764cfa401611d476695ce6cd";
   hashes.push(detailsHash);
 
   return hashes;
