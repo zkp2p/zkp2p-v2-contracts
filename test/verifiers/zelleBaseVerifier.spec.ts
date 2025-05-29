@@ -223,7 +223,6 @@ describe("ZelleBaseVerifier Tests", () => {
     });
   });
 
-
   describe("Payment Verification", async () => {
     let proof: ReclaimProof;
 
@@ -246,7 +245,8 @@ describe("ZelleBaseVerifier Tests", () => {
       );
 
       proof = parseExtensionProof(zelleBoAExtensionProof);
-      subjectProof = encodeProofWithPaymentMethod(proof, paymentMethod);
+      const encodedProof = encodeProof(proof);
+      subjectProof = encodeProofWithPaymentMethod(encodedProof, paymentMethod);
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
@@ -298,7 +298,8 @@ describe("ZelleBaseVerifier Tests", () => {
       beforeEach(async () => {
         // Use an unregistered payment method
         const unregisteredPaymentMethod = 2;
-        subjectProof = encodeProofWithPaymentMethod(proof, unregisteredPaymentMethod);
+        const encodedProof = encodeProof(proof);
+        subjectProof = encodeProofWithPaymentMethod(encodedProof, unregisteredPaymentMethod);
       });
 
       it("should revert with 'Verifier not set'", async () => {

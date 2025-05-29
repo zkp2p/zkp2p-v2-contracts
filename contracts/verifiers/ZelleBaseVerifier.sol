@@ -11,6 +11,7 @@ import { BasePaymentVerifier } from "./BaseVerifiers/BasePaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IReclaimVerifier } from "./interfaces/IReclaimVerifier.sol";
+
 pragma solidity ^0.8.18;
 
 /*
@@ -49,7 +50,9 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Zelle payment. Because Zelle supports multiple payment methods 
-     * (each with their own verification logic), the _verifyPaymentData.data field should contain the payment method.
+     * (each with their own verification logic), the _verifyPaymentData.paymentProof field should contain the payment method.
+     * Payment method should be encodePacked with the payment proof. We chose this over encoding it as (uint8, bytes) because
+     * computation is cheaper on L2 than calldata.
      *
      * @param _verifyPaymentData Payment proof, intent details, and payment method required for verification
      */
@@ -62,18 +65,23 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        (
-            IReclaimVerifier.ReclaimProof memory proof,
-            uint8 paymentMethod
-        ) = abi.decode(_verifyPaymentData.paymentProof, (IReclaimVerifier.ReclaimProof, uint8));
+        bytes memory rawPaymentProof = _verifyPaymentData.paymentProof;
+        require(rawPaymentProof.length > 1, "Invalid length");
+
+        // Extract the first byte as paymentMethod
+        uint8 paymentMethod = uint8(rawPaymentProof[0]);
+
+        // Copy bytes from rawPaymentProof (excluding the first byte) to proofDataBytes
+        uint256 proofDataLength = rawPaymentProof.length - 1;
+        bytes memory proofDataBytes = new bytes(proofDataLength);
+        for (uint256 i = 0; i < proofDataLength; i++) {
+            proofDataBytes[i] = rawPaymentProof[i + 1];
+        }
 
         address verifier = paymentMethodToVerifier[paymentMethod];
         require(verifier != address(0), "Verifier not set");
 
-        // Strip the payment method from the proof
-        bytes memory paymentProof = abi.encode(proof);
-        _verifyPaymentData.paymentProof = paymentProof;
-
+        _verifyPaymentData.paymentProof = proofDataBytes;
         return IPaymentVerifier(verifier).verifyPayment(_verifyPaymentData);
     }
 

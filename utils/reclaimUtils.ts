@@ -1,4 +1,4 @@
-import { utils } from 'ethers';
+import { BytesLike, utils } from 'ethers';
 import canonicalize from 'canonicalize';
 
 import { ClaimInfo, CompleteClaimData } from './types';
@@ -120,9 +120,6 @@ export const encodeTwoProofs = (proof1: ReclaimProof, proof2: ReclaimProof) => {
 	);
 };
 
-export const encodeProofWithPaymentMethod = (proof: ReclaimProof, paymentMethod: number) => {
-	return ethers.utils.defaultAbiCoder.encode(
-		[PROOF_ENCODING_STRING, "uint8"],
-		[proof, paymentMethod]
-	);
+export const encodeProofWithPaymentMethod = (proof: BytesLike, paymentMethod: number) => {
+	return ethers.utils.solidityPack(['uint8', 'bytes'], [paymentMethod, proof]);
 };
