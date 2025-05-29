@@ -206,7 +206,8 @@ describe("ZelleCitiReclaimVerifier", () => {
     verifier = await deployer.deployZelleCitiReclaimVerifier(
       baseVerifier.address,
       nullifierRegistry.address,
-      providerHashes
+      providerHashes,
+      BigNumber.from(60)
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
@@ -216,9 +217,9 @@ describe("ZelleCitiReclaimVerifier", () => {
       method: "hardhat_impersonateAccount",
       params: [baseVerifier.address],
     });
-    
+
     const baseVerifierSigner = await ethers.getSigner(baseVerifier.address);
-    
+
     // Set balance for base verifier for gas
     await hre.network.provider.send("hardhat_setBalance", [
       baseVerifier.address,
@@ -344,7 +345,7 @@ describe("ZelleCitiReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(86400).add(BigNumber.from(30));
+        subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(86400).add(BigNumber.from(60));   // 1 second after the payment timestamp + 23:59:59 + buffer of 60 seconds
       });
 
       it("should revert", async () => {
@@ -449,6 +450,40 @@ describe("ZelleCitiReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Only base verifier can call");
+      });
+    });
+  });
+
+
+  describe("#setTimestampBuffer", async () => {
+    let subjectBuffer: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectBuffer = BigNumber.from(60);
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return await verifier.connect(subjectCaller.wallet).setTimestampBuffer(subjectBuffer);
+    }
+
+    it("should set the timestamp buffer correctly", async () => {
+      await subject();
+      expect(await verifier.timestampBuffer()).to.equal(subjectBuffer);
+    });
+
+    it("should emit the TimestampBufferSet event", async () => {
+      await expect(subject()).to.emit(verifier, "TimestampBufferSet").withArgs(subjectBuffer);
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = attacker;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

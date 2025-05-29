@@ -43,12 +43,17 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     address public immutable baseVerifier;
     INullifierRegistry public nullifierRegistry;
+    uint256 public timestampBuffer;
+    
+    /* ============ Events ============ */
+    event TimestampBufferSet(uint256 newTimestampBuffer);
     
     /* ============ Constructor ============ */
     constructor(
         address _baseVerifier,
         INullifierRegistry _nullifierRegistry,
-        string[] memory _providerHashes
+        string[] memory _providerHashes,
+        uint256 _timestampBuffer
     )   
         BaseReclaimVerifier(
             _providerHashes
@@ -56,6 +61,7 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     { 
         baseVerifier = _baseVerifier;
         nullifierRegistry = INullifierRegistry(_nullifierRegistry);
+        timestampBuffer = _timestampBuffer;
     }
 
     /* ============ External Functions ============ */
@@ -142,7 +148,7 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
         string memory formattedDate = _convertDateFormat(paymentDetails.transactionDate);
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
             string.concat(formattedDate, "T23:59:59")
-        ) + IBasePaymentVerifier(baseVerifier).timestampBuffer();
+        ) + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate status
@@ -206,5 +212,19 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     function _validateAndAddNullifier(bytes32 _nullifier) internal {
         require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(_nullifier);
+    }
+
+    /* ============ Owner Functions ============ */
+
+    /**
+     * @notice OWNER ONLY: Sets the timestamp buffer for payments. This is the amount of time in seconds
+     * that the timestamp can be off by and still be considered valid. Necessary to build in flexibility 
+     * with L2 timestamps.
+     *
+     * @param _timestampBuffer    The timestamp buffer for payments
+     */
+    function setTimestampBuffer(uint256 _timestampBuffer) external onlyOwner {
+        timestampBuffer = _timestampBuffer;
+        emit TimestampBufferSet(_timestampBuffer);
     }
 }
