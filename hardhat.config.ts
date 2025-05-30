@@ -6,6 +6,7 @@ import '@nomiclabs/hardhat-ethers'
 import 'hardhat-deploy';
 import '@nomiclabs/hardhat-etherscan';
 import '@nomicfoundation/hardhat-chai-matchers'
+import 'hardhat-gas-reporter';
 
 import { HardhatUserConfig } from "hardhat/config";
 
@@ -100,6 +101,11 @@ const config: HardhatUserConfig = {
     outDir: "typechain",
     target: "ethers-v5",
   },
+  gasReporter: {
+    enabled: true,
+    reportPureAndViewMethods: true,
+    showMethodSig: true,
+  }
 };
 
 export default config;

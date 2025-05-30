@@ -5722,7 +5722,7 @@ export default {
       ]
     },
     "ZelleBaseVerifier": {
-      "address": "0x6B9e891abCA7f0958247CB6E608F7A260F566821",
+      "address": "0x0Ed3c3DB9CF8458e5D9991712552539675D2C896",
       "abi": [
         {
           "inputs": [
@@ -6102,7 +6102,7 @@ export default {
       ]
     },
     "ZelleBoAReclaimVerifier": {
-      "address": "0x072D82D991D8fBeE1ac2c3fF7BAb9005063850D2",
+      "address": "0x0aAE0b702168fc6E1b632c7CE48c86FD203ffC30",
       "abi": [
         {
           "inputs": [
@@ -6529,7 +6529,7 @@ export default {
       ]
     },
     "ZelleChaseReclaimVerifier": {
-      "address": "0xB12602334a84F4e1c67795d187051924aC88dEcc",
+      "address": "0x210a4Df19b14152386Dc2Cb6b832E751950ee145",
       "abi": [
         {
           "inputs": [
@@ -6969,7 +6969,7 @@ export default {
       ]
     },
     "ZelleCitiReclaimVerifier": {
-      "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+      "address": "0x07937fb392D0dc524C588221140b37195F2E1817",
       "abi": [
         {
           "inputs": [
