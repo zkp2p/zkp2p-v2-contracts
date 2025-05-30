@@ -57,32 +57,39 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
      * @param _verifyPaymentData Payment proof, intent details, and payment method required for verification
      */
     function verifyPayment(
-        IPaymentVerifier.VerifyPaymentData memory _verifyPaymentData
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
-        external 
+        external
         override
         returns (bool, bytes32)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        bytes memory rawPaymentProof = _verifyPaymentData.paymentProof;
-        require(rawPaymentProof.length > 1, "Invalid length");
+        bytes calldata rawPaymentProofFromCalldata = _verifyPaymentData.paymentProof;
+        require(rawPaymentProofFromCalldata.length > 1, "Invalid paymentProof length");
 
-        // Extract the first byte as paymentMethod
-        uint8 paymentMethod = uint8(rawPaymentProof[0]);
+        // Extract the first byte as paymentMethod directly from calldata
+        uint8 paymentMethod = uint8(rawPaymentProofFromCalldata[0]);
 
-        // Copy bytes from rawPaymentProof (excluding the first byte) to proofDataBytes
-        uint256 proofDataLength = rawPaymentProof.length - 1;
-        bytes memory proofDataBytes = new bytes(proofDataLength);
-        for (uint256 i = 0; i < proofDataLength; i++) {
-            proofDataBytes[i] = rawPaymentProof[i + 1];
-        }
+        // Use calldata array slicing [start:end] syntax - NO copying needed!
+        // This creates a view/reference to the original data, avoiding gas-expensive copying
+        bytes calldata actualProofSlice = rawPaymentProofFromCalldata[1:];
 
         address verifier = paymentMethodToVerifier[paymentMethod];
         require(verifier != address(0), "Verifier not set");
 
-        _verifyPaymentData.paymentProof = proofDataBytes;
-        return IPaymentVerifier(verifier).verifyPayment(_verifyPaymentData);
+        return IPaymentVerifier(verifier).verifyPayment(
+            IPaymentVerifier.VerifyPaymentData({
+                paymentProof: actualProofSlice,
+                depositToken: _verifyPaymentData.depositToken,
+                intentAmount: _verifyPaymentData.intentAmount,
+                intentTimestamp: _verifyPaymentData.intentTimestamp,
+                payeeDetails: _verifyPaymentData.payeeDetails,
+                fiatCurrency: _verifyPaymentData.fiatCurrency,
+                conversionRate: _verifyPaymentData.conversionRate,
+                data: _verifyPaymentData.data
+            })
+        );
     }
 
     /* ============ Governance Functions ============ */
