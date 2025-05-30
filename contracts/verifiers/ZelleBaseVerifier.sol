@@ -11,6 +11,7 @@ import { BasePaymentVerifier } from "./BaseVerifiers/BasePaymentVerifier.sol";
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IReclaimVerifier } from "./interfaces/IReclaimVerifier.sol";
+
 pragma solidity ^0.8.18;
 
 /*
@@ -49,32 +50,46 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
 
     /**
      * ONLY RAMP: Verifies a reclaim proof of an offchain Zelle payment. Because Zelle supports multiple payment methods 
-     * (each with their own verification logic), the _verifyPaymentData.data field should contain the payment method.
+     * (each with their own verification logic), the _verifyPaymentData.paymentProof field should contain the payment method.
+     * Payment method should be encodePacked with the payment proof. We chose this over encoding it as (uint8, bytes) because
+     * computation is cheaper on L2 than calldata.
      *
      * @param _verifyPaymentData Payment proof, intent details, and payment method required for verification
      */
     function verifyPayment(
-        IPaymentVerifier.VerifyPaymentData memory _verifyPaymentData
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
-        external 
+        external
         override
         returns (bool, bytes32)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        (
-            IReclaimVerifier.ReclaimProof memory proof,
-            uint8 paymentMethod
-        ) = abi.decode(_verifyPaymentData.paymentProof, (IReclaimVerifier.ReclaimProof, uint8));
+        bytes calldata rawPaymentProofFromCalldata = _verifyPaymentData.paymentProof;
+        require(rawPaymentProofFromCalldata.length > 1, "Invalid paymentProof length");
+
+        // Extract the first byte as paymentMethod directly from calldata
+        uint8 paymentMethod = uint8(rawPaymentProofFromCalldata[0]);
+
+        // Use calldata array slicing [start:end] syntax - NO copying needed!
+        // This creates a view/reference to the original data, avoiding gas-expensive copying
+        bytes calldata actualProofSlice = rawPaymentProofFromCalldata[1:];
 
         address verifier = paymentMethodToVerifier[paymentMethod];
         require(verifier != address(0), "Verifier not set");
 
-        // Strip the payment method from the proof
-        bytes memory paymentProof = abi.encode(proof);
-        _verifyPaymentData.paymentProof = paymentProof;
-
-        return IPaymentVerifier(verifier).verifyPayment(_verifyPaymentData);
+        return IPaymentVerifier(verifier).verifyPayment(
+            IPaymentVerifier.VerifyPaymentData({
+                paymentProof: actualProofSlice,
+                depositToken: _verifyPaymentData.depositToken,
+                intentAmount: _verifyPaymentData.intentAmount,
+                intentTimestamp: _verifyPaymentData.intentTimestamp,
+                payeeDetails: _verifyPaymentData.payeeDetails,
+                fiatCurrency: _verifyPaymentData.fiatCurrency,
+                conversionRate: _verifyPaymentData.conversionRate,
+                data: _verifyPaymentData.data
+            })
+        );
     }
 
     /* ============ Governance Functions ============ */

@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
+import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 
 export const getZelleCitiReclaimProviderHashes = async (length: number) => {
   const hashes: string[] = [];
@@ -109,25 +110,7 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
     hashes.push(listHashes);
   }
 
-  const detailsHash = hashProviderParams(
-    {
-      url: "https://secure.chase.com/svc/rr/payments/secure/v1/quickpay/payment/activity/detail/list",
-      method: "POST",
-      responseMatches: [
-        {
-          "type": "regex",
-          "value": "\"recipientEmail\":\"(?<recipientEmail>[^\"]+)\"",
-          "hash": true
-        }
-      ],
-      responseRedactions: [
-        {
-          "jsonPath": "$.recipientEmail",
-          "xPath": ""
-        }
-      ]
-    }
-  )
+  const detailsHash = "0x0f50cfe682d82acfcff1140cfca303d627a9d468764cfa401611d476695ce6cd";
   hashes.push(detailsHash);
 
   return hashes;
@@ -198,7 +181,13 @@ export const ZELLE_RECLAIM_CURRENCIES: any = [
   Currency.USD
 ];
 
-export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
+
+
+export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = {
+  'citi': ONE_DAY_IN_SECONDS,
+  'chase': ONE_DAY_IN_SECONDS,
+  'bofa': ONE_DAY_IN_SECONDS,
+}
 
 export const ZELLE_RECLAIM_FEE_SHARE: any = {
   "base": BigNumber.from(0),  // 0% of sustainability fee

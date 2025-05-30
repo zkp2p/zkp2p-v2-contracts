@@ -1,8 +1,9 @@
 import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
+import hre from "hardhat";
 
-import { NullifierRegistry, ZelleChaseReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, ZelleChaseReclaimVerifier, USDCMock, ZelleBaseVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -616,11 +617,14 @@ const chaseDetailCompletedProof = {
 
 describe("ZelleChaseReclaimVerifier", () => {
   let owner: Account;
-  let baseVerifier: Account;
+  let attacker: Account;
+  let escrow: Account;
   let providerHashes: string[];
   let witnesses: Address[];
+  let subjectCaller: Account;
 
   let nullifierRegistry: NullifierRegistry;
+  let baseVerifier: ZelleBaseVerifier;
   let verifier: ZelleChaseReclaimVerifier;
   let usdcToken: USDCMock;
 
@@ -629,7 +633,8 @@ describe("ZelleChaseReclaimVerifier", () => {
   beforeEach(async () => {
     [
       owner,
-      baseVerifier
+      attacker,
+      escrow
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -644,13 +649,40 @@ describe("ZelleChaseReclaimVerifier", () => {
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
+    baseVerifier = await deployer.deployZelleBaseVerifier(
+      escrow.address,
+      nullifierRegistry.address,
+      BigNumber.from(30),
+      [Currency.USD]
+    );
+
     verifier = await deployer.deployZelleChaseReclaimVerifier(
       baseVerifier.address,
       nullifierRegistry.address,
-      providerHashes
+      providerHashes,
+      BigNumber.from(60)
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
+
+    // Set up impersonated signer for base verifier
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [baseVerifier.address],
+    });
+
+    const baseVerifierSigner = await ethers.getSigner(baseVerifier.address);
+
+    // Set balance for base verifier for gas
+    await hre.network.provider.send("hardhat_setBalance", [
+      baseVerifier.address,
+      "0x56BC75E2D63100000" // 100 ETH in hex
+    ]);
+
+    subjectCaller = {
+      address: baseVerifier.address,
+      wallet: baseVerifierSigner
+    };
   });
 
   describe("#constructor", async () => {
@@ -669,7 +701,6 @@ describe("ZelleChaseReclaimVerifier", () => {
     let proofList: ReclaimProof;
     let proofDetail: ReclaimProof;
 
-    let subjectCaller: Account;
     let subjectProof: BytesLike;
     let subjectDepositToken: Address;
     let subjectIntentAmount: BigNumber;
@@ -692,7 +723,6 @@ describe("ZelleChaseReclaimVerifier", () => {
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.floor(paymentTime.getTime() / 1000);
 
-      subjectCaller = baseVerifier;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(10);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
@@ -776,7 +806,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
-        subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(86400).add(BigNumber.from(30));
+        subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(86400).add(BigNumber.from(60));   // 1 second after the payment timestamp + 23:59:59 + buffer of 60 seconds
       });
 
       it("should revert", async () => {
@@ -907,6 +937,40 @@ describe("ZelleChaseReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Only base verifier can call");
+      });
+    });
+  });
+
+
+  describe("#setTimestampBuffer", async () => {
+    let subjectBuffer: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectBuffer = BigNumber.from(60);
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return await verifier.connect(subjectCaller.wallet).setTimestampBuffer(subjectBuffer);
+    }
+
+    it("should set the timestamp buffer correctly", async () => {
+      await subject();
+      expect(await verifier.timestampBuffer()).to.equal(subjectBuffer);
+    });
+
+    it("should emit the TimestampBufferSet event", async () => {
+      await expect(subject()).to.emit(verifier, "TimestampBufferSet").withArgs(subjectBuffer);
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = attacker;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

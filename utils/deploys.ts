@@ -218,36 +218,42 @@ export default class DeployHelper {
   public async deployZelleBoAReclaimVerifier(
     baseVerifier: Address,
     nullifierRegistry: Address,
-    providerHashes: string[]
+    providerHashes: string[],
+    timestampBuffer: BigNumber
   ): Promise<ZelleBoAReclaimVerifier> {
     return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
       baseVerifier,
       nullifierRegistry,
-      providerHashes
+      providerHashes,
+      timestampBuffer
     );
   }
 
   public async deployZelleCitiReclaimVerifier(
     baseVerifier: Address,
     nullifierRegistry: Address,
-    providerHashes: string[]
+    providerHashes: string[],
+    timestampBuffer: BigNumber
   ): Promise<ZelleCitiReclaimVerifier> {
     return await new ZelleCitiReclaimVerifier__factory(this._deployerSigner).deploy(
       baseVerifier,
       nullifierRegistry,
-      providerHashes
+      providerHashes,
+      timestampBuffer
     );
   }
 
   public async deployZelleChaseReclaimVerifier(
     baseVerifier: Address,
     nullifierRegistry: Address,
-    providerHashes: string[]
+    providerHashes: string[],
+    timestampBuffer: BigNumber
   ): Promise<ZelleChaseReclaimVerifier> {
     return await new ZelleChaseReclaimVerifier__factory(this._deployerSigner).deploy(
       baseVerifier,
       nullifierRegistry,
-      providerHashes
+      providerHashes,
+      timestampBuffer
     );
   }
 

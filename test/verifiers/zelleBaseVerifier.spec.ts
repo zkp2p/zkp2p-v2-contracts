@@ -34,19 +34,19 @@ const expect = getWaffleExpect();
 const zelleBoAExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"{\\\"filterV1\\\":{\\\"dateFilter\\\":{\\\"timeframeForHistory\\\":\\\"DEFAULTDAYS\\\"}},\\\"sortCriteriaV1\\\":{\\\"fieldName\\\":\\\"DATE\\\",\\\"order\\\":\\\"DESCENDING\\\"},\\\"pageInfo\\\":{\\\"pageNum\\\":1,\\\"pageSize\\\":\\\"\\\"}}\",\"headers\":{\"Accept\":\"application/json\",\"Accept-Language\":\"en-US\",\"Content-Type\":\"application/json\",\"Origin\":\"https://secure.bankofamerica.com\",\"Referer\":\"https://secure.bankofamerica.com/pay-transfer-pay-portal/?request_locale=en-us&returnSiteIndicator=GAIEC&target=paymentactivity\",\"Sec-Fetch-Dest\":\"empty\",\"Sec-Fetch-Mode\":\"cors\",\"Sec-Fetch-Site\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36\",\"X-Requested-With\":\"XMLHttpRequest\",\"sec-ch-ua\":\"\\\"Chromium\\\";v=\\\"136\\\", \\\"Google Chrome\\\";v=\\\"136\\\", \\\"Not.A/Brand\\\";v=\\\"99\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\"},\"method\":\"POST\",\"paramValues\":{},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"confirmationNumber\\\":\\\"(?<confirmationNumber>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"transactionDate\\\":\\\"(?<transactionDate>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\.]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"aliasToken\\\":\\\"(?<aliasToken>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.completedTransactions[0].confirmationNumber\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].status\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].transactionDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].targetAccount.aliasToken\",\"xPath\":\"\"}],\"url\":\"https://secure.bankofamerica.com/ogateway/payment-activity/api/v4/activity\"}",
+    "parameters": "{\"body\":\"{\\\"filterV1\\\":{\\\"dateFilter\\\":{\\\"timeframeForHistory\\\":\\\"DEFAULTDAYS\\\"}},\\\"sortCriteriaV1\\\":{\\\"fieldName\\\":\\\"DATE\\\",\\\"order\\\":\\\"DESCENDING\\\"},\\\"pageInfo\\\":{\\\"pageNum\\\":1,\\\"pageSize\\\":\\\"\\\"}}\",\"headers\":{\"Accept\":\"application/json, text/javascript, */*; q=0.01\",\"Accept-Language\":\"en-US,en;q=0.9\",\"Content-Type\":\"application/json; charset=utf-8\",\"Referer\":\"https://secure.bankofamerica.com/myaccounts/signin/signIn.go?returnSiteIndicator=GAIMW&langPref=en-us&request_locale=en-us&capturemode=N&newuser=false&bcIP=F\",\"Sec-Fetch-Dest\":\"empty\",\"Sec-Fetch-Mode\":\"cors\",\"Sec-Fetch-Site\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36\",\"X-Requested-With\":\"XMLHttpRequest\",\"sec-ch-ua\":\"\\\"Chromium\\\";v=\\\"136\\\", \\\"Google Chrome\\\";v=\\\"136\\\", \\\"Not.A/Brand\\\";v=\\\"99\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\"},\"method\":\"POST\",\"paramValues\":{},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"confirmationNumber\\\":\\\"(?<confirmationNumber>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"transactionDate\\\":\\\"(?<transactionDate>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\.]+)\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"aliasToken\\\":\\\"(?<aliasToken>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.completedTransactions[0].confirmationNumber\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].status\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].transactionDate\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.completedTransactions[0].targetAccount.aliasToken\",\"xPath\":\"\"}],\"url\":\"https://secure.bankofamerica.com/ogateway/payment-activity/api/v4/activity\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1746132575,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"aliasToken\":\"0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303\",\"amount\":\"100.0\",\"confirmationNumber\":\"n5izkhusa\",\"status\":\"COMPLETED\",\"transactionDate\":\"2025-04-18\"},\"providerHash\":\"0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd\"}",
-    "identifier": "0x222e8d48a28ee89aa6b99766594e8a4daa6188c7a530ce8ec617e3d868863260",
+    "timestampS": 1748429704,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18385055337294286813491339477905244139745664491486943658289276301683553013461\",\"extractedParameters\":{\"aliasToken\":\"0x907677337cbb16e036508f13be415d848b3b8237d038189fa94825fe05f64614\",\"amount\":\"1.0\",\"confirmationNumber\":\"jqaa7v4iw\",\"status\":\"COMPLETED\",\"transactionDate\":\"2025-05-27\"},\"providerHash\":\"0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd\"}",
+    "identifier": "0x51550fb9723574f45d83c9b375194a5ea7d1de9b1cdce2f533892bea1f86a828",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": { "0": 104, "1": 151, "2": 79, "3": 218, "4": 75, "5": 10, "6": 115, "7": 191, "8": 196, "9": 181, "10": 208, "11": 121, "12": 149, "13": 195, "14": 187, "15": 12, "16": 220, "17": 253, "18": 0, "19": 80, "20": 35, "21": 229, "22": 221, "23": 102, "24": 76, "25": 144, "26": 42, "27": 96, "28": 8, "29": 72, "30": 132, "31": 204, "32": 111, "33": 206, "34": 48, "35": 38, "36": 177, "37": 246, "38": 252, "39": 38, "40": 127, "41": 133, "42": 157, "43": 170, "44": 105, "45": 184, "46": 107, "47": 186, "48": 190, "49": 0, "50": 52, "51": 9, "52": 96, "53": 42, "54": 73, "55": 119, "56": 254, "57": 121, "58": 146, "59": 138, "60": 201, "61": 178, "62": 134, "63": 226, "64": 27 },
-    "resultSignature": { "0": 141, "1": 48, "2": 96, "3": 49, "4": 69, "5": 77, "6": 17, "7": 183, "8": 8, "9": 244, "10": 237, "11": 41, "12": 161, "13": 212, "14": 48, "15": 27, "16": 132, "17": 200, "18": 68, "19": 235, "20": 237, "21": 17, "22": 230, "23": 223, "24": 199, "25": 128, "26": 105, "27": 51, "28": 200, "29": 119, "30": 101, "31": 99, "32": 38, "33": 27, "34": 201, "35": 229, "36": 70, "37": 162, "38": 68, "39": 77, "40": 92, "41": 111, "42": 147, "43": 141, "44": 99, "45": 125, "46": 129, "47": 164, "48": 211, "49": 11, "50": 209, "51": 204, "52": 165, "53": 234, "54": 81, "55": 157, "56": 4, "57": 68, "58": 113, "59": 96, "60": 130, "61": 196, "62": 187, "63": 153, "64": 28 }
+    "claimSignature": { "0": 118, "1": 18, "2": 236, "3": 36, "4": 235, "5": 58, "6": 11, "7": 172, "8": 82, "9": 85, "10": 83, "11": 139, "12": 116, "13": 169, "14": 211, "15": 10, "16": 12, "17": 160, "18": 241, "19": 11, "20": 242, "21": 146, "22": 244, "23": 240, "24": 50, "25": 172, "26": 10, "27": 241, "28": 35, "29": 96, "30": 233, "31": 13, "32": 97, "33": 227, "34": 121, "35": 233, "36": 58, "37": 28, "38": 118, "39": 125, "40": 24, "41": 197, "42": 149, "43": 0, "44": 198, "45": 114, "46": 254, "47": 227, "48": 125, "49": 195, "50": 112, "51": 105, "52": 8, "53": 125, "54": 57, "55": 150, "56": 8, "57": 66, "58": 52, "59": 211, "60": 155, "61": 212, "62": 147, "63": 199, "64": 27 },
+    "resultSignature": { "0": 4, "1": 32, "2": 17, "3": 89, "4": 221, "5": 176, "6": 48, "7": 12, "8": 85, "9": 23, "10": 125, "11": 218, "12": 113, "13": 73, "14": 202, "15": 117, "16": 18, "17": 37, "18": 135, "19": 32, "20": 150, "21": 6, "22": 18, "23": 172, "24": 254, "25": 86, "26": 161, "27": 27, "28": 247, "29": 239, "30": 201, "31": 198, "32": 23, "33": 109, "34": 93, "35": 116, "36": 149, "37": 214, "38": 144, "39": 234, "40": 239, "41": 199, "42": 135, "43": 111, "44": 58, "45": 125, "46": 112, "47": 106, "48": 78, "49": 136, "50": 199, "51": 62, "52": 17, "53": 162, "54": 5, "55": 16, "56": 175, "57": 33, "58": 17, "59": 91, "60": 243, "61": 122, "62": 148, "63": 4, "64": 28 }
   }
-};
+}
 
 describe("ZelleBaseVerifier Tests", () => {
   let owner: Account;
@@ -76,7 +76,7 @@ describe("ZelleBaseVerifier Tests", () => {
     zelleBaseVerifier = await deployer.deployZelleBaseVerifier(
       escrow.address,
       nullifierRegistry.address,
-      BigNumber.from(30),
+      BigNumber.from(86400),  // Not relevant as it's not used
       [Currency.USD]
     );
 
@@ -86,7 +86,8 @@ describe("ZelleBaseVerifier Tests", () => {
     zelleBoAReclaimVerifier = await deployer.deployZelleBoAReclaimVerifier(
       zelleBaseVerifier.address,
       nullifierRegistry.address,
-      providerHashes
+      providerHashes,
+      BigNumber.from(86400)
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(zelleBoAReclaimVerifier.address);
@@ -222,7 +223,6 @@ describe("ZelleBaseVerifier Tests", () => {
     });
   });
 
-
   describe("Payment Verification", async () => {
     let proof: ReclaimProof;
 
@@ -236,9 +236,6 @@ describe("ZelleBaseVerifier Tests", () => {
     let subjectFiatCurrency: BytesLike;
     let subjectData: BytesLike;
 
-    let paymentTimestamp: number;
-
-
     beforeEach(async () => {
       // Set up a payment method verifier for testing
       const paymentMethod = 1;
@@ -248,18 +245,15 @@ describe("ZelleBaseVerifier Tests", () => {
       );
 
       proof = parseExtensionProof(zelleBoAExtensionProof);
-      subjectProof = encodeProofWithPaymentMethod(proof, paymentMethod);
-
-      const paymentTimeString = '2025-04-18';
-      const paymentTime = new Date(paymentTimeString);
-      paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
+      const encodedProof = encodeProof(proof);
+      subjectProof = encodeProofWithPaymentMethod(encodedProof, paymentMethod);
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(110);
-      subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
+      subjectIntentAmount = usdc(1);
+      subjectIntentTimestamp = BigNumber.from(1748393775); // Slightly after payment timestamp
       subjectConversionRate = ether(0.9);   // 110 * 0.9 = 99 [intent amount * conversion rate = payment amount]
-      subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
+      subjectPayeeDetailsHash = "0x907677337cbb16e036508f13be415d848b3b8237d038189fa94825fe05f64614";
       subjectFiatCurrency = ZERO_BYTES32;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -287,7 +281,7 @@ describe("ZelleBaseVerifier Tests", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+      expect(intentHash).to.eq("0x28a5929360d217432e6db97002bf2a7670a92e82bc91fbc6b887188e41290ed5");
     });
 
     describe("when caller is not escrow", async () => {
@@ -304,11 +298,22 @@ describe("ZelleBaseVerifier Tests", () => {
       beforeEach(async () => {
         // Use an unregistered payment method
         const unregisteredPaymentMethod = 2;
-        subjectProof = encodeProofWithPaymentMethod(proof, unregisteredPaymentMethod);
+        const encodedProof = encodeProof(proof);
+        subjectProof = encodeProofWithPaymentMethod(encodedProof, unregisteredPaymentMethod);
       });
 
       it("should revert with 'Verifier not set'", async () => {
         await expect(subjectCallStatic()).to.be.revertedWith("Verifier not set");
+      });
+    });
+
+    describe("when payment proof length is incorrrect", async () => {
+      beforeEach(async () => {
+        subjectProof = "0x01";
+      });
+
+      it("should revert with 'Invalid paymentProof length'", async () => {
+        await expect(subjectCallStatic()).to.be.revertedWith("Invalid paymentProof length");
       });
     });
   });

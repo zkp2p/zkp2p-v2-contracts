@@ -36,6 +36,7 @@ import {
   ZELLE_RECLAIM_FEE_SHARE,
   ZELLE_APPCLIP_PROVIDER_HASHES,
 } from "../../deployments/verifiers/zelle_reclaim";
+import { ZERO } from "@utils/constants";
 
 const expect = getWaffleExpect();
 
@@ -53,9 +54,9 @@ describe("Zelle Reclaim Verifier Deployments", () => {
   let boaVerifier: ZelleBoAReclaimVerifier;
 
   // Payment method IDs for each bank - must match deploy script
-  // const CHASE_PAYMENT_METHOD = 1;
-  const CITI_PAYMENT_METHOD = 0;
+  const CHASE_PAYMENT_METHOD = 0;
   const BOA_PAYMENT_METHOD = 1;
+  const CITI_PAYMENT_METHOD = 2;
 
   const network: string = deployments.getNetworkName();
 
@@ -76,8 +77,8 @@ describe("Zelle Reclaim Verifier Deployments", () => {
     const zelleBaseVerifierAddress = getDeployedContractAddress(network, "ZelleBaseVerifier");
     zelleBaseVerifier = new ZelleBaseVerifier__factory(deployer.wallet).attach(zelleBaseVerifierAddress);
 
-    // const chaseVerifierAddress = getDeployedContractAddress(network, "ZelleChaseReclaimVerifier");
-    // chaseVerifier = new ZelleChaseReclaimVerifier__factory(deployer.wallet).attach(chaseVerifierAddress);
+    const chaseVerifierAddress = getDeployedContractAddress(network, "ZelleChaseReclaimVerifier");
+    chaseVerifier = new ZelleChaseReclaimVerifier__factory(deployer.wallet).attach(chaseVerifierAddress);
 
     const citiVerifierAddress = getDeployedContractAddress(network, "ZelleCitiReclaimVerifier");
     citiVerifier = new ZelleCitiReclaimVerifier__factory(deployer.wallet).attach(citiVerifierAddress);
@@ -97,7 +98,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualTimestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER);
+      expect(actualTimestampBuffer).to.eq(ZERO);
       expect([...actualCurrencies].sort()).to.deep.eq([...ZELLE_RECLAIM_CURRENCIES].sort());
     });
 
@@ -112,27 +113,29 @@ describe("Zelle Reclaim Verifier Deployments", () => {
     });
 
     it("should have the correct payment method mappings", async () => {
-      // const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
+      const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
       const citiVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CITI_PAYMENT_METHOD);
       const boaVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(BOA_PAYMENT_METHOD);
 
-      // expect(chaseVerifierAddress).to.eq(chaseVerifier.address);
+      expect(chaseVerifierAddress).to.eq(chaseVerifier.address);
       expect(citiVerifierAddress).to.eq(citiVerifier.address);
       expect(boaVerifierAddress).to.eq(boaVerifier.address);
     });
   });
 
-  // describe("ZelleChaseReclaimVerifier", () => {
-  //   testVerifier(
-  //     "ZelleChaseReclaimVerifier",
-  //     () => chaseVerifier,
-  //     getZelleChaseReclaimProviderHashes
-  //   );
-  // });
+  describe("ZelleChaseReclaimVerifier", () => {
+    testVerifier(
+      "ZelleChaseReclaimVerifier",
+      'chase',
+      () => chaseVerifier,
+      getZelleChaseReclaimProviderHashes
+    );
+  });
 
   describe("ZelleCitiReclaimVerifier", () => {
     testVerifier(
       "ZelleCitiReclaimVerifier",
+      'citi',
       () => citiVerifier,
       getZelleCitiReclaimProviderHashes
     );
@@ -141,6 +144,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
   describe("ZelleBoAReclaimVerifier", () => {
     testVerifier(
       "ZelleBoAReclaimVerifier",
+      'bofa',
       () => boaVerifier,
       getZelleBoAReclaimProviderHashes
     );
@@ -148,6 +152,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
 
   function testVerifier(
     name: string,
+    id: string,
     getVerifier: () => any,
     getProviderHashes: (n: number) => Promise<string[]>
   ) {
@@ -158,6 +163,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
         const actualBaseVerifier = await verifier.baseVerifier();
         const actualNullifierRegistryAddress = await verifier.nullifierRegistry();
         const actualProviderHashes = await verifier.getProviderHashes();
+        const actualTimestampBuffer = await verifier.timestampBuffer();
 
         // Use different n for each bank to match deploy script
         let n = 10;
@@ -171,6 +177,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
         expect(actualBaseVerifier).to.eq(zelleBaseVerifier.address);
         expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
         expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+        expect(actualTimestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER[id as keyof typeof ZELLE_RECLAIM_TIMESTAMP_BUFFER]);
       });
     });
 

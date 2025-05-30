@@ -7,6 +7,7 @@ import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
+import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
 import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";
 import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
@@ -41,19 +42,25 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     /* ============ State Variables ============ */
     address public immutable baseVerifier;
     INullifierRegistry public nullifierRegistry;
+    uint256 public timestampBuffer;
+
+    /* ============ Events ============ */
+    event TimestampBufferSet(uint256 newTimestampBuffer);
 
     /* ============ Constructor ============ */
     constructor(
         address _baseVerifier,
         INullifierRegistry _nullifierRegistry,
-        string[] memory _providerHashes
+        string[] memory _providerHashes,
+        uint256 _timestampBuffer
     )   
         BaseReclaimVerifier(
             _providerHashes
         )
     {
         baseVerifier = _baseVerifier;
-        nullifierRegistry = _nullifierRegistry;
+        nullifierRegistry = INullifierRegistry(_nullifierRegistry);
+        timestampBuffer = _timestampBuffer;
     }
 
     /* ============ External Functions ============ */
@@ -148,7 +155,7 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
         // Append T23:59:59 to the date string to capture end of day because Zelle only shows day precision
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(
             string.concat(paymentDetails.transactionDate, "T23:59:59")
-        );
+        ) + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
 
         // Validate status
@@ -197,5 +204,19 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     function _validateAndAddNullifier(bytes32 _nullifier) internal {
         require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(_nullifier);
+    }
+
+    /* ============ Owner Functions ============ */
+
+    /**
+     * @notice OWNER ONLY: Sets the timestamp buffer for payments. This is the amount of time in seconds
+     * that the timestamp can be off by and still be considered valid. Necessary to build in flexibility 
+     * with L2 timestamps.
+     *
+     * @param _timestampBuffer    The timestamp buffer for payments
+     */
+    function setTimestampBuffer(uint256 _timestampBuffer) external onlyOwner {
+        timestampBuffer = _timestampBuffer;
+        emit TimestampBufferSet(_timestampBuffer);
     }
 }
