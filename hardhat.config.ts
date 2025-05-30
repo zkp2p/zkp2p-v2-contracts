@@ -102,7 +102,7 @@ const config: HardhatUserConfig = {
     target: "ethers-v5",
   },
   gasReporter: {
-    enabled: true,
+    enabled: false,
     reportPureAndViewMethods: true,
     showMethodSig: true,
   }

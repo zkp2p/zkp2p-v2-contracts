@@ -306,5 +306,15 @@ describe("ZelleBaseVerifier Tests", () => {
         await expect(subjectCallStatic()).to.be.revertedWith("Verifier not set");
       });
     });
+
+    describe("when payment proof length is incorrrect", async () => {
+      beforeEach(async () => {
+        subjectProof = "0x01";
+      });
+
+      it("should revert with 'Invalid paymentProof length'", async () => {
+        await expect(subjectCallStatic()).to.be.revertedWith("Invalid paymentProof length");
+      });
+    });
   });
 });
