@@ -8,7 +8,6 @@ export {
   BasePaymentVerifier,
   BaseReclaimVerifier,
   NullifierRegistry,
-  Quoter,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
   ManagedKeyHashAdapterV2,
