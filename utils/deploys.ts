@@ -7,6 +7,7 @@ const circom = require("circomlibjs");
 import {
   USDCMock,
   Escrow,
+  EscrowViewer,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
@@ -37,6 +38,7 @@ import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } fro
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
+import { EscrowViewer__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
@@ -72,6 +74,10 @@ export default class DeployHelper {
       sustainabilityFee,
       sustainabilityFeeRecipient
     );
+  }
+
+  public async deployEscrowViewer(escrowAddress: Address): Promise<EscrowViewer> {
+    return await new EscrowViewer__factory(this._deployerSigner).deploy(escrowAddress);
   }
 
   public async deployBasePaymentVerifier(

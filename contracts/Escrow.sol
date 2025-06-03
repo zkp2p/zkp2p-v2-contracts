@@ -112,26 +112,26 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     uint256 immutable public chainId;                                      // chainId of the chain the escrow is deployed on
 
-    mapping(address => uint256[]) public accountDeposits;           // Mapping of address to depositIds
-    mapping(address => bytes32) public accountIntent;               // Mapping of address to intentHash (Only one intent per address at a given time)
+    mapping(address => uint256[]) internal accountDeposits;           // Mapping of address to depositIds
+    mapping(address => bytes32) internal accountIntent;               // Mapping of address to intentHash (Only one intent per address at a given time)
     
     // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
     // services. Each payment service has it's own verification data which includes the payee details hash and the data used for 
     // payment verification.
     // Example: Deposit 1 => Venmo => payeeDetails: 0x123, data: 0x456
     //                    => Revolut => payeeDetails: 0x789, data: 0xabc
-    mapping(uint256 => mapping(address => DepositVerifierData)) public depositVerifierData;
-    mapping(uint256 => address[]) public depositVerifiers;          // Handy mapping to get all verifiers for a deposit
+    mapping(uint256 => mapping(address => DepositVerifierData)) internal depositVerifierData;
+    mapping(uint256 => address[]) internal depositVerifiers;          // Handy mapping to get all verifiers for a deposit
     
     // Mapping of depositId to verifier address to mapping of fiat currency to conversion rate. Each payment service can support
     // multiple currencies. Depositor can specify list of currencies and conversion rates for each payment service.
     // Example: Deposit 1 => Venmo => USD: 1e18
     //                    => Revolut => USD: 1e18, EUR: 1.2e18, SGD: 1.5e18
-    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) public depositCurrencyConversionRate;
-    mapping(uint256 => mapping(address => bytes32[])) public depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
+    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) internal depositCurrencyConversionRate;
+    mapping(uint256 => mapping(address => bytes32[])) internal depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
 
-    mapping(uint256 => Deposit) public deposits;                    // Mapping of depositIds to deposit structs
-    mapping(bytes32 => Intent) public intents;                      // Mapping of intentHashes to intent structs
+    mapping(uint256 => Deposit) internal deposits;                    // Mapping of depositIds to deposit structs
+    mapping(bytes32 => Intent) internal intents;                      // Mapping of intentHashes to intent structs
 
     // Governance controlled
     bool public acceptAllPaymentVerifiers;                            // True if all payment verifiers are accepted, False otherwise
@@ -190,7 +190,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
-        _validateCreateDeposit(_amount, _intentAmountRange, _verifiers, _verifierData, _currencies);
+        _validateDepositAmount(_amount, _intentAmountRange);
 
         uint256 depositId = depositCounter++;
 
@@ -209,30 +209,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange);
 
-        for (uint256 i = 0; i < _verifiers.length; i++) {
-            address verifier = _verifiers[i];
-            require(
-                bytes(depositVerifierData[depositId][verifier].payeeDetails).length == 0,
-                "Verifier data already exists"
-            );
-            depositVerifierData[depositId][verifier] = _verifierData[i];
-            depositVerifiers[depositId].push(verifier);
-
-            bytes32 payeeDetailsHash = keccak256(abi.encodePacked(_verifierData[i].payeeDetails));
-            emit DepositVerifierAdded(depositId, verifier, payeeDetailsHash, _verifierData[i].intentGatingService);
-        
-            for (uint256 j = 0; j < _currencies[i].length; j++) {
-                Currency memory currency = _currencies[i][j];
-                require(
-                    depositCurrencyConversionRate[depositId][verifier][currency.code] == 0,
-                    "Currency conversion rate already exists"
-                );
-                depositCurrencyConversionRate[depositId][verifier][currency.code] = currency.conversionRate;
-                depositCurrencies[depositId][verifier].push(currency.code);
-
-                emit DepositCurrencyAdded(depositId, verifier, currency.code, currency.conversionRate);
-            }
-        }
+        _addVerifiersToDeposit(depositId, _verifiers, _verifierData, _currencies);
 
         _token.transferFrom(msg.sender, address(this), _amount);
     }
@@ -586,114 +563,47 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return _getPrunableIntents(_depositId);
     }
 
-    function getDeposit(uint256 _depositId) public view returns (DepositView memory depositView) {
-        Deposit memory deposit = deposits[_depositId];
-        ( , uint256 reclaimableAmount) = _getPrunableIntents(_depositId);
-
-        VerifierDataView[] memory verifiers = new VerifierDataView[](depositVerifiers[_depositId].length);
-        for (uint256 i = 0; i < verifiers.length; ++i) {
-            address verifier = depositVerifiers[_depositId][i];
-            Currency[] memory currencies = new Currency[](depositCurrencies[_depositId][verifier].length);
-            for (uint256 j = 0; j < currencies.length; ++j) {
-                bytes32 code = depositCurrencies[_depositId][verifier][j];
-                currencies[j] = Currency({
-                    code: code,
-                    conversionRate: depositCurrencyConversionRate[_depositId][verifier][code]
-                });
-            }
-            verifiers[i] = VerifierDataView({
-                verifier: verifier,
-                verificationData: depositVerifierData[_depositId][verifier],
-                currencies: currencies
-            });
-        }
-
-        depositView = DepositView({
-            depositId: _depositId,
-            deposit: deposit,
-            availableLiquidity: deposit.remainingDeposits + reclaimableAmount,
-            verifiers: verifiers
-        });
+    function getDeposit(uint256 _depositId) external view returns (Deposit memory) {
+        return deposits[_depositId];
     }
 
-    function getAccountDeposits(address _account) external view returns (DepositView[] memory depositArray) {
-        uint256[] memory accountDepositIds = accountDeposits[_account];
-        depositArray = new DepositView[](accountDepositIds.length);
-        
-        for (uint256 i = 0; i < accountDepositIds.length; ++i) {
-            uint256 depositId = accountDepositIds[i];
-            depositArray[i] = getDeposit(depositId);
-        }
+    function getIntent(bytes32 _intentHash) external view returns (Intent memory) {
+        return intents[_intentHash];
     }
 
-    function getDepositFromIds(uint256[] memory _depositIds) external view returns (DepositView[] memory depositArray) {
-        depositArray = new DepositView[](_depositIds.length);
-
-        for (uint256 i = 0; i < _depositIds.length; ++i) {
-            uint256 depositId = _depositIds[i];
-            depositArray[i] = getDeposit(depositId);
-        }
+    function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory) {
+        return depositVerifiers[_depositId];
     }
 
-    function getIntent(bytes32 _intentHash) public view returns (IntentView memory intentView) {
-        Intent memory intent = intents[_intentHash];
-        DepositView memory deposit = getDeposit(intent.depositId);
-        intentView = IntentView({
-            intentHash: _intentHash,
-            intent: intent,
-            deposit: deposit
-        });
+    function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory) {
+        return depositCurrencies[_depositId][_verifier];
     }
 
-    function getIntents(bytes32[] calldata _intentHashes) external view returns (IntentView[] memory intentArray) {
-        intentArray = new IntentView[](_intentHashes.length);
-
-        for (uint256 i = 0; i < _intentHashes.length; ++i) {
-            intentArray[i] = getIntent(_intentHashes[i]);
-        }
+    function getDepositCurrencyConversionRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256) {
+        return depositCurrencyConversionRate[_depositId][_verifier][_currencyCode];
     }
 
-    function getAccountIntent(address _account) external view returns (IntentView memory intentView) {
-        bytes32 intentHash = accountIntent[_account];
-        intentView = getIntent(intentHash);
+    function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory) {
+        return depositVerifierData[_depositId][_verifier];
     }
 
+    function getAccountDeposits(address _account) external view returns (uint256[] memory) {
+        return accountDeposits[_account];
+    }
+
+    function getAccountIntent(address _account) external view returns (bytes32) {
+        return accountIntent[_account];
+    }
  
     /* ============ Internal Functions ============ */
 
-    function _validateCreateDeposit(
+    function _validateDepositAmount(
         uint256 _amount,
-        Range memory _intentAmountRange,
-        address[] calldata _verifiers,
-        DepositVerifierData[] calldata _verifierData,
-        Currency[][] calldata _currencies
+        Range memory _intentAmountRange
     ) internal view {
-
         require(_intentAmountRange.min != 0, "Min intent amount cannot be zero");
         require(_intentAmountRange.min <= _intentAmountRange.max, "Min intent amount must be less than max intent amount");
         require(_amount >= _intentAmountRange.min, "Amount must be greater than min intent amount");
-
-        // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
-        require(_verifiers.length == _verifierData.length, "Verifiers and depositVerifierData length mismatch");
-        require(_verifiers.length == _currencies.length, "Verifiers and currencies length mismatch");
-
-        for (uint256 i = 0; i < _verifiers.length; i++) {
-            address verifier = _verifiers[i];
-            
-            require(verifier != address(0), "Verifier cannot be zero address");
-            require(whitelistedPaymentVerifiers[verifier] || acceptAllPaymentVerifiers, "Payment verifier not whitelisted");
-
-            // _verifierData.intentGatingService can be zero address, _verifierData.data can be empty
-            require(bytes(_verifierData[i].payeeDetails).length != 0, "Payee details cannot be empty");
-
-            for (uint256 j = 0; j < _currencies[i].length; j++) {
-                require(
-                    IBasePaymentVerifier(verifier).isCurrency(_currencies[i][j].code), 
-                    "Currency not supported by verifier"
-                );
-                require(_currencies[i][j].conversionRate > 0, "Conversion rate must be greater than 0");
-            }
-        }
     }
 
     function _validateIntent(
@@ -767,10 +677,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
     }
 
-    function _pruneIntents(Deposit storage _deposit, bytes32[] memory _intents) internal {
-        for (uint256 i = 0; i < _intents.length; ++i) {
-            if (_intents[i] != bytes32(0)) {
-                _pruneIntent(_deposit, _intents[i]);
+    function _pruneIntents(Deposit storage _deposit, bytes32[] memory _intentHashes) internal {
+        for (uint256 i = 0; i < _intentHashes.length; ++i) {
+            if (_intentHashes[i] != bytes32(0)) {
+                _pruneIntent(_deposit, _intentHashes[i]);
             }
         }
     }
@@ -864,5 +774,49 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 verifierPayload = keccak256(_message).toEthSignedMessageHash();
 
         return _signer.isValidSignatureNow(verifierPayload, _signature);
+    }
+
+    function _addVerifiersToDeposit(
+        uint256 _depositId,
+        address[] calldata _verifiers,
+        DepositVerifierData[] calldata _verifierData,
+        Currency[][] calldata _currencies
+    ) internal {
+
+        // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
+        require(_verifiers.length == _verifierData.length, "Verifiers and depositVerifierData length mismatch");
+        require(_verifiers.length == _currencies.length, "Verifiers and currencies length mismatch");
+
+        for (uint256 i = 0; i < _verifiers.length; i++) {
+            address verifier = _verifiers[i];
+            
+            require(verifier != address(0), "Verifier cannot be zero address");
+            require(whitelistedPaymentVerifiers[verifier] || acceptAllPaymentVerifiers, "Payment verifier not whitelisted");
+            require(bytes(_verifierData[i].payeeDetails).length != 0, "Payee details cannot be empty");
+            require(bytes(depositVerifierData[_depositId][verifier].payeeDetails).length == 0, "Verifier data already exists");
+
+            depositVerifierData[_depositId][verifier] = _verifierData[i];
+            depositVerifiers[_depositId].push(verifier);
+
+            bytes32 payeeDetailsHash = keccak256(abi.encodePacked(_verifierData[i].payeeDetails));
+            emit DepositVerifierAdded(_depositId, verifier, payeeDetailsHash, _verifierData[i].intentGatingService);
+
+            for (uint256 j = 0; j < _currencies[i].length; j++) {
+                Currency memory currency = _currencies[i][j];
+                require(
+                    IBasePaymentVerifier(verifier).isCurrency(currency.code), 
+                    "Currency not supported by verifier"
+                );
+                require(currency.conversionRate > 0, "Conversion rate must be greater than 0");
+                require(
+                    depositCurrencyConversionRate[_depositId][verifier][currency.code] == 0,
+                    "Currency conversion rate already exists"
+                );
+                depositCurrencyConversionRate[_depositId][verifier][currency.code] = currency.conversionRate;
+                depositCurrencies[_depositId][verifier].push(currency.code);
+
+                emit DepositCurrencyAdded(_depositId, verifier, currency.code, currency.conversionRate);
+            }
+        }
     }
 }

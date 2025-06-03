@@ -4,6 +4,7 @@ export {
   StringConversionUtilsMock,
   ClaimVerifierMock,
   Escrow,
+  EscrowViewer,
   BasePaymentVerifier,
   BaseReclaimVerifier,
   NullifierRegistry,

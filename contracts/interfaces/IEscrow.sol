@@ -68,5 +68,14 @@ interface IEscrow {
         DepositView deposit;
     }
 
-    function getDepositFromIds(uint256[] memory _depositIds) external view returns (DepositView[] memory depositArray);
+    function getDeposit(uint256 _depositId) external view returns (Deposit memory);
+    function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
+    function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory);
+    function getDepositCurrencyConversionRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
+    function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory);
+    function getAccountDeposits(address _account) external view returns (uint256[] memory);
+    
+    function getIntent(bytes32 _intentHash) external view returns (Intent memory);
+    function getAccountIntent(address _account) external view returns (bytes32);
+    function getPrunableIntents(uint256 _depositId) external view returns (bytes32[] memory prunableIntents, uint256 reclaimedAmount);
 }
