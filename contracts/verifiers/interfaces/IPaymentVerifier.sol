@@ -15,7 +15,16 @@ interface IPaymentVerifier {
         string payeeDetails;                    // Payee details (hash of payee's payment platform ID OR just raw ID)
         bytes32 fiatCurrency;                   // Fiat currency the offchain payer paid in
         uint256 conversionRate;                 // Conversion rate of deposit token to fiat currency
-        bytes data;                             // Additional data required for verification (e.g. attester address)
+        bytes depositData;                      // Additional data provided by the depositor (e.g. witness signatures)
+        bytes data;                             // Additional data provided by the taker (e.g. currency price etc.)
+    }
+
+    struct PaymentVerificationResult {
+        bool success;                           // Whether the payment verification succeeded
+        bytes32 intentHash;                     // The hash of the intent being fulfilled
+        uint256 releaseAmount;                  // The amount of tokens to release
+        bytes32 paymentCurrency;                // The currency that was actually paid (for indexing)
+        string paymentId;                       // The payment ID from the payment platform (for reconciliation)
     }
 
     /* ============ External Functions ============ */
@@ -24,6 +33,6 @@ interface IPaymentVerifier {
         VerifyPaymentData calldata _verifyPaymentData
     )   
         external
-        returns(bool success, bytes32 intentHash);
+        returns(PaymentVerificationResult memory result);
 
 }

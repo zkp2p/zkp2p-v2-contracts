@@ -24,6 +24,57 @@ export async function setNewOwner(
   }
 }
 
+export async function setOrchestrator(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  orchestrator: Address
+): Promise<void> {
+  const currentOwner = await contract.owner();
+
+  if (!(await contract.orchestrator() == orchestrator)) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      const data = contract.interface.encodeFunctionData("setOrchestrator", [orchestrator]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("setOrchestrator", [orchestrator])}
+        `
+      );
+    }
+  }
+}
+
+export async function addEscrowToRegistry(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  escrow: Address
+): Promise<void> {
+  const currentOwner = await contract.owner();
+
+  if (!(await contract.isWhitelistedEscrow(escrow))) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      const data = contract.interface.encodeFunctionData("addEscrow", [escrow]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("addEscrow", [escrow])}
+        `
+      );
+    }
+  }
+}
+
+
 export async function addWritePermission(
   hre: HardhatRuntimeEnvironment,
   contract: any,
@@ -52,13 +103,12 @@ export async function addWritePermission(
 export async function addWhitelistedPaymentVerifier(
   hre: HardhatRuntimeEnvironment,
   contract: any,
-  newWhitelistedAddress: Address,
-  feeShare: BigNumber
+  newWhitelistedAddress: Address
 ): Promise<void> {
   const currentOwner = await contract.owner();
-  if (!(await contract.whitelistedPaymentVerifiers(newWhitelistedAddress))) {
+  if (!(await contract.isWhitelistedVerifier(newWhitelistedAddress))) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      const data = contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare]);
+      const data = contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress]);
 
       await hre.deployments.rawTx({
         from: currentOwner,
@@ -68,7 +118,7 @@ export async function addWhitelistedPaymentVerifier(
     } else {
       console.log(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
-        ${contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare])}
+        ${contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress])}
         `
       );
     }

@@ -5,11 +5,10 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { DateParsing } from "../../lib/DateParsing.sol";
 import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
 import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
 import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";
-import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
@@ -18,7 +17,6 @@ pragma solidity ^0.8.18;
 contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     using StringConversionUtils for string;
-    using Bytes32ConversionUtils for bytes32;
     
     /* ============ Structs ============ */
 
@@ -72,31 +70,40 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == baseVerifier, "Only base verifier can call");
 
-        (
-            PaymentDetails memory paymentDetails, 
-            bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
                 
-        _verifyPaymentDetails(
+        uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
-            _verifyPaymentData,
-            isAppclipProof
+            _verifyPaymentData
+        );
+
+        uint256 releaseAmount = _calculateReleaseAmount(
+            paymentAmount, 
+            _verifyPaymentData.conversionRate, 
+            _verifyPaymentData.intentAmount
         );
 
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.confirmationNumber)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: bytes32(paymentDetails.intentHash.stringToUint(0)),
+            releaseAmount: releaseAmount,
+            paymentCurrency: _verifyPaymentData.fiatCurrency, // Zelle only supports USD
+            paymentId: paymentDetails.confirmationNumber
+        });
     }
 
     /* ============ Internal Functions ============ */
@@ -110,7 +117,7 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
+        returns (PaymentDetails memory paymentDetails) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
@@ -125,8 +132,6 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
-
-        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -135,15 +140,13 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        VerifyPaymentData memory _verifyPaymentData,
-        bool /* _isAppclipProof */
-    ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        VerifyPaymentData memory _verifyPaymentData
+    ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        require(paymentAmount > 0, "Payment amount must be greater than zero");
         
         // Validate recipient
         require(
@@ -163,6 +166,8 @@ contract ZelleBoAReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             keccak256(abi.encodePacked(paymentDetails.status)) == COMPLETED_STATUS,
             "Payment not completed"
         );
+
+        return paymentAmount;
     }
 
     /**

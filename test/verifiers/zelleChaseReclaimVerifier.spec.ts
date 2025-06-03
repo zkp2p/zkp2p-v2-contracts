@@ -709,6 +709,7 @@ describe("ZelleChaseReclaimVerifier", () => {
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
     let subjectData: BytesLike;
+    let subjectDepositData: BytesLike;
 
     let paymentTimestamp: number;
 
@@ -728,8 +729,9 @@ describe("ZelleChaseReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(1);   // 10 * 1 = 10
       subjectPayeeDetailsHash = "0x829bf7a59c5884cda204d6932e01e010a0b609e16dcef6da89b571a30b8b7cbb";
-      subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectFiatCurrency = Currency.USD;
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -744,11 +746,12 @@ describe("ZelleChaseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -757,50 +760,82 @@ describe("ZelleChaseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
-    it("should verify a completed payment", async () => {
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
+    it("should verify the proof", async () => {
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+      // Payment is $10, conversion rate is 1, intent amount is 10
+      // Release amount = 10 / 1 = 10
+      expect(result.releaseAmount).to.eq(usdc(10));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('24569221649');
     });
 
-    it("should verify a delivered payment", async () => {
-      proofList = parseExtensionProof(chaseListDeliveredProof);
-      proofDetail = parseExtensionProof(chaseDetailDeliveredProof);
-      subjectProof = encodeTwoProofs(proofList, proofDetail);
-
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
-
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
-    });
-
-    it("should nullify the payment id", async () => {
-      await subject();
-
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['24569221649']));
-      const isNullified = await nullifierRegistry.isNullified(nullifier);
-
-      expect(isNullified).to.be.true;
-    });
-
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1000);  // 1000 * 1 = 1000 [1000 > 10]
+        subjectIntentAmount = usdc(20); // Intent expects 20 * 0.9 = 18, but actual payment is 10
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+        // Payment is $10, conversion rate is 0.9, intent amount is 20
+        // Release amount = 10 / 0.9 = 11.111...
+        expect(result.releaseAmount).to.eq(usdc(11.111111));  // 6 decimal places rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('24569221649');
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Create proofs with zero payment amount
+        const zeroAmountListProof = {
+          ...proofList,
+          claimInfo: {
+            ...proofList.claimInfo,
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"amount\":\"0\",\"date\":\"20250428\",\"id\":\"24569221649\",\"verboseStatus\":\"COMPLETED\"},\"providerHash\":\"0xd7615f705f999e8db7b0c9c2a16849559b88f3b95d6bdeed8a8c106bee870046\"}"
+          }
+        };
+
+        const zeroAmountDetailProof = {
+          ...proofDetail,
+          claimInfo: {
+            ...proofDetail.claimInfo,
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"PAYMENT_ID\":\"24569221649\",\"recipientEmail\":\"0x829bf7a59c5884cda204d6932e01e010a0b609e16dcef6da89b571a30b8b7cbb\"},\"providerHash\":\"0x21eb240c8a3131b258efceb330081cc0f8ca3e6e9e715e95fa0841ffe6a88dbe\"}"
+          }
+        };
+
+        // Update identifiers
+        zeroAmountListProof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(zeroAmountListProof.claimInfo);
+        zeroAmountDetailProof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(zeroAmountDetailProof.claimInfo);
+
+        // Sign with witnesses
+        const listDigest = createSignDataForClaim(zeroAmountListProof.signedClaim.claim);
+        const detailDigest = createSignDataForClaim(zeroAmountDetailProof.signedClaim.claim);
+
+        const witness = ethers.Wallet.createRandom();
+        zeroAmountListProof.signedClaim.signatures = [await witness.signMessage(listDigest)];
+        zeroAmountDetailProof.signedClaim.signatures = [await witness.signMessage(detailDigest)];
+
+        subjectProof = encodeTwoProofs(zeroAmountListProof, zeroAmountDetailProof);
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 
@@ -849,7 +884,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -875,7 +910,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -897,7 +932,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -919,7 +954,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );

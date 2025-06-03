@@ -3,11 +3,18 @@ export {
   PaymentVerifierMock,
   StringConversionUtilsMock,
   ClaimVerifierMock,
+  PostIntentHookMock,
+  OrchestratorMock,
   Escrow,
+  ProtocolViewer,
+  Orchestrator,
   BasePaymentVerifier,
   BaseReclaimVerifier,
+  PaymentVerifierRegistry,
+  PostIntentHookRegistry,
+  RelayerRegistry,
+  EscrowRegistry,
   NullifierRegistry,
-  Quoter,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
   ManagedKeyHashAdapterV2,
@@ -18,6 +25,8 @@ export {
   ZelleBaseVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
-  ZelleChaseReclaimVerifier
+  ZelleChaseReclaimVerifier,
+  IPaymentVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
+export { IOrchestrator } from "../typechain/contracts/Orchestrator";

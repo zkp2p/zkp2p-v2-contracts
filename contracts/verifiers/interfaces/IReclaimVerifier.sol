@@ -9,6 +9,5 @@ interface IReclaimVerifier {
     struct ReclaimProof {
         Claims.ClaimInfo claimInfo;
         Claims.SignedClaim signedClaim;
-        bool isAppclipProof;
     }
 }

@@ -254,6 +254,7 @@ describe("ZelleCitiReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -270,8 +271,9 @@ describe("ZelleCitiReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp - 86400); // 1 day before
       subjectConversionRate = ether(0.9);
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
-      subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectFiatCurrency = Currency.USD;
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -286,11 +288,12 @@ describe("ZelleCitiReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -299,18 +302,21 @@ describe("ZelleCitiReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('4948915460758196888156147053328476497446483899021706653248173960948416723660').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('4948915460758196888156147053328476497446483899021706653248173960948416723660').toHexString());
+      // Payment is $10, conversion rate is 0.9, intent amount is 11
+      // Release amount = 10 / 0.9 = 11.111... but capped at intent amount 11
+      expect(result.releaseAmount).to.eq(usdc(11));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('CTIwjcKauxso');
     });
 
     it("should nullify the payment id", async () => {
@@ -333,13 +339,45 @@ describe("ZelleCitiReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1000);  // 1000 * 0.9 = 900 [900 > 10]
+        subjectIntentAmount = usdc(20); // Intent expects 20 * 0.9 = 18, but actual payment is 10
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("4948915460758196888156147053328476497446483899021706653248173960948416723660").toHexString());
+        // Payment is $10, conversion rate is 0.9, intent amount is 20
+        // Release amount = 10 / 0.9 = 11.111... USDC
+        expect(result.releaseAmount).to.eq(usdc(11.111111));  // 6 decimals rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('CTIwjcKauxso');
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4948915460758196888156147053328476497446483899021706653248173960948416723660\",\"extractedParameters\":{\"amount\":\"0.00\",\"partyToken\":\"0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303\",\"paymentID\":\"CTIwjcKauxso\",\"paymentStatus\":\"DELIVERED\",\"updatedTimeStamp\":\"04/28/2025\"},\"providerHash\":\"0x2a20d5d1fc3ccfa7f3053949fb067cb56447eb46cb415a10a496c36c5f9992d7\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 
@@ -386,7 +424,7 @@ describe("ZelleCitiReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -407,7 +445,7 @@ describe("ZelleCitiReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -432,7 +470,7 @@ describe("ZelleCitiReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

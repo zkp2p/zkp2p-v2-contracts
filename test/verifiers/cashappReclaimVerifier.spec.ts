@@ -8,7 +8,7 @@ import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, parseAppclipProof, parseExtensionProof, encodeProof } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, parseExtensionProof, encodeProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -99,6 +99,7 @@ describe("CashappReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     beforeEach(async () => {
@@ -112,7 +113,8 @@ describe("CashappReclaimVerifier", () => {
       subjectConversionRate = ether(0.9);   // 1.11 * 0.9 = 0.999 (payment amount)
       subjectPayeeDetailsHash = '0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585'
       subjectFiatCurrency = Currency.USD;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -127,11 +129,12 @@ describe("CashappReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -140,18 +143,21 @@ describe("CashappReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
+      // Payment is $1.00, conversion rate is 0.9, intent amount is 1.11
+      // Release amount = 1.00 / 0.9 = 1.111... but capped at intent amount 1.11
+      expect(result.releaseAmount).to.eq(usdc(1.11));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('7cwz2mgva');
     });
 
     it("should nullify the payment id", async () => {
@@ -175,23 +181,54 @@ describe("CashappReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1.12); // just 1 cent more than the actual ask amount (1.12 * 0.9 = 1.008) which is more than the payment amount (1.00)
+        subjectIntentAmount = usdc(5); // Intent expects 5 * 0.9 = 4.5, but actual payment is 1.00
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
+        // Payment is $1.00, conversion rate is 0.9, intent amount is 5
+        // Release amount = 1.00 / 0.9 = 1.111... USDC
+        expect(result.releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('7cwz2mgva');
+      });
+
+      it("should nullify the payment", async () => {
+        await subject();
+
+        const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['7cwz2mgva']));
+        const isNullified = await nullifierRegistry.isNullified(nullifier);
+
+        expect(isNullified).to.be.true;
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"12014506636571874886965000811776567979685927375542718613570391557275994688735\",\"extractedParameters\":{\"SENDER_ID\":\"C_0twqj8ycc\",\"amount\":\"0\",\"currency_code\":\"USD\",\"date\":\"1735841166000\",\"paymentId\":\"7cwz2mgva\",\"receiverId\":\"0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585\",\"state\":\"COMPLETE\"},\"providerHash\":\"0xb03e3643371b78072eeaa716fd7a4817ee747c89eb4a4bab1596cb70c6b7a4a5\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
-      });
-
-      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
-        beforeEach(async () => {
-          subjectIntentAmount = usdc(1.11); // just 1 cent less than the actual ask amount (1.11 * 0.9 = 0.999) which is less than the payment amount (1.00)
-        });
-
-        it("should not revert", async () => {
-          await expect(subject()).to.not.be.reverted;
-        });
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 
@@ -256,7 +293,7 @@ describe("CashappReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -278,7 +315,7 @@ describe("CashappReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

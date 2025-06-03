@@ -7,6 +7,8 @@ const circom = require("circomlibjs");
 import {
   USDCMock,
   Escrow,
+  ProtocolViewer,
+  Orchestrator,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
@@ -14,7 +16,6 @@ import {
   BasePaymentVerifier,
   StringConversionUtilsMock,
   ClaimVerifierMock,
-  Quoter,
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
@@ -24,19 +25,32 @@ import {
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier,
   ZelleBaseVerifier,
-  BaseReclaimVerifier
+  BaseReclaimVerifier,
+  PostIntentHookMock,
+  PaymentVerifierRegistry,
+  PostIntentHookRegistry,
+  RelayerRegistry,
+  OrchestratorMock,
+  EscrowRegistry
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
   USDCMock__factory,
   PaymentVerifierMock__factory,
-  ClaimVerifierMock__factory
+  ClaimVerifierMock__factory,
+  PostIntentHookMock__factory,
+  OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
-import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
+import { NullifierRegistry__factory } from "../typechain/factories/contracts/registries";
+import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
+import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
+import { RelayerRegistry__factory } from "../typechain/factories/contracts/registries";
+import { EscrowRegistry__factory } from "../typechain/factories/contracts/registries";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
-import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
+import { ProtocolViewer__factory } from "../typechain/factories/contracts/index";
+import { Orchestrator__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
@@ -60,18 +74,50 @@ export default class DeployHelper {
 
   public async deployEscrow(
     owner: Address,
-    intentExpirationPeriod: BigNumber,
-    sustainabilityFee: BigNumber,
-    sustainabilityFeeRecipient: Address,
-    chainId: BigNumber
+    chainId: BigNumber,
+    paymentVerifierRegistry: Address,
+    makerProtocolFee: BigNumber,
+    makerFeeRecipient: Address,
+    dustThreshold: BigNumber,
+    maxIntentsPerDeposit: BigNumber,
+    intentExpirationPeriod: BigNumber
   ): Promise<Escrow> {
     return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
       chainId.toString(),
-      intentExpirationPeriod,
-      sustainabilityFee,
-      sustainabilityFeeRecipient
+      paymentVerifierRegistry,
+      makerProtocolFee,
+      makerFeeRecipient,
+      dustThreshold,
+      maxIntentsPerDeposit,
+      intentExpirationPeriod
     );
+  }
+
+  public async deployOrchestrator(
+    owner: Address,
+    chainId: BigNumber,
+    escrowRegistry: Address,
+    paymentVerifierRegistry: Address,
+    postIntentHookRegistry: Address,
+    relayerRegistry: Address,
+    protocolFee: BigNumber,
+    protocolFeeRecipient: Address
+  ): Promise<Orchestrator> {
+    return await new Orchestrator__factory(this._deployerSigner).deploy(
+      owner,
+      chainId.toString(),
+      escrowRegistry,
+      paymentVerifierRegistry,
+      postIntentHookRegistry,
+      relayerRegistry,
+      protocolFee,
+      protocolFeeRecipient
+    );
+  }
+
+  public async deployProtocolViewer(escrowAddress: Address, orchestratorAddress: Address): Promise<ProtocolViewer> {
+    return await new ProtocolViewer__factory(this._deployerSigner).deploy(escrowAddress, orchestratorAddress);
   }
 
   public async deployBasePaymentVerifier(
@@ -265,10 +311,6 @@ export default class DeployHelper {
     return await new ManagedKeyHashAdapterV2__factory(this._deployerSigner).deploy(keyHashes);
   }
 
-  public async deployQuoter(escrow: Address): Promise<Quoter> {
-    return await new Quoter__factory(this._deployerSigner).deploy(escrow);
-  }
-
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
@@ -289,5 +331,34 @@ export default class DeployHelper {
 
   public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
     return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployPostIntentHookMock(
+    usdc: Address,
+    escrow: Address
+  ): Promise<PostIntentHookMock> {
+    return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
+  }
+
+  public async deployOrchestratorMock(
+    escrow: Address
+  ): Promise<OrchestratorMock> {
+    return await new OrchestratorMock__factory(this._deployerSigner).deploy(escrow);
+  }
+
+  public async deployPaymentVerifierRegistry(): Promise<PaymentVerifierRegistry> {
+    return await new PaymentVerifierRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployPostIntentHookRegistry(): Promise<PostIntentHookRegistry> {
+    return await new PostIntentHookRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployRelayerRegistry(): Promise<RelayerRegistry> {
+    return await new RelayerRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployEscrowRegistry(): Promise<EscrowRegistry> {
+    return await new EscrowRegistry__factory(this._deployerSigner).deploy();
   }
 }
