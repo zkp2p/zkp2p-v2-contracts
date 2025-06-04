@@ -99,6 +99,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event AcceptAllPaymentVerifiersUpdated(bool acceptAllPaymentVerifiers);
     event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
     
+    event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
+    event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
+    event DepositCurrencyRemoved(uint256 indexed depositId, address indexed verifier, bytes32 indexed currencyCode);
+    
     event PaymentVerifierAdded(address verifier, uint256 feeShare);
     event PaymentVerifierFeeShareUpdated(address verifier, uint256 feeShare);
     event PaymentVerifierRemoved(address verifier);
@@ -399,6 +403,149 @@ contract Escrow is Ownable, Pausable, IEscrow {
         depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency] = _newConversionRate;
 
         emit DepositConversionRateUpdated(_depositId, _verifier, _fiatCurrency, _newConversionRate);
+    }
+
+    /**
+     * @notice Allows depositor to update the intent amount range for a deposit. Since intent's are already created within the
+     * previous intent amount range, changing the intent amount range will not affect any intents that have already been signaled.
+     *
+     * @param _depositId                The deposit ID
+     * @param _intentAmountRange        The new intent amount range
+     */
+    function updateDepositIntentAmountRange(
+        uint256 _depositId, 
+        Range calldata _intentAmountRange
+    )
+        external
+        whenNotPaused
+    {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        require(_intentAmountRange.min != 0, "Min cannot be zero");
+        require(_intentAmountRange.min <= _intentAmountRange.max, "Min must be less than max");
+
+        deposit.intentAmountRange = _intentAmountRange;
+
+        emit DepositIntentAmountRangeUpdated(_depositId, _intentAmountRange);
+    }
+
+    /**
+     * @notice Allows depositor to add a new payment verifier and its associated currencies to an existing deposit.
+     *
+     * @param _depositId             The deposit ID
+     * @param _verifiers             The payment verifiers to add
+     * @param _verifierData          The payment verification data for the verifiers
+     * @param _currencies            The currencies for the verifiers
+     */
+    function addVerifiersToDeposit(
+        uint256 _depositId,
+        address[] calldata _verifiers,
+        DepositVerifierData[] calldata _verifierData,
+        Currency[][] calldata _currencies
+    )
+        external
+        whenNotPaused
+    {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        
+        _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
+    }
+
+    /**
+     * @notice Allows depositor to remove an existing payment verifier from a deposit. 
+     * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
+     *
+     * @param _depositId             The deposit ID
+     * @param _verifier              The payment verifier to remove
+     */
+    function removeVerifierFromDeposit(
+        uint256 _depositId,
+        address _verifier
+    )
+        external
+        whenNotPaused
+    {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        
+        require(
+            bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
+            "Verifier not found for deposit"
+        );
+
+        // Remove verifier from the list
+        depositVerifiers[_depositId].removeStorage(_verifier);
+
+        // Delete associated currency data first
+        bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
+        for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
+            // Iterate backwards for safe deletion if removeStorage reorders/shrinks
+            bytes32 currencyCode = currenciesForVerifier[i-1];
+            delete depositCurrencyConversionRate[_depositId][_verifier][currencyCode];
+        }
+        delete depositCurrencies[_depositId][_verifier];
+        
+        // Delete verifier data
+        // Don't delete deposit verifier data to prevent reverting on existing intents
+        // delete depositVerifierData[_depositId][_verifier];
+
+        emit DepositVerifierRemoved(_depositId, _verifier);
+    }
+
+    /**
+     * @notice Allows depositor to add a new currencies to an existing verifier for a deposit.
+     *
+     * @param _depositId             The deposit ID
+     * @param _verifier              The payment verifier
+     * @param _currencies            The currencies to add (code and conversion rate)
+     */
+    function addCurrenciesToDepositVerifier(
+        uint256 _depositId,
+        address _verifier,
+        Currency[] calldata _currencies
+    )
+        external
+        whenNotPaused
+    {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
+        
+        for (uint256 i = 0; i < _currencies.length; i++) {
+            _addCurrencyToDeposit(
+                _depositId, 
+                _verifier, 
+                _currencies[i].code, 
+                _currencies[i].conversionRate
+            );
+        }
+    }
+
+    /**
+     * @notice Allows depositor to remove an existing currency from a verifier for a deposit.
+     *
+     * @param _depositId             The deposit ID
+     * @param _verifier              The payment verifier
+     * @param _currencyCode          The currency code to remove
+     */
+    function removeCurrencyFromDepositVerifier(
+        uint256 _depositId,
+        address _verifier,
+        bytes32 _currencyCode
+    )
+        external
+        whenNotPaused
+    {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
+        require(depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] != 0, "Currency not found for verifier");
+
+        depositCurrencies[_depositId][_verifier].removeStorage(_currencyCode);
+        delete depositCurrencyConversionRate[_depositId][_verifier][_currencyCode];
+
+        emit DepositCurrencyRemoved(_depositId, _verifier, _currencyCode);
     }
 
     /**
@@ -803,20 +950,35 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
             for (uint256 j = 0; j < _currencies[i].length; j++) {
                 Currency memory currency = _currencies[i][j];
-                require(
-                    IBasePaymentVerifier(verifier).isCurrency(currency.code), 
-                    "Currency not supported by verifier"
-                );
-                require(currency.conversionRate > 0, "Conversion rate must be greater than 0");
-                require(
-                    depositCurrencyConversionRate[_depositId][verifier][currency.code] == 0,
-                    "Currency conversion rate already exists"
-                );
-                depositCurrencyConversionRate[_depositId][verifier][currency.code] = currency.conversionRate;
-                depositCurrencies[_depositId][verifier].push(currency.code);
 
-                emit DepositCurrencyAdded(_depositId, verifier, currency.code, currency.conversionRate);
+                _addCurrencyToDeposit(
+                    _depositId, 
+                    verifier, 
+                    currency.code, 
+                    currency.conversionRate
+                );
             }
         }
+    }
+
+    function _addCurrencyToDeposit(
+        uint256 _depositId,
+        address _verifier,
+        bytes32 _currencyCode,
+        uint256 _conversionRate
+    ) internal {
+        require(
+            IBasePaymentVerifier(_verifier).isCurrency(_currencyCode), 
+            "Currency not supported by verifier"
+        );
+        require(_conversionRate > 0, "Conversion rate must be greater than 0");
+        require(
+            depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] == 0,
+            "Currency conversion rate already exists"
+        );
+        depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] = _conversionRate;
+        depositCurrencies[_depositId][_verifier].push(_currencyCode);
+
+        emit DepositCurrencyAdded(_depositId, _verifier, _currencyCode, _conversionRate);
     }
 }

@@ -31,7 +31,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe.only("EscrowViewer", () => {
+describe("EscrowViewer", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
