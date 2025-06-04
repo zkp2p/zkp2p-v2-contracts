@@ -15,6 +15,7 @@ interface IEscrow {
 
     struct Deposit {
         address depositor;                          // Address of depositor
+        address delegate;                           // Address that can manage this deposit (address(0) if no delegate)
         IERC20 token;                               // Address of deposit token
         uint256 amount;                             // Amount of deposit token
         Range intentAmountRange;                    // Range of take amount per intent

@@ -33,7 +33,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address indexed depositor,
         IERC20 indexed token,
         uint256 amount,
-        Range intentAmountRange
+        Range intentAmountRange,
+        address delegate
     );
 
     event DepositVerifierAdded(
@@ -107,6 +108,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event PaymentVerifierFeeShareUpdated(address verifier, uint256 feeShare);
     event PaymentVerifierRemoved(address verifier);
 
+    event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
+    event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
+
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -149,6 +153,22 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 public depositCounter;                                  // Counter for depositIds
 
 
+    /* ============ Modifiers ============ */
+
+    /**
+     * @notice Modifier to check if caller is depositor or their delegate for a specific deposit
+     * @param _depositId The deposit ID to check authorization for
+     */
+    modifier onlyDepositorOrDelegate(uint256 _depositId) {
+        Deposit storage deposit = deposits[_depositId];
+        require(
+            deposit.depositor == msg.sender || 
+            (deposit.delegate != address(0) && deposit.delegate == msg.sender),
+            "Caller must be the depositor or delegate"
+        );
+        _;
+    }
+
     /* ============ Constructor ============ */
     constructor(
         address _owner,
@@ -182,6 +202,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _verifiers                 The payment verifiers that deposit supports
      * @param _verifierData              The payment verification data for each verifier that deposit supports
      * @param _currencies                The currencies for each verifier that deposit supports
+     * @param _delegate                  Optional delegate address that can manage this deposit (address(0) for no delegate)
      */
     function createDeposit(
         IERC20 _token,
@@ -189,7 +210,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Range calldata _intentAmountRange,
         address[] calldata _verifiers,
         DepositVerifierData[] calldata _verifierData,
-        Currency[][] calldata _currencies
+        Currency[][] calldata _currencies,
+        address _delegate
     )
         external
         whenNotPaused
@@ -202,6 +224,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         deposits[depositId] = Deposit({
             depositor: msg.sender,
+            delegate: _delegate,
             token: _token,
             amount: _amount,
             intentAmountRange: _intentAmountRange,
@@ -211,7 +234,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             outstandingIntentAmount: 0
         });
 
-        emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange);
+        emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange, _delegate);
 
         _addVerifiersToDeposit(depositId, _verifiers, _verifierData, _currencies);
 
@@ -392,11 +415,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
-        Deposit storage deposit = deposits[_depositId];
         uint256 oldConversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
 
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
         require(oldConversionRate != 0, "Currency or verifier not supported");
         require(_newConversionRate > 0, "Conversion rate must be greater than 0");
 
@@ -418,9 +440,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
         Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
         require(_intentAmountRange.min != 0, "Min cannot be zero");
         require(_intentAmountRange.min <= _intentAmountRange.max, "Min must be less than max");
 
@@ -445,10 +467,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
-        Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
-        
         _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
     }
 
@@ -465,10 +485,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
-        Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
-        
         require(
             bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
             "Verifier not found for deposit"
@@ -507,9 +525,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
-        Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
         require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
         
         for (uint256 i = 0; i < _currencies.length; i++) {
@@ -536,9 +553,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         external
         whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
     {
-        Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
         require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
         require(depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] != 0, "Currency not found for verifier");
 
@@ -546,6 +562,37 @@ contract Escrow is Ownable, Pausable, IEscrow {
         delete depositCurrencyConversionRate[_depositId][_verifier][_currencyCode];
 
         emit DepositCurrencyRemoved(_depositId, _verifier, _currencyCode);
+    }
+
+    /**
+     * @notice Allows depositor to set a delegate address that can manage a specific deposit
+     *
+     * @param _depositId    The deposit ID
+     * @param _delegate     The address to set as delegate (address(0) to remove delegate)
+     */
+    function setDepositDelegate(uint256 _depositId, address _delegate) external {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Only depositor can set delegate");
+        require(_delegate != address(0), "Delegate cannot be zero address");
+        
+        deposit.delegate = _delegate;
+        
+        emit DepositDelegateSet(_depositId, msg.sender, _delegate);
+    }
+
+    /**
+     * @notice Allows depositor to remove the delegate for a specific deposit
+     *
+     * @param _depositId    The deposit ID
+     */
+    function removeDepositDelegate(uint256 _depositId) external {
+        Deposit storage deposit = deposits[_depositId];
+        require(deposit.depositor == msg.sender, "Only depositor can remove delegate");
+        require(deposit.delegate != address(0), "No delegate set for this deposit");
+        
+        delete deposit.delegate;
+        
+        emit DepositDelegateRemoved(_depositId, msg.sender);
     }
 
     /**
@@ -680,6 +727,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * - Updating conversion rates
      * - Intent creation
      * - Intent fulfillment
+     * TODO: Update this list.
      *
      * Functionalities that remain unpaused to allow users to retrieve funds in contract:
      * - Intent cancellation
@@ -740,6 +788,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     function getAccountIntent(address _account) external view returns (bytes32) {
         return accountIntent[_account];
+    }
+
+    function getDepositDelegate(uint256 _depositId) external view returns (address) {
+        return deposits[_depositId].delegate;
     }
  
     /* ============ Internal Functions ============ */

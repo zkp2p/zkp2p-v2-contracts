@@ -34,6 +34,7 @@ const blockchain = new Blockchain(ethers.provider);
 describe.only("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
+  let offRamperDelegate: Account;
   let offRamperNewAcct: Account;
   let onRamper: Account;
   let onRamperOtherAddress: Account;
@@ -57,6 +58,7 @@ describe.only("Escrow", () => {
     [
       owner,
       offRamper,
+      offRamperDelegate,
       onRamper,
       onRamperOtherAddress,
       onRamperTwo,
@@ -141,6 +143,7 @@ describe.only("Escrow", () => {
     let subjectVerifiers: Address[];
     let subjectVerificationData: IEscrow.DepositVerifierDataStruct[];
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
+    let subjectDelegate: Address;
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -160,6 +163,7 @@ describe.only("Escrow", () => {
           { code: Currency.EUR, conversionRate: ether(0.95) }
         ]
       ];
+      subjectDelegate = offRamperDelegate.address;
 
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
     });
@@ -171,7 +175,8 @@ describe.only("Escrow", () => {
         subjectIntentAmountRange,
         subjectVerifiers,
         subjectVerificationData,
-        subjectCurrencies
+        subjectCurrencies,
+        subjectDelegate
       );
     }
 
@@ -195,6 +200,7 @@ describe.only("Escrow", () => {
       expect(depositView.deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
+      expect(depositView.deposit.delegate).to.eq(subjectDelegate);
 
       expect(depositView.verifiers.length).to.eq(1);
       expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
@@ -243,7 +249,8 @@ describe.only("Escrow", () => {
         offRamper.address,
         subjectToken,
         subjectAmount,
-        subjectIntentAmountRange
+        subjectIntentAmountRange,
+        subjectDelegate
       );
     });
 
@@ -513,8 +520,6 @@ describe.only("Escrow", () => {
     });
   });
 
-
-
   describe("#signalIntent", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
@@ -542,7 +547,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: depositConversionRate }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -919,7 +925,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -1186,7 +1193,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       // Signal an intent
@@ -1449,7 +1457,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       // Signal an intent
@@ -1566,7 +1575,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.01) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -1607,13 +1617,23 @@ describe.only("Escrow", () => {
       );
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -1667,7 +1687,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -1881,6 +1902,16 @@ describe.only("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        });
       });
     });
 
@@ -2360,7 +2391,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -2429,6 +2461,8 @@ describe.only("Escrow", () => {
     });
   });
 
+  // DEPOSIT MANAGEMENT FUNCTIONS
+
   describe("#updateDepositIntentAmountRange", async () => {
     let subjectDepositId: BigNumber;
     let subjectIntentAmountRange: IEscrow.RangeStruct;
@@ -2449,7 +2483,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.01) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -2479,13 +2514,23 @@ describe.only("Escrow", () => {
       );
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -2542,7 +2587,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.01) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       // Add otherVerifier to whitelist
@@ -2617,13 +2663,23 @@ describe.only("Escrow", () => {
       expect(currencyEvents).to.have.length(2);
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -2684,7 +2740,8 @@ describe.only("Escrow", () => {
         [
           [{ code: Currency.USD, conversionRate: ether(1.01) }],
           [{ code: Currency.USD, conversionRate: ether(1.02) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -2733,13 +2790,23 @@ describe.only("Escrow", () => {
       );
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -2791,7 +2858,8 @@ describe.only("Escrow", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.01) }]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -2829,13 +2897,23 @@ describe.only("Escrow", () => {
       );
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -2918,7 +2996,8 @@ describe.only("Escrow", () => {
             { code: Currency.USD, conversionRate: ether(1.01) },
             { code: Currency.EUR, conversionRate: ether(0.95) }
           ]
-        ]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -2953,13 +3032,23 @@ describe.only("Escrow", () => {
       );
     });
 
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -2990,6 +3079,195 @@ describe.only("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+  describe("#setDepositDelegate", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectDelegate: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.01) }]
+        ],
+        ADDRESS_ZERO
+      );
+
+      subjectDepositId = ZERO;
+      subjectDelegate = offRamperDelegate.address;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setDepositDelegate(
+        subjectDepositId,
+        subjectDelegate
+      );
+    }
+
+    it("should set the delegate for the deposit", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.delegate).to.eq(subjectDelegate);
+
+      const delegateFromGetter = await ramp.getDepositDelegate(subjectDepositId);
+      expect(delegateFromGetter).to.eq(subjectDelegate);
+    });
+
+    it("should emit a DepositDelegateSet event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositDelegateSet").withArgs(
+        subjectDepositId,
+        subjectCaller.address,
+        subjectDelegate
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+        });
+      });
+    });
+
+    describe("when the delegate is zero address", async () => {
+      beforeEach(async () => {
+        subjectDelegate = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Delegate cannot be zero address");
+      });
+    });
+
+    describe("when updating an existing delegate", async () => {
+      beforeEach(async () => {
+        // First set a delegate
+        await ramp.connect(offRamper.wallet).setDepositDelegate(subjectDepositId, offRamperDelegate.address);
+        // Then change to a different delegate
+        subjectDelegate = receiver.address;
+      });
+
+      it("should update the delegate", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.delegate).to.eq(subjectDelegate);
+      });
+
+      it("should emit a DepositDelegateSet event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositDelegateSet").withArgs(
+          subjectDepositId,
+          subjectCaller.address,
+          subjectDelegate
+        );
+      });
+    });
+  });
+
+  describe("#removeDepositDelegate", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit with delegate
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, conversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address  // Set delegate on creation
+      );
+
+      subjectDepositId = ZERO;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).removeDepositDelegate(subjectDepositId);
+    }
+
+    it("should remove the delegate from the deposit", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.delegate).to.eq(ethers.constants.AddressZero);
+
+      const delegateFromGetter = await ramp.getDepositDelegate(subjectDepositId);
+      expect(delegateFromGetter).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should emit a DepositDelegateRemoved event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositDelegateRemoved").withArgs(
+        subjectDepositId,
+        subjectCaller.address
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+        });
+      });
+    });
+
+    describe("when no delegate is set", async () => {
+      beforeEach(async () => {
+        // First remove the delegate, then try to remove again
+        await ramp.connect(offRamper.wallet).removeDepositDelegate(subjectDepositId);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("No delegate set for this deposit");
       });
     });
   });
