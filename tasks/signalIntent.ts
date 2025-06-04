@@ -27,13 +27,13 @@ task("signal-intent", "Signals intent to pay the depositor")
     const tx = await escrow.connect(owner).signalIntent(depositId, amount, to, verifier, fiatCurrency, gatingServiceSignature);
     await tx.wait();
 
-    const intentView = await escrow.getAccountIntent(owner.address);
-    console.log(`Intent hash: ${intentView.intentHash}`);
-    console.log(`Intent amount: ${intentView.intent.amount}`);
-    console.log(`Intent owner: ${intentView.intent.owner}`);
-    console.log(`Intent to: ${intentView.intent.to}`);
-    console.log(`Intent verifier: ${intentView.intent.paymentVerifier}`);
-    console.log(`Intent fiat currency: ${intentView.intent.fiatCurrency}`);
+    // const intentView = await escrow.getAccountIntent(owner.address);
+    // console.log(`Intent hash: ${intentView.intentHash}`);
+    // console.log(`Intent amount: ${intentView.intent.amount}`);
+    // console.log(`Intent owner: ${intentView.intent.owner}`);
+    // console.log(`Intent to: ${intentView.intent.to}`);
+    // console.log(`Intent verifier: ${intentView.intent.paymentVerifier}`);
+    // console.log(`Intent fiat currency: ${intentView.intent.fiatCurrency}`);
 
     console.log(`Intent signaled with transaction ID: ${tx.hash}`);
   });

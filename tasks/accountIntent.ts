@@ -15,18 +15,18 @@ task("get-account-intent", "Gets the current intent for an account")
     // Call the getAccountIntent function
     const intent = await escrow.getAccountIntent(account);
 
-    if (intent.intent.owner === ethers.constants.AddressZero) {
-      console.log("No intent found for account");
-      return;
-    }
+    // if (intent.intent.owner === ethers.constants.AddressZero) {
+    //   console.log("No intent found for account");
+    //   return;
+    // }
 
-    console.log("Account Intent:");
-    console.log("Owner:", intent.intent.owner);
-    console.log("To:", intent.intent.to);
-    console.log("Deposit ID:", intent.intent.depositId.toString());
-    console.log("Amount:", ethers.utils.formatUnits(intent.intent.amount, 6)); // Assuming USDC (6 decimals)
-    console.log("Payment Verifier:", intent.intent.paymentVerifier);
-    console.log("Fiat Currency:", intent.intent.fiatCurrency);
-    console.log("Conversion Rate:", intent.intent.conversionRate.toString());
-    console.log("Timestamp:", new Date(intent.intent.timestamp.toNumber() * 1000).toLocaleString());
+    // console.log("Account Intent:");
+    // console.log("Owner:", intent.intent.owner);
+    // console.log("To:", intent.intent.to);
+    // console.log("Deposit ID:", intent.intent.depositId.toString());
+    // console.log("Amount:", ethers.utils.formatUnits(intent.intent.amount, 6)); // Assuming USDC (6 decimals)
+    // console.log("Payment Verifier:", intent.intent.paymentVerifier);
+    // console.log("Fiat Currency:", intent.intent.fiatCurrency);
+    // console.log("Conversion Rate:", intent.intent.conversionRate.toString());
+    // console.log("Timestamp:", new Date(intent.intent.timestamp.toNumber() * 1000).toLocaleString());
   });
