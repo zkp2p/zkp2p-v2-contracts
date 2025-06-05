@@ -10,11 +10,12 @@ export const generateGatingServiceSignature = async (
   to: Address,
   verifier: Address,
   fiatCurrency: string,
+  conversionRate: BigNumber,
   chainId: string
 ) => {
   const messageHash = ethers.utils.solidityKeccak256(
-    ["uint256", "uint256", "address", "address", "bytes32", "uint256"],
-    [depositId, amount, to, verifier, fiatCurrency, chainId]
+    ["uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256"],
+    [depositId, amount, to, verifier, fiatCurrency, conversionRate, chainId]
   );
   return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
 }

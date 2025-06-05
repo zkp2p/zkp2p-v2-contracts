@@ -29,7 +29,8 @@ interface IEscrow {
 
     struct Currency {
         bytes32 code;                               // Currency code (keccak256 hash of the currency code)
-        uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency
+        uint256 minConversionRate;                  // Minimum rate of deposit token to fiat currency (in preciseUnits)
+        // todo: Do we need maxConversionRate?
     }
 
     struct DepositVerifierData {
@@ -75,7 +76,7 @@ interface IEscrow {
     function getDeposit(uint256 _depositId) external view returns (Deposit memory);
     function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
     function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory);
-    function getDepositCurrencyConversionRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
+    function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
     function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory);
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     

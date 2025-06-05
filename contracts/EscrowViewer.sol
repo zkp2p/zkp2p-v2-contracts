@@ -29,7 +29,7 @@ contract EscrowViewer is IEscrowViewer {
                 bytes32 code = escrowContract.getDepositCurrencies(_depositId, verifier)[j];
                 currencies[j] = IEscrow.Currency({
                     code: code,
-                    conversionRate: escrowContract.getDepositCurrencyConversionRate(_depositId, verifier, code)
+                    minConversionRate: escrowContract.getDepositCurrencyMinRate(_depositId, verifier, code)
                 });
             }
             verifiers[i] = VerifierDataView({

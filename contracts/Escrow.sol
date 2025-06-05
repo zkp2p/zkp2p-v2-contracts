@@ -52,11 +52,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 conversionRate
     );
 
-    event DepositConversionRateUpdated(
+    event DepositMinConversionRateUpdated(
         uint256 indexed depositId,
         address indexed verifier,
         bytes32 indexed currency,
-        uint256 newConversionRate
+        uint256 newMinConversionRate
     );
 
     event IntentSignaled(
@@ -132,11 +132,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => mapping(address => DepositVerifierData)) internal depositVerifierData;
     mapping(uint256 => address[]) internal depositVerifiers;          // Handy mapping to get all verifiers for a deposit
     
-    // Mapping of depositId to verifier address to mapping of fiat currency to conversion rate. Each payment service can support
-    // multiple currencies. Depositor can specify list of currencies and conversion rates for each payment service.
+    // Mapping of depositId to verifier address to mapping of fiat currency to min conversion rate. Each payment service can support
+    // multiple currencies. Depositor can specify list of currencies and min conversion rates for each payment service.
     // Example: Deposit 1 => Venmo => USD: 1e18
     //                    => Revolut => USD: 1e18, EUR: 1.2e18, SGD: 1.5e18
-    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) internal depositCurrencyConversionRate;
+    mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) internal depositCurrencyMinRate;
     mapping(uint256 => mapping(address => bytes32[])) internal depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
 
     mapping(uint256 => Deposit) internal deposits;                    // Mapping of depositIds to deposit structs
@@ -154,7 +154,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 public depositCounter;                                  // Counter for depositIds
 
     // TODO: Add a mapping of allowed post intent hooks and add governance function to add/remove allowed post intent hooks
+    // Add this into a intent hook registry contract.
+    // Also to reduce size of contract, maybe also move the whitelisted payment verifiers to a registry contract.
 
+// Todo: Update how we calculate intent hash to allow multiple intents per account (for relayer accounts).
 
     /* ============ Modifiers ============ */
 
@@ -196,7 +199,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
      * not add to previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
      * of deposit token. Every deposit specifies the payment services it supports by specifying their corresponding verifier addresses and 
-     * verification data, supported currencies and their conversion rates for each payment service.
+     * verification data, supported currencies and their min conversion rates for each payment service.
      * Note that the order of the verifiers, verification data, and currency data must match.
      *
      * @param _token                     The token to be deposited
@@ -257,6 +260,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _verifier                 The payment verifier corresponding to the payment service the user is going to pay with 
      *                                  offchain (e.g. Venmo, Revolut, Mercado, etc.)
      * @param _fiatCurrency             The currency code that the user is paying in offchain
+     * @param _conversionRate           The conversion rate of deposit token to fiat currency agreed offchain
      * @param _gatingServiceSignature   The signature from the deposit's gating service on intent parameters
      * @param _postIntentHook           Optional post-intent hook address for custom actions (address(0) for no hook)
      * @param _data                     Additional data for the intent; Can hold calldata for post-intent actions
@@ -267,6 +271,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _to,
         address _verifier,
         bytes32 _fiatCurrency,
+        uint256 _conversionRate,
         bytes calldata _gatingServiceSignature,
         IPostIntentHook _postIntentHook,
         bytes calldata _data
@@ -276,7 +281,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         Deposit storage deposit = deposits[_depositId];
         
-        _validateIntent(_depositId, deposit, _amount, _to, _verifier, _fiatCurrency, _gatingServiceSignature);
+        _validateIntent(
+            _depositId, deposit, _amount, _to, _verifier, _fiatCurrency, _conversionRate, _gatingServiceSignature
+        );
 
         bytes32 intentHash = _calculateIntentHash(msg.sender, _verifier, _depositId);
 
@@ -293,7 +300,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             deposit.outstandingIntentAmount -= reclaimableAmount;
         }
 
-        uint256 conversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
         intents[intentHash] = Intent({
             owner: msg.sender,
             to: _to,
@@ -301,7 +307,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _amount,
             paymentVerifier: _verifier,
             fiatCurrency: _fiatCurrency,
-            conversionRate: conversionRate,
+            conversionRate: _conversionRate,
             timestamp: block.timestamp,
             postIntentHook: _postIntentHook,
             data: _data
@@ -423,33 +429,33 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Only callable by the depositor for a deposit. Allows depositor to update the conversion rate for a currency for a 
-     * payment verifier. Since intent's store the conversion rate at the time of intent, changing the conversion rate will not affect
+     * @notice Only callable by the depositor for a deposit. Allows depositor to update the min conversion rate for a currency for a 
+     * payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate will not affect
      * any intents that have already been signaled.
      *
      * @param _depositId                The deposit ID
-     * @param _verifier                 The payment verifier address to update the conversion rate for
-     * @param _fiatCurrency             The fiat currency code to update the conversion rate for
-     * @param _newConversionRate        The new conversion rate. Must be greater than 0.
+     * @param _verifier                 The payment verifier address to update the min conversion rate for
+     * @param _fiatCurrency             The fiat currency code to update the min conversion rate for
+     * @param _newMinConversionRate        The new min conversion rate. Must be greater than 0.
      */
-    function updateDepositConversionRate(
+    function updateDepositMinConversionRate(
         uint256 _depositId, 
         address _verifier, 
         bytes32 _fiatCurrency, 
-        uint256 _newConversionRate
+        uint256 _newMinConversionRate
     )
         external
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        uint256 oldConversionRate = depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency];
+        uint256 oldMinConversionRate = depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency];
 
-        require(oldConversionRate != 0, "Currency or verifier not supported");
-        require(_newConversionRate > 0, "Conversion rate must be greater than 0");
+        require(oldMinConversionRate != 0, "Currency or verifier not supported");
+        require(_newMinConversionRate > 0, "Min conversion rate must be greater than 0");
 
-        depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency] = _newConversionRate;
+        depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency] = _newMinConversionRate;
 
-        emit DepositConversionRateUpdated(_depositId, _verifier, _fiatCurrency, _newConversionRate);
+        emit DepositMinConversionRateUpdated(_depositId, _verifier, _fiatCurrency, _newMinConversionRate);
     }
 
     /**
@@ -484,18 +490,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _verifierData          The payment verification data for the verifiers
      * @param _currencies            The currencies for the verifiers
      */
-    function addVerifiersToDeposit(
-        uint256 _depositId,
-        address[] calldata _verifiers,
-        DepositVerifierData[] calldata _verifierData,
-        Currency[][] calldata _currencies
-    )
-        external
-        whenNotPaused
-        onlyDepositorOrDelegate(_depositId)
-    {
-        _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
-    }
+    // function addVerifiersToDeposit(
+    //     uint256 _depositId,
+    //     address[] calldata _verifiers,
+    //     DepositVerifierData[] calldata _verifierData,
+    //     Currency[][] calldata _currencies
+    // )
+    //     external
+    //     whenNotPaused
+    //     onlyDepositorOrDelegate(_depositId)
+    // {
+    //     _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
+    // }
 
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
@@ -504,37 +510,37 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId             The deposit ID
      * @param _verifier              The payment verifier to remove
      */
-    function removeVerifierFromDeposit(
-        uint256 _depositId,
-        address _verifier
-    )
-        external
-        whenNotPaused
-        onlyDepositorOrDelegate(_depositId)
-    {
-        require(
-            bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
-            "Verifier not found for deposit"
-        );
+    // function removeVerifierFromDeposit(
+    //     uint256 _depositId,
+    //     address _verifier
+    // )
+    //     external
+    //     whenNotPaused
+    //     onlyDepositorOrDelegate(_depositId)
+    // {
+    //     require(
+    //         bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
+    //         "Verifier not found for deposit"
+    //     );
 
-        // Remove verifier from the list
-        depositVerifiers[_depositId].removeStorage(_verifier);
+    //     // Remove verifier from the list
+    //     depositVerifiers[_depositId].removeStorage(_verifier);
 
-        // Delete associated currency data first
-        bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
-        for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
-            // Iterate backwards for safe deletion if removeStorage reorders/shrinks
-            bytes32 currencyCode = currenciesForVerifier[i-1];
-            delete depositCurrencyConversionRate[_depositId][_verifier][currencyCode];
-        }
-        delete depositCurrencies[_depositId][_verifier];
+    //     // Delete associated currency data first
+    //     bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
+    //     for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
+    //         // Iterate backwards for safe deletion if removeStorage reorders/shrinks
+    //         bytes32 currencyCode = currenciesForVerifier[i-1];
+    //         delete depositCurrencyMinRate[_depositId][_verifier][currencyCode];
+    //     }
+    //     delete depositCurrencies[_depositId][_verifier];
         
-        // Delete verifier data
-        // Don't delete deposit verifier data to prevent reverting on existing intents
-        // delete depositVerifierData[_depositId][_verifier];
+    //     // Delete verifier data
+    //     // Don't delete deposit verifier data to prevent reverting on existing intents
+    //     // delete depositVerifierData[_depositId][_verifier];
 
-        emit DepositVerifierRemoved(_depositId, _verifier);
-    }
+    //     emit DepositVerifierRemoved(_depositId, _verifier);
+    // }
 
     /**
      * @notice Allows depositor to add a new currencies to an existing verifier for a deposit.
@@ -559,7 +565,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 _depositId, 
                 _verifier, 
                 _currencies[i].code, 
-                _currencies[i].conversionRate
+                _currencies[i].minConversionRate
             );
         }
     }
@@ -581,10 +587,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyDepositorOrDelegate(_depositId)
     {
         require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
-        require(depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] != 0, "Currency not found for verifier");
+        require(depositCurrencyMinRate[_depositId][_verifier][_currencyCode] != 0, "Currency not found for verifier");
 
         depositCurrencies[_depositId][_verifier].removeStorage(_currencyCode);
-        delete depositCurrencyConversionRate[_depositId][_verifier][_currencyCode];
+        delete depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
 
         emit DepositCurrencyRemoved(_depositId, _verifier, _currencyCode);
     }
@@ -799,8 +805,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return depositCurrencies[_depositId][_verifier];
     }
 
-    function getDepositCurrencyConversionRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256) {
-        return depositCurrencyConversionRate[_depositId][_verifier][_currencyCode];
+    function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256) {
+        return depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
     }
 
     function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory) {
@@ -837,6 +843,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _to,
         address _verifier,
         bytes32 _fiatCurrency,
+        uint256 _conversionRate,
         bytes calldata _gatingServiceSignature
     ) internal view {
         require(accountIntent[msg.sender] == bytes32(0), "Account has unfulfilled intent");
@@ -848,13 +855,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         DepositVerifierData memory verifierData = depositVerifierData[_depositId][_verifier];
         require(bytes(verifierData.payeeDetails).length != 0, "Payment verifier not supported");
-        require(depositCurrencyConversionRate[_depositId][_verifier][_fiatCurrency] != 0, "Currency not supported");
+
+        uint256 minConversionRate = depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency];
+        require(minConversionRate != 0, "Currency not supported");
+        require(_conversionRate >= minConversionRate, "Rate must be greater than or equal to min rate");
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
             require(
                 _isValidSignature(
-                    abi.encodePacked(_depositId, _amount, _to, _verifier, _fiatCurrency, chainId),
+                    abi.encodePacked(_depositId, _amount, _to, _verifier, _fiatCurrency, _conversionRate, chainId),
                     _gatingServiceSignature,
                     intentGatingService
                 ),
@@ -948,7 +958,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             delete depositVerifierData[_depositId][verifier];
             bytes32[] memory currencies = depositCurrencies[_depositId][verifier];
             for (uint256 j = 0; j < currencies.length; j++) {
-                delete depositCurrencyConversionRate[_depositId][verifier][currencies[j]];
+                delete depositCurrencyMinRate[_depositId][verifier][currencies[j]];
             }
         }
     }
@@ -1045,7 +1055,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
                     _depositId, 
                     verifier, 
                     currency.code, 
-                    currency.conversionRate
+                    currency.minConversionRate
                 );
             }
         }
@@ -1055,20 +1065,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _depositId,
         address _verifier,
         bytes32 _currencyCode,
-        uint256 _conversionRate
+        uint256 _minConversionRate
     ) internal {
         require(
             IBasePaymentVerifier(_verifier).isCurrency(_currencyCode), 
             "Currency not supported by verifier"
         );
-        require(_conversionRate > 0, "Conversion rate must be greater than 0");
+        require(_minConversionRate > 0, "Conversion rate must be greater than 0");
         require(
-            depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] == 0,
-            "Currency conversion rate already exists"
+            depositCurrencyMinRate[_depositId][_verifier][_currencyCode] == 0,
+            "Currency rate already exists"
         );
-        depositCurrencyConversionRate[_depositId][_verifier][_currencyCode] = _conversionRate;
+        depositCurrencyMinRate[_depositId][_verifier][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_verifier].push(_currencyCode);
 
-        emit DepositCurrencyAdded(_depositId, _verifier, _currencyCode, _conversionRate);
+        emit DepositCurrencyAdded(_depositId, _verifier, _currencyCode, _minConversionRate);
     }
 }

@@ -3,10 +3,10 @@ import "module-alias/register";
 import { deployments, ethers } from "hardhat";
 
 import {
-  Quoter,
+  // Quoter,
 } from "../../utils/contracts";
 import {
-  Quoter__factory,
+  // Quoter__factory,
 } from "../../typechain";
 
 import {
@@ -25,31 +25,31 @@ const expect = getWaffleExpect();
 
 // Skip as we don't need to deploy this contract
 describe.skip("Quoter Deployment", () => {
-  let deployer: Account;
+  // let deployer: Account;
 
-  let quoter: Quoter;
-  let escrowAddress: Address;
+  // let quoter: Quoter;
+  // let escrowAddress: Address;
 
-  const network: string = deployments.getNetworkName();
+  // const network: string = deployments.getNetworkName();
 
-  function getDeployedContractAddress(network: string, contractName: string): string {
-    return require(`../../deployments/${network}/${contractName}.json`).address;
-  }
+  // function getDeployedContractAddress(network: string, contractName: string): string {
+  //   return require(`../../deployments/${network}/${contractName}.json`).address;
+  // }
 
-  before(async () => {
-    [
-      deployer,
-    ] = await getAccounts();
+  // before(async () => {
+  //   [
+  //     deployer,
+  //   ] = await getAccounts();
 
-    escrowAddress = await getDeployedContractAddress(network, "Escrow");
-    const quoterAddress = await getDeployedContractAddress(network, "Quoter");
-    quoter = new Quoter__factory(deployer.wallet).attach(quoterAddress);
-  });
+  //   escrowAddress = await getDeployedContractAddress(network, "Escrow");
+  //   const quoterAddress = await getDeployedContractAddress(network, "Quoter");
+  //   quoter = new Quoter__factory(deployer.wallet).attach(quoterAddress);
+  // });
 
-  describe("Quoter", async () => {
-    it("should have the correct escrow address set", async () => {
-      const actualEscrowAddress = await quoter.escrow();
-      expect(actualEscrowAddress).to.eq(escrowAddress);
-    });
-  });
+  // describe("Quoter", async () => {
+  //   it("should have the correct escrow address set", async () => {
+  //     const actualEscrowAddress = await quoter.escrow();
+  //     expect(actualEscrowAddress).to.eq(escrowAddress);
+  //   });
+  // });
 });

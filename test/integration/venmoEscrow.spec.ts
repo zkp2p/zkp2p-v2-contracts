@@ -27,6 +27,7 @@ import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
+import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
@@ -126,6 +127,7 @@ describe.skip("VenmoEscrow", () => {
       [witnessAddress]
     );
 
+    const depositConversionRate = ether(1.08);
     const createDepositTx = await ramp.connect(offRamper.wallet).createDeposit(
       usdcToken.address,
       usdc(100),
@@ -137,7 +139,7 @@ describe.skip("VenmoEscrow", () => {
         data: depositData
       }],
       [
-        [{ code: Currency.USD, conversionRate: ether(1.08) }]
+        [{ code: Currency.USD, minConversionRate: depositConversionRate }]
       ],
       ethers.constants.AddressZero
     );
@@ -150,6 +152,7 @@ describe.skip("VenmoEscrow", () => {
       onRamper.address,
       verifier.address,
       Currency.USD,
+      depositConversionRate,
       chainId.toString()
     );
     const signalIntentTx = await ramp.connect(onRamper.wallet).signalIntent(
@@ -158,6 +161,7 @@ describe.skip("VenmoEscrow", () => {
       onRamper.address,
       verifier.address,
       Currency.USD,
+      depositConversionRate,
       gatingServiceSignature,
       ADDRESS_ZERO, // postIntentHook
       "0x"          // data for postIntentHook
@@ -196,21 +200,6 @@ describe.skip("VenmoEscrow", () => {
     subjectIntentHash = intentHash;
     subjectCaller = onRamper;
   });
-
-  const generateGatingServiceSignature = async (
-    depositId: BigNumber,
-    amount: BigNumber,
-    to: Address,
-    verifier: Address,
-    fiatCurrency: string,
-    chainId: string
-  ) => {
-    const messageHash = ethers.utils.solidityKeccak256(
-      ["uint256", "uint256", "address", "address", "bytes32", "uint256"],
-      [depositId, amount, to, verifier, fiatCurrency, chainId]
-    );
-    return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
-  }
 
   function convertSignatureToHex(signature: { [key: string]: number }): string {
     const byteArray = Object.values(signature);

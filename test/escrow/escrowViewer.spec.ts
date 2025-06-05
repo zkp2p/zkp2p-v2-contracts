@@ -107,9 +107,12 @@ describe.only("EscrowViewer", () => {
   describe("#getDeposit", async () => {
     let subjectDepositId: BigNumber;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create a deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       const payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
       const depositData = ethers.utils.defaultAbiCoder.encode(
         ["address"],
@@ -127,7 +130,7 @@ describe.only("EscrowViewer", () => {
           data: depositData
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         ethers.constants.AddressZero
       );
@@ -161,7 +164,7 @@ describe.only("EscrowViewer", () => {
       expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(gatingService.address);
       expect(depositView.verifiers[0].currencies.length).to.eq(1);
       expect(depositView.verifiers[0].currencies[0].code).to.eq(Currency.USD);
-      expect(depositView.verifiers[0].currencies[0].conversionRate).to.eq(ether(1.08));
+      expect(depositView.verifiers[0].currencies[0].minConversionRate).to.eq(depositConversionRate);
     });
 
     it("should return the correct available liquidity", async () => {
@@ -180,6 +183,7 @@ describe.only("EscrowViewer", () => {
           onRamper.address,
           verifier.address,
           Currency.USD,
+          depositConversionRate,
           chainId.toString()
         );
 
@@ -189,6 +193,7 @@ describe.only("EscrowViewer", () => {
           onRamper.address,
           verifier.address,
           Currency.USD,
+          depositConversionRate,
           gatingServiceSignature,
           ethers.constants.AddressZero,
           "0x"
@@ -237,7 +242,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         ethers.constants.AddressZero
       );
@@ -253,7 +258,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         ethers.constants.AddressZero
       );
@@ -302,7 +307,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         ethers.constants.AddressZero
       );
@@ -318,7 +323,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         ethers.constants.AddressZero
       );
@@ -353,9 +358,12 @@ describe.only("EscrowViewer", () => {
   describe("#getIntent", async () => {
     let subjectIntentHash: string;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -367,7 +375,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         ethers.constants.AddressZero
       );
@@ -379,6 +387,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         chainId.toString()
       );
 
@@ -388,6 +397,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         gatingServiceSignature,
         ethers.constants.AddressZero,
         "0x"
@@ -419,9 +429,12 @@ describe.only("EscrowViewer", () => {
     let subjectIntentHashes: string[];
     let intentHash: string;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -433,7 +446,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         ethers.constants.AddressZero
       );
@@ -445,6 +458,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         chainId.toString()
       );
 
@@ -454,6 +468,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         gatingServiceSignature,
         ethers.constants.AddressZero,
         "0x"
@@ -487,9 +502,12 @@ describe.only("EscrowViewer", () => {
     let subjectAccount: string;
     let intentHash: string;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -501,7 +519,7 @@ describe.only("EscrowViewer", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         ethers.constants.AddressZero
       );
@@ -513,6 +531,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         chainId.toString()
       );
 
@@ -522,6 +541,7 @@ describe.only("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         gatingServiceSignature,
         ethers.constants.AddressZero,
         "0x"
