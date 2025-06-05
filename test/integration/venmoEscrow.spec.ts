@@ -147,13 +147,14 @@ describe.skip("VenmoEscrow", () => {
     console.log("Create deposit gas used:", createDepositReceipt.gasUsed.toString());
 
     const gatingServiceSignature = await generateGatingServiceSignature(
+      gatingService,
       ZERO,
       usdc(5),
-      onRamper.address,
-      verifier.address,
-      Currency.USD,
-      depositConversionRate,
-      chainId.toString()
+      onRamper.address, // to
+      verifier.address, // verifier
+      Currency.USD, // fiatCurrency
+      depositConversionRate, // conversionRate
+      chainId.toString() // chainId
     );
     const signalIntentTx = await ramp.connect(onRamper.wallet).signalIntent(
       ZERO, // depositId
