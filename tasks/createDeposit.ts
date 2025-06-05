@@ -40,7 +40,7 @@ task("create-deposit", "Creates a deposit")
     await token.connect(owner).approve(escrow.address, amount);
 
     // Call the createDeposit function
-    const tx = await escrow.createDeposit(token.address, amount, { min: minAmount, max: maxAmount }, verifiers, verifierData, currencies);
+    const tx = await escrow.createDeposit(token.address, amount, { min: minAmount, max: maxAmount }, verifiers, verifierData, currencies, ethers.constants.AddressZero);
     const receipt = await tx.wait();
 
     // Get the deposit ID from the DepositReceived event

@@ -12,6 +12,7 @@ import { StringArrayUtils } from "./external/StringArrayUtils.sol";
 import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 
 import { IEscrow } from "./interfaces/IEscrow.sol";
+import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
 
@@ -152,6 +153,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     uint256 public depositCounter;                                  // Counter for depositIds
 
+    // TODO: Add a mapping of allowed post intent hooks and add governance function to add/remove allowed post intent hooks
+
 
     /* ============ Modifiers ============ */
 
@@ -255,6 +258,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *                                  offchain (e.g. Venmo, Revolut, Mercado, etc.)
      * @param _fiatCurrency             The currency code that the user is paying in offchain
      * @param _gatingServiceSignature   The signature from the deposit's gating service on intent parameters
+     * @param _postIntentHook           Optional post-intent hook address for custom actions (address(0) for no hook)
+     * @param _data                     Additional data for the intent; Can hold calldata for post-intent actions
      */
     function signalIntent(
         uint256 _depositId,
@@ -262,7 +267,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _to,
         address _verifier,
         bytes32 _fiatCurrency,
-        bytes calldata _gatingServiceSignature
+        bytes calldata _gatingServiceSignature,
+        IPostIntentHook _postIntentHook,
+        bytes calldata _data
     )
         external
         whenNotPaused
@@ -295,7 +302,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             paymentVerifier: _verifier,
             fiatCurrency: _fiatCurrency,
             conversionRate: conversionRate,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            postIntentHook: _postIntentHook,
+            data: _data
         });
 
         accountIntent[msg.sender] = intentHash;
@@ -304,7 +313,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.outstandingIntentAmount += _amount;
         deposit.intentHashes.push(intentHash);
 
-        emit IntentSignaled(intentHash, _depositId, _verifier, msg.sender, _to, _amount, _fiatCurrency, conversionRate, block.timestamp);
+        // TODO: Comment out temporarily to avoid stack too deep error
+        // emit IntentSignaled(
+        //     intentHash, 
+        //     _depositId, 
+        //     _verifier, 
+        //     msg.sender, 
+        //     _to, 
+        //     _amount, 
+        //     _fiatCurrency, 
+        //     conversionRate, 
+        //     block.timestamp
+        // );
     }
 
     /**
@@ -337,7 +357,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function fulfillIntent( 
         bytes calldata _paymentProof,
-        bytes32 _intentHash
+        bytes32 _intentHash,
+        bytes calldata _data
     )
         external
         whenNotPaused
@@ -370,7 +391,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
-        _transferFunds(token, intentHash, intent, verifier);
+        _transferFundsAndExecuteAction(
+            token, intentHash, intent, verifier, _data
+        );
     }
 
 
@@ -394,7 +417,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
-        _transferFunds(token, _intentHash, intent, address(0));
+        // TODO: Should we execute action here?
+        bytes memory emptyData = new bytes(0);
+        _transferFundsAndExecuteAction(token, _intentHash, intent, address(0), emptyData);
     }
 
     /**
@@ -934,7 +959,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * skip payment verifier fee split, set _verifier to zero address. If sustainability fee is undefined then full intent amount 
      * is transferred to taker. 
      */
-    function _transferFunds(IERC20 _token, bytes32 _intentHash, Intent memory _intent, address _verifier) internal {
+    function _transferFundsAndExecuteAction(
+        IERC20 _token, 
+        bytes32 _intentHash, 
+        Intent memory _intent, 
+        address _verifier,
+        bytes memory _fulfillIntentData
+    ) internal {
         uint256 fee;
         uint256 verifierFee;
         if (sustainabilityFee != 0) {
@@ -946,8 +977,15 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _token.transfer(sustainabilityFeeRecipient, fee - verifierFee);
         }
 
+
         uint256 transferAmount = _intent.amount - fee;
-        _token.transfer(_intent.to, transferAmount);
+        if (address(_intent.postIntentHook) != address(0)) {
+            _token.approve(address(_intent.postIntentHook), transferAmount);
+
+            _intent.postIntentHook.execute(_intent, transferAmount, _fulfillIntentData);
+        } else {
+            _token.transfer(_intent.to, transferAmount);
+        }
 
         emit IntentFulfilled(
             _intentHash, 

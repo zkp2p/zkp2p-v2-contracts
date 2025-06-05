@@ -3,6 +3,7 @@
 pragma solidity ^0.8.18;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPostIntentHook } from "./IPostIntentHook.sol";
 
 interface IEscrow {
     
@@ -48,6 +49,8 @@ interface IEscrow {
                                                     // going to pay with offchain
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
         uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
+        IPostIntentHook postIntentHook;             // Address of the post-intent hook that will execute any post-intent actions
+        bytes data;                                 // Additional data to be passed to the post-intent hook contract
     }
 
     struct VerifierDataView {

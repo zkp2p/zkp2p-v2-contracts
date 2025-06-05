@@ -3,6 +3,7 @@ export {
   PaymentVerifierMock,
   StringConversionUtilsMock,
   ClaimVerifierMock,
+  PostIntentHookMock,
   Escrow,
   EscrowViewer,
   BasePaymentVerifier,
