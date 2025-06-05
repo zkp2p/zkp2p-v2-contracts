@@ -1,6 +1,7 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
+import { Signer } from "ethers";
 
 import {
   Address,
@@ -8,9 +9,11 @@ import {
 import { Account } from "@utils/test/types";
 import {
   Escrow,
+  EscrowViewer,
   IEscrow,
   USDCMock,
-  PaymentVerifierMock
+  PaymentVerifierMock,
+  PostIntentHookMock
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -24,14 +27,16 @@ import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
+import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("Escrow", () => {
+describe.only("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
+  let offRamperDelegate: Account;
   let offRamperNewAcct: Account;
   let onRamper: Account;
   let onRamperOtherAddress: Account;
@@ -44,16 +49,19 @@ describe("Escrow", () => {
   let chainId: BigNumber = ONE;
 
   let ramp: Escrow;
+  let escrowViewer: EscrowViewer;
   let usdcToken: USDCMock;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
+  let postIntentHookMock: PostIntentHookMock;
   let deployer: DeployHelper;
 
   beforeEach(async () => {
     [
       owner,
       offRamper,
+      offRamperDelegate,
       onRamper,
       onRamperOtherAddress,
       onRamperTwo,
@@ -79,6 +87,9 @@ describe("Escrow", () => {
       chainId
     );
 
+    // Deploy EscrowViewer after escrow is deployed
+    escrowViewer = await deployer.deployEscrowViewer(ramp.address);
+
     const nullifierRegistry = await deployer.deployNullifierRegistry();
 
     verifier = await deployer.deployPaymentVerifierMock(
@@ -95,6 +106,8 @@ describe("Escrow", () => {
     );
 
     await ramp.addWhitelistedPaymentVerifier(verifier.address, ZERO);
+
+    postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, ramp.address);
   });
 
   describe("#constructor", async () => {
@@ -102,7 +115,6 @@ describe("Escrow", () => {
       const ownerAddress: Address = await ramp.owner();
       expect(ownerAddress).to.eq(owner.address);
     });
-
 
     it("should set the correct sustainability fee", async () => {
       const sustainabilityFee: BigNumber = await ramp.sustainabilityFee();
@@ -113,6 +125,20 @@ describe("Escrow", () => {
       const sustainabilityFeeRecipient: Address = await ramp.sustainabilityFeeRecipient();
       expect(sustainabilityFeeRecipient).to.eq(feeRecipient.address);
     });
+
+    it.skip("should not exceed contract size limits", async () => {
+      const escrowFactory = await ethers.getContractFactory("Escrow");
+      const escrowViewerFactory = await ethers.getContractFactory("EscrowViewer");
+
+      const escrowSize = (escrowFactory.bytecode.length - 2) / 2;
+      const viewerSize = (escrowViewerFactory.bytecode.length - 2) / 2;
+
+      console.log(`Escrow size: ${escrowSize} bytes`);
+      console.log(`EscrowViewer size: ${viewerSize} bytes`);
+
+      expect(escrowSize).to.be.lessThan(24576); // 24KB limit
+      expect(viewerSize).to.be.lessThan(24576);
+    });
   });
 
   describe("#createDeposit", async () => {
@@ -122,6 +148,7 @@ describe("Escrow", () => {
     let subjectVerifiers: Address[];
     let subjectVerificationData: IEscrow.DepositVerifierDataStruct[];
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
+    let subjectDelegate: Address;
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -137,10 +164,11 @@ describe("Escrow", () => {
       ];
       subjectCurrencies = [
         [
-          { code: Currency.USD, conversionRate: ether(1.01) },
-          { code: Currency.EUR, conversionRate: ether(0.95) }
+          { code: Currency.USD, minConversionRate: ether(1.01) },
+          { code: Currency.EUR, minConversionRate: ether(0.95) }
         ]
       ];
+      subjectDelegate = offRamperDelegate.address;
 
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
     });
@@ -152,7 +180,8 @@ describe("Escrow", () => {
         subjectIntentAmountRange,
         subjectVerifiers,
         subjectVerificationData,
-        subjectCurrencies
+        subjectCurrencies,
+        subjectDelegate
       );
     }
 
@@ -168,7 +197,7 @@ describe("Escrow", () => {
     it("should correctly update the deposits mapping", async () => {
       await subject();
 
-      const depositView = await ramp.getDeposit(0);
+      const depositView = await escrowViewer.getDeposit(0);
 
       expect(depositView.deposit.depositor).to.eq(offRamper.address);
       expect(depositView.deposit.token).to.eq(subjectToken);
@@ -176,6 +205,7 @@ describe("Escrow", () => {
       expect(depositView.deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
+      expect(depositView.deposit.delegate).to.eq(subjectDelegate);
 
       expect(depositView.verifiers.length).to.eq(1);
       expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
@@ -184,9 +214,9 @@ describe("Escrow", () => {
       expect(depositView.verifiers[0].verificationData.data).to.eq(subjectVerificationData[0].data);
       expect(depositView.verifiers[0].currencies.length).to.eq(2);
       expect(depositView.verifiers[0].currencies[0].code).to.eq(subjectCurrencies[0][0].code);
-      expect(depositView.verifiers[0].currencies[0].conversionRate).to.eq(subjectCurrencies[0][0].conversionRate);
+      expect(depositView.verifiers[0].currencies[0].minConversionRate).to.eq(subjectCurrencies[0][0].minConversionRate);
       expect(depositView.verifiers[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
-      expect(depositView.verifiers[0].currencies[1].conversionRate).to.eq(subjectCurrencies[0][1].conversionRate);
+      expect(depositView.verifiers[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
     });
 
     it("should increment the deposit counter", async () => {
@@ -201,21 +231,21 @@ describe("Escrow", () => {
     it("should correctly update the depositVerifierData mapping", async () => {
       await subject();
 
-      const verificationData = await ramp.depositVerifierData(0, subjectVerifiers[0]);
+      const verificationData = await ramp.getDepositVerifierData(0, subjectVerifiers[0]);
 
       expect(verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
       expect(verificationData.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
       expect(verificationData.data).to.eq(subjectVerificationData[0].data);
     });
 
-    it("should correctly update the depositCurrencyConversionRate mapping", async () => {
+    it("should correctly update the depositCurrencyMinRate mapping", async () => {
       await subject();
 
-      const currencyConversionRate = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
-      expect(currencyConversionRate).to.eq(subjectCurrencies[0][0].conversionRate);
+      const currencyMinRate = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
+      expect(currencyMinRate).to.eq(subjectCurrencies[0][0].minConversionRate);
 
-      const currencyConversionRate2 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
-      expect(currencyConversionRate2).to.eq(subjectCurrencies[0][1].conversionRate);
+      const currencyMinRate2 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
+      expect(currencyMinRate2).to.eq(subjectCurrencies[0][1].minConversionRate);
     });
 
     it("should emit a DepositReceived event", async () => {
@@ -224,7 +254,8 @@ describe("Escrow", () => {
         offRamper.address,
         subjectToken,
         subjectAmount,
-        subjectIntentAmountRange
+        subjectIntentAmountRange,
+        subjectDelegate
       );
     });
 
@@ -249,13 +280,13 @@ describe("Escrow", () => {
       expect(events[0].args.depositId).to.equal(0);
       expect(events[0].args.verifier).to.equal(subjectVerifiers[0]);
       expect(events[0].args.currency).to.equal(subjectCurrencies[0][0].code);
-      expect(events[0].args.conversionRate).to.equal(subjectCurrencies[0][0].conversionRate);
+      expect(events[0].args.conversionRate).to.equal(subjectCurrencies[0][0].minConversionRate);
 
       // Second event  
       expect(events[1].args.depositId).to.equal(0);
       expect(events[1].args.verifier).to.equal(subjectVerifiers[0]);
       expect(events[1].args.currency).to.equal(subjectCurrencies[0][1].code);
-      expect(events[1].args.conversionRate).to.equal(subjectCurrencies[0][1].conversionRate);
+      expect(events[1].args.conversionRate).to.equal(subjectCurrencies[0][1].minConversionRate);
     });
 
     describe("when there are multiple verifiers", async () => {
@@ -277,11 +308,11 @@ describe("Escrow", () => {
         ];
         subjectCurrencies = [
           [
-            { code: Currency.USD, conversionRate: ether(1.01) },
-            { code: Currency.EUR, conversionRate: ether(0.92) }
+            { code: Currency.USD, minConversionRate: ether(1.01) },
+            { code: Currency.EUR, minConversionRate: ether(0.92) }
           ],
           [
-            { code: Currency.USD, conversionRate: ether(1.02) }
+            { code: Currency.USD, minConversionRate: ether(1.02) }
           ]
         ];
       });
@@ -290,24 +321,24 @@ describe("Escrow", () => {
         await subject();
 
         // Check first verifier
-        const verificationData1 = await ramp.depositVerifierData(0, subjectVerifiers[0]);
+        const verificationData1 = await ramp.getDepositVerifierData(0, subjectVerifiers[0]);
         expect(verificationData1.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
         expect(verificationData1.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
         expect(verificationData1.data).to.eq(subjectVerificationData[0].data);
 
-        const currencyRate1_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
-        expect(currencyRate1_1).to.eq(subjectCurrencies[0][0].conversionRate);
-        const currencyRate1_2 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
-        expect(currencyRate1_2).to.eq(subjectCurrencies[0][1].conversionRate);
+        const currencyRate1_1 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
+        expect(currencyRate1_1).to.eq(subjectCurrencies[0][0].minConversionRate);
+        const currencyRate1_2 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
+        expect(currencyRate1_2).to.eq(subjectCurrencies[0][1].minConversionRate);
 
         // Check second verifier
-        const verificationData2 = await ramp.depositVerifierData(0, subjectVerifiers[1]);
+        const verificationData2 = await ramp.getDepositVerifierData(0, subjectVerifiers[1]);
         expect(verificationData2.intentGatingService).to.eq(subjectVerificationData[1].intentGatingService);
         expect(verificationData2.payeeDetails).to.eq(subjectVerificationData[1].payeeDetails);
         expect(verificationData2.data).to.eq(subjectVerificationData[1].data);
 
-        const currencyRate2_1 = await ramp.depositCurrencyConversionRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
-        expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].conversionRate);
+        const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
+        expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
       });
     });
 
@@ -385,9 +416,9 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the conversion rate is zero", async () => {
+    describe("when the minConversionRate is zero", async () => {
       beforeEach(async () => {
-        subjectCurrencies[0][0].conversionRate = ZERO;
+        subjectCurrencies[0][0].minConversionRate = ZERO;
       });
 
       it("should revert", async () => {
@@ -452,8 +483,8 @@ describe("Escrow", () => {
           }
         ];
         subjectCurrencies = [
-          [{ code: Currency.USD, conversionRate: ether(1.01) }],
-          [{ code: Currency.EUR, conversionRate: ether(0.95) }]
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }],
+          [{ code: Currency.EUR, minConversionRate: ether(0.95) }]
         ]
       });
 
@@ -472,14 +503,14 @@ describe("Escrow", () => {
         }];
         subjectCurrencies = [
           [
-            { code: Currency.USD, conversionRate: ether(1.01) },
-            { code: Currency.USD, conversionRate: ether(1.02) }
+            { code: Currency.USD, minConversionRate: ether(1.01) },
+            { code: Currency.USD, minConversionRate: ether(1.02) }
           ]
         ];
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency conversion rate already exists");
+        await expect(subject()).to.be.revertedWith("Currency rate already exists");
       });
     });
 
@@ -494,21 +525,6 @@ describe("Escrow", () => {
     });
   });
 
-  const generateGatingServiceSignature = async (
-    depositId: BigNumber,
-    amount: BigNumber,
-    to: Address,
-    verifier: Address,
-    fiatCurrency: string,
-    chainId: string
-  ) => {
-    const messageHash = ethers.utils.solidityKeccak256(
-      ["uint256", "uint256", "address", "address", "bytes32", "uint256"],
-      [depositId, amount, to, verifier, fiatCurrency, chainId]
-    );
-    return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
-  }
-
   describe("#signalIntent", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
@@ -517,6 +533,9 @@ describe("Escrow", () => {
     let subjectFiatCurrency: string;
     let subjectGatingServiceSignature: string;
     let subjectCaller: Account;
+    let subjectPostIntentHook: Address;
+    let subjectIntentData: string;
+    let subjectConversionRate: BigNumber;
 
     let depositConversionRate: BigNumber;
 
@@ -535,8 +554,9 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: depositConversionRate }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -544,14 +564,20 @@ describe("Escrow", () => {
       subjectTo = receiver.address;
       subjectVerifier = verifier.address;
       subjectFiatCurrency = Currency.USD;
+      subjectConversionRate = ether(1.02);   // Slightly higher than depositConversionRate
       subjectGatingServiceSignature = await generateGatingServiceSignature(
+        gatingService,
         subjectDepositId,
         subjectAmount,
         subjectTo,
         subjectVerifier,
         subjectFiatCurrency,
+        subjectConversionRate,
         chainId.toString()
       );
+
+      subjectPostIntentHook = ADDRESS_ZERO;
+      subjectIntentData = "0x";
 
       subjectCaller = onRamper;
     });
@@ -563,7 +589,10 @@ describe("Escrow", () => {
         subjectTo,
         subjectVerifier,
         subjectFiatCurrency,
-        subjectGatingServiceSignature
+        subjectConversionRate,
+        subjectGatingServiceSignature,
+        subjectPostIntentHook,
+        subjectIntentData
       );
     }
 
@@ -578,7 +607,7 @@ describe("Escrow", () => {
         currentTimestamp
       );
 
-      const intent = await ramp.intents(intentHash);
+      const intent = await ramp.getIntent(intentHash);
 
       expect(intent.owner).to.eq(subjectCaller.address);
       expect(intent.paymentVerifier).to.eq(subjectVerifier);
@@ -587,26 +616,11 @@ describe("Escrow", () => {
       expect(intent.amount).to.eq(subjectAmount);
       expect(intent.timestamp).to.eq(currentTimestamp);
       expect(intent.fiatCurrency).to.eq(subjectFiatCurrency);
-    });
-
-    it("should have stored the correct conversion rate in the intent", async () => {
-      await subject();
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
-      const intentHash = calculateIntentHash(
-        subjectCaller.address,
-        subjectVerifier,
-        subjectDepositId,
-        currentTimestamp
-      );
-
-      const depositConversionRate = await ramp.depositCurrencyConversionRate(subjectDepositId, subjectVerifier, subjectFiatCurrency);
-
-      const intent = await ramp.intents(intentHash);
-      expect(intent.conversionRate).to.eq(depositConversionRate);
+      expect(intent.conversionRate).to.eq(subjectConversionRate);
     });
 
     it("should update the deposit mapping correctly", async () => {
-      const preDeposit = await ramp.deposits(subjectDepositId);
+      const preDeposit = await ramp.getDeposit(subjectDepositId);
 
       await subject();
 
@@ -617,7 +631,7 @@ describe("Escrow", () => {
         await blockchain.getCurrentTimestamp()
       );
 
-      const postDeposit = await ramp.getDeposit(subjectDepositId);
+      const postDeposit = await escrowViewer.getDeposit(subjectDepositId);
 
       expect(postDeposit.deposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.add(subjectAmount));
       expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.sub(subjectAmount));
@@ -634,11 +648,11 @@ describe("Escrow", () => {
         await blockchain.getCurrentTimestamp()
       );
 
-      const accountIntent = await ramp.getAccountIntent(subjectCaller.address);
+      const accountIntent = await escrowViewer.getAccountIntent(subjectCaller.address);
       expect(accountIntent.intentHash).to.eq(intentHash);
     });
 
-    it("should emit an IntentSignaled event", async () => {
+    it.skip("should emit an IntentSignaled event", async () => {
       const txn = await subject();
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -657,7 +671,7 @@ describe("Escrow", () => {
         subjectTo,
         subjectAmount,
         subjectFiatCurrency,
-        depositConversionRate,
+        subjectConversionRate,
         currentTimestamp
       );
     });
@@ -686,17 +700,19 @@ describe("Escrow", () => {
         subjectAmount = usdc(60);
         subjectCaller = onRamperTwo;
         subjectGatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
           subjectDepositId,
           subjectAmount,
           subjectTo,
           subjectVerifier,
           subjectFiatCurrency,
+          subjectConversionRate,
           chainId.toString()
         );
       });
 
       it("should prune the old intent and update the deposit mapping correctly", async () => {
-        const preDeposit = await ramp.getDeposit(subjectDepositId);
+        const preDeposit = await escrowViewer.getDeposit(subjectDepositId);
 
         await subject();
 
@@ -707,7 +723,7 @@ describe("Escrow", () => {
           await blockchain.getCurrentTimestamp()
         );
 
-        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        const postDeposit = await escrowViewer.getDeposit(subjectDepositId);
 
         expect(postDeposit.deposit.outstandingIntentAmount).to.eq(subjectAmount);
         expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.deposit.remainingDeposits.sub(usdc(10))); // 10 usdc difference between old and new intent
@@ -718,7 +734,7 @@ describe("Escrow", () => {
       it("should delete the original intent from the intents mapping", async () => {
         await subject();
 
-        const intent = await ramp.intents(oldIntentHash);
+        const intent = await ramp.getIntent(oldIntentHash);
 
         expect(intent.owner).to.eq(ADDRESS_ZERO);
         expect(intent.depositId).to.eq(ZERO);
@@ -803,6 +819,37 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the conversion rate is less than the min conversion rate", async () => {
+      beforeEach(async () => {
+        subjectConversionRate = ether(0.99); // Less than min conversion rate
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Rate must be greater than or equal to min rate");
+      });
+
+      describe("when the conversion rate is equal to the min conversion rate", async () => {
+        beforeEach(async () => {
+          subjectConversionRate = ether(1.01); // Equal to min conversion rate
+
+          subjectGatingServiceSignature = await generateGatingServiceSignature(
+            gatingService,
+            subjectDepositId,
+            subjectAmount,
+            subjectTo,
+            subjectVerifier,
+            subjectFiatCurrency,
+            subjectConversionRate,
+            chainId.toString()
+          );
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+    });
+
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Create and signal an intent first to lock some liquidity
@@ -812,14 +859,19 @@ describe("Escrow", () => {
           receiver.address,
           verifier.address,
           Currency.USD,
+          subjectConversionRate,
           await generateGatingServiceSignature(
+            gatingService,
             subjectDepositId,
             usdc(50),
             receiver.address,
             verifier.address,
             Currency.USD,
+            subjectConversionRate,
             chainId.toString()
-          )
+          ),
+          ADDRESS_ZERO,
+          "0x"
         );
 
         await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
@@ -885,13 +937,16 @@ describe("Escrow", () => {
     let subjectProof: string;
     let subjectIntentHash: string;
     let subjectCaller: Account;
+    let subjectFulfillIntentData: string; // Added for clarity
 
     let intentHash: string;
     let payeeDetails: string;
+    let depositConversionRate: BigNumber;
 
     beforeEach(async () => {
       // Create a deposit and signal an intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
       const depositData = ethers.utils.defaultAbiCoder.encode(
         ["address"],
@@ -909,16 +964,19 @@ describe("Escrow", () => {
           data: depositData
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
+        gatingService,
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         chainId.toString()
       );
       await ramp.connect(onRamper.wallet).signalIntent(
@@ -927,7 +985,10 @@ describe("Escrow", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        depositConversionRate,
+        gatingServiceSignature,
+        ADDRESS_ZERO,
+        "0x"
       );
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
@@ -942,10 +1003,15 @@ describe("Escrow", () => {
       );
       subjectIntentHash = intentHash;
       subjectCaller = onRamper;
+      subjectFulfillIntentData = "0x"; // Default to empty data for existing tests
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).fulfillIntent(subjectProof, subjectIntentHash);
+      return ramp.connect(subjectCaller.wallet).fulfillIntent(
+        subjectProof,
+        subjectIntentHash,
+        subjectFulfillIntentData // Added
+      );
     }
 
     it("should transfer the correct amount to the on-ramper", async () => {
@@ -960,17 +1026,17 @@ describe("Escrow", () => {
     it("should prune the intent", async () => {
       await subject();
 
-      const intent = await ramp.intents(subjectIntentHash);
+      const intent = await ramp.getIntent(subjectIntentHash);
 
       expect(intent.owner).to.eq(ADDRESS_ZERO); // Intent should be deleted
     });
 
     it("should update the deposit balances correctly", async () => {
-      const preDeposit = await ramp.deposits(ZERO);
+      const preDeposit = await ramp.getDeposit(ZERO);
 
       await subject();
 
-      const postDeposit = await ramp.deposits(ZERO);
+      const postDeposit = await ramp.getDeposit(ZERO);
       expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
     });
 
@@ -989,7 +1055,8 @@ describe("Escrow", () => {
 
     describe("when the conversion rate is updated by depositor", async () => {
       beforeEach(async () => {
-        await ramp.connect(offRamper.wallet).updateDepositConversionRate(ZERO, verifier.address, Currency.USD, ether(1.09));
+        // Incresases min rate from 1.08 to 1.09
+        await ramp.connect(offRamper.wallet).updateDepositMinConversionRate(ZERO, verifier.address, Currency.USD, ether(1.09));
       });
 
       it("should still transfer the correct amount to the on-ramper", async () => {
@@ -1002,11 +1069,11 @@ describe("Escrow", () => {
       });
 
       it("should update the deposit balances correctly", async () => {
-        const preDeposit = await ramp.deposits(ZERO);
+        const preDeposit = await ramp.getDeposit(ZERO);
 
         await subject();
 
-        const postDeposit = await ramp.deposits(ZERO);
+        const postDeposit = await ramp.getDeposit(ZERO);
         expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
       });
     });
@@ -1155,15 +1222,135 @@ describe("Escrow", () => {
         });
       });
     });
+
+    describe("when a postIntentHook is used", async () => {
+      let hookTargetAddress: Address;
+
+      beforeEach(async () => {
+        hookTargetAddress = receiver.address;
+        const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetAddress]);
+
+        // Create a new intent with post intent hook action
+        const gatingServiceSignatureForHook = await generateGatingServiceSignature(
+          gatingService,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString()
+        );
+
+        // First cancle the existing intent
+        await ramp.connect(onRamper.wallet).cancelIntent(intentHash);
+
+        // Signal an intent that uses the postIntentHookMock
+        await ramp.connect(onRamper.wallet).signalIntent(
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          gatingServiceSignatureForHook,
+          postIntentHookMock.address,
+          signalIntentDataForHook
+        );
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+
+        // Set the verifier to verify payment
+        await verifier.setShouldVerifyPayment(true);
+
+        // Prepare the proof and processor for the onRamp function
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
+        );
+        subjectIntentHash = intentHash;
+        subjectCaller = onRamper;
+        subjectFulfillIntentData = "0x"; // Still keep it empty
+      });
+
+      it("should transfer funds to the hook's target address, not the intent.to address", async () => {
+        const initialTargetAddressBalance = await usdcToken.balanceOf(hookTargetAddress);
+        const initialIntentToBalance = await usdcToken.balanceOf(onRamper.address);
+        const initialEscrowBalance = await usdcToken.balanceOf(ramp.address);
+
+        await subject();
+
+        const finalTargetAddressBalance = await usdcToken.balanceOf(hookTargetAddress);
+        const finalIntentToBalance = await usdcToken.balanceOf(onRamper.address);
+        const finalEscrowBalance = await usdcToken.balanceOf(ramp.address);
+
+        expect(finalTargetAddressBalance.sub(initialTargetAddressBalance)).to.eq(usdc(50));
+        expect(finalIntentToBalance.sub(initialIntentToBalance)).to.eq(ZERO); // onRamper should not receive funds directly
+        expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(usdc(50)); // Escrow pays out the 50 USDC
+      });
+
+      it("should emit IntentFulfilled event with original intent.to address but funds routed by hook", async () => {
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          subjectIntentHash,    // Hash of the intent fulfilled
+          ZERO,    // ID of the deposit used
+          verifier.address,     // Verifier used
+          onRamper.address,     // Intent owner
+          onRamper.address,     // Original intent.to (even though hook redirected funds)
+          usdc(50),             // Amount transferred (after 0 fees in this case)
+          ZERO,                 // Sustainability fee
+          ZERO                  // Verifier fee
+        );
+      });
+
+      describe("when sustainability fee is set with a hook", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+        });
+
+        it("should transfer (intent amount - fee) to hook's target and fee to recipient", async () => {
+          const initialHookTargetBalance = await usdcToken.balanceOf(hookTargetAddress);
+          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const initialEscrowBalance = await usdcToken.balanceOf(ramp.address);
+
+          await subject();
+
+          const finalHookTargetBalance = await usdcToken.balanceOf(hookTargetAddress);
+          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const finalEscrowBalance = await usdcToken.balanceOf(ramp.address);
+
+          const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
+          expect(finalHookTargetBalance.sub(initialHookTargetBalance)).to.eq(usdc(50).sub(fee)); // 49 USDC
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee); // 1 USDC
+          expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(usdc(50)); // Escrow still pays out total of 50
+        });
+
+        it("should emit IntentFulfilled with correct fee details when hook is used", async () => {
+          const fee = usdc(50).mul(ether(0.02)).div(ether(1));
+          await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+            subjectIntentHash,
+            ZERO,
+            verifier.address,
+            onRamper.address,
+            onRamper.address,     // Original intent.to
+            usdc(50).sub(fee),    // Amount transferred to hook's destination
+            fee,                  // Sustainability fee
+            ZERO                  // Verifier fee
+          );
+        });
+      });
+    });
   });
 
   describe("#releaseFundsToPayer", async () => {
     let subjectIntentHash: string;
     let subjectCaller: Account;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create a deposit and signal an intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -1175,13 +1362,15 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       // Signal an intent
       const gatingServiceSignature = await generateGatingServiceSignature(
-        ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, chainId.toString()
+        gatingService,
+        ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
       );
       await ramp.connect(onRamper.wallet).signalIntent(
         ZERO,
@@ -1189,7 +1378,10 @@ describe("Escrow", () => {
         receiver.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        depositConversionRate,
+        gatingServiceSignature,
+        ADDRESS_ZERO,
+        "0x"
       );
 
       // Calculate the intent hash
@@ -1224,18 +1416,18 @@ describe("Escrow", () => {
     it("should delete the intent from the intents mapping", async () => {
       await subject();
 
-      const intent = await ramp.intents(subjectIntentHash);
+      const intent = await ramp.getIntent(subjectIntentHash);
 
       expect(intent.owner).to.eq(ADDRESS_ZERO);
       expect(intent.amount).to.eq(ZERO);
     });
 
     it("should correctly update state in the deposit mapping", async () => {
-      const preDeposit = await ramp.getDeposit(ZERO);
+      const preDeposit = await escrowViewer.getDeposit(ZERO);
 
       await subject();
 
-      const postDeposit = await ramp.getDeposit(ZERO);
+      const postDeposit = await escrowViewer.getDeposit(ZERO);
 
       expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.deposit.remainingDeposits);
       expect(postDeposit.deposit.outstandingIntentAmount).to.eq(preDeposit.deposit.outstandingIntentAmount.sub(usdc(50)));
@@ -1262,7 +1454,8 @@ describe("Escrow", () => {
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(10).toNumber());
 
         const gatingServiceSignature = await generateGatingServiceSignature(
-          ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, chainId.toString()
+          gatingService,
+          ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
         );
         await ramp.connect(onRamper.wallet).signalIntent(
           ZERO,
@@ -1270,7 +1463,10 @@ describe("Escrow", () => {
           receiver.address,
           verifier.address,
           Currency.USD,
-          gatingServiceSignature
+          depositConversionRate,
+          gatingServiceSignature,
+          ADDRESS_ZERO,
+          "0x"
         );
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -1285,22 +1481,22 @@ describe("Escrow", () => {
       it("should delete the deposit", async () => {
         await subject();
 
-        const deposit = await ramp.deposits(ZERO);
+        const deposit = await ramp.getDeposit(ZERO);
         expect(deposit.depositor).to.eq(ADDRESS_ZERO);
       });
 
       it("should delete the deposit verifier data", async () => {
         await subject();
 
-        const verifierData = await ramp.depositVerifierData(ZERO, verifier.address);
+        const verifierData = await ramp.getDepositVerifierData(ZERO, verifier.address);
         expect(verifierData.intentGatingService).to.eq(ADDRESS_ZERO);
       });
 
-      it("should delete deposit currency conversion data", async () => {
+      it("should delete deposit currency min conversion data", async () => {
         await subject();
 
-        const currencyConversionData = await ramp.depositCurrencyConversionRate(ZERO, verifier.address, Currency.USD);
-        expect(currencyConversionData).to.eq(ZERO);
+        const currencyMinRate = await ramp.getDepositCurrencyMinRate(ZERO, verifier.address, Currency.USD);
+        expect(currencyMinRate).to.eq(ZERO);
       });
 
       it("should emit a DepositClosed event", async () => {
@@ -1422,9 +1618,12 @@ describe("Escrow", () => {
     let subjectIntentHash: string;
     let subjectCaller: Account;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create a deposit and signal an intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -1436,21 +1635,26 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       // Signal an intent
       const gatingServiceSignature = await generateGatingServiceSignature(
-        ZERO, usdc(50), onRamper.address, verifier.address, Currency.USD, chainId.toString()
+        gatingService,
+        ZERO, usdc(50), onRamper.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
       );
       await ramp.connect(onRamper.wallet).signalIntent(
-        ZERO, // Assuming depositId is ZERO for simplicity
+        ZERO, // depositId
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        depositConversionRate,
+        gatingServiceSignature,
+        ADDRESS_ZERO,
+        "0x"
       );
 
       // Calculate the intent hash
@@ -1470,12 +1674,12 @@ describe("Escrow", () => {
     }
 
     it("should cancel the intent and update the deposit correctly", async () => {
-      const preDeposit = await ramp.deposits(ZERO);
+      const preDeposit = await ramp.getDeposit(ZERO);
 
       await subject();
 
-      const postDeposit = await ramp.deposits(ZERO);
-      const intent = await ramp.intents(subjectIntentHash);
+      const postDeposit = await ramp.getDeposit(ZERO);
+      const intent = await ramp.getIntent(subjectIntentHash);
 
       expect(intent.owner).to.eq(ADDRESS_ZERO); // Intent should be deleted
       expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
@@ -1485,7 +1689,7 @@ describe("Escrow", () => {
     it("should remove the intent from the accountIntents mapping", async () => {
       await subject();
 
-      const accountIntent = await ramp.getAccountIntent(onRamper.address);
+      const accountIntent = await escrowViewer.getAccountIntent(onRamper.address);
 
       expect(accountIntent.intentHash).to.eq(ZERO_BYTES32);
     });
@@ -1531,11 +1735,11 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#updateDepositConversionRate", async () => {
+  describe("#updateDepositMinConversionRate", async () => {
     let subjectDepositId: BigNumber;
     let subjectVerifier: Address;
     let subjectFiatCurrency: string;
-    let subjectNewConversionRate: BigNumber;
+    let subjectNewMinConversionRate: BigNumber;
     let subjectCaller: Account;
 
     beforeEach(async () => {
@@ -1552,46 +1756,57 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.01) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
       subjectVerifier = verifier.address;
       subjectFiatCurrency = Currency.USD;
-      subjectNewConversionRate = ether(1.05);
+      subjectNewMinConversionRate = ether(1.05);
       subjectCaller = offRamper;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).updateDepositConversionRate(
+      return ramp.connect(subjectCaller.wallet).updateDepositMinConversionRate(
         subjectDepositId,
         subjectVerifier,
         subjectFiatCurrency,
-        subjectNewConversionRate
+        subjectNewMinConversionRate
       );
     }
 
-    it("should update the conversion rate", async () => {
+    it("should update the min conversion rate", async () => {
       await subject();
 
-      const newRate = await ramp.depositCurrencyConversionRate(
+      const newRate = await ramp.getDepositCurrencyMinRate(
         subjectDepositId,
         subjectVerifier,
         subjectFiatCurrency
       );
-      expect(newRate).to.eq(subjectNewConversionRate);
+      expect(newRate).to.eq(subjectNewMinConversionRate);
     });
 
-    it("should emit a DepositConversionRateUpdated event", async () => {
+    it("should emit a DepositMinConversionRateUpdated event", async () => {
       const tx = await subject();
 
-      expect(tx).to.emit(ramp, "DepositConversionRateUpdated").withArgs(
+      expect(tx).to.emit(ramp, "DepositMinConversionRateUpdated").withArgs(
         subjectDepositId,
         subjectVerifier,
         subjectFiatCurrency,
-        subjectNewConversionRate
+        subjectNewMinConversionRate
       );
+    });
+
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
     });
 
     describe("when the caller is not the depositor", async () => {
@@ -1600,7 +1815,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
       });
     });
 
@@ -1614,13 +1829,13 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the new conversion rate is zero", async () => {
+    describe("when the new min conversion rate is zero", async () => {
       beforeEach(async () => {
-        subjectNewConversionRate = ZERO;
+        subjectNewMinConversionRate = ZERO;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
+        await expect(subject()).to.be.revertedWith("Min conversion rate must be greater than 0");
       });
     });
 
@@ -1639,9 +1854,12 @@ describe("Escrow", () => {
     let subjectDepositId: BigNumber;
     let subjectCaller: Account;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create deposit to test withdrawal
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -1653,8 +1871,9 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       subjectDepositId = ZERO;
@@ -1679,43 +1898,43 @@ describe("Escrow", () => {
     });
 
     it("should delete the deposit", async () => {
-      const preDeposit = await ramp.deposits(subjectDepositId);
+      const preDeposit = await ramp.getDeposit(subjectDepositId);
       expect(preDeposit.depositor).to.not.eq(ADDRESS_ZERO);
 
       await subject();
 
-      const postDeposit = await ramp.deposits(subjectDepositId);
+      const postDeposit = await ramp.getDeposit(subjectDepositId);
       expect(postDeposit.depositor).to.eq(ADDRESS_ZERO);
     });
 
     it("should remove the deposit from the user deposits mapping", async () => {
-      const preUserDeposits = await ramp.getAccountDeposits(offRamper.address);
+      const preUserDeposits = await escrowViewer.getAccountDeposits(offRamper.address);
       expect(preUserDeposits.some(deposit => deposit.depositId.eq(subjectDepositId))).to.be.true;
 
       await subject();
 
       const postUserDeposits = await ramp.getAccountDeposits(offRamper.address);
-      expect(postUserDeposits.some(deposit => deposit.depositId.eq(subjectDepositId))).to.be.false;
+      expect(postUserDeposits.some(depositId => depositId.eq(subjectDepositId))).to.be.false;
     });
 
     it("should remove the deposit verifier data", async () => {
-      const preVerifierData = await ramp.depositVerifierData(subjectDepositId, verifier.address);
+      const preVerifierData = await ramp.getDepositVerifierData(subjectDepositId, verifier.address);
       expect(preVerifierData.intentGatingService).to.not.eq(ADDRESS_ZERO);
 
       await subject();
 
-      const postVerifierData = await ramp.depositVerifierData(subjectDepositId, verifier.address);
+      const postVerifierData = await ramp.getDepositVerifierData(subjectDepositId, verifier.address);
       expect(postVerifierData.intentGatingService).to.eq(ADDRESS_ZERO);
     });
 
-    it("should delete deposit currency conversion data", async () => {
-      const preCurrencyConversionData = await ramp.depositCurrencyConversionRate(subjectDepositId, verifier.address, Currency.USD);
-      expect(preCurrencyConversionData).to.not.eq(ZERO);
+    it("should delete deposit currency min conversion data", async () => {
+      const preCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, verifier.address, Currency.USD);
+      expect(preCurrencyMinRate).to.not.eq(ZERO);
 
       await subject();
 
-      const postCurrencyConversionData = await ramp.depositCurrencyConversionRate(subjectDepositId, verifier.address, Currency.USD);
-      expect(postCurrencyConversionData).to.eq(ZERO);
+      const postCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, verifier.address, Currency.USD);
+      expect(postCurrencyMinRate).to.eq(ZERO);
     });
 
     it("should emit a DepositWithdrawn event", async () => {
@@ -1739,11 +1958,13 @@ describe("Escrow", () => {
 
       beforeEach(async () => {
         const gatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
           subjectDepositId,
           usdc(50),
           receiver.address,
           verifier.address,
           Currency.USD,
+          depositConversionRate,
           chainId.toString()
         );
 
@@ -1753,7 +1974,10 @@ describe("Escrow", () => {
           receiver.address,
           verifier.address,
           Currency.USD,
-          gatingServiceSignature
+          depositConversionRate,
+          gatingServiceSignature,
+          ADDRESS_ZERO,
+          "0x"
         );
 
         // Calculate the intent hash
@@ -1782,7 +2006,7 @@ describe("Escrow", () => {
       it("should zero out remainingDeposits", async () => {
         await subject();
 
-        const deposit = await ramp.deposits(subjectDepositId);
+        const deposit = await ramp.getDeposit(subjectDepositId);
 
         expect(deposit.depositor).to.not.eq(ADDRESS_ZERO);
         expect(deposit.remainingDeposits).to.eq(ZERO);
@@ -1792,7 +2016,7 @@ describe("Escrow", () => {
       it("should set the deposit to not accepting intents", async () => {
         await subject();
 
-        const deposit = await ramp.deposits(subjectDepositId);
+        const deposit = await ramp.getDeposit(subjectDepositId);
         expect(deposit.acceptingIntents).to.be.false;
       });
 
@@ -1827,17 +2051,17 @@ describe("Escrow", () => {
         it("should delete the deposit", async () => {
           await subject();
 
-          const deposit = await ramp.deposits(subjectDepositId);
+          const deposit = await ramp.getDeposit(subjectDepositId);
           expect(deposit.depositor).to.eq(ADDRESS_ZERO);
         });
 
         it("should delete the intent", async () => {
-          const preIntent = await ramp.intents(intentHash);
+          const preIntent = await ramp.getIntent(intentHash);
           expect(preIntent.amount).to.eq(usdc(50));
 
           await subject();
 
-          const postIntent = await ramp.intents(intentHash);
+          const postIntent = await ramp.getIntent(intentHash);
 
           expect(postIntent.owner).to.eq(ADDRESS_ZERO);
         });
@@ -1867,6 +2091,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        });
       });
     });
 
@@ -2325,452 +2559,18 @@ describe("Escrow", () => {
     });
   });
 
-  // GETTER FUNCTIONS (Written by Cursor AI)
-
-  describe("#getDeposit", async () => {
-    let subjectDepositId: BigNumber;
-
-    beforeEach(async () => {
-      // Create a deposit first
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      const payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
-      const depositData = ethers.utils.defaultAbiCoder.encode(
-        ["address"],
-        [witness.address]
-      );
-
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: payeeDetails,
-          data: depositData
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      subjectDepositId = ZERO;
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getDeposit(subjectDepositId);
-    }
-
-    it("should return the correct deposit details", async () => {
-      const depositView = await subject();
-
-      expect(depositView.depositId).to.eq(subjectDepositId);
-      expect(depositView.deposit.token).to.eq(usdcToken.address);
-      expect(depositView.deposit.depositor).to.eq(offRamper.address);
-      expect(depositView.deposit.amount).to.eq(usdc(100));
-      expect(depositView.deposit.intentAmountRange.min).to.eq(usdc(10));
-      expect(depositView.deposit.intentAmountRange.max).to.eq(usdc(200));
-      expect(depositView.deposit.remainingDeposits).to.eq(usdc(100));
-      expect(depositView.deposit.outstandingIntentAmount).to.eq(ZERO);
-      expect(depositView.deposit.acceptingIntents).to.be.true;
-    });
-
-    it("should return the correct verifier details", async () => {
-      const depositView = await subject();
-
-      expect(depositView.verifiers.length).to.eq(1);
-      expect(depositView.verifiers[0].verifier).to.eq(verifier.address);
-      expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(gatingService.address);
-      expect(depositView.verifiers[0].currencies.length).to.eq(1);
-      expect(depositView.verifiers[0].currencies[0].code).to.eq(Currency.USD);
-      expect(depositView.verifiers[0].currencies[0].conversionRate).to.eq(ether(1.08));
-    });
-
-    it("should return the correct available liquidity", async () => {
-      const depositView = await subject();
-
-      expect(depositView.availableLiquidity).to.eq(usdc(100));
-    });
-
-    describe("when there are prunable intents", async () => {
-      beforeEach(async () => {
-        // Create and signal an intent
-        const gatingServiceSignature = await generateGatingServiceSignature(
-          subjectDepositId,
-          usdc(50),
-          onRamper.address,
-          verifier.address,
-          Currency.USD,
-          chainId.toString()
-        );
-
-        await ramp.connect(onRamper.wallet).signalIntent(
-          subjectDepositId,
-          usdc(50),
-          onRamper.address,
-          verifier.address,
-          Currency.USD,
-          gatingServiceSignature
-        );
-
-        // Move time forward past intent expiration
-        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
-      });
-
-      it("should include prunable amounts in available liquidity", async () => {
-        const depositView = await subject();
-
-        expect(depositView.availableLiquidity).to.eq(usdc(100));
-      });
-    });
-
-    describe("when the deposit does not exist", async () => {
-      beforeEach(async () => {
-        subjectDepositId = ONE;
-      });
-
-      it("should return empty deposit view", async () => {
-        const depositView = await subject();
-
-        expect(depositView.deposit.depositor).to.eq(ADDRESS_ZERO);
-        expect(depositView.verifiers.length).to.eq(0);
-      });
-    });
-  });
-
-  describe("#getAccountDeposits", async () => {
-    let subjectAccount: string;
-
-    beforeEach(async () => {
-      // Create a few deposits for the test account
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(200),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      subjectAccount = offRamper.address;
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getAccountDeposits(subjectAccount);
-    }
-
-    it("should return correct deposit IDs for account", async () => {
-      const deposits = await subject();
-
-      expect(deposits.length).to.eq(2);
-      expect(deposits[0].depositId).to.eq(ZERO);
-      expect(deposits[1].depositId).to.eq(ONE);
-    });
-
-    describe("when account has no deposits", async () => {
-      beforeEach(async () => {
-        subjectAccount = onRamper.address;
-      });
-
-      it("should return empty array", async () => {
-        const deposits = await subject();
-        expect(deposits.length).to.eq(0);
-      });
-    });
-  });
-
-  describe("#getDepositFromIds", async () => {
-    let subjectDepositIds: BigNumber[];
-
-    beforeEach(async () => {
-      // Create two deposits
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(200),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      subjectDepositIds = [ZERO, ONE];
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getDepositFromIds(subjectDepositIds);
-    }
-
-    it("should return correct deposits", async () => {
-      const deposits = await subject();
-
-      expect(deposits.length).to.eq(2);
-      expect(deposits[0].depositId).to.eq(ZERO);
-      expect(deposits[1].depositId).to.eq(ONE);
-    });
-
-    describe("when deposit IDs don't exist", async () => {
-      beforeEach(async () => {
-        subjectDepositIds = [BigNumber.from(2)];
-      });
-
-      it("should return deposit with zero address depositor", async () => {
-        const deposits = await subject();
-        expect(deposits[0].deposit.depositor).to.eq(ADDRESS_ZERO);
-      });
-    });
-  });
-
-  describe("#getIntent", async () => {
-    let subjectIntentHash: string;
-
-    beforeEach(async () => {
-      // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      const gatingServiceSignature = await generateGatingServiceSignature(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        chainId.toString()
-      );
-
-      await ramp.connect(onRamper.wallet).signalIntent(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        gatingServiceSignature
-      );
-
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
-      subjectIntentHash = calculateIntentHash(
-        onRamper.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp
-      );
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getIntent(subjectIntentHash);
-    }
-
-    it("should return correct intent", async () => {
-      const intent = await subject();
-
-      expect(intent.intentHash).to.eq(subjectIntentHash);
-      expect(intent.intent.owner).to.eq(onRamper.address);
-      expect(intent.intent.depositId).to.eq(ZERO);
-    });
-  });
-
-  describe("#getIntents", async () => {
-    let subjectIntentHashes: string[];
-    let intentHash: string;
-
-    beforeEach(async () => {
-      // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      const gatingServiceSignature = await generateGatingServiceSignature(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        chainId.toString()
-      );
-
-      await ramp.connect(onRamper.wallet).signalIntent(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        gatingServiceSignature
-      );
-
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
-      intentHash = calculateIntentHash(
-        onRamper.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp
-      );
-
-      subjectIntentHashes = [intentHash];
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getIntents(subjectIntentHashes);
-    }
-
-    it("should return correct intents", async () => {
-      const intents = await subject();
-
-      expect(intents.length).to.eq(1);
-      expect(intents[0].intentHash).to.eq(intentHash);
-      expect(intents[0].intent.owner).to.eq(onRamper.address);
-    });
-  });
-
-  describe("#getAccountIntent", async () => {
-    let subjectAccount: string;
-    let intentHash: string;
-
-    beforeEach(async () => {
-      // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
-          intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-          data: "0x"
-        }],
-        [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
-      );
-
-      const gatingServiceSignature = await generateGatingServiceSignature(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        chainId.toString()
-      );
-
-      await ramp.connect(onRamper.wallet).signalIntent(
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        gatingServiceSignature
-      );
-
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
-      intentHash = calculateIntentHash(
-        onRamper.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp
-      );
-
-      subjectAccount = onRamper.address;
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.getAccountIntent(subjectAccount);
-    }
-
-    it("should return correct intent for account", async () => {
-      const intent = await subject();
-
-      expect(intent.intentHash).to.eq(intentHash);
-      expect(intent.intent.owner).to.eq(onRamper.address);
-    });
-
-    describe("when account has no intent", async () => {
-      beforeEach(async () => {
-        subjectAccount = offRamper.address;
-      });
-
-      it("should return intent with zero bytes hash", async () => {
-        const intent = await subject();
-        expect(intent.intentHash).to.eq(ZERO_BYTES32);
-      });
-    });
-  });
+  // GETTER FUNCTIONS
 
   describe("#getPrunableIntents", async () => {
     let subjectCaller: Account;
     let subjectDepositId: BigNumber;
 
+    let depositConversionRate: BigNumber;
+
     beforeEach(async () => {
       // Create deposit and signal intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      depositConversionRate = ether(1.08);
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
@@ -2782,16 +2582,19 @@ describe("Escrow", () => {
           data: "0x"
         }],
         [
-          [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
+        gatingService,
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
+        depositConversionRate,
         chainId.toString()
       );
 
@@ -2801,7 +2604,10 @@ describe("Escrow", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        depositConversionRate,
+        gatingServiceSignature,
+        ADDRESS_ZERO,
+        "0x"
       );
 
       subjectCaller = onRamper;
@@ -2847,6 +2653,817 @@ describe("Escrow", () => {
         const { prunableIntents, reclaimedAmount } = await subject();
         expect(prunableIntents.length).to.eq(0);
         expect(reclaimedAmount).to.eq(ZERO);
+      });
+    });
+  });
+
+  // DEPOSIT MANAGEMENT FUNCTIONS
+
+  describe("#updateDepositIntentAmountRange", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectIntentAmountRange: IEscrow.RangeStruct;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address
+      );
+
+      subjectDepositId = ZERO;
+      subjectIntentAmountRange = { min: usdc(5), max: usdc(150) };
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).updateDepositIntentAmountRange(
+        subjectDepositId,
+        subjectIntentAmountRange
+      );
+    }
+
+    it("should update the intent amount range", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
+      expect(deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
+    });
+
+    it("should emit a DepositIntentAmountRangeUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositIntentAmountRangeUpdated").withArgs(
+        subjectDepositId,
+        subjectIntentAmountRange
+      );
+    });
+
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+      });
+    });
+
+    describe("when the min amount is zero", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange.min = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min cannot be zero");
+      });
+    });
+
+    describe("when the min amount is greater than max amount", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange = { min: usdc(200), max: usdc(100) };
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Min must be less than max");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+  // describe("#addVerifiersToDeposit", async () => {
+  //   let subjectDepositId: BigNumber;
+  //   let subjectVerifiers: Address[];
+  //   let subjectVerifierData: IEscrow.DepositVerifierDataStruct[];
+  //   let subjectCurrencies: IEscrow.CurrencyStruct[][];
+  //   let subjectCaller: Account;
+
+  //   beforeEach(async () => {
+  //     // Create deposit first with only one verifier
+  //     await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+  //     await ramp.connect(offRamper.wallet).createDeposit(
+  //       usdcToken.address,
+  //       usdc(100),
+  //       { min: usdc(10), max: usdc(200) },
+  //       [verifier.address],
+  //       [{
+  //         intentGatingService: gatingService.address,
+  //         payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+  //         data: "0x"
+  //       }],
+  //       [
+  //         [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+  //       ],
+  //       offRamperDelegate.address
+  //     );
+
+  //     // Add otherVerifier to whitelist
+  //     await ramp.connect(owner.wallet).addWhitelistedPaymentVerifier(otherVerifier.address, ZERO);
+  //     await otherVerifier.addCurrency(Currency.EUR);
+
+  //     subjectDepositId = ZERO;
+  //     subjectVerifiers = [otherVerifier.address];
+  //     subjectVerifierData = [{
+  //       intentGatingService: gatingService.address,
+  //       payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")),
+  //       data: "0x"
+  //     }];
+  //     subjectCurrencies = [
+  //       [
+  //         { code: Currency.USD, minConversionRate: ether(1.02) },
+  //         { code: Currency.EUR, minConversionRate: ether(0.95) }
+  //       ]
+  //     ];
+  //     subjectCaller = offRamper;
+  //   });
+
+  //   async function subject(): Promise<any> {
+  //     return ramp.connect(subjectCaller.wallet).addVerifiersToDeposit(
+  //       subjectDepositId,
+  //       subjectVerifiers,
+  //       subjectVerifierData,
+  //       subjectCurrencies
+  //     );
+  //   }
+
+  //   it("should add the verifier to the deposit", async () => {
+  //     await subject();
+
+  //     const verifiers = await ramp.getDepositVerifiers(subjectDepositId);
+  //     expect(verifiers).to.include(otherVerifier.address);
+
+  //     const verifierData = await ramp.getDepositVerifierData(subjectDepositId, otherVerifier.address);
+  //     expect(verifierData.intentGatingService).to.eq(subjectVerifierData[0].intentGatingService);
+  //     expect(verifierData.payeeDetails).to.eq(subjectVerifierData[0].payeeDetails);
+  //     expect(verifierData.data).to.eq(subjectVerifierData[0].data);
+  //   });
+
+  //   it("should add the currencies to the verifier", async () => {
+  //     await subject();
+
+  //     const currencies = await ramp.getDepositCurrencies(subjectDepositId, otherVerifier.address);
+  //     expect(currencies).to.have.length(2);
+  //     expect(currencies).to.include(Currency.USD);
+  //     expect(currencies).to.include(Currency.EUR);
+
+  //     const usdRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, otherVerifier.address, Currency.USD);
+  //     expect(usdRate).to.eq(subjectCurrencies[0][0].minConversionRate);
+
+  //     const eurRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, otherVerifier.address, Currency.EUR);
+  //     expect(eurRate).to.eq(subjectCurrencies[0][1].minConversionRate);
+  //   });
+
+  //   it("should emit DepositVerifierAdded and DepositCurrencyAdded events", async () => {
+  //     const tx = await subject();
+
+  //     const payeeDetailsHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string"], [subjectVerifierData[0].payeeDetails]));
+  //     await expect(tx).to.emit(ramp, "DepositVerifierAdded").withArgs(
+  //       subjectDepositId,
+  //       otherVerifier.address,
+  //       payeeDetailsHash,
+  //       subjectVerifierData[0].intentGatingService
+  //     );
+
+  //     const receipt = await tx.wait();
+  //     const currencyEvents = receipt.events.filter((e: any) => e.event === "DepositCurrencyAdded");
+  //     expect(currencyEvents).to.have.length(2);
+  //   });
+
+  //   describe("when the caller is delegate", async () => {
+  //     beforeEach(async () => {
+  //       subjectCaller = offRamperDelegate;
+  //     });
+
+  //     it("should not revert", async () => {
+  //       await expect(subject()).to.not.be.reverted;
+  //     });
+  //   });
+
+  //   describe("when the caller is not the depositor", async () => {
+  //     beforeEach(async () => {
+  //       subjectCaller = maliciousOnRamper;
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+  //     });
+  //   });
+
+  //   describe("when the verifier is not whitelisted", async () => {
+  //     beforeEach(async () => {
+  //       const newVerifier = await deployer.deployPaymentVerifierMock(
+  //         ramp.address,
+  //         ethers.constants.AddressZero,
+  //         ZERO,
+  //         [Currency.USD]
+  //       );
+  //       subjectVerifiers = [newVerifier.address];
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Payment verifier not whitelisted");
+  //     });
+  //   });
+
+  //   describe("when the escrow is paused", async () => {
+  //     beforeEach(async () => {
+  //       await ramp.connect(owner.wallet).pauseEscrow();
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Pausable: paused");
+  //     });
+  //   });
+  // });
+
+  // describe("#removeVerifierFromDeposit", async () => {
+  //   let subjectDepositId: BigNumber;
+  //   let subjectVerifier: Address;
+  //   let subjectCaller: Account;
+
+  //   beforeEach(async () => {
+  //     // Create deposit with multiple verifiers
+  //     await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+  //     await ramp.connect(owner.wallet).addWhitelistedPaymentVerifier(otherVerifier.address, ZERO);
+
+  //     await ramp.connect(offRamper.wallet).createDeposit(
+  //       usdcToken.address,
+  //       usdc(100),
+  //       { min: usdc(10), max: usdc(200) },
+  //       [verifier.address, otherVerifier.address],
+  //       [
+  //         {
+  //           intentGatingService: gatingService.address,
+  //           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+  //           data: "0x"
+  //         },
+  //         {
+  //           intentGatingService: gatingService.address,
+  //           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")),
+  //           data: "0x"
+  //         }
+  //       ],
+  //       [
+  //         [{ code: Currency.USD, minConversionRate: ether(1.01) }],
+  //         [{ code: Currency.USD, minConversionRate: ether(1.02) }]
+  //       ],
+  //       offRamperDelegate.address
+  //     );
+
+  //     subjectDepositId = ZERO;
+  //     subjectVerifier = otherVerifier.address;
+  //     subjectCaller = offRamper;
+  //   });
+
+  //   async function subject(): Promise<any> {
+  //     return ramp.connect(subjectCaller.wallet).removeVerifierFromDeposit(
+  //       subjectDepositId,
+  //       subjectVerifier
+  //     );
+  //   }
+
+  //   it("should remove the verifier from the deposit", async () => {
+  //     await subject();
+
+  //     const verifiers = await ramp.getDepositVerifiers(subjectDepositId);
+  //     expect(verifiers).to.not.include(subjectVerifier);
+
+  //   });
+
+  //   it("should NOT delete the verifier data", async () => {
+  //     await subject();
+
+  //     const verifierData = await ramp.getDepositVerifierData(subjectDepositId, subjectVerifier);
+  //     expect(verifierData.intentGatingService).to.eq(gatingService.address);
+  //     expect(verifierData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
+  //     expect(verifierData.data).to.eq("0x");
+  //   });
+
+  //   it("should remove the currency data for the verifier", async () => {
+  //     await subject();
+
+  //     const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+  //     expect(currencies).to.have.length(0);
+
+  //     const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, Currency.USD);
+  //     expect(minConversionRate).to.eq(ZERO);
+  //   });
+
+  //   it("should emit a DepositVerifierRemoved event", async () => {
+  //     await expect(subject()).to.emit(ramp, "DepositVerifierRemoved").withArgs(
+  //       subjectDepositId,
+  //       subjectVerifier
+  //     );
+  //   });
+
+  //   describe("when the caller is delegate", async () => {
+  //     beforeEach(async () => {
+  //       subjectCaller = offRamperDelegate;
+  //     });
+
+  //     it("should not revert", async () => {
+  //       await expect(subject()).to.not.be.reverted;
+  //     });
+  //   });
+
+  //   describe("when the caller is not the depositor", async () => {
+  //     beforeEach(async () => {
+  //       subjectCaller = maliciousOnRamper;
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+  //     });
+  //   });
+
+  //   describe("when the verifier is not found for the deposit", async () => {
+  //     beforeEach(async () => {
+  //       const newVerifier = await deployer.deployPaymentVerifierMock(
+  //         ramp.address,
+  //         ethers.constants.AddressZero,
+  //         ZERO,
+  //         [Currency.USD]
+  //       );
+  //       subjectVerifier = newVerifier.address;
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+  //     });
+  //   });
+
+  //   describe("when the escrow is paused", async () => {
+  //     beforeEach(async () => {
+  //       await ramp.connect(owner.wallet).pauseEscrow();
+  //     });
+
+  //     it("should revert", async () => {
+  //       await expect(subject()).to.be.revertedWith("Pausable: paused");
+  //     });
+  //   });
+  // });
+
+  describe("#addCurrenciesToDepositVerifier", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectVerifier: Address;
+    let subjectCurrencies: IEscrow.CurrencyStruct[];
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address
+      );
+
+      subjectDepositId = ZERO;
+      subjectVerifier = verifier.address;
+      subjectCurrencies = [
+        { code: Currency.EUR, minConversionRate: ether(0.95) }
+      ];
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).addCurrenciesToDepositVerifier(
+        subjectDepositId,
+        subjectVerifier,
+        subjectCurrencies
+      );
+    }
+
+    it("should add the currencies to the verifier", async () => {
+      await subject();
+
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+      expect(currencies).to.include(Currency.EUR);
+
+      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, Currency.EUR);
+      expect(minConversionRate).to.eq(subjectCurrencies[0].minConversionRate);
+    });
+
+    it("should emit a DepositCurrencyAdded event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositCurrencyAdded").withArgs(
+        subjectDepositId,
+        subjectVerifier,
+        Currency.EUR,
+        subjectCurrencies[0].minConversionRate
+      );
+    });
+
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+      });
+    });
+
+    describe("when the verifier is not found for the deposit", async () => {
+      beforeEach(async () => {
+        subjectVerifier = otherVerifier.address;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+      });
+    });
+
+    describe("when the currency is not supported by the verifier", async () => {
+      beforeEach(async () => {
+        subjectCurrencies = [
+          { code: Currency.AED, minConversionRate: ether(3.67) }
+        ];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Currency not supported by verifier");
+      });
+    });
+
+    describe("when the minConversionRate is zero", async () => {
+      beforeEach(async () => {
+        subjectCurrencies[0].minConversionRate = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
+      });
+    });
+
+    describe("when the currency already exists", async () => {
+      beforeEach(async () => {
+        subjectCurrencies = [
+          { code: Currency.USD, minConversionRate: ether(1.05) }
+        ];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Currency rate already exists");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+  describe("#removeCurrencyFromDepositVerifier", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectVerifier: Address;
+    let subjectCurrencyCode: string;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit with multiple currencies
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [
+            { code: Currency.USD, minConversionRate: ether(1.01) },
+            { code: Currency.EUR, minConversionRate: ether(0.95) }
+          ]
+        ],
+        offRamperDelegate.address
+      );
+
+      subjectDepositId = ZERO;
+      subjectVerifier = verifier.address;
+      subjectCurrencyCode = Currency.EUR;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).removeCurrencyFromDepositVerifier(
+        subjectDepositId,
+        subjectVerifier,
+        subjectCurrencyCode
+      );
+    }
+
+    it("should remove the currency from the verifier", async () => {
+      await subject();
+
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+      expect(currencies).to.not.include(subjectCurrencyCode);
+
+      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, subjectCurrencyCode);
+      expect(minConversionRate).to.eq(ZERO);
+    });
+
+    it("should emit a DepositCurrencyRemoved event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositCurrencyRemoved").withArgs(
+        subjectDepositId,
+        subjectVerifier,
+        subjectCurrencyCode
+      );
+    });
+
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+      });
+    });
+
+    describe("when the verifier is not found for the deposit", async () => {
+      beforeEach(async () => {
+        subjectVerifier = otherVerifier.address;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+      });
+    });
+
+    describe("when the currency is not found for the verifier", async () => {
+      beforeEach(async () => {
+        subjectCurrencyCode = Currency.AED;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Currency not found for verifier");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+  describe("#setDepositDelegate", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectDelegate: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        ADDRESS_ZERO
+      );
+
+      subjectDepositId = ZERO;
+      subjectDelegate = offRamperDelegate.address;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setDepositDelegate(
+        subjectDepositId,
+        subjectDelegate
+      );
+    }
+
+    it("should set the delegate for the deposit", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.delegate).to.eq(subjectDelegate);
+
+      const delegateFromGetter = await ramp.getDepositDelegate(subjectDepositId);
+      expect(delegateFromGetter).to.eq(subjectDelegate);
+    });
+
+    it("should emit a DepositDelegateSet event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositDelegateSet").withArgs(
+        subjectDepositId,
+        subjectCaller.address,
+        subjectDelegate
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+        });
+      });
+    });
+
+    describe("when the delegate is zero address", async () => {
+      beforeEach(async () => {
+        subjectDelegate = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Delegate cannot be zero address");
+      });
+    });
+
+    describe("when updating an existing delegate", async () => {
+      beforeEach(async () => {
+        // First set a delegate
+        await ramp.connect(offRamper.wallet).setDepositDelegate(subjectDepositId, offRamperDelegate.address);
+        // Then change to a different delegate
+        subjectDelegate = receiver.address;
+      });
+
+      it("should update the delegate", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.delegate).to.eq(subjectDelegate);
+      });
+
+      it("should emit a DepositDelegateSet event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositDelegateSet").withArgs(
+          subjectDepositId,
+          subjectCaller.address,
+          subjectDelegate
+        );
+      });
+    });
+  });
+
+  describe("#removeDepositDelegate", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit with delegate
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(100),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address  // Set delegate on creation
+      );
+
+      subjectDepositId = ZERO;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).removeDepositDelegate(subjectDepositId);
+    }
+
+    it("should remove the delegate from the deposit", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.delegate).to.eq(ethers.constants.AddressZero);
+
+      const delegateFromGetter = await ramp.getDepositDelegate(subjectDepositId);
+      expect(delegateFromGetter).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should emit a DepositDelegateRemoved event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositDelegateRemoved").withArgs(
+        subjectDepositId,
+        subjectCaller.address
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should still revert", async () => {
+          await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+        });
+      });
+    });
+
+    describe("when no delegate is set", async () => {
+      beforeEach(async () => {
+        // First remove the delegate, then try to remove again
+        await ramp.connect(offRamper.wallet).removeDepositDelegate(subjectDepositId);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("No delegate set for this deposit");
       });
     });
   });

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.18;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPostIntentHook } from "./IPostIntentHook.sol";
 
 interface IEscrow {
     
@@ -15,6 +16,7 @@ interface IEscrow {
 
     struct Deposit {
         address depositor;                          // Address of depositor
+        address delegate;                           // Address that can manage this deposit (address(0) if no delegate)
         IERC20 token;                               // Address of deposit token
         uint256 amount;                             // Amount of deposit token
         Range intentAmountRange;                    // Range of take amount per intent
@@ -27,7 +29,8 @@ interface IEscrow {
 
     struct Currency {
         bytes32 code;                               // Currency code (keccak256 hash of the currency code)
-        uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency
+        uint256 minConversionRate;                  // Minimum rate of deposit token to fiat currency (in preciseUnits)
+        // todo: Do we need maxConversionRate?
     }
 
     struct DepositVerifierData {
@@ -47,6 +50,8 @@ interface IEscrow {
                                                     // going to pay with offchain
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
         uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
+        IPostIntentHook postIntentHook;             // Address of the post-intent hook that will execute any post-intent actions
+        bytes data;                                 // Additional data to be passed to the post-intent hook contract
     }
 
     struct VerifierDataView {
@@ -68,5 +73,14 @@ interface IEscrow {
         DepositView deposit;
     }
 
-    function getDepositFromIds(uint256[] memory _depositIds) external view returns (DepositView[] memory depositArray);
+    function getDeposit(uint256 _depositId) external view returns (Deposit memory);
+    function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
+    function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory);
+    function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
+    function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory);
+    function getAccountDeposits(address _account) external view returns (uint256[] memory);
+    
+    function getIntent(bytes32 _intentHash) external view returns (Intent memory);
+    function getAccountIntent(address _account) external view returns (bytes32);
+    function getPrunableIntents(uint256 _depositId) external view returns (bytes32[] memory prunableIntents, uint256 reclaimedAmount);
 }

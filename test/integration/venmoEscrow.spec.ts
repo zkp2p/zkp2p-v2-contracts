@@ -27,6 +27,7 @@ import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
+import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
@@ -126,6 +127,7 @@ describe.skip("VenmoEscrow", () => {
       [witnessAddress]
     );
 
+    const depositConversionRate = ether(1.08);
     const createDepositTx = await ramp.connect(offRamper.wallet).createDeposit(
       usdcToken.address,
       usdc(100),
@@ -137,19 +139,22 @@ describe.skip("VenmoEscrow", () => {
         data: depositData
       }],
       [
-        [{ code: Currency.USD, conversionRate: ether(1.08) }]
-      ]
+        [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+      ],
+      ethers.constants.AddressZero
     );
     const createDepositReceipt = await createDepositTx.wait();
     console.log("Create deposit gas used:", createDepositReceipt.gasUsed.toString());
 
     const gatingServiceSignature = await generateGatingServiceSignature(
+      gatingService,
       ZERO,
       usdc(5),
-      onRamper.address,
-      verifier.address,
-      Currency.USD,
-      chainId.toString()
+      onRamper.address, // to
+      verifier.address, // verifier
+      Currency.USD, // fiatCurrency
+      depositConversionRate, // conversionRate
+      chainId.toString() // chainId
     );
     const signalIntentTx = await ramp.connect(onRamper.wallet).signalIntent(
       ZERO, // depositId
@@ -157,7 +162,10 @@ describe.skip("VenmoEscrow", () => {
       onRamper.address,
       verifier.address,
       Currency.USD,
-      gatingServiceSignature
+      depositConversionRate,
+      gatingServiceSignature,
+      ADDRESS_ZERO, // postIntentHook
+      "0x"          // data for postIntentHook
     );
     const signalIntentReceipt = await signalIntentTx.wait();
     console.log("Signal intent gas used:", signalIntentReceipt.gasUsed.toString());
@@ -194,21 +202,6 @@ describe.skip("VenmoEscrow", () => {
     subjectCaller = onRamper;
   });
 
-  const generateGatingServiceSignature = async (
-    depositId: BigNumber,
-    amount: BigNumber,
-    to: Address,
-    verifier: Address,
-    fiatCurrency: string,
-    chainId: string
-  ) => {
-    const messageHash = ethers.utils.solidityKeccak256(
-      ["uint256", "uint256", "address", "address", "bytes32", "uint256"],
-      [depositId, amount, to, verifier, fiatCurrency, chainId]
-    );
-    return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
-  }
-
   function convertSignatureToHex(signature: { [key: string]: number }): string {
     const byteArray = Object.values(signature);
     return '0x' + Buffer.from(byteArray).toString('hex');
@@ -216,12 +209,12 @@ describe.skip("VenmoEscrow", () => {
 
   describe("Fulfill intent integration test", async () => {
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).fulfillIntent(subjectProof, subjectIntentHash);
+      return ramp.connect(subjectCaller.wallet).fulfillIntent(subjectProof, subjectIntentHash, "0x");
     }
 
     it("should transfer the correct amount to the on-ramper", async () => {
       const initialBalance = await usdcToken.balanceOf(onRamper.address);
-      const preDeposit = await ramp.deposits(ZERO);
+      const preDeposit = await ramp.getDeposit(ZERO);
 
       const tx = await subject();
       const receipt = await tx.wait();
@@ -229,11 +222,11 @@ describe.skip("VenmoEscrow", () => {
       console.log(`Gas used for fulfillIntent: ${gasUsed.toString()}`);
 
       const finalBalance = await usdcToken.balanceOf(onRamper.address);
-      const intent = await ramp.intents(subjectIntentHash);
+      const intent = await ramp.getIntent(subjectIntentHash);
 
       expect(intent.owner).to.eq(ADDRESS_ZERO); // Intent should be deleted
       expect(finalBalance.sub(initialBalance)).to.eq(usdc(5));
-      const postDeposit = await ramp.deposits(ZERO);
+      const postDeposit = await ramp.getDeposit(ZERO);
       expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(5)));
     });
   });
