@@ -31,7 +31,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("EscrowViewer", () => {
+describe.only("EscrowViewer", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
@@ -128,7 +128,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       subjectDepositId = ZERO;
@@ -188,7 +189,9 @@ describe("EscrowViewer", () => {
           onRamper.address,
           verifier.address,
           Currency.USD,
-          gatingServiceSignature
+          gatingServiceSignature,
+          ethers.constants.AddressZero,
+          "0x"
         );
 
         // Move time forward past intent expiration
@@ -235,7 +238,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       await ramp.connect(offRamper.wallet).createDeposit(
@@ -250,7 +254,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       subjectAccount = offRamper.address;
@@ -298,7 +303,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       await ramp.connect(offRamper.wallet).createDeposit(
@@ -313,7 +319,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       subjectDepositIds = [ZERO, ONE];
@@ -361,7 +368,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -380,7 +388,9 @@ describe("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        gatingServiceSignature,
+        ethers.constants.AddressZero,
+        "0x"
       );
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -424,7 +434,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -443,7 +454,9 @@ describe("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        gatingServiceSignature,
+        ethers.constants.AddressZero,
+        "0x"
       );
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -489,7 +502,8 @@ describe("EscrowViewer", () => {
         }],
         [
           [{ code: Currency.USD, conversionRate: ether(1.08) }]
-        ]
+        ],
+        ethers.constants.AddressZero
       );
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -508,7 +522,9 @@ describe("EscrowViewer", () => {
         onRamper.address,
         verifier.address,
         Currency.USD,
-        gatingServiceSignature
+        gatingServiceSignature,
+        ethers.constants.AddressZero,
+        "0x"
       );
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();

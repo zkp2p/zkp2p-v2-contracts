@@ -24,18 +24,19 @@ import {
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier,
   ZelleBaseVerifier,
-  BaseReclaimVerifier
+  BaseReclaimVerifier,
+  PostIntentHookMock
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
   USDCMock__factory,
   PaymentVerifierMock__factory,
-  ClaimVerifierMock__factory
+  ClaimVerifierMock__factory,
+  PostIntentHookMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
-import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { EscrowViewer__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -270,10 +271,6 @@ export default class DeployHelper {
     return await new ManagedKeyHashAdapterV2__factory(this._deployerSigner).deploy(keyHashes);
   }
 
-  public async deployQuoter(escrow: Address): Promise<Quoter> {
-    return await new Quoter__factory(this._deployerSigner).deploy(escrow);
-  }
-
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
@@ -294,5 +291,12 @@ export default class DeployHelper {
 
   public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
     return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployPostIntentHookMock(
+    usdc: Address,
+    escrow: Address
+  ): Promise<PostIntentHookMock> {
+    return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
   }
 }
