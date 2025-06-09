@@ -11,7 +11,9 @@ import {
   EscrowViewer,
   IEscrow,
   USDCMock,
-  PaymentVerifierMock
+  PaymentVerifierMock,
+  PostIntentHookRegistry,
+  PaymentVerifierRegistry
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -48,6 +50,8 @@ describe.only("EscrowViewer", () => {
   let ramp: Escrow;
   let escrowViewer: EscrowViewer;
   let usdcToken: USDCMock;
+  let paymentVerifierRegistry: PaymentVerifierRegistry;
+  let postIntentHookRegistry: PostIntentHookRegistry;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -72,6 +76,9 @@ describe.only("EscrowViewer", () => {
 
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
+    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
+    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
     ramp = await deployer.deployEscrow(
@@ -79,7 +86,9 @@ describe.only("EscrowViewer", () => {
       ONE_DAY_IN_SECONDS,                // 1 day intent expiration period
       ZERO,                              // Sustainability fee
       feeRecipient.address,
-      chainId
+      chainId,
+      paymentVerifierRegistry.address,
+      postIntentHookRegistry.address
     );
 
     escrowViewer = await deployer.deployEscrowViewer(
@@ -101,7 +110,7 @@ describe.only("EscrowViewer", () => {
       [Currency.USD]
     );
 
-    await ramp.addWhitelistedPaymentVerifier(verifier.address, ZERO);
+    await paymentVerifierRegistry.addPaymentVerifier(verifier.address, ZERO);
   });
 
   describe("#getDeposit", async () => {

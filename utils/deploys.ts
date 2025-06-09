@@ -25,7 +25,9 @@ import {
   ZelleChaseReclaimVerifier,
   ZelleBaseVerifier,
   BaseReclaimVerifier,
-  PostIntentHookMock
+  PostIntentHookMock,
+  PaymentVerifierRegistry,
+  PostIntentHookRegistry
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -35,6 +37,8 @@ import {
   PostIntentHookMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
+import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/verifiers/registries/PaymentVerifierRegistry.sol";
+import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/hooks/PostIntentHookRegistry.sol";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
@@ -65,14 +69,18 @@ export default class DeployHelper {
     intentExpirationPeriod: BigNumber,
     sustainabilityFee: BigNumber,
     sustainabilityFeeRecipient: Address,
-    chainId: BigNumber
+    chainId: BigNumber,
+    paymentVerifierRegistry: Address,
+    postIntentHookRegistry: Address
   ): Promise<Escrow> {
     return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
       chainId.toString(),
       intentExpirationPeriod,
       sustainabilityFee,
-      sustainabilityFeeRecipient
+      sustainabilityFeeRecipient,
+      paymentVerifierRegistry,
+      postIntentHookRegistry
     );
   }
 
@@ -298,5 +306,13 @@ export default class DeployHelper {
     escrow: Address
   ): Promise<PostIntentHookMock> {
     return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
+  }
+
+  public async deployPaymentVerifierRegistry(owner: Address): Promise<PaymentVerifierRegistry> {
+    return await new PaymentVerifierRegistry__factory(this._deployerSigner).deploy(owner);
+  }
+
+  public async deployPostIntentHookRegistry(owner: Address): Promise<PostIntentHookRegistry> {
+    return await new PostIntentHookRegistry__factory(this._deployerSigner).deploy(owner);
   }
 }

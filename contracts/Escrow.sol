@@ -15,6 +15,8 @@ import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifierRegistry } from "./verifiers/registries/PaymentVerifierRegistry.sol";
+import { IPostIntentHookRegistry } from "./hooks/PostIntentHookRegistry.sol";
 
 pragma solidity ^0.8.18;
 
@@ -98,17 +100,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event MinDepositAmountSet(uint256 minDepositAmount);
     event SustainabilityFeeUpdated(uint256 fee);
     event SustainabilityFeeRecipientUpdated(address feeRecipient);
-    event AcceptAllPaymentVerifiersUpdated(bool acceptAllPaymentVerifiers);
     event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
     
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
     event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
     event DepositCurrencyRemoved(uint256 indexed depositId, address indexed verifier, bytes32 indexed currencyCode);
     
-    event PaymentVerifierAdded(address verifier, uint256 feeShare);
-    event PaymentVerifierFeeShareUpdated(address verifier, uint256 feeShare);
-    event PaymentVerifierRemoved(address verifier);
-
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
 
@@ -142,10 +139,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => Deposit) internal deposits;                    // Mapping of depositIds to deposit structs
     mapping(bytes32 => Intent) internal intents;                      // Mapping of intentHashes to intent structs
 
-    // Governance controlled
-    bool public acceptAllPaymentVerifiers;                            // True if all payment verifiers are accepted, False otherwise
-    mapping(address => bool) public whitelistedPaymentVerifiers;      // Mapping of payment verifier addresses to boolean indicating if they are whitelisted
-    mapping(address => uint256) public paymentVerifierFeeShare;       // Mapping of payment verifier addresses to their fee share
+    // Registry contracts
+    IPaymentVerifierRegistry public immutable paymentVerifierRegistry;
+    IPostIntentHookRegistry public immutable postIntentHookRegistry;
 
     uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
     uint256 public sustainabilityFee;                               // Fee charged to takers in preciseUnits (1e16 = 1%)
@@ -153,11 +149,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     uint256 public depositCounter;                                  // Counter for depositIds
 
-    // TODO: Add a mapping of allowed post intent hooks and add governance function to add/remove allowed post intent hooks
-    // Add this into a intent hook registry contract.
-    // Also to reduce size of contract, maybe also move the whitelisted payment verifiers to a registry contract.
-
-// Todo: Update how we calculate intent hash to allow multiple intents per account (for relayer accounts).
+    // Todo: Update how we calculate intent hash to allow multiple 
+    // intents per account (for relayer accounts).
 
     /* ============ Modifiers ============ */
 
@@ -181,14 +174,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _chainId,
         uint256 _intentExpirationPeriod,
         uint256 _sustainabilityFee,
-        address _sustainabilityFeeRecipient
+        address _sustainabilityFeeRecipient,
+        address _paymentVerifierRegistry,
+        address _postIntentHookRegistry
     )
         Ownable()
     {
+        require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
+        require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
+        
         chainId = _chainId;
         intentExpirationPeriod = _intentExpirationPeriod;
         sustainabilityFee = _sustainabilityFee;
         sustainabilityFeeRecipient = _sustainabilityFeeRecipient;
+        paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+        postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
 
         transferOwnership(_owner);
     }
@@ -284,6 +284,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _validateIntent(
             _depositId, deposit, _amount, _to, _verifier, _fiatCurrency, _conversionRate, _gatingServiceSignature
         );
+
+        // Validate post intent hook if provided
+        if (address(_postIntentHook) != address(0)) {
+            require(
+                postIntentHookRegistry.isWhitelistedHook(address(_postIntentHook)),
+                "Post intent hook not whitelisted"
+            );
+        }
 
         bytes32 intentHash = _calculateIntentHash(msg.sender, _verifier, _depositId);
 
@@ -490,18 +498,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _verifierData          The payment verification data for the verifiers
      * @param _currencies            The currencies for the verifiers
      */
-    // function addVerifiersToDeposit(
-    //     uint256 _depositId,
-    //     address[] calldata _verifiers,
-    //     DepositVerifierData[] calldata _verifierData,
-    //     Currency[][] calldata _currencies
-    // )
-    //     external
-    //     whenNotPaused
-    //     onlyDepositorOrDelegate(_depositId)
-    // {
-    //     _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
-    // }
+    function addVerifiersToDeposit(
+        uint256 _depositId,
+        address[] calldata _verifiers,
+        DepositVerifierData[] calldata _verifierData,
+        Currency[][] calldata _currencies
+    )
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
+    }
 
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
@@ -510,37 +518,37 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId             The deposit ID
      * @param _verifier              The payment verifier to remove
      */
-    // function removeVerifierFromDeposit(
-    //     uint256 _depositId,
-    //     address _verifier
-    // )
-    //     external
-    //     whenNotPaused
-    //     onlyDepositorOrDelegate(_depositId)
-    // {
-    //     require(
-    //         bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
-    //         "Verifier not found for deposit"
-    //     );
+    function removeVerifierFromDeposit(
+        uint256 _depositId,
+        address _verifier
+    )
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        require(
+            bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
+            "Verifier not found for deposit"
+        );
 
-    //     // Remove verifier from the list
-    //     depositVerifiers[_depositId].removeStorage(_verifier);
+        // Remove verifier from the list
+        depositVerifiers[_depositId].removeStorage(_verifier);
 
-    //     // Delete associated currency data first
-    //     bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
-    //     for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
-    //         // Iterate backwards for safe deletion if removeStorage reorders/shrinks
-    //         bytes32 currencyCode = currenciesForVerifier[i-1];
-    //         delete depositCurrencyMinRate[_depositId][_verifier][currencyCode];
-    //     }
-    //     delete depositCurrencies[_depositId][_verifier];
+        // Delete associated currency data first
+        bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
+        for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
+            // Iterate backwards for safe deletion if removeStorage reorders/shrinks
+            bytes32 currencyCode = currenciesForVerifier[i-1];
+            delete depositCurrencyMinRate[_depositId][_verifier][currencyCode];
+        }
+        delete depositCurrencies[_depositId][_verifier];
         
-    //     // Delete verifier data
-    //     // Don't delete deposit verifier data to prevent reverting on existing intents
-    //     // delete depositVerifierData[_depositId][_verifier];
+        // Delete verifier data
+        // Don't delete deposit verifier data to prevent reverting on existing intents
+        // delete depositVerifierData[_depositId][_verifier];
 
-    //     emit DepositVerifierRemoved(_depositId, _verifier);
-    // }
+        emit DepositVerifierRemoved(_depositId, _verifier);
+    }
 
     /**
      * @notice Allows depositor to add a new currencies to an existing verifier for a deposit.
@@ -661,57 +669,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /* ============ Governance Functions ============ */
-
-    /**
-     * @notice GOVERNANCE ONLY: Adds a payment verifier to the whitelist.
-     *
-     * @param _verifier   The payment verifier address to add
-     * @param _feeShare   The fee share for the payment verifier
-     */
-    function addWhitelistedPaymentVerifier(address _verifier, uint256 _feeShare) external onlyOwner {
-        require(_verifier != address(0), "Payment verifier cannot be zero address");
-        require(!whitelistedPaymentVerifiers[_verifier], "Payment verifier already whitelisted");
-        
-        whitelistedPaymentVerifiers[_verifier] = true;
-        paymentVerifierFeeShare[_verifier] = _feeShare;
-        
-        emit PaymentVerifierAdded(_verifier, _feeShare);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Removes a payment verifier from the whitelist.
-     *
-     * @param _verifier   The payment verifier address to remove
-     */
-    function removeWhitelistedPaymentVerifier(address _verifier) external onlyOwner {
-        require(whitelistedPaymentVerifiers[_verifier], "Payment verifier not whitelisted");
-        
-        whitelistedPaymentVerifiers[_verifier] = false;
-        emit PaymentVerifierRemoved(_verifier);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the fee share for a payment verifier.
-     *
-     * @param _verifier   The payment verifier address to update
-     * @param _feeShare   The new fee share
-     */
-    function updatePaymentVerifierFeeShare(address _verifier, uint256 _feeShare) external onlyOwner {
-        require(whitelistedPaymentVerifiers[_verifier], "Payment verifier not whitelisted");
-
-        paymentVerifierFeeShare[_verifier] = _feeShare;
-        emit PaymentVerifierFeeShareUpdated(_verifier, _feeShare);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Sets whether all payment verifiers can be used without whitelisting.
-     *
-     * @param _acceptAllPaymentVerifiers   True to accept all payment verifiers, false to require whitelisting
-     */
-    function updateAcceptAllPaymentVerifiers(bool _acceptAllPaymentVerifiers) external onlyOwner {
-        acceptAllPaymentVerifiers = _acceptAllPaymentVerifiers;
-        emit AcceptAllPaymentVerifiersUpdated(_acceptAllPaymentVerifiers);
-    }
 
     /**
      * @notice GOVERNANCE ONLY: Updates the sustainability fee. This fee is charged to takers upon a successful 
@@ -981,7 +938,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (sustainabilityFee != 0) {
             fee = (_intent.amount * sustainabilityFee) / PRECISE_UNIT;
             if (_verifier != address(0)) {
-                verifierFee = (fee * paymentVerifierFeeShare[_verifier]) / PRECISE_UNIT;
+                uint256 verifierFeeShare = paymentVerifierRegistry.getVerifierFeeShare(_verifier);
+                verifierFee = (fee * verifierFeeShare) / PRECISE_UNIT;
                 _token.transfer(_verifier, verifierFee);
             }
             _token.transfer(sustainabilityFeeRecipient, fee - verifierFee);
@@ -1038,7 +996,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
             address verifier = _verifiers[i];
             
             require(verifier != address(0), "Verifier cannot be zero address");
-            require(whitelistedPaymentVerifiers[verifier] || acceptAllPaymentVerifiers, "Payment verifier not whitelisted");
+            require(
+                paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
+                paymentVerifierRegistry.isAcceptingAllVerifiers(), 
+                "Payment verifier not whitelisted"
+            );
             require(bytes(_verifierData[i].payeeDetails).length != 0, "Payee details cannot be empty");
             require(bytes(depositVerifierData[_depositId][verifier].payeeDetails).length == 0, "Verifier data already exists");
 

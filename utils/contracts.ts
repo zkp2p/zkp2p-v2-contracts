@@ -8,6 +8,8 @@ export {
   EscrowViewer,
   BasePaymentVerifier,
   BaseReclaimVerifier,
+  PaymentVerifierRegistry,
+  PostIntentHookRegistry,
   NullifierRegistry,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
