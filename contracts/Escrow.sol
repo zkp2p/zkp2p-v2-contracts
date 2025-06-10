@@ -85,8 +85,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address owner,
         address to,
         uint256 amount,
-        uint256 sustainabilityFee,
-        uint256 verifierFee
+        uint256 protocolFee,
+        uint256 referrerFee
     );
 
     event DepositWithdrawn(
@@ -98,8 +98,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event DepositClosed(uint256 depositId, address depositor);
     
     event MinDepositAmountSet(uint256 minDepositAmount);
-    event SustainabilityFeeUpdated(uint256 fee);
-    event SustainabilityFeeRecipientUpdated(address feeRecipient);
     event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
     
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
@@ -109,10 +107,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
 
+    event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
+    event PostIntentHookRegistryUpdated(address indexed postIntentHookRegistry);
+    
+    event ProtocolFeeUpdated(uint256 protocolFee);
+    event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
+
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-    uint256 constant MAX_SUSTAINABILITY_FEE = 5e16;   // 5% max sustainability fee
+    uint256 constant MAX_REFERRER_FEE = 5e16;      // 5% max referrer fee
+    uint256 constant MAX_PROTOCOL_FEE = 5e16;      // 5% max protocol fee
     
     /* ============ State Variables ============ */
 
@@ -140,12 +145,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(bytes32 => Intent) internal intents;                      // Mapping of intentHashes to intent structs
 
     // Registry contracts
-    IPaymentVerifierRegistry public immutable paymentVerifierRegistry;
-    IPostIntentHookRegistry public immutable postIntentHookRegistry;
+    IPaymentVerifierRegistry public paymentVerifierRegistry;
+    IPostIntentHookRegistry public postIntentHookRegistry;
+
+    // Protocol fee configuration
+    uint256 public protocolFee;                                     // Protocol fee taken from taker (in preciseUnits, 1e16 = 1%)
+    address public protocolFeeRecipient;                            // Address that receives protocol fees
 
     uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
-    uint256 public sustainabilityFee;                               // Fee charged to takers in preciseUnits (1e16 = 1%)
-    address public sustainabilityFeeRecipient;                      // Address that receives the sustainability fee
 
     uint256 public depositCounter;                                  // Counter for depositIds
 
@@ -173,22 +180,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _owner,
         uint256 _chainId,
         uint256 _intentExpirationPeriod,
-        uint256 _sustainabilityFee,
-        address _sustainabilityFeeRecipient,
         address _paymentVerifierRegistry,
-        address _postIntentHookRegistry
+        address _postIntentHookRegistry,
+        uint256 _protocolFee,
+        address _protocolFeeRecipient
     )
         Ownable()
     {
-        require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
-        require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
-        
         chainId = _chainId;
         intentExpirationPeriod = _intentExpirationPeriod;
-        sustainabilityFee = _sustainabilityFee;
-        sustainabilityFeeRecipient = _sustainabilityFeeRecipient;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
+        protocolFee = _protocolFee;
+        protocolFeeRecipient = _protocolFeeRecipient;
 
         transferOwnership(_owner);
     }
@@ -254,54 +258,25 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * verifying the payer's identity, checking the payer's KYC status, etc. If there are prunable intents then they will be 
      * deleted from the deposit to be able to maintain state hygiene.
      *
-     * @param _depositId                The ID of the deposit the taker intends to use for taking onchain liquidity
-     * @param _amount                   The amount of deposit.token the user wants to take
-     * @param _to                       Address to forward funds to (can be same as owner)
-     * @param _verifier                 The payment verifier corresponding to the payment service the user is going to pay with 
-     *                                  offchain (e.g. Venmo, Revolut, Mercado, etc.)
-     * @param _fiatCurrency             The currency code that the user is paying in offchain
-     * @param _conversionRate           The conversion rate of deposit token to fiat currency agreed offchain
-     * @param _gatingServiceSignature   The signature from the deposit's gating service on intent parameters
-     * @param _postIntentHook           Optional post-intent hook address for custom actions (address(0) for no hook)
-     * @param _data                     Additional data for the intent; Can hold calldata for post-intent actions
+     * @param _params                   Struct containing all the intent parameters
      */
-    function signalIntent(
-        uint256 _depositId,
-        uint256 _amount,
-        address _to,
-        address _verifier,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
-        bytes calldata _gatingServiceSignature,
-        IPostIntentHook _postIntentHook,
-        bytes calldata _data
-    )
+    function signalIntent(SignalIntentParams calldata _params)
         external
         whenNotPaused
     {
-        Deposit storage deposit = deposits[_depositId];
+        Deposit storage deposit = deposits[_params.depositId];
         
-        _validateIntent(
-            _depositId, deposit, _amount, _to, _verifier, _fiatCurrency, _conversionRate, _gatingServiceSignature
-        );
+        _validateIntent(_params, deposit);
 
-        // Validate post intent hook if provided
-        if (address(_postIntentHook) != address(0)) {
-            require(
-                postIntentHookRegistry.isWhitelistedHook(address(_postIntentHook)),
-                "Post intent hook not whitelisted"
-            );
-        }
+        bytes32 intentHash = _calculateIntentHash(msg.sender, _params.verifier, _params.depositId);
 
-        bytes32 intentHash = _calculateIntentHash(msg.sender, _verifier, _depositId);
-
-        if (deposit.remainingDeposits < _amount) {
+        if (deposit.remainingDeposits < _params.amount) {
             (
                 bytes32[] memory prunableIntents,
                 uint256 reclaimableAmount
-            ) = _getPrunableIntents(_depositId);
+            ) = _getPrunableIntents(_params.depositId);
 
-            require(deposit.remainingDeposits + reclaimableAmount >= _amount, "Not enough liquidity");
+            require(deposit.remainingDeposits + reclaimableAmount >= _params.amount, "Not enough liquidity");
 
             _pruneIntents(deposit, prunableIntents);
             deposit.remainingDeposits += reclaimableAmount;
@@ -310,35 +285,36 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         intents[intentHash] = Intent({
             owner: msg.sender,
-            to: _to,
-            depositId: _depositId,
-            amount: _amount,
-            paymentVerifier: _verifier,
-            fiatCurrency: _fiatCurrency,
-            conversionRate: _conversionRate,
+            to: _params.to,
+            depositId: _params.depositId,
+            amount: _params.amount,
+            paymentVerifier: _params.verifier,
+            fiatCurrency: _params.fiatCurrency,
+            conversionRate: _params.conversionRate,
             timestamp: block.timestamp,
-            postIntentHook: _postIntentHook,
-            data: _data
+            referrer: _params.referrer,
+            referrerFee: _params.referrerFee,
+            postIntentHook: _params.postIntentHook,
+            data: _params.data
         });
 
         accountIntent[msg.sender] = intentHash;
 
-        deposit.remainingDeposits -= _amount;
-        deposit.outstandingIntentAmount += _amount;
+        deposit.remainingDeposits -= _params.amount;
+        deposit.outstandingIntentAmount += _params.amount;
         deposit.intentHashes.push(intentHash);
 
-        // TODO: Comment out temporarily to avoid stack too deep error
-        // emit IntentSignaled(
-        //     intentHash, 
-        //     _depositId, 
-        //     _verifier, 
-        //     msg.sender, 
-        //     _to, 
-        //     _amount, 
-        //     _fiatCurrency, 
-        //     conversionRate, 
-        //     block.timestamp
-        // );
+        emit IntentSignaled(
+            intentHash, 
+            _params.depositId, 
+            _params.verifier, 
+            msg.sender, 
+            _params.to, 
+            _params.amount, 
+            _params.fiatCurrency, 
+            _params.conversionRate, 
+            block.timestamp
+        );
     }
 
     /**
@@ -671,28 +647,28 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Governance Functions ============ */
 
     /**
-     * @notice GOVERNANCE ONLY: Updates the sustainability fee. This fee is charged to takers upon a successful 
+     * @notice GOVERNANCE ONLY: Updates the protocol fee. This fee is charged to takers upon a successful
      * fulfillment of an intent.
      *
-     * @param _fee   The new sustainability fee in precise units (10**18, ie 10% = 1e17)
+     * @param _protocolFee   New protocol fee in preciseUnits (1e16 = 1%)
      */
-    function setSustainabilityFee(uint256 _fee) external onlyOwner {
-        require(_fee <= MAX_SUSTAINABILITY_FEE, "Fee cannot be greater than max fee");
-
-        sustainabilityFee = _fee;
-        emit SustainabilityFeeUpdated(_fee);
+    function setProtocolFee(uint256 _protocolFee) external onlyOwner {
+        require(_protocolFee <= MAX_PROTOCOL_FEE, "Protocol fee exceeds maximum");
+        
+        protocolFee = _protocolFee;
+        emit ProtocolFeeUpdated(_protocolFee);
     }
 
     /**
-     * @notice GOVERNANCE ONLY: Updates the recepient of sustainability fees.
+     * @notice GOVERNANCE ONLY: Updates the protocol fee recipient address.
      *
-     * @param _feeRecipient   The new fee recipient address
+     * @param _protocolFeeRecipient   New protocol fee recipient address
      */
-    function setSustainabilityFeeRecipient(address _feeRecipient) external onlyOwner {
-        require(_feeRecipient != address(0), "Fee recipient cannot be zero address");
-
-        sustainabilityFeeRecipient = _feeRecipient;
-        emit SustainabilityFeeRecipientUpdated(_feeRecipient);
+    function setProtocolFeeRecipient(address _protocolFeeRecipient) external onlyOwner {
+        require(_protocolFeeRecipient != address(0), "Protocol fee recipient cannot be zero address");
+        
+        protocolFeeRecipient = _protocolFeeRecipient;
+        emit ProtocolFeeRecipientUpdated(_protocolFeeRecipient);
     }
 
     /**
@@ -733,7 +709,30 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _unpause();
     }
 
-    
+    // /**
+    //  * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
+    //  *
+    //  * @param _paymentVerifierRegistry   New payment verifier registry address
+    //  */
+    // function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
+    //     require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
+        
+    //     paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+    //     emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
+    // }
+
+    // /**
+    //  * @notice GOVERNANCE ONLY: Updates the post intent hook registry address.
+    //  *
+    //  * @param _postIntentHookRegistry   New post intent hook registry address
+    //  */
+    // function setPostIntentHookRegistry(address _postIntentHookRegistry) external onlyOwner {
+    //     require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
+        
+    //     postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
+    //     emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
+    // }
+
     /* ============ External View Functions ============ */
 
     /**
@@ -793,36 +792,44 @@ contract Escrow is Ownable, Pausable, IEscrow {
         require(_amount >= _intentAmountRange.min, "Amount must be greater than min intent amount");
     }
 
-    function _validateIntent(
-        uint256 _depositId,
-        Deposit storage _deposit,
-        uint256 _amount,
-        address _to,
-        address _verifier,
-        bytes32 _fiatCurrency,
-        uint256 _conversionRate,
-        bytes calldata _gatingServiceSignature
-    ) internal view {
+    function _validateIntent(SignalIntentParams memory _intent, Deposit storage _deposit) internal view {
+
+        // TODO: Update this later
         require(accountIntent[msg.sender] == bytes32(0), "Account has unfulfilled intent");
+
         require(_deposit.depositor != address(0), "Deposit does not exist");
         require(_deposit.acceptingIntents, "Deposit is not accepting intents");
-        require(_amount >= _deposit.intentAmountRange.min, "Signaled amount must be greater than min intent amount");
-        require(_amount <= _deposit.intentAmountRange.max, "Signaled amount must be less than max intent amount");
-        require(_to != address(0), "Cannot send to zero address");
+        require(_intent.amount >= _deposit.intentAmountRange.min, "Signaled amount must be greater than min intent amount");
+        require(_intent.amount <= _deposit.intentAmountRange.max, "Signaled amount must be less than max intent amount");
+        require(_intent.to != address(0), "Cannot send to zero address");
         
-        DepositVerifierData memory verifierData = depositVerifierData[_depositId][_verifier];
-        require(bytes(verifierData.payeeDetails).length != 0, "Payment verifier not supported");
+        require(_intent.referrerFee <= MAX_REFERRER_FEE, "Referrer fee exceeds maximum");
+        if (_intent.referrer == address(0)) {
+            require(_intent.referrerFee == 0, "Cannot set referrer fee without referrer");
+        }
 
-        uint256 minConversionRate = depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency];
+        if (address(_intent.postIntentHook) != address(0)) {
+            require(
+                postIntentHookRegistry.isWhitelistedHook(address(_intent.postIntentHook)),
+                "Post intent hook not whitelisted"
+            );
+        }
+
+        uint256 depositId = _intent.depositId;
+        DepositVerifierData memory verifierData = depositVerifierData[depositId][_intent.verifier];
+        require(bytes(verifierData.payeeDetails).length != 0, "Payment verifier not supported");
+        
+        uint256 minConversionRate = depositCurrencyMinRate[depositId][_intent.verifier][_intent.fiatCurrency];
+        uint256 conversionRate = _intent.conversionRate;
         require(minConversionRate != 0, "Currency not supported");
-        require(_conversionRate >= minConversionRate, "Rate must be greater than or equal to min rate");
+        require(conversionRate >= minConversionRate, "Rate must be greater than or equal to min rate");
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
             require(
                 _isValidSignature(
-                    abi.encodePacked(_depositId, _amount, _to, _verifier, _fiatCurrency, _conversionRate, chainId),
-                    _gatingServiceSignature,
+                    abi.encodePacked(depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
+                    _intent.gatingServiceSignature,
                     intentGatingService
                 ),
                 "Invalid gating service signature"
@@ -921,10 +928,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Checks if sustainability fee has been defined, if so sends fee to the respective fee recipients, and intent amount
-     * minus total fee to the taker. Total fee is split between the sustainability fee recipient and the payment verifier. To 
-     * skip payment verifier fee split, set _verifier to zero address. If sustainability fee is undefined then full intent amount 
-     * is transferred to taker. 
+     * @notice Handles fee calculations and transfers, then executes any post-intent hooks
      */
     function _transferFundsAndExecuteAction(
         IERC20 _token, 
@@ -933,26 +937,43 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _verifier,
         bytes memory _fulfillIntentData
     ) internal {
-        uint256 fee;
-        uint256 verifierFee;
-        if (sustainabilityFee != 0) {
-            fee = (_intent.amount * sustainabilityFee) / PRECISE_UNIT;
-            if (_verifier != address(0)) {
-                uint256 verifierFeeShare = paymentVerifierRegistry.getVerifierFeeShare(_verifier);
-                verifierFee = (fee * verifierFeeShare) / PRECISE_UNIT;
-                _token.transfer(_verifier, verifierFee);
-            }
-            _token.transfer(sustainabilityFeeRecipient, fee - verifierFee);
+        
+        uint256 protocolFeeAmount;
+        uint256 referrerFeeAmount; 
+
+        // Calculate protocol fee (taken from taker)
+        if (protocolFeeRecipient != address(0) && protocolFee > 0) {
+            protocolFeeAmount = (_intent.amount * protocolFee) / PRECISE_UNIT;
+        }
+        
+        // Calculate referrer fee (taken from taker)
+        if (_intent.referrer != address(0) && _intent.referrerFee > 0) {
+            referrerFeeAmount = (_intent.amount * _intent.referrerFee) / PRECISE_UNIT;
+        }
+        
+        // Total fees taken from taker
+        uint256 totalFees = protocolFeeAmount + referrerFeeAmount;
+        
+        // Net amount the taker receives after fees
+        uint256 netAmount = _intent.amount - totalFees;
+        
+        // Transfer protocol fee to recipient
+        if (protocolFeeAmount > 0) {
+            require(_token.transfer(protocolFeeRecipient, protocolFeeAmount), "Protocol fee transfer failed");
+        }
+        
+        // Transfer referrer fee
+        if (referrerFeeAmount > 0) {
+            require(_token.transfer(_intent.referrer, referrerFeeAmount), "Referrer fee transfer failed");
         }
 
-
-        uint256 transferAmount = _intent.amount - fee;
+        // If there's a post-intent hook, handle it
         if (address(_intent.postIntentHook) != address(0)) {
-            _token.approve(address(_intent.postIntentHook), transferAmount);
-
-            _intent.postIntentHook.execute(_intent, transferAmount, _fulfillIntentData);
+            _token.approve(address(_intent.postIntentHook), netAmount);
+            _intent.postIntentHook.execute(_intent, netAmount, _fulfillIntentData);
         } else {
-            _token.transfer(_intent.to, transferAmount);
+            // Otherwise transfer directly to the intent recipient
+            require(_token.transfer(_intent.to, netAmount), "Transfer to recipient failed");
         }
 
         emit IntentFulfilled(
@@ -961,9 +982,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _verifier, 
             _intent.owner, 
             _intent.to, 
-            transferAmount, 
-            fee - verifierFee, 
-            verifierFee
+            _intent.amount, 
+            protocolFeeAmount,
+            referrerFeeAmount
         );
     }
 

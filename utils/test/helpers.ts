@@ -19,3 +19,47 @@ export const generateGatingServiceSignature = async (
   );
   return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
 }
+
+export const createSignalIntentParams = async (
+  depositId: BigNumber,
+  amount: BigNumber,
+  to: Address,
+  verifier: Address,
+  fiatCurrency: string,
+  conversionRate: BigNumber,
+  referrer: Address = ethers.constants.AddressZero,
+  referrerFee: BigNumber = BigNumber.from(0),
+  gatingService: Account | null = null,
+  chainId: string = "1",
+  postIntentHook: Address = ethers.constants.AddressZero,
+  data: string = "0x"
+) => {
+  let gatingServiceSignature = "0x";
+
+  if (gatingService) {
+    gatingServiceSignature = await generateGatingServiceSignature(
+      gatingService,
+      depositId,
+      amount,
+      to,
+      verifier,
+      fiatCurrency,
+      conversionRate,
+      chainId
+    );
+  }
+
+  return {
+    depositId,
+    amount,
+    to,
+    verifier,
+    fiatCurrency,
+    conversionRate,
+    referrer,
+    referrerFee,
+    gatingServiceSignature,
+    postIntentHook,
+    data
+  };
+}

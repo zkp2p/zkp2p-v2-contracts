@@ -50,8 +50,24 @@ interface IEscrow {
                                                     // going to pay with offchain
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
         uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
+        address referrer;                           // Address of the referrer who brought this intent (if any)
+        uint256 referrerFee;                        // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
         IPostIntentHook postIntentHook;             // Address of the post-intent hook that will execute any post-intent actions
         bytes data;                                 // Additional data to be passed to the post-intent hook contract
+    }
+
+    struct SignalIntentParams {
+        uint256 depositId;                          // The ID of the deposit the taker intends to use
+        uint256 amount;                             // The amount of deposit.token the user wants to take
+        address to;                                 // Address to forward funds to
+        address verifier;                           // The payment verifier for the payment service
+        bytes32 fiatCurrency;                       // The currency code for offchain payment
+        uint256 conversionRate;                     // The conversion rate agreed offchain
+        address referrer;                           // Address of the referrer (address(0) if no referrer)
+        uint256 referrerFee;                        // Fee to be paid to the referrer
+        bytes gatingServiceSignature;               // Signature from the deposit's gating service
+        IPostIntentHook postIntentHook;             // Optional post-intent hook (address(0) for no hook)
+        bytes data;                                 // Additional data for the intent
     }
 
     struct VerifierDataView {

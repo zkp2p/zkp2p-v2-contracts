@@ -29,7 +29,7 @@ import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
-import { generateGatingServiceSignature } from "@utils/test/helpers";
+import { generateGatingServiceSignature, createSignalIntentParams } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
@@ -88,12 +88,12 @@ describe.only("Escrow", () => {
 
     ramp = await deployer.deployEscrow(
       owner.address,
-      ONE_DAY_IN_SECONDS,                // 1 day intent expiration period
-      ZERO,                              // Sustainability fee
-      feeRecipient.address,
+      ONE_DAY_IN_SECONDS,                // intent expiration period
       chainId,
       paymentVerifierRegistry.address,
-      postIntentHookRegistry.address
+      postIntentHookRegistry.address,
+      ZERO,                              // protocol fee (0%)
+      feeRecipient.address               // protocol fee recipient
     );
 
     // Deploy EscrowViewer after escrow is deployed
@@ -114,7 +114,7 @@ describe.only("Escrow", () => {
       [Currency.USD]
     );
 
-    await paymentVerifierRegistry.addPaymentVerifier(verifier.address, ZERO);
+    await paymentVerifierRegistry.addPaymentVerifier(verifier.address);
 
     postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, ramp.address);
   });
@@ -125,14 +125,14 @@ describe.only("Escrow", () => {
       expect(ownerAddress).to.eq(owner.address);
     });
 
-    it("should set the correct sustainability fee", async () => {
-      const sustainabilityFee: BigNumber = await ramp.sustainabilityFee();
-      expect(sustainabilityFee).to.eq(ZERO);
+    it("should set the correct protocol fee", async () => {
+      const protocolFee: BigNumber = await ramp.protocolFee();
+      expect(protocolFee).to.eq(ZERO);
     });
 
-    it("should set the correct sustainability fee recipient", async () => {
-      const sustainabilityFeeRecipient: Address = await ramp.sustainabilityFeeRecipient();
-      expect(sustainabilityFeeRecipient).to.eq(feeRecipient.address);
+    it("should set the correct protocol fee recipient", async () => {
+      const protocolFeeRecipient: Address = await ramp.protocolFeeRecipient();
+      expect(protocolFeeRecipient).to.eq(feeRecipient.address);
     });
 
     it.skip("should not exceed contract size limits", async () => {
@@ -300,7 +300,7 @@ describe.only("Escrow", () => {
 
     describe("when there are multiple verifiers", async () => {
       beforeEach(async () => {
-        await paymentVerifierRegistry.addPaymentVerifier(otherVerifier.address, ZERO);
+        await paymentVerifierRegistry.addPaymentVerifier(otherVerifier.address);
 
         subjectVerifiers = [verifier.address, otherVerifier.address];
         subjectVerificationData = [
@@ -545,6 +545,8 @@ describe.only("Escrow", () => {
     let subjectPostIntentHook: Address;
     let subjectIntentData: string;
     let subjectConversionRate: BigNumber;
+    let subjectReferrer: Address;
+    let subjectReferrerFee: BigNumber;
 
     let depositConversionRate: BigNumber;
 
@@ -574,6 +576,8 @@ describe.only("Escrow", () => {
       subjectVerifier = verifier.address;
       subjectFiatCurrency = Currency.USD;
       subjectConversionRate = ether(1.02);   // Slightly higher than depositConversionRate
+      subjectReferrer = ADDRESS_ZERO;       // No referrer by default
+      subjectReferrerFee = ZERO;             // No referrer fee by default
       subjectGatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
         subjectDepositId,
@@ -592,17 +596,21 @@ describe.only("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         subjectDepositId,
         subjectAmount,
         subjectTo,
         subjectVerifier,
         subjectFiatCurrency,
         subjectConversionRate,
-        subjectGatingServiceSignature,
+        subjectReferrer,
+        subjectReferrerFee,
+        gatingService,
+        chainId.toString(),
         subjectPostIntentHook,
         subjectIntentData
       );
+      return ramp.connect(subjectCaller.wallet).signalIntent(params);
     }
 
     it("should create the correct entry in the intents mapping", async () => {
@@ -894,26 +902,21 @@ describe.only("Escrow", () => {
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Create and signal an intent first to lock some liquidity
-        await ramp.connect(onRamperOtherAddress.wallet).signalIntent(
+        const params = await createSignalIntentParams(
           subjectDepositId,
           usdc(50),
           receiver.address,
           verifier.address,
           Currency.USD,
           subjectConversionRate,
-          await generateGatingServiceSignature(
-            gatingService,
-            subjectDepositId,
-            usdc(50),
-            receiver.address,
-            verifier.address,
-            Currency.USD,
-            subjectConversionRate,
-            chainId.toString()
-          ),
+          ADDRESS_ZERO,    // referrer
+          ZERO,            // referrerFee
+          gatingService,
+          chainId.toString(),
           ADDRESS_ZERO,
           "0x"
         );
+        await ramp.connect(onRamperOtherAddress.wallet).signalIntent(params);
 
         await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
       });
@@ -972,6 +975,51 @@ describe.only("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
+
+    describe("when referrer fee exceeds maximum", async () => {
+      beforeEach(async () => {
+        subjectReferrer = receiver.address;
+        subjectReferrerFee = ether(0.06); // 6% exceeds 5% max
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Referrer fee exceeds maximum");
+      });
+    });
+
+    describe("when referrer is not set but fee is set", async () => {
+      beforeEach(async () => {
+        subjectReferrer = ADDRESS_ZERO;
+        subjectReferrerFee = ether(0.01); // 1% fee without referrer
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Cannot set referrer fee without referrer");
+      });
+    });
+
+    describe("when referrer is set with valid fee", async () => {
+      beforeEach(async () => {
+        subjectReferrer = receiver.address;
+        subjectReferrerFee = ether(0.02); // 2% fee
+      });
+
+      it("should create intent with referrer and fee", async () => {
+        await subject();
+
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        const intentHash = calculateIntentHash(
+          subjectCaller.address,
+          subjectVerifier,
+          subjectDepositId,
+          currentTimestamp
+        );
+
+        const intent = await ramp.getIntent(intentHash);
+        expect(intent.referrer).to.eq(subjectReferrer);
+        expect(intent.referrerFee).to.eq(subjectReferrerFee);
+      });
+    });
   });
 
   describe("#fulfillIntent", async () => {
@@ -1020,17 +1068,23 @@ describe.only("Escrow", () => {
         depositConversionRate,
         chainId.toString()
       );
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO, // depositId
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ADDRESS_ZERO,    // referrer
+        ZERO,            // referrerFee
+        null,            // passing null since we already have the signature
+        chainId.toString(),
         ADDRESS_ZERO,
         "0x"
       );
+      params.gatingServiceSignature = gatingServiceSignature;
+      await ramp.connect(onRamper.wallet).signalIntent(params);
+
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
 
@@ -1119,9 +1173,9 @@ describe.only("Escrow", () => {
       });
     });
 
-    describe("when the sustainability fee is set", async () => {
+    describe("when the protocol fee is set", async () => {
       beforeEach(async () => {
-        await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+        await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
       });
 
       it("should transfer the correct amounts including fee", async () => {
@@ -1149,13 +1203,13 @@ describe.only("Escrow", () => {
           onRamper.address,
           usdc(49),
           fee,
-          0 // Assuming no verifier fee
+          0 // No referrer fee
         );
       });
 
-      describe("when the verifier fee share is set", async () => {
+      describe.skip("when the verifier fee share is set", async () => {
         beforeEach(async () => {
-          await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
+          // await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
         });
 
         it("should transfer the correct amounts including both fees", async () => {
@@ -1191,6 +1245,108 @@ describe.only("Escrow", () => {
             totalFee.sub(verifierFee),
             verifierFee
           );
+        });
+      });
+    });
+
+    describe("when referrer and referrer fee are set", async () => {
+      beforeEach(async () => {
+        // Cancel the existing intent first
+        await ramp.connect(onRamper.wallet).cancelIntent(intentHash);
+
+        // Create a new intent with referrer
+        const gatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString()
+        );
+
+        const params = await createSignalIntentParams(
+          ZERO, // depositId
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          receiver.address,    // referrer
+          ether(0.01),         // referrerFee - 1%
+          null,                // passing null since we already have the signature
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        params.gatingServiceSignature = gatingServiceSignature;
+        await ramp.connect(onRamper.wallet).signalIntent(params);
+
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+
+        // Update the subject variables
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
+        );
+        subjectIntentHash = intentHash;
+      });
+
+      it("should transfer the correct amounts including referrer fee", async () => {
+        const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const initialReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+        await subject();
+
+        const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+        const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(referrerFee));
+        expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
+      });
+
+      it("should emit an IntentFulfilled event with referrer fee details", async () => {
+        const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          intentHash,
+          ZERO,
+          verifier.address,
+          onRamper.address,
+          onRamper.address,
+          usdc(50),        // Full amount (net amount is calculated in the contract)
+          0,               // No protocol fee in this test
+          referrerFee
+        );
+      });
+
+      describe("when protocol fee is also set", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
+        });
+
+        it("should transfer the correct amounts including both protocol and referrer fees", async () => {
+          const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const initialReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+          await subject();
+
+          const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+          const protocolFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
+          const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+          const totalFees = protocolFee.add(referrerFee);
+
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFees));
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(protocolFee);
+          expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
         });
       });
     });
@@ -1290,17 +1446,23 @@ describe.only("Escrow", () => {
         await postIntentHookRegistry.addPostIntentHook(postIntentHookMock.address);
 
         // Signal an intent that uses the postIntentHookMock
-        await ramp.connect(onRamper.wallet).signalIntent(
+        const params = await createSignalIntentParams(
           ZERO,
           usdc(50),
           onRamper.address,
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          gatingServiceSignatureForHook,
+          ADDRESS_ZERO,
+          ZERO,
+          null, // passing null since we already have the signature
+          chainId.toString(),
           postIntentHookMock.address,
           signalIntentDataForHook
         );
+        // Override the signature since we generated it manually
+        params.gatingServiceSignature = gatingServiceSignatureForHook;
+        await ramp.connect(onRamper.wallet).signalIntent(params);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
 
@@ -1348,7 +1510,7 @@ describe.only("Escrow", () => {
 
       describe("when sustainability fee is set with a hook", async () => {
         beforeEach(async () => {
-          await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+          await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
         });
 
         it("should transfer (intent amount - fee) to hook's target and fee to recipient", async () => {
@@ -1416,17 +1578,23 @@ describe.only("Escrow", () => {
         gatingService,
         ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
       );
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
         receiver.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ADDRESS_ZERO,
+        ZERO,
+        null,               // passing null since we already have the signature
+        chainId.toString(),
         ADDRESS_ZERO,
         "0x"
       );
+      params.gatingServiceSignature = gatingServiceSignature;
+
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       // Calculate the intent hash
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -1501,17 +1669,22 @@ describe.only("Escrow", () => {
           gatingService,
           ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
         );
-        await ramp.connect(onRamper.wallet).signalIntent(
+        const params = await createSignalIntentParams(
           ZERO,
           usdc(50),
           receiver.address,
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          gatingServiceSignature,
+          ADDRESS_ZERO,
+          ZERO,
+          null,
+          chainId.toString(),
           ADDRESS_ZERO,
           "0x"
         );
+        params.gatingServiceSignature = gatingServiceSignature;
+        await ramp.connect(onRamper.wallet).signalIntent(params);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         subjectIntentHash = calculateIntentHash(
@@ -1551,9 +1724,9 @@ describe.only("Escrow", () => {
       });
     });
 
-    describe("when the sustainability fee is set", async () => {
+    describe("when the protocol fee is set", async () => {
       beforeEach(async () => {
-        await ramp.connect(owner.wallet).setSustainabilityFee(ether(0.02)); // 2% fee
+        await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
       });
 
       it("should transfer the correct amounts including fee", async () => {
@@ -1585,9 +1758,9 @@ describe.only("Escrow", () => {
         );
       });
 
-      describe("when the verifier fee share is set", async () => {
+      describe.skip("when the verifier fee share is set", async () => {
         beforeEach(async () => {
-          await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
+          // await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
         });
 
         it("should still not transfer the verifier fee", async () => {
@@ -1689,17 +1862,22 @@ describe.only("Escrow", () => {
         gatingService,
         ZERO, usdc(50), onRamper.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
       );
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO, // depositId
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ADDRESS_ZERO,
+        ZERO,
+        null,
+        chainId.toString(),
         ADDRESS_ZERO,
         "0x"
       );
+      params.gatingServiceSignature = gatingServiceSignature;
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       // Calculate the intent hash
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -2012,17 +2190,22 @@ describe.only("Escrow", () => {
           chainId.toString()
         );
 
-        await ramp.connect(onRamper.wallet).signalIntent(
+        const params = await createSignalIntentParams(
           subjectDepositId,
           usdc(50),
           receiver.address,
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          gatingServiceSignature,
+          ADDRESS_ZERO,
+          ZERO,
+          null,
+          chainId.toString(),
           ADDRESS_ZERO,
           "0x"
         );
+        params.gatingServiceSignature = gatingServiceSignature;
+        await ramp.connect(onRamper.wallet).signalIntent(params);
 
         // Calculate the intent hash
         const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -2300,44 +2483,44 @@ describe.only("Escrow", () => {
     });
   });
 
-  describe("#setSustainabilityFee", async () => {
-    let subjectSustainabilityFee: BigNumber;
+  describe("#setProtocolFee", async () => {
+    let subjectProtocolFee: BigNumber;
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectSustainabilityFee = ether(.002);
+      subjectProtocolFee = ether(.002);
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setSustainabilityFee(subjectSustainabilityFee);
+      return ramp.connect(subjectCaller.wallet).setProtocolFee(subjectProtocolFee);
     }
 
-    it("should set the correct sustainability fee", async () => {
-      const preSustainabilityFee = await ramp.sustainabilityFee();
+    it("should set the correct protocol fee", async () => {
+      const preProtocolFee = await ramp.protocolFee();
 
-      expect(preSustainabilityFee).to.eq(ZERO);
+      expect(preProtocolFee).to.eq(ZERO);
 
       await subject();
 
-      const postSustainabilityFee = await ramp.sustainabilityFee();
+      const postProtocolFee = await ramp.protocolFee();
 
-      expect(postSustainabilityFee).to.eq(subjectSustainabilityFee);
+      expect(postProtocolFee).to.eq(subjectProtocolFee);
     });
 
-    it("should emit a SustainabilityFeeUpdated event", async () => {
+    it("should emit a ProtocolFeeUpdated event", async () => {
       const tx = await subject();
 
-      expect(tx).to.emit(ramp, "SustainabilityFeeUpdated").withArgs(subjectSustainabilityFee);
+      expect(tx).to.emit(ramp, "ProtocolFeeUpdated").withArgs(subjectProtocolFee);
     });
 
-    describe("when the fee exceeds the max sustainability fee", async () => {
+    describe("when the fee exceeds the max protocol fee", async () => {
       beforeEach(async () => {
-        subjectSustainabilityFee = ether(.1);
+        subjectProtocolFee = ether(.06);  // 6% exceeds 5% max
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Fee cannot be greater than max fee");
+        await expect(subject()).to.be.revertedWith("Protocol fee exceeds maximum");
       });
     });
 
@@ -2352,44 +2535,44 @@ describe.only("Escrow", () => {
     });
   });
 
-  describe("#setSustainabilityFeeRecipient", async () => {
-    let subjectSustainabilityFeeRecipient: Address;
+  describe("#setProtocolFeeRecipient", async () => {
+    let subjectProtocolFeeRecipient: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectSustainabilityFeeRecipient = owner.address;
+      subjectProtocolFeeRecipient = owner.address;
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setSustainabilityFeeRecipient(subjectSustainabilityFeeRecipient);
+      return ramp.connect(subjectCaller.wallet).setProtocolFeeRecipient(subjectProtocolFeeRecipient);
     }
 
-    it("should set the correct sustainability fee recipient", async () => {
-      const preSustainabilityFeeRecipient = await ramp.sustainabilityFeeRecipient();
+    it("should set the correct protocol fee recipient", async () => {
+      const preProtocolFeeRecipient = await ramp.protocolFeeRecipient();
 
-      expect(preSustainabilityFeeRecipient).to.eq(feeRecipient.address);
+      expect(preProtocolFeeRecipient).to.eq(feeRecipient.address);
 
       await subject();
 
-      const postSustainabilityFeeRecipient = await ramp.sustainabilityFeeRecipient();
+      const postProtocolFeeRecipient = await ramp.protocolFeeRecipient();
 
-      expect(postSustainabilityFeeRecipient).to.eq(subjectSustainabilityFeeRecipient);
+      expect(postProtocolFeeRecipient).to.eq(subjectProtocolFeeRecipient);
     });
 
-    it("should emit a SustainabilityFeeRecipientUpdated event", async () => {
+    it("should emit a ProtocolFeeRecipientUpdated event", async () => {
       const tx = await subject();
 
-      expect(tx).to.emit(ramp, "SustainabilityFeeRecipientUpdated").withArgs(subjectSustainabilityFeeRecipient);
+      expect(tx).to.emit(ramp, "ProtocolFeeRecipientUpdated").withArgs(subjectProtocolFeeRecipient);
     });
 
     describe("when the passed fee recipient is the zero address", async () => {
       beforeEach(async () => {
-        subjectSustainabilityFeeRecipient = ADDRESS_ZERO;
+        subjectProtocolFeeRecipient = ADDRESS_ZERO;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Fee recipient cannot be zero address");
+        await expect(subject()).to.be.revertedWith("Protocol fee recipient cannot be zero address");
       });
     });
 
@@ -2443,17 +2626,22 @@ describe.only("Escrow", () => {
         chainId.toString()
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ADDRESS_ZERO,
+        ZERO,
+        null,
+        chainId.toString(),
         ADDRESS_ZERO,
         "0x"
       );
+      params.gatingServiceSignature = gatingServiceSignature;
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       subjectCaller = onRamper;
       subjectDepositId = ZERO;
@@ -2633,7 +2821,7 @@ describe.only("Escrow", () => {
       );
 
       // Add otherVerifier to whitelist
-      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address, ZERO);
+      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
       await otherVerifier.addCurrency(Currency.EUR);
 
       subjectDepositId = ZERO;
@@ -2759,7 +2947,7 @@ describe.only("Escrow", () => {
     beforeEach(async () => {
       // Create deposit with multiple verifiers
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address, ZERO);
+      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
 
       await ramp.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
@@ -3309,6 +3497,105 @@ describe.only("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("No delegate set for this deposit");
+      });
+    });
+  });
+
+
+  describe("#setPaymentVerifierRegistry", async () => {
+    let subjectPaymentVerifierRegistry: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      const newRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
+      subjectPaymentVerifierRegistry = newRegistry.address;
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setPaymentVerifierRegistry(subjectPaymentVerifierRegistry);
+    }
+
+    it("should set the correct payment verifier registry", async () => {
+      const preRegistry = await ramp.paymentVerifierRegistry();
+      expect(preRegistry).to.not.eq(subjectPaymentVerifierRegistry);
+
+      await subject();
+
+      const postRegistry = await ramp.paymentVerifierRegistry();
+      expect(postRegistry).to.eq(subjectPaymentVerifierRegistry);
+    });
+
+    it("should emit a PaymentVerifierRegistryUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "PaymentVerifierRegistryUpdated").withArgs(subjectPaymentVerifierRegistry);
+    });
+
+    describe("when the registry is zero address", async () => {
+      beforeEach(async () => {
+        subjectPaymentVerifierRegistry = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Payment verifier registry cannot be zero address");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setPostIntentHookRegistry", async () => {
+    let subjectPostIntentHookRegistry: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      const newRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+      subjectPostIntentHookRegistry = newRegistry.address;
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setPostIntentHookRegistry(subjectPostIntentHookRegistry);
+    }
+
+    it("should set the correct post intent hook registry", async () => {
+      const preRegistry = await ramp.postIntentHookRegistry();
+      expect(preRegistry).to.not.eq(subjectPostIntentHookRegistry);
+
+      await subject();
+
+      const postRegistry = await ramp.postIntentHookRegistry();
+      expect(postRegistry).to.eq(subjectPostIntentHookRegistry);
+    });
+
+    it("should emit a PostIntentHookRegistryUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "PostIntentHookRegistryUpdated").withArgs(subjectPostIntentHookRegistry);
+    });
+
+    describe("when the registry is zero address", async () => {
+      beforeEach(async () => {
+        subjectPostIntentHookRegistry = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Post intent hook registry cannot be zero address");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

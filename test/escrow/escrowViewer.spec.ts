@@ -27,7 +27,7 @@ import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
-import { generateGatingServiceSignature } from "@utils/test/helpers";
+import { generateGatingServiceSignature, createSignalIntentParams } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
@@ -83,12 +83,12 @@ describe.only("EscrowViewer", () => {
 
     ramp = await deployer.deployEscrow(
       owner.address,
-      ONE_DAY_IN_SECONDS,                // 1 day intent expiration period
-      ZERO,                              // Sustainability fee
-      feeRecipient.address,
+      ONE_DAY_IN_SECONDS,                // intent expiration period
       chainId,
       paymentVerifierRegistry.address,
-      postIntentHookRegistry.address
+      postIntentHookRegistry.address,
+      ZERO,                              // protocol fee (0%)
+      feeRecipient.address               // protocol fee recipient
     );
 
     escrowViewer = await deployer.deployEscrowViewer(
@@ -110,7 +110,7 @@ describe.only("EscrowViewer", () => {
       [Currency.USD]
     );
 
-    await paymentVerifierRegistry.addPaymentVerifier(verifier.address, ZERO);
+    await paymentVerifierRegistry.addPaymentVerifier(verifier.address);
   });
 
   describe("#getDeposit", async () => {
@@ -185,28 +185,22 @@ describe.only("EscrowViewer", () => {
     describe("when there are prunable intents", async () => {
       beforeEach(async () => {
         // Create and signal an intent
-        const gatingServiceSignature = await generateGatingServiceSignature(
+        const params = await createSignalIntentParams(
+          subjectDepositId,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          ethers.constants.AddressZero,  // referrer
+          ZERO,                           // referrerFee
           gatingService,
-          subjectDepositId,
-          usdc(50),
-          onRamper.address,
-          verifier.address,
-          Currency.USD,
-          depositConversionRate,
-          chainId.toString()
-        );
-
-        await ramp.connect(onRamper.wallet).signalIntent(
-          subjectDepositId,
-          usdc(50),
-          onRamper.address,
-          verifier.address,
-          Currency.USD,
-          depositConversionRate,
-          gatingServiceSignature,
+          chainId.toString(),
           ethers.constants.AddressZero,
           "0x"
         );
+
+        await ramp.connect(onRamper.wallet).signalIntent(params);
 
         // Move time forward past intent expiration
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
@@ -400,17 +394,22 @@ describe.only("EscrowViewer", () => {
         chainId.toString()
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ethers.constants.AddressZero,  // referrer
+        ZERO,                           // referrerFee
+        gatingService,
+        chainId.toString(),
         ethers.constants.AddressZero,
         "0x"
       );
+
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
@@ -471,17 +470,22 @@ describe.only("EscrowViewer", () => {
         chainId.toString()
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ethers.constants.AddressZero,  // referrer
+        ZERO,                           // referrerFee
+        gatingService,
+        chainId.toString(),
         ethers.constants.AddressZero,
         "0x"
       );
+
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
@@ -544,17 +548,22 @@ describe.only("EscrowViewer", () => {
         chainId.toString()
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(
+      const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
         onRamper.address,
         verifier.address,
         Currency.USD,
         depositConversionRate,
-        gatingServiceSignature,
+        ethers.constants.AddressZero,  // referrer
+        ZERO,                           // referrerFee
+        gatingService,
+        chainId.toString(),
         ethers.constants.AddressZero,
         "0x"
       );
+
+      await ramp.connect(onRamper.wallet).signalIntent(params);
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(

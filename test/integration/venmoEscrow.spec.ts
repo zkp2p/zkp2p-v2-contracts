@@ -96,12 +96,18 @@ describe.skip("VenmoEscrow", () => {
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
+    // Deploy registries first
+    const paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
+    const postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+
     ramp = await deployer.deployEscrow(
       owner.address,
-      ONE_DAY_IN_SECONDS,                // 1 day intent expiration period
-      ZERO,                              // Sustainability fee
-      feeRecipient.address,
-      chainId
+      ONE_DAY_IN_SECONDS,                // intent expiration period
+      chainId,
+      paymentVerifierRegistry.address,   // paymentVerifierRegistry
+      postIntentHookRegistry.address,    // postIntentHookRegistry
+      ZERO,                              // protocol fee (0%)
+      feeRecipient.address               // protocol fee recipient
     );
 
     witnessAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
@@ -116,7 +122,8 @@ describe.skip("VenmoEscrow", () => {
       [providerHash]
     );
 
-    await ramp.addWhitelistedPaymentVerifier(verifier.address, ZERO);
+    // Update to use registry instead of direct whitelist
+    await paymentVerifierRegistry.addPaymentVerifier(verifier.address, ZERO);
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
 
     // Create a deposit and signal an intent first
@@ -163,6 +170,8 @@ describe.skip("VenmoEscrow", () => {
       verifier.address,
       Currency.USD,
       depositConversionRate,
+      ADDRESS_ZERO,         // referrer
+      ZERO,                 // referrerFee
       gatingServiceSignature,
       ADDRESS_ZERO, // postIntentHook
       "0x"          // data for postIntentHook

@@ -59,18 +59,18 @@ describe("Escrow and NullifierRegistry Deployment", () => {
   });
 
   describe("Escrow", async () => {
-    it("should have the correct sustainability fee and recipient set", async () => {
-      const actualSustainabilityFee = await escrow.sustainabilityFee();
-      const actualSustainabilityFeeRecipient = await escrow.sustainabilityFeeRecipient();
+    it("should have the correct protocol fee and recipient set", async () => {
+      const actualProtocolFee = await escrow.protocolFee();
+      const actualProtocolFeeRecipient = await escrow.protocolFeeRecipient();
       const actualOwner = await escrow.owner();
       const actualChainId = await escrow.chainId();
 
-      const expectedSustainabilityFeeRecipient = SUSTAINABILITY_FEE_RECIPIENT[network] != ""
+      const expectedProtocolFeeRecipient = SUSTAINABILITY_FEE_RECIPIENT[network] != ""
         ? SUSTAINABILITY_FEE_RECIPIENT[network]
         : deployer.address;
 
-      expect(actualSustainabilityFee).to.eq(SUSTAINABILITY_FEE[network]);
-      expect(actualSustainabilityFeeRecipient).to.eq(expectedSustainabilityFeeRecipient);
+      expect(actualProtocolFee).to.eq(SUSTAINABILITY_FEE[network]);
+      expect(actualProtocolFeeRecipient).to.eq(expectedProtocolFeeRecipient);
       expect(actualOwner).to.eq(multiSig);
       expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
     });
