@@ -357,7 +357,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Min intent amount cannot be zero");
+        await expect(subject()).to.be.revertedWith("MinIntentAmountCannotBeZero");
       });
     });
 
@@ -368,7 +368,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Min intent amount must be less than max intent amount");
+        await expect(subject()).to.be.revertedWith("MinIntentAmountMustBeLessThanMax");
       });
     });
 
@@ -379,7 +379,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Amount must be greater than min intent amount");
+        await expect(subject()).to.be.revertedWith("AmountMustBeGreaterThanMinIntent");
       });
     });
 
@@ -389,7 +389,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifiers and depositVerifierData length mismatch");
+        await expect(subject()).to.be.revertedWith("VerifiersAndDepositVerifierDataLengthMismatch");
       });
     });
 
@@ -411,7 +411,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifiers and currencies length mismatch");
+        await expect(subject()).to.be.revertedWith("VerifiersAndCurrenciesLengthMismatch");
       });
     });
 
@@ -421,7 +421,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency not supported by verifier");
+        await expect(subject()).to.be.revertedWith("CurrencyNotSupportedByVerifier");
       });
     });
 
@@ -431,7 +431,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
+        await expect(subject()).to.be.revertedWith("ConversionRateMustBeGreaterThanZero");
       });
     });
 
@@ -441,7 +441,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifier cannot be zero address");
+        await expect(subject()).to.be.revertedWith("VerifierCannotBeZeroAddress");
       });
     });
 
@@ -451,7 +451,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment verifier not whitelisted");
+        await expect(subject()).to.be.revertedWith("PaymentVerifierNotWhitelisted");
       });
 
       describe("when accept all verifiers is true", async () => {
@@ -472,7 +472,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payee details cannot be empty");
+        await expect(subject()).to.be.revertedWith("PayeeDetailsCannotBeEmpty");
       });
     });
 
@@ -498,7 +498,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifier data already exists");
+        await expect(subject()).to.be.revertedWith("VerifierDataAlreadyExists");
       });
     });
 
@@ -519,7 +519,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency rate already exists");
+        await expect(subject()).to.be.revertedWith("CurrencyRateAlreadyExists");
       });
     });
 
@@ -605,11 +605,12 @@ describe.only("Escrow", () => {
         subjectConversionRate,
         subjectReferrer,
         subjectReferrerFee,
-        gatingService,
+        null, // gatingService
         chainId.toString(),
         subjectPostIntentHook,
         subjectIntentData
       );
+      params.gatingServiceSignature = subjectGatingServiceSignature;
       return ramp.connect(subjectCaller.wallet).signalIntent(params);
     }
 
@@ -774,7 +775,7 @@ describe.only("Escrow", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Not enough liquidity");
+          await expect(subject()).to.be.revertedWith("NotEnoughLiquidity");
         });
       });
     });
@@ -785,7 +786,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Account has unfulfilled intent");
+        await expect(subject()).to.be.revertedWith("AccountHasUnfulfilledIntent");
       });
 
       describe("when the intent is cancelled", async () => {
@@ -833,7 +834,7 @@ describe.only("Escrow", () => {
         });
 
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Post intent hook not whitelisted");
+          await expect(subject()).to.be.revertedWith("PostIntentHookNotWhitelisted");
         });
       });
     });
@@ -844,7 +845,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Deposit does not exist");
+        await expect(subject()).to.be.revertedWith("DepositDoesNotExist");
       });
     });
 
@@ -854,7 +855,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment verifier not supported");
+        await expect(subject()).to.be.revertedWith("PaymentVerifierNotSupported");
       });
     });
 
@@ -864,7 +865,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency not supported");
+        await expect(subject()).to.be.revertedWith("CurrencyNotSupported");
       });
     });
 
@@ -874,7 +875,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Rate must be greater than or equal to min rate");
+        await expect(subject()).to.be.revertedWith("RateMustBeGreaterThanOrEqualToMin");
       });
 
       describe("when the conversion rate is equal to the min conversion rate", async () => {
@@ -922,7 +923,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Deposit is not accepting intents");
+        await expect(subject()).to.be.revertedWith("DepositNotAcceptingIntents");
       });
     });
 
@@ -932,7 +933,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Signaled amount must be greater than min intent amount");
+        await expect(subject()).to.be.revertedWith("SignaledAmountMustBeGreaterThanMin");
       });
     });
 
@@ -942,7 +943,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Signaled amount must be less than max intent amount");
+        await expect(subject()).to.be.revertedWith("SignaledAmountMustBeLessThanMax");
       });
     });
 
@@ -952,7 +953,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Cannot send to zero address");
+        await expect(subject()).to.be.revertedWith("CannotSendToZeroAddress");
       });
     });
 
@@ -962,7 +963,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid gating service signature");
+        await expect(subject()).to.be.revertedWith("InvalidGatingServiceSignature");
       });
     });
 
@@ -983,7 +984,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Referrer fee exceeds maximum");
+        await expect(subject()).to.be.revertedWith("ReferrerFeeExceedsMaximum");
       });
     });
 
@@ -994,7 +995,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Cannot set referrer fee without referrer");
+        await expect(subject()).to.be.revertedWith("CannotSetReferrerFeeWithoutReferrer");
       });
     });
 
@@ -1206,47 +1207,6 @@ describe.only("Escrow", () => {
           0 // No referrer fee
         );
       });
-
-      describe.skip("when the verifier fee share is set", async () => {
-        beforeEach(async () => {
-          // await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
-        });
-
-        it("should transfer the correct amounts including both fees", async () => {
-          const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
-          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const initialVerifierBalance = await usdcToken.balanceOf(verifier.address);
-
-          await subject();
-
-          const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
-          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const finalVerifierBalance = await usdcToken.balanceOf(verifier.address);
-
-          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
-          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
-
-          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFee));
-          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(totalFee.sub(verifierFee));
-          expect(finalVerifierBalance.sub(initialVerifierBalance)).to.eq(verifierFee);
-        });
-
-        it("should emit an IntentFulfilled event with both fee details", async () => {
-          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
-          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
-
-          await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
-            intentHash,
-            ZERO,
-            verifier.address,
-            onRamper.address,
-            onRamper.address,
-            usdc(50).sub(totalFee),
-            totalFee.sub(verifierFee),
-            verifierFee
-          );
-        });
-      });
     });
 
     describe("when referrer and referrer fee are set", async () => {
@@ -1318,7 +1278,7 @@ describe.only("Escrow", () => {
           verifier.address,
           onRamper.address,
           onRamper.address,
-          usdc(50),        // Full amount (net amount is calculated in the contract)
+          usdc(49.5),        // Amount transferred to the on-ramper
           0,               // No protocol fee in this test
           referrerFee
         );
@@ -1348,6 +1308,23 @@ describe.only("Escrow", () => {
           expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(protocolFee);
           expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
         });
+
+        it("should emit an IntentFulfilled event with correct fee details", async () => {
+          const protocolFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
+          const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+          const totalFees = protocolFee.add(referrerFee);
+
+          await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+            intentHash,
+            ZERO,
+            verifier.address,
+            onRamper.address,
+            onRamper.address,
+            usdc(48.5),
+            protocolFee,
+            referrerFee
+          );
+        });
       });
     });
 
@@ -1357,7 +1334,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Intent does not exist");
+        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
       });
     });
 
@@ -1373,7 +1350,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid intent hash");
+        await expect(subject()).to.be.revertedWith("InvalidIntentHash");
       });
     });
 
@@ -1396,7 +1373,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment verification failed");
+        await expect(subject()).to.be.revertedWith("PaymentVerificationFailed");
       });
     });
 
@@ -1503,12 +1480,12 @@ describe.only("Escrow", () => {
           onRamper.address,     // Intent owner
           onRamper.address,     // Original intent.to (even though hook redirected funds)
           usdc(50),             // Amount transferred (after 0 fees in this case)
-          ZERO,                 // Sustainability fee
-          ZERO                  // Verifier fee
+          ZERO,                 // Protocol fee
+          ZERO                  // Referrer fee
         );
       });
 
-      describe("when sustainability fee is set with a hook", async () => {
+      describe("when protocol fee is set with a hook", async () => {
         beforeEach(async () => {
           await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
         });
@@ -1539,8 +1516,8 @@ describe.only("Escrow", () => {
             onRamper.address,
             onRamper.address,     // Original intent.to
             usdc(50).sub(fee),    // Amount transferred to hook's destination
-            fee,                  // Sustainability fee
-            ZERO                  // Verifier fee
+            fee,                  // Protocol fee
+            ZERO                  // Referrer fee
           );
         });
       });
@@ -1806,7 +1783,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Intent does not exist");
+        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
       });
     });
 
@@ -1816,7 +1793,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositor");
       });
     });
 
@@ -1922,7 +1899,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Intent does not exist");
+        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
       });
     });
 
@@ -1932,7 +1909,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Sender must be the intent owner");
+        await expect(subject()).to.be.revertedWith("SenderMustBeIntentOwner");
       });
     });
 
@@ -1942,7 +1919,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Intent does not exist");
+        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
       });
     });
 
@@ -2037,7 +2014,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -2047,7 +2024,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency or verifier not supported");
+        await expect(subject()).to.be.revertedWith("CurrencyOrVerifierNotSupported");
       });
     });
 
@@ -2057,7 +2034,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Min conversion rate must be greater than 0");
+        await expect(subject()).to.be.revertedWith("MinConversionRateMustBeGreaterThanZero");
       });
     });
 
@@ -2317,7 +2294,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositor");
       });
 
       describe("when the caller is delegate", async () => {
@@ -2326,7 +2303,7 @@ describe.only("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWith("Caller must be the depositor");
+          await expect(subject()).to.be.revertedWith("CallerMustBeDepositor");
         });
       });
     });
@@ -2468,7 +2445,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Max intent expiration period cannot be zero");
+        await expect(subject()).to.be.revertedWith("MaxIntentExpirationPeriodCannotBeZero");
       });
     });
 
@@ -2520,7 +2497,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Protocol fee exceeds maximum");
+        await expect(subject()).to.be.revertedWith("ProtocolFeeExceedsMaximum");
       });
     });
 
@@ -2572,7 +2549,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Protocol fee recipient cannot be zero address");
+        await expect(subject()).to.be.revertedWith("ProtocolFeeRecipientCannotBeZeroAddress");
       });
     });
 
@@ -2759,7 +2736,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -2769,7 +2746,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Min cannot be zero");
+        await expect(subject()).to.be.revertedWith("MinCannotBeZero");
       });
     });
 
@@ -2779,7 +2756,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Min must be less than max");
+        await expect(subject()).to.be.revertedWith("MinMustBeLessThanMax");
       });
     });
 
@@ -2908,7 +2885,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -2924,7 +2901,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment verifier not whitelisted");
+        await expect(subject()).to.be.revertedWith("PaymentVerifierNotWhitelisted");
       });
     });
 
@@ -3035,7 +3012,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -3051,7 +3028,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+        await expect(subject()).to.be.revertedWith("VerifierNotFoundForDeposit");
       });
     });
 
@@ -3142,7 +3119,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -3152,7 +3129,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+        await expect(subject()).to.be.revertedWith("VerifierNotFoundForDeposit");
       });
     });
 
@@ -3164,7 +3141,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency not supported by verifier");
+        await expect(subject()).to.be.revertedWith("CurrencyNotSupportedByVerifier");
       });
     });
 
@@ -3174,7 +3151,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Conversion rate must be greater than 0");
+        await expect(subject()).to.be.revertedWith("ConversionRateMustBeGreaterThanZero");
       });
     });
 
@@ -3186,7 +3163,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency rate already exists");
+        await expect(subject()).to.be.revertedWith("CurrencyRateAlreadyExists");
       });
     });
 
@@ -3277,7 +3254,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Caller must be the depositor or delegate");
+        await expect(subject()).to.be.revertedWith("CallerMustBeDepositorOrDelegate");
       });
     });
 
@@ -3287,7 +3264,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Verifier not found for deposit");
+        await expect(subject()).to.be.revertedWith("VerifierNotFoundForDeposit");
       });
     });
 
@@ -3297,7 +3274,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Currency not found for verifier");
+        await expect(subject()).to.be.revertedWith("CurrencyNotFoundForVerifier");
       });
     });
 
@@ -3372,7 +3349,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+        await expect(subject()).to.be.revertedWith("OnlyDepositorCanSetDelegate");
       });
 
       describe("when the caller is delegate", async () => {
@@ -3381,7 +3358,7 @@ describe.only("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWith("Only depositor can set delegate");
+          await expect(subject()).to.be.revertedWith("OnlyDepositorCanSetDelegate");
         });
       });
     });
@@ -3392,7 +3369,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Delegate cannot be zero address");
+        await expect(subject()).to.be.revertedWith("DelegateCannotBeZeroAddress");
       });
     });
 
@@ -3475,7 +3452,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+        await expect(subject()).to.be.revertedWith("OnlyDepositorCanRemoveDelegate");
       });
 
       describe("when the caller is delegate", async () => {
@@ -3484,7 +3461,7 @@ describe.only("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWith("Only depositor can remove delegate");
+          await expect(subject()).to.be.revertedWith("OnlyDepositorCanRemoveDelegate");
         });
       });
     });
@@ -3496,7 +3473,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("No delegate set for this deposit");
+        await expect(subject()).to.be.revertedWith("NoDelegateSetForDeposit");
       });
     });
   });

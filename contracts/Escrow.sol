@@ -22,6 +22,71 @@ pragma solidity ^0.8.18;
 
 contract Escrow is Ownable, Pausable, IEscrow {
 
+    /* ============ Custom Errors ============ */
+    // Authorization errors
+    error CallerMustBeDepositorOrDelegate();
+    error CallerMustBeDepositor();
+    error SenderMustBeIntentOwner();
+    error OnlyDepositorCanSetDelegate();
+    error OnlyDepositorCanRemoveDelegate();
+    
+    // Deposit validation errors
+    error MinIntentAmountCannotBeZero();
+    error MinIntentAmountMustBeLessThanMax();
+    error AmountMustBeGreaterThanMinIntent();
+    error MinCannotBeZero();
+    error MinMustBeLessThanMax();
+    error DepositDoesNotExist();
+    error DepositNotAcceptingIntents();
+    error NoDelegateSetForDeposit();
+    
+    // Intent validation errors
+    error AccountHasUnfulfilledIntent();
+    error SignaledAmountMustBeGreaterThanMin();
+    error SignaledAmountMustBeLessThanMax();
+    error CannotSendToZeroAddress();
+    error ReferrerFeeExceedsMaximum();
+    error CannotSetReferrerFeeWithoutReferrer();
+    error IntentDoesNotExist();
+    error NotEnoughLiquidity();
+    
+    // Verifier and currency errors
+    error PaymentVerifierNotSupported();
+    error PaymentVerifierNotWhitelisted();
+    error CurrencyNotSupported();
+    error CurrencyOrVerifierNotSupported();
+    error RateMustBeGreaterThanOrEqualToMin();
+    error InvalidGatingServiceSignature();
+    error PostIntentHookNotWhitelisted();
+    error VerifierNotFoundForDeposit();
+    error CurrencyNotFoundForVerifier();
+    error CurrencyNotSupportedByVerifier();
+    error VerifierDataAlreadyExists();
+    error CurrencyRateAlreadyExists();
+    
+    // Payment verification errors
+    error PaymentVerificationFailed();
+    error InvalidIntentHash();
+    
+    // Configuration errors
+    error MinConversionRateMustBeGreaterThanZero();
+    error ConversionRateMustBeGreaterThanZero();
+    error DelegateCannotBeZeroAddress();
+    error VerifierCannotBeZeroAddress();
+    error PayeeDetailsCannotBeEmpty();
+    error ProtocolFeeExceedsMaximum();
+    error ProtocolFeeRecipientCannotBeZeroAddress();
+    error MaxIntentExpirationPeriodCannotBeZero();
+    
+    // Array length errors
+    error VerifiersAndDepositVerifierDataLengthMismatch();
+    error VerifiersAndCurrenciesLengthMismatch();
+    
+    // Transfer errors
+    error ProtocolFeeTransferFailed();
+    error ReferrerFeeTransferFailed();
+    error TransferToRecipientFailed();
+
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
@@ -167,11 +232,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     modifier onlyDepositorOrDelegate(uint256 _depositId) {
         Deposit storage deposit = deposits[_depositId];
-        require(
-            deposit.depositor == msg.sender || 
-            (deposit.delegate != address(0) && deposit.delegate == msg.sender),
-            "Caller must be the depositor or delegate"
-        );
+        if (!(deposit.depositor == msg.sender || 
+            (deposit.delegate != address(0) && deposit.delegate == msg.sender))) {
+            revert CallerMustBeDepositorOrDelegate();
+        }
         _;
     }
 
@@ -276,7 +340,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 uint256 reclaimableAmount
             ) = _getPrunableIntents(_params.depositId);
 
-            require(deposit.remainingDeposits + reclaimableAmount >= _params.amount, "Not enough liquidity");
+            if (deposit.remainingDeposits + reclaimableAmount < _params.amount) revert NotEnoughLiquidity();
 
             _pruneIntents(deposit, prunableIntents);
             deposit.remainingDeposits += reclaimableAmount;
@@ -326,8 +390,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function cancelIntent(bytes32 _intentHash) external {
         Intent memory intent = intents[_intentHash];
         
-        require(intent.timestamp != 0, "Intent does not exist");
-        require(intent.owner == msg.sender, "Sender must be the intent owner");
+        if (intent.timestamp == 0) revert IntentDoesNotExist();
+        if (intent.owner != msg.sender) revert SenderMustBeIntentOwner();
 
         Deposit storage deposit = deposits[intent.depositId];
 
@@ -357,7 +421,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Deposit storage deposit = deposits[intent.depositId];
         
         address verifier = intent.paymentVerifier;
-        require(verifier != address(0), "Intent does not exist");
+        if (verifier == address(0)) revert IntentDoesNotExist();
         
         DepositVerifierData memory verifierData = depositVerifierData[intent.depositId][verifier];
         (bool success, bytes32 intentHash) = IPaymentVerifier(verifier).verifyPayment(
@@ -372,8 +436,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 data: verifierData.data
             })
         );
-        require(success, "Payment verification failed");
-        require(intentHash == _intentHash, "Invalid intent hash");
+        if (!success) revert PaymentVerificationFailed();
+        if (intentHash != _intentHash) revert InvalidIntentHash();
 
         _pruneIntent(deposit, _intentHash);
 
@@ -398,8 +462,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Intent memory intent = intents[_intentHash];
         Deposit storage deposit = deposits[intent.depositId];
 
-        require(intent.owner != address(0), "Intent does not exist");
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        if (intent.owner == address(0)) revert IntentDoesNotExist();
+        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
 
         _pruneIntent(deposit, _intentHash);
 
@@ -434,8 +498,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         uint256 oldMinConversionRate = depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency];
 
-        require(oldMinConversionRate != 0, "Currency or verifier not supported");
-        require(_newMinConversionRate > 0, "Min conversion rate must be greater than 0");
+        if (oldMinConversionRate == 0) revert CurrencyOrVerifierNotSupported();
+        if (_newMinConversionRate == 0) revert MinConversionRateMustBeGreaterThanZero();
 
         depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency] = _newMinConversionRate;
 
@@ -458,8 +522,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyDepositorOrDelegate(_depositId)
     {
         Deposit storage deposit = deposits[_depositId];
-        require(_intentAmountRange.min != 0, "Min cannot be zero");
-        require(_intentAmountRange.min <= _intentAmountRange.max, "Min must be less than max");
+        if (_intentAmountRange.min == 0) revert MinCannotBeZero();
+        if (_intentAmountRange.min > _intentAmountRange.max) revert MinMustBeLessThanMax();
 
         deposit.intentAmountRange = _intentAmountRange;
 
@@ -502,10 +566,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        require(
-            bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, 
-            "Verifier not found for deposit"
-        );
+        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) {
+            revert VerifierNotFoundForDeposit();
+        }
 
         // Remove verifier from the list
         depositVerifiers[_depositId].removeStorage(_verifier);
@@ -542,7 +605,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
+        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) revert VerifierNotFoundForDeposit();
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -570,8 +633,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        require(bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length != 0, "Verifier not found for deposit");
-        require(depositCurrencyMinRate[_depositId][_verifier][_currencyCode] != 0, "Currency not found for verifier");
+        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) revert VerifierNotFoundForDeposit();
+        if (depositCurrencyMinRate[_depositId][_verifier][_currencyCode] == 0) revert CurrencyNotFoundForVerifier();
 
         depositCurrencies[_depositId][_verifier].removeStorage(_currencyCode);
         delete depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
@@ -587,8 +650,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function setDepositDelegate(uint256 _depositId, address _delegate) external {
         Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Only depositor can set delegate");
-        require(_delegate != address(0), "Delegate cannot be zero address");
+        if (deposit.depositor != msg.sender) revert OnlyDepositorCanSetDelegate();
+        if (_delegate == address(0)) revert DelegateCannotBeZeroAddress();
         
         deposit.delegate = _delegate;
         
@@ -602,8 +665,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function removeDepositDelegate(uint256 _depositId) external {
         Deposit storage deposit = deposits[_depositId];
-        require(deposit.depositor == msg.sender, "Only depositor can remove delegate");
-        require(deposit.delegate != address(0), "No delegate set for this deposit");
+        if (deposit.depositor != msg.sender) revert OnlyDepositorCanRemoveDelegate();
+        if (deposit.delegate == address(0)) revert NoDelegateSetForDeposit();
         
         delete deposit.delegate;
         
@@ -621,7 +684,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function withdrawDeposit(uint256 _depositId) external {
         Deposit storage deposit = deposits[_depositId];
 
-        require(deposit.depositor == msg.sender, "Caller must be the depositor");
+        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
 
         (
             bytes32[] memory prunableIntents,
@@ -653,7 +716,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _protocolFee   New protocol fee in preciseUnits (1e16 = 1%)
      */
     function setProtocolFee(uint256 _protocolFee) external onlyOwner {
-        require(_protocolFee <= MAX_PROTOCOL_FEE, "Protocol fee exceeds maximum");
+        if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeExceedsMaximum();
         
         protocolFee = _protocolFee;
         emit ProtocolFeeUpdated(_protocolFee);
@@ -665,7 +728,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _protocolFeeRecipient   New protocol fee recipient address
      */
     function setProtocolFeeRecipient(address _protocolFeeRecipient) external onlyOwner {
-        require(_protocolFeeRecipient != address(0), "Protocol fee recipient cannot be zero address");
+        if (_protocolFeeRecipient == address(0)) revert ProtocolFeeRecipientCannotBeZeroAddress();
         
         protocolFeeRecipient = _protocolFeeRecipient;
         emit ProtocolFeeRecipientUpdated(_protocolFeeRecipient);
@@ -678,7 +741,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _intentExpirationPeriod   New intent expiration period
      */
     function setIntentExpirationPeriod(uint256 _intentExpirationPeriod) external onlyOwner {
-        require(_intentExpirationPeriod != 0, "Max intent expiration period cannot be zero");
+        if (_intentExpirationPeriod == 0) revert MaxIntentExpirationPeriodCannotBeZero();
 
         intentExpirationPeriod = _intentExpirationPeriod;
         emit IntentExpirationPeriodSet(_intentExpirationPeriod);
@@ -709,29 +772,29 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _unpause();
     }
 
-    // /**
-    //  * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
-    //  *
-    //  * @param _paymentVerifierRegistry   New payment verifier registry address
-    //  */
-    // function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
-    //     require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
+    /**
+     * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
+     *
+     * @param _paymentVerifierRegistry   New payment verifier registry address
+     */
+    function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
+        require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
         
-    //     paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
-    //     emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
-    // }
+        paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+        emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
+    }
 
-    // /**
-    //  * @notice GOVERNANCE ONLY: Updates the post intent hook registry address.
-    //  *
-    //  * @param _postIntentHookRegistry   New post intent hook registry address
-    //  */
-    // function setPostIntentHookRegistry(address _postIntentHookRegistry) external onlyOwner {
-    //     require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
+    /**
+     * @notice GOVERNANCE ONLY: Updates the post intent hook registry address.
+     *
+     * @param _postIntentHookRegistry   New post intent hook registry address
+     */
+    function setPostIntentHookRegistry(address _postIntentHookRegistry) external onlyOwner {
+        require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
         
-    //     postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
-    //     emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
-    // }
+        postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
+        emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
+    }
 
     /* ============ External View Functions ============ */
 
@@ -787,53 +850,51 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _amount,
         Range memory _intentAmountRange
     ) internal view {
-        require(_intentAmountRange.min != 0, "Min intent amount cannot be zero");
-        require(_intentAmountRange.min <= _intentAmountRange.max, "Min intent amount must be less than max intent amount");
-        require(_amount >= _intentAmountRange.min, "Amount must be greater than min intent amount");
+        if (_intentAmountRange.min == 0) revert MinIntentAmountCannotBeZero();
+        if (_intentAmountRange.min > _intentAmountRange.max) revert MinIntentAmountMustBeLessThanMax();
+        if (_amount < _intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
     }
 
     function _validateIntent(SignalIntentParams memory _intent, Deposit storage _deposit) internal view {
 
         // TODO: Update this later
-        require(accountIntent[msg.sender] == bytes32(0), "Account has unfulfilled intent");
+        if (accountIntent[msg.sender] != bytes32(0)) revert AccountHasUnfulfilledIntent();
 
-        require(_deposit.depositor != address(0), "Deposit does not exist");
-        require(_deposit.acceptingIntents, "Deposit is not accepting intents");
-        require(_intent.amount >= _deposit.intentAmountRange.min, "Signaled amount must be greater than min intent amount");
-        require(_intent.amount <= _deposit.intentAmountRange.max, "Signaled amount must be less than max intent amount");
-        require(_intent.to != address(0), "Cannot send to zero address");
+        if (_deposit.depositor == address(0)) revert DepositDoesNotExist();
+        if (!_deposit.acceptingIntents) revert DepositNotAcceptingIntents();
+        if (_intent.amount < _deposit.intentAmountRange.min) revert SignaledAmountMustBeGreaterThanMin();
+        if (_intent.amount > _deposit.intentAmountRange.max) revert SignaledAmountMustBeLessThanMax();
+        if (_intent.to == address(0)) revert CannotSendToZeroAddress();
         
-        require(_intent.referrerFee <= MAX_REFERRER_FEE, "Referrer fee exceeds maximum");
+        if (_intent.referrerFee > MAX_REFERRER_FEE) revert ReferrerFeeExceedsMaximum();
         if (_intent.referrer == address(0)) {
-            require(_intent.referrerFee == 0, "Cannot set referrer fee without referrer");
+            if (_intent.referrerFee != 0) revert CannotSetReferrerFeeWithoutReferrer();
         }
 
         if (address(_intent.postIntentHook) != address(0)) {
-            require(
-                postIntentHookRegistry.isWhitelistedHook(address(_intent.postIntentHook)),
-                "Post intent hook not whitelisted"
-            );
+            if (!postIntentHookRegistry.isWhitelistedHook(address(_intent.postIntentHook))) {
+                revert PostIntentHookNotWhitelisted();
+            }
         }
 
         uint256 depositId = _intent.depositId;
         DepositVerifierData memory verifierData = depositVerifierData[depositId][_intent.verifier];
-        require(bytes(verifierData.payeeDetails).length != 0, "Payment verifier not supported");
+        if (bytes(verifierData.payeeDetails).length == 0) revert PaymentVerifierNotSupported();
         
         uint256 minConversionRate = depositCurrencyMinRate[depositId][_intent.verifier][_intent.fiatCurrency];
         uint256 conversionRate = _intent.conversionRate;
-        require(minConversionRate != 0, "Currency not supported");
-        require(conversionRate >= minConversionRate, "Rate must be greater than or equal to min rate");
+        if (minConversionRate == 0) revert CurrencyNotSupported();
+        if (conversionRate < minConversionRate) revert RateMustBeGreaterThanOrEqualToMin();
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
-            require(
-                _isValidSignature(
-                    abi.encodePacked(depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
-                    _intent.gatingServiceSignature,
-                    intentGatingService
-                ),
-                "Invalid gating service signature"
-            );
+            if (!_isValidSignature(
+                abi.encodePacked(depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
+                _intent.gatingServiceSignature,
+                intentGatingService
+            )) {
+                revert InvalidGatingServiceSignature();
+            }
         }
     }
 
@@ -959,12 +1020,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {
-            require(_token.transfer(protocolFeeRecipient, protocolFeeAmount), "Protocol fee transfer failed");
+            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert ProtocolFeeTransferFailed();
         }
         
         // Transfer referrer fee
         if (referrerFeeAmount > 0) {
-            require(_token.transfer(_intent.referrer, referrerFeeAmount), "Referrer fee transfer failed");
+            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert ReferrerFeeTransferFailed();
         }
 
         // If there's a post-intent hook, handle it
@@ -973,7 +1034,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _intent.postIntentHook.execute(_intent, netAmount, _fulfillIntentData);
         } else {
             // Otherwise transfer directly to the intent recipient
-            require(_token.transfer(_intent.to, netAmount), "Transfer to recipient failed");
+            if (!_token.transfer(_intent.to, netAmount)) revert TransferToRecipientFailed();
         }
 
         emit IntentFulfilled(
@@ -982,7 +1043,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _verifier, 
             _intent.owner, 
             _intent.to, 
-            _intent.amount, 
+            netAmount, 
             protocolFeeAmount,
             referrerFeeAmount
         );
@@ -1010,20 +1071,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
     ) internal {
 
         // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
-        require(_verifiers.length == _verifierData.length, "Verifiers and depositVerifierData length mismatch");
-        require(_verifiers.length == _currencies.length, "Verifiers and currencies length mismatch");
+        if (_verifiers.length != _verifierData.length) revert VerifiersAndDepositVerifierDataLengthMismatch();
+        if (_verifiers.length != _currencies.length) revert VerifiersAndCurrenciesLengthMismatch();
 
         for (uint256 i = 0; i < _verifiers.length; i++) {
             address verifier = _verifiers[i];
             
-            require(verifier != address(0), "Verifier cannot be zero address");
-            require(
-                paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
-                paymentVerifierRegistry.isAcceptingAllVerifiers(), 
-                "Payment verifier not whitelisted"
-            );
-            require(bytes(_verifierData[i].payeeDetails).length != 0, "Payee details cannot be empty");
-            require(bytes(depositVerifierData[_depositId][verifier].payeeDetails).length == 0, "Verifier data already exists");
+            if (verifier == address(0)) revert VerifierCannotBeZeroAddress();
+            if (!(paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
+                paymentVerifierRegistry.isAcceptingAllVerifiers())) {
+                revert PaymentVerifierNotWhitelisted();
+            }
+            if (bytes(_verifierData[i].payeeDetails).length == 0) revert PayeeDetailsCannotBeEmpty();
+            if (bytes(depositVerifierData[_depositId][verifier].payeeDetails).length != 0) revert VerifierDataAlreadyExists();
 
             depositVerifierData[_depositId][verifier] = _verifierData[i];
             depositVerifiers[_depositId].push(verifier);
@@ -1050,15 +1110,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _currencyCode,
         uint256 _minConversionRate
     ) internal {
-        require(
-            IBasePaymentVerifier(_verifier).isCurrency(_currencyCode), 
-            "Currency not supported by verifier"
-        );
-        require(_minConversionRate > 0, "Conversion rate must be greater than 0");
-        require(
-            depositCurrencyMinRate[_depositId][_verifier][_currencyCode] == 0,
-            "Currency rate already exists"
-        );
+        if (!IBasePaymentVerifier(_verifier).isCurrency(_currencyCode)) {
+            revert CurrencyNotSupportedByVerifier();
+        }
+        if (_minConversionRate == 0) revert ConversionRateMustBeGreaterThanZero();
+        if (depositCurrencyMinRate[_depositId][_verifier][_currencyCode] != 0) {
+            revert CurrencyRateAlreadyExists();
+        }
         depositCurrencyMinRate[_depositId][_verifier][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_verifier].push(_currencyCode);
 
