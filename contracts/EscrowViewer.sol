@@ -107,12 +107,16 @@ contract EscrowViewer is IEscrowViewer {
     }
 
     /**
-     * @notice Gets the active intent for a specific account.
+     * @notice Gets the active intents for a specific account.
      * @param _account The account address.
-     * @return intentView The IntentView struct.
+     * @return intentViews Array of IntentView structs.
      */
-    function getAccountIntent(address _account) external view returns (IEscrowViewer.IntentView memory intentView) {
-        bytes32 intentHash = escrowContract.getAccountIntent(_account);
-        intentView = getIntent(intentHash);
+    function getAccountIntents(address _account) external view returns (IEscrowViewer.IntentView[] memory intentViews) {
+        bytes32[] memory intentHashes = escrowContract.getAccountIntents(_account);
+        intentViews = new IntentView[](intentHashes.length);
+        
+        for (uint256 i = 0; i < intentHashes.length; ++i) {
+            intentViews[i] = getIntent(intentHashes[i]);
+        }
     }
 }

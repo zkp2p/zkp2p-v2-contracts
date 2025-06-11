@@ -52,6 +52,7 @@ describe.only("EscrowViewer", () => {
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
+  let relayerRegistry: any; // Using any for now to avoid compilation issues
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -79,6 +80,11 @@ describe.only("EscrowViewer", () => {
     paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
     postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
 
+    // Deploy RelayerRegistry (using the factory directly to avoid import issues)
+    const RelayerRegistry = await ethers.getContractFactory("RelayerRegistry");
+    relayerRegistry = await RelayerRegistry.deploy(owner.address);
+    await relayerRegistry.deployed();
+
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
     ramp = await deployer.deployEscrow(
@@ -87,6 +93,7 @@ describe.only("EscrowViewer", () => {
       chainId,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
+      relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
       feeRecipient.address               // protocol fee recipient
     );
@@ -511,13 +518,15 @@ describe.only("EscrowViewer", () => {
     });
   });
 
-  describe("#getAccountIntent", async () => {
+  describe("#getAccountIntents", async () => {
     let subjectAccount: string;
-    let intentHash: string;
 
     let depositConversionRate: BigNumber;
 
     beforeEach(async () => {
+      // Enable multiple intents for testing
+      await ramp.connect(owner.wallet).setAllowMultipleIntents(true);
+
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
       depositConversionRate = ether(1.08);
@@ -537,17 +546,6 @@ describe.only("EscrowViewer", () => {
         ethers.constants.AddressZero
       );
 
-      const gatingServiceSignature = await generateGatingServiceSignature(
-        gatingService,
-        ZERO,
-        usdc(50),
-        onRamper.address,
-        verifier.address,
-        Currency.USD,
-        depositConversionRate,
-        chainId.toString()
-      );
-
       const params = await createSignalIntentParams(
         ZERO,
         usdc(50),
@@ -565,36 +563,57 @@ describe.only("EscrowViewer", () => {
 
       await ramp.connect(onRamper.wallet).signalIntent(params);
 
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
-      intentHash = calculateIntentHash(
-        onRamper.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp
-      );
-
       subjectAccount = onRamper.address;
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getAccountIntent(subjectAccount);
+      return escrowViewer.getAccountIntents(subjectAccount);
     }
 
-    it("should return correct intent for account", async () => {
-      const intent = await subject();
+    it("should return correct intents for account", async () => {
+      const intents = await subject();
 
-      expect(intent.intentHash).to.eq(intentHash);
-      expect(intent.intent.owner).to.eq(onRamper.address);
+      expect(intents.length).to.eq(1);
+      expect(intents[0].intent.owner).to.eq(onRamper.address);
     });
 
-    describe("when account has no intent", async () => {
+    describe("when account has no intents", async () => {
       beforeEach(async () => {
         subjectAccount = offRamper.address;
       });
 
-      it("should return intent with zero bytes hash", async () => {
-        const intent = await subject();
-        expect(intent.intentHash).to.eq(ZERO_BYTES32);
+      it("should return empty array", async () => {
+        const intents = await subject();
+        expect(intents.length).to.eq(0);
+      });
+    });
+
+    describe("when account has multiple intents", async () => {
+      beforeEach(async () => {
+        // Signal a second intent
+        const params2 = await createSignalIntentParams(
+          ZERO,
+          usdc(30),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          ethers.constants.AddressZero,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ethers.constants.AddressZero,
+          "0x"
+        );
+
+        await ramp.connect(onRamper.wallet).signalIntent(params2);
+      });
+
+      it("should return all intents for the account", async () => {
+        const intents = await subject();
+        expect(intents.length).to.eq(2);
+        expect(intents[0].intent.owner).to.eq(onRamper.address);
+        expect(intents[1].intent.owner).to.eq(onRamper.address);
       });
     });
   });

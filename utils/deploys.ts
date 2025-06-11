@@ -27,7 +27,8 @@ import {
   BaseReclaimVerifier,
   PostIntentHookMock,
   PaymentVerifierRegistry,
-  PostIntentHookRegistry
+  PostIntentHookRegistry,
+  RelayerRegistry
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -52,6 +53,7 @@ import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/cont
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
+import { RelayerRegistry__factory } from "../typechain/factories/contracts/RelayerRegistry.sol";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -70,6 +72,7 @@ export default class DeployHelper {
     chainId: BigNumber,
     paymentVerifierRegistry: Address,
     postIntentHookRegistry: Address,
+    relayerRegistry: Address,
     protocolFee: BigNumber,
     protocolFeeRecipient: Address
   ): Promise<Escrow> {
@@ -79,6 +82,7 @@ export default class DeployHelper {
       intentExpirationPeriod,
       paymentVerifierRegistry,
       postIntentHookRegistry,
+      relayerRegistry,
       protocolFee,
       protocolFeeRecipient
     );
@@ -314,5 +318,9 @@ export default class DeployHelper {
 
   public async deployPostIntentHookRegistry(owner: Address): Promise<PostIntentHookRegistry> {
     return await new PostIntentHookRegistry__factory(this._deployerSigner).deploy(owner);
+  }
+
+  public async deployRelayerRegistry(owner: Address): Promise<RelayerRegistry> {
+    return await new RelayerRegistry__factory(this._deployerSigner).deploy(owner);
   }
 }

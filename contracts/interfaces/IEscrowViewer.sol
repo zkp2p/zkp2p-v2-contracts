@@ -30,4 +30,8 @@ interface IEscrowViewer {
     function getDepositFromIds(
         uint256[] memory _depositIds
     ) external view returns (DepositView[] memory depositArray);
+
+    function getAccountIntents(
+        address _account
+    ) external view returns (IntentView[] memory intentViews);
 }

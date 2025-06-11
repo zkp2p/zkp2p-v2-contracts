@@ -97,6 +97,6 @@ interface IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     
     function getIntent(bytes32 _intentHash) external view returns (Intent memory);
-    function getAccountIntent(address _account) external view returns (bytes32);
+    function getAccountIntents(address _account) external view returns (bytes32[] memory);
     function getPrunableIntents(uint256 _depositId) external view returns (bytes32[] memory prunableIntents, uint256 reclaimedAmount);
 }

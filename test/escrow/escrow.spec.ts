@@ -55,6 +55,7 @@ describe.only("Escrow", () => {
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
+  let relayerRegistry: any; // Using any for now to avoid compilation issues
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -83,6 +84,7 @@ describe.only("Escrow", () => {
 
     paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
     postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+    relayerRegistry = await deployer.deployRelayerRegistry(owner.address);
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
@@ -92,6 +94,7 @@ describe.only("Escrow", () => {
       chainId,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
+      relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
       feeRecipient.address               // protocol fee recipient
     );
@@ -666,8 +669,8 @@ describe.only("Escrow", () => {
         await blockchain.getCurrentTimestamp()
       );
 
-      const accountIntent = await escrowViewer.getAccountIntent(subjectCaller.address);
-      expect(accountIntent.intentHash).to.eq(intentHash);
+      const accountIntent = await escrowViewer.getAccountIntents(subjectCaller.address);
+      expect(accountIntent[0].intentHash).to.eq(intentHash);
     });
 
     it.skip("should emit an IntentSignaled event", async () => {
@@ -1888,9 +1891,9 @@ describe.only("Escrow", () => {
     it("should remove the intent from the accountIntents mapping", async () => {
       await subject();
 
-      const accountIntent = await escrowViewer.getAccountIntent(onRamper.address);
+      const accountIntents = await escrowViewer.getAccountIntents(onRamper.address);
 
-      expect(accountIntent.intentHash).to.eq(ZERO_BYTES32);
+      expect(accountIntents[0].intentHash).to.eq(ZERO_BYTES32);
     });
 
     it("should revert if the intent does not exist", async () => {
@@ -3563,6 +3566,335 @@ describe.only("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Post intent hook registry cannot be zero address");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe.only("#signalIntent with multiple intents", async () => {
+    let relayerAccount: Account;
+    let nonRelayerAccount: Account;
+
+    beforeEach(async () => {
+      relayerAccount = witness;  // Using witness account as relayer
+      nonRelayerAccount = onRamper;
+
+      // Create a deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      const depositConversionRate = ether(1.01);
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(1000), // Large deposit to support multiple intents
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        offRamperDelegate.address
+      );
+    });
+
+    describe("when a relayer is whitelisted", async () => {
+      beforeEach(async () => {
+        await relayerRegistry.connect(owner.wallet).addRelayer(relayerAccount.address);
+      });
+
+      it("should allow relayer to signal multiple intents", async () => {
+        // First intent
+        const params1 = await createSignalIntentParams(
+          ZERO,
+          usdc(50),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await ramp.connect(relayerAccount.wallet).signalIntent(params1);
+
+        // Second intent
+        const params2 = await createSignalIntentParams(
+          ZERO,
+          usdc(75),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await ramp.connect(relayerAccount.wallet).signalIntent(params2);
+
+        // Verify both intents exist
+        const accountIntents = await ramp.getAccountIntents(relayerAccount.address);
+        expect(accountIntents.length).to.eq(2);
+      });
+
+      it("should allow non-relayer to signal only one intent", async () => {
+        // First intent
+        const params1 = await createSignalIntentParams(
+          ZERO,
+          usdc(50),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await ramp.connect(nonRelayerAccount.wallet).signalIntent(params1);
+
+        // Try to signal second intent - should fail
+        const params2 = await createSignalIntentParams(
+          ZERO,
+          usdc(75),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await expect(
+          ramp.connect(nonRelayerAccount.wallet).signalIntent(params2)
+        ).to.be.revertedWith("AccountHasUnfulfilledIntent");
+      });
+    });
+
+    describe("when allowMultipleIntents is enabled", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).setAllowMultipleIntents(true);
+      });
+
+      it("should allow any account to signal multiple intents", async () => {
+        // First intent
+        const params1 = await createSignalIntentParams(
+          ZERO,
+          usdc(50),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await ramp.connect(nonRelayerAccount.wallet).signalIntent(params1);
+
+        // Second intent
+        const params2 = await createSignalIntentParams(
+          ZERO,
+          usdc(75),
+          receiver.address,
+          verifier.address,
+          Currency.USD,
+          ether(1.02),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        await ramp.connect(nonRelayerAccount.wallet).signalIntent(params2);
+
+        // Verify both intents exist
+        const accountIntents = await ramp.getAccountIntents(nonRelayerAccount.address);
+        expect(accountIntents.length).to.eq(2);
+      });
+    });
+  });
+
+  describe("#getAccountIntents", async () => {
+    beforeEach(async () => {
+      // Enable multiple intents for testing
+      await relayerRegistry.connect(owner.wallet).setAllowMultipleIntents(true);
+
+      // Create a deposit
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit(
+        usdcToken.address,
+        usdc(1000),
+        { min: usdc(10), max: usdc(200) },
+        [verifier.address],
+        [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        offRamperDelegate.address
+      );
+    });
+
+    it("should return empty array for account with no intents", async () => {
+      const intents = await ramp.getAccountIntents(onRamper.address);
+      expect(intents.length).to.eq(0);
+    });
+
+    it("should return all intents for an account", async () => {
+      // Signal two intents
+      const params1 = await createSignalIntentParams(
+        ZERO,
+        usdc(50),
+        receiver.address,
+        verifier.address,
+        Currency.USD,
+        ether(1.02),
+        ADDRESS_ZERO,
+        ZERO,
+        gatingService,
+        chainId.toString(),
+        ADDRESS_ZERO,
+        "0x"
+      );
+      await ramp.connect(onRamper.wallet).signalIntent(params1);
+
+      const params2 = await createSignalIntentParams(
+        ZERO,
+        usdc(75),
+        receiver.address,
+        verifier.address,
+        Currency.USD,
+        ether(1.02),
+        ADDRESS_ZERO,
+        ZERO,
+        gatingService,
+        chainId.toString(),
+        ADDRESS_ZERO,
+        "0x"
+      );
+      await ramp.connect(onRamper.wallet).signalIntent(params2);
+
+      const intents = await ramp.getAccountIntents(onRamper.address);
+      expect(intents.length).to.eq(2);
+    });
+  });
+
+  describe.only("#setRelayerRegistry", async () => {
+    let subjectRelayerRegistry: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      const RelayerRegistry = await ethers.getContractFactory("RelayerRegistry");
+      const newRegistry = await RelayerRegistry.deploy(owner.address);
+      await newRegistry.deployed();
+      subjectRelayerRegistry = newRegistry.address;
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setRelayerRegistry(subjectRelayerRegistry);
+    }
+
+    it("should set the correct relayer registry", async () => {
+      const preRegistry = await ramp.relayerRegistry();
+      expect(preRegistry).to.not.eq(subjectRelayerRegistry);
+
+      await subject();
+
+      const postRegistry = await ramp.relayerRegistry();
+      expect(postRegistry).to.eq(subjectRelayerRegistry);
+    });
+
+    it("should emit a RelayerRegistryUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "RelayerRegistryUpdated").withArgs(subjectRelayerRegistry);
+    });
+
+    describe("when the registry is zero address", async () => {
+      beforeEach(async () => {
+        subjectRelayerRegistry = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Relayer registry cannot be zero address");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe.only("#setAllowMultipleIntents", async () => {
+    let subjectAllowMultiple: boolean;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectAllowMultiple = true;
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return await ramp.connect(subjectCaller.wallet).setAllowMultipleIntents(subjectAllowMultiple);
+    }
+
+    it("should correctly set allowMultipleIntents", async () => {
+      await subject();
+
+      const allowMultiple = await ramp.allowMultipleIntents();
+      expect(allowMultiple).to.eq(subjectAllowMultiple);
+    });
+
+    it("should emit the correct AllowMultipleIntentsUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "AllowMultipleIntentsUpdated").withArgs(
+        subjectAllowMultiple
+      );
+    });
+
+    describe("when setting to false", async () => {
+      beforeEach(async () => {
+        await ramp.setAllowMultipleIntents(true);
+        subjectAllowMultiple = false;
+      });
+
+      it("should correctly set allowMultipleIntents to false", async () => {
+        await subject();
+
+        const allowMultiple = await ramp.allowMultipleIntents();
+        expect(allowMultiple).to.be.false;
       });
     });
 

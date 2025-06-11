@@ -17,6 +17,7 @@ import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifie
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./verifiers/registries/PaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./hooks/PostIntentHookRegistry.sol";
+import { IRelayerRegistry } from "./RelayerRegistry.sol";
 
 pragma solidity ^0.8.18;
 
@@ -163,6 +164,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     event DepositClosed(uint256 depositId, address depositor);
     
     event MinDepositAmountSet(uint256 minDepositAmount);
+    event AllowMultipleIntentsUpdated(bool allowMultiple);
     event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
     
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
@@ -174,6 +176,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
     event PostIntentHookRegistryUpdated(address indexed postIntentHookRegistry);
+    event RelayerRegistryUpdated(address indexed relayerRegistry);
     
     event ProtocolFeeUpdated(uint256 protocolFee);
     event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
@@ -189,7 +192,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 immutable public chainId;                                      // chainId of the chain the escrow is deployed on
 
     mapping(address => uint256[]) internal accountDeposits;           // Mapping of address to depositIds
-    mapping(address => bytes32) internal accountIntent;               // Mapping of address to intentHash (Only one intent per address at a given time)
+    mapping(address => bytes32[]) internal accountIntents;             // Mapping of address to array of intentHashes (Multiple intents per address allowed for relayers)
     
     // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
     // services. Each payment service has it's own verification data which includes the payee details hash and the data used for 
@@ -212,11 +215,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
     // Registry contracts
     IPaymentVerifierRegistry public paymentVerifierRegistry;
     IPostIntentHookRegistry public postIntentHookRegistry;
+    IRelayerRegistry public relayerRegistry;
 
     // Protocol fee configuration
     uint256 public protocolFee;                                     // Protocol fee taken from taker (in preciseUnits, 1e16 = 1%)
     address public protocolFeeRecipient;                            // Address that receives protocol fees
 
+    bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
     uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
 
     uint256 public depositCounter;                                  // Counter for depositIds
@@ -246,6 +251,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _intentExpirationPeriod,
         address _paymentVerifierRegistry,
         address _postIntentHookRegistry,
+        address _relayerRegistry,
         uint256 _protocolFee,
         address _protocolFeeRecipient
     )
@@ -255,6 +261,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         intentExpirationPeriod = _intentExpirationPeriod;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
+        relayerRegistry = IRelayerRegistry(_relayerRegistry);
         protocolFee = _protocolFee;
         protocolFeeRecipient = _protocolFeeRecipient;
 
@@ -362,7 +369,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             data: _params.data
         });
 
-        accountIntent[msg.sender] = intentHash;
+        accountIntents[msg.sender].push(intentHash);
 
         deposit.remainingDeposits -= _params.amount;
         deposit.outstandingIntentAmount += _params.amount;
@@ -735,6 +742,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
+     * @notice GOVERNANCE ONLY: Sets whether all accounts can signal multiple intents.
+     *
+     * @param _allowMultiple   True to allow all accounts to signal multiple intents, false to restrict to whitelisted relayers only
+     */
+    function setAllowMultipleIntents(bool _allowMultiple) external onlyOwner {
+        allowMultipleIntents = _allowMultiple;
+        
+        emit AllowMultipleIntentsUpdated(_allowMultiple);
+    }
+
+    /**
      * @notice GOVERNANCE ONLY: Updates the intent expiration period, after this period elapses an intent can be pruned to prevent
      * locking up a depositor's funds.
      *
@@ -796,6 +814,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
     }
 
+    /**
+     * @notice GOVERNANCE ONLY: Updates the relayer registry address.
+     *
+     * @param _relayerRegistry   New relayer registry address
+     */
+    function setRelayerRegistry(address _relayerRegistry) external onlyOwner {
+        require(_relayerRegistry != address(0), "Relayer registry cannot be zero address");
+        
+        relayerRegistry = IRelayerRegistry(_relayerRegistry);
+        emit RelayerRegistryUpdated(_relayerRegistry);
+    }
+
     /* ============ External View Functions ============ */
 
     /**
@@ -836,8 +866,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return accountDeposits[_account];
     }
 
-    function getAccountIntent(address _account) external view returns (bytes32) {
-        return accountIntent[_account];
+    function getAccountIntents(address _account) external view returns (bytes32[] memory) {
+        return accountIntents[_account];
     }
 
     function getDepositDelegate(uint256 _depositId) external view returns (address) {
@@ -857,8 +887,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     function _validateIntent(SignalIntentParams memory _intent, Deposit storage _deposit) internal view {
 
-        // TODO: Update this later
-        if (accountIntent[msg.sender] != bytes32(0)) revert AccountHasUnfulfilledIntent();
+        // Check if account can have multiple intents
+        bool canHaveMultipleIntents = relayerRegistry.isWhitelistedRelayer(msg.sender) || allowMultipleIntents;
+        if (!canHaveMultipleIntents && accountIntents[msg.sender].length > 0) {
+            revert AccountHasUnfulfilledIntent();
+        }
 
         if (_deposit.depositor == address(0)) revert DepositDoesNotExist();
         if (!_deposit.acceptingIntents) revert DepositNotAcceptingIntents();
@@ -951,7 +984,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function _pruneIntent(Deposit storage _deposit, bytes32 _intentHash) internal {
         Intent memory intent = intents[_intentHash];
 
-        delete accountIntent[intent.owner];
+        accountIntents[intent.owner].removeStorage(_intentHash);
         delete intents[_intentHash];
         _deposit.intentHashes.removeStorage(_intentHash);
 

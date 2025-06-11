@@ -10,6 +10,7 @@ export {
   BaseReclaimVerifier,
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
+  RelayerRegistry,
   NullifierRegistry,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
