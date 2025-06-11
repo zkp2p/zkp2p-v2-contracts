@@ -2,13 +2,10 @@
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
+import { IPostIntentHookRegistry } from "../interfaces/IPostIntentHookRegistry.sol";
 
 pragma solidity ^0.8.18;
 
-interface IPostIntentHookRegistry {
-    function isWhitelistedHook(address _hook) external view returns (bool);
-    function getWhitelistedHooks() external view returns (address[] memory);
-}
 
 contract PostIntentHookRegistry is Ownable, IPostIntentHookRegistry {
 

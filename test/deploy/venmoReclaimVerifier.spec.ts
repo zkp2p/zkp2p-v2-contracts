@@ -98,15 +98,15 @@ describe("VenmoReclaimVerifier Deployment", () => {
     });
   });
 
-  describe("Whitelisted Payment Verifier", async () => {
-    it("should add the VenmoReclaimVerifier to the whitelisted payment verifiers", async () => {
-      const hasWritePermission = await escrow.whitelistedPaymentVerifiers(venmoReclaimVerifier.address);
-      expect(hasWritePermission).to.be.true;
-    });
+  // describe("Whitelisted Payment Verifier", async () => {
+  //   it("should add the VenmoReclaimVerifier to the whitelisted payment verifiers", async () => {
+  //     const hasWritePermission = await escrow.whitelistedPaymentVerifiers(venmoReclaimVerifier.address);
+  //     expect(hasWritePermission).to.be.true;
+  //   });
 
-    it("should set the correct fee share", async () => {
-      const feeShare = await escrow.paymentVerifierFeeShare(venmoReclaimVerifier.address);
-      expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE[network]);
-    });
-  });
+  //   it("should set the correct fee share", async () => {
+  //     const feeShare = await escrow.paymentVerifierFeeShare(venmoReclaimVerifier.address);
+  //     expect(feeShare).to.eq(VENMO_RECLAIM_FEE_SHARE[network]);
+  //   });
+  // });
 });

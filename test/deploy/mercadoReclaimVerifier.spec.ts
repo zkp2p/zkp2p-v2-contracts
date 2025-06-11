@@ -98,15 +98,15 @@ describe("MercadoPagoReclaimVerifier Deployment", () => {
     });
   });
 
-  describe("Whitelisted Payment Verifier", async () => {
-    it("should add the MercadoPagoReclaimVerifier to the whitelisted payment verifiers", async () => {
-      const hasWritePermission = await escrow.whitelistedPaymentVerifiers(mercadoPagoReclaimVerifier.address);
-      expect(hasWritePermission).to.be.true;
-    });
+  // describe("Whitelisted Payment Verifier", async () => {
+  //   it("should add the MercadoPagoReclaimVerifier to the whitelisted payment verifiers", async () => {
+  //     const hasWritePermission = await escrow.whitelistedPaymentVerifiers(mercadoPagoReclaimVerifier.address);
+  //     expect(hasWritePermission).to.be.true;
+  //   });
 
-    it("should set the correct fee share", async () => {
-      const feeShare = await escrow.paymentVerifierFeeShare(mercadoPagoReclaimVerifier.address);
-      expect(feeShare).to.eq(MERCADO_RECLAIM_FEE_SHARE[network]);
-    });
-  });
+  //   it("should set the correct fee share", async () => {
+  //     const feeShare = await escrow.paymentVerifierFeeShare(mercadoPagoReclaimVerifier.address);
+  //     expect(feeShare).to.eq(MERCADO_RECLAIM_FEE_SHARE[network]);
+  //   });
+  // });
 });

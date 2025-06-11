@@ -7,7 +7,7 @@ import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
 import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
-import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 
 import { BaseReclaimVerifier } from "../BaseVerifiers/BaseReclaimVerifier.sol";

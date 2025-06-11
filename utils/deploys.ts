@@ -37,9 +37,10 @@ import {
   ClaimVerifierMock__factory,
   PostIntentHookMock__factory
 } from "../typechain/factories/contracts/mocks";
-import { NullifierRegistry__factory } from "../typechain/factories/contracts/verifiers/nullifierRegistries";
-import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/verifiers/registries/PaymentVerifierRegistry.sol";
-import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/hooks/PostIntentHookRegistry.sol";
+import { NullifierRegistry__factory } from "../typechain/factories/contracts/registries";
+import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
+import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
+import { RelayerRegistry__factory } from "../typechain/factories/contracts/registries";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
@@ -53,7 +54,6 @@ import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/cont
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
-import { RelayerRegistry__factory } from "../typechain/factories/contracts/RelayerRegistry.sol";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;

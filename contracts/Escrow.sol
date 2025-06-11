@@ -15,9 +15,9 @@ import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
-import { IPaymentVerifierRegistry } from "./verifiers/registries/PaymentVerifierRegistry.sol";
-import { IPostIntentHookRegistry } from "./hooks/PostIntentHookRegistry.sol";
-import { IRelayerRegistry } from "./RelayerRegistry.sol";
+import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
+import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
+import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 pragma solidity ^0.8.18;
 

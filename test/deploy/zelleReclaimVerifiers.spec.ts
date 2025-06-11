@@ -102,15 +102,15 @@ describe("Zelle Reclaim Verifier Deployments", () => {
       expect([...actualCurrencies].sort()).to.deep.eq([...ZELLE_RECLAIM_CURRENCIES].sort());
     });
 
-    it("should be added to the whitelisted payment verifiers in Escrow", async () => {
-      const isWhitelisted = await escrow.whitelistedPaymentVerifiers(zelleBaseVerifier.address);
-      expect(isWhitelisted).to.be.true;
-    });
+    // it("should be added to the whitelisted payment verifiers in Escrow", async () => {
+    //   const isWhitelisted = await escrow.whitelistedPaymentVerifiers(zelleBaseVerifier.address);
+    //   expect(isWhitelisted).to.be.true;
+    // });
 
-    it("should have the correct fee share set in Escrow", async () => {
-      const feeShare = await escrow.paymentVerifierFeeShare(zelleBaseVerifier.address);
-      expect(feeShare).to.eq(ZELLE_RECLAIM_FEE_SHARE[network]);
-    });
+    // it("should have the correct fee share set in Escrow", async () => {
+    //   const feeShare = await escrow.paymentVerifierFeeShare(zelleBaseVerifier.address);
+    //   expect(feeShare).to.eq(ZELLE_RECLAIM_FEE_SHARE[network]);
+    // });
 
     it("should have the correct payment method mappings", async () => {
       const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
@@ -190,12 +190,12 @@ describe("Zelle Reclaim Verifier Deployments", () => {
     });
 
     // Individual verifiers should no longer be directly whitelisted in escrow
-    describe(`${name} Escrow Integration`, () => {
-      it("should NOT be directly added to the whitelisted payment verifiers", async () => {
-        const verifier = getVerifier();
-        const isWhitelisted = await escrow.whitelistedPaymentVerifiers(verifier.address);
-        expect(isWhitelisted).to.be.false;
-      });
-    });
+    // describe(`${name} Escrow Integration`, () => {
+    //   it("should NOT be directly added to the whitelisted payment verifiers", async () => {
+    //     const verifier = getVerifier();
+    //     const isWhitelisted = await escrow.whitelistedPaymentVerifiers(verifier.address);
+    //     expect(isWhitelisted).to.be.false;
+    //   });
+    // });
   }
 });

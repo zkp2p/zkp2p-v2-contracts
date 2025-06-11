@@ -8,7 +8,7 @@ import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;

@@ -13,7 +13,7 @@ task("get-account-intent", "Gets the current intent for an account")
     const account = taskArgs.account;
 
     // Call the getAccountIntent function
-    const intent = await escrow.getAccountIntent(account);
+    // const intent = await escrow.getAccountIntent(account);
 
     // if (intent.intent.owner === ethers.constants.AddressZero) {
     //   console.log("No intent found for account");

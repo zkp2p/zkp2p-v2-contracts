@@ -1,15 +1,10 @@
 //SPDX-License-Identifier: MIT
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AddressArrayUtils } from "../../external/AddressArrayUtils.sol";
+import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
+import { IPaymentVerifierRegistry } from "../interfaces/IPaymentVerifierRegistry.sol";
 
 pragma solidity ^0.8.18;
-
-interface IPaymentVerifierRegistry {
-    function isWhitelistedVerifier(address _verifier) external view returns (bool);
-    function isAcceptingAllVerifiers() external view returns (bool);
-    function getWhitelistedVerifiers() external view returns (address[] memory);
-}
 
 contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
 
