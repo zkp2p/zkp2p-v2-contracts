@@ -157,7 +157,7 @@ describe("RevolutReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -173,11 +173,15 @@ describe("RevolutReclaimVerifier", () => {
     it("should verify the proof", async () => {
       const [
         verified,
-        intentHash
+        intentHash,
+        releaseAmount
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
       expect(intentHash).to.eq(BigNumber.from('2618855330259351132643749738312276409026917421853980101201034599731745761128').toHexString());
+      // Payment is 0.98 EUR, conversion rate is 0.9, intent amount is 1 USDC
+      // Release amount = 0.98 / 0.9 = 1.0888... but capped at intent amount 1
+      expect(releaseAmount).to.eq(usdc(1));
     });
 
     it("should nullify the payment id", async () => {
@@ -223,23 +227,47 @@ describe("RevolutReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount * conversion rate", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1.01);   // just 1 cent more than the actual ask amount (1.01 * 0.98 = 0.9898) which is greater than the payment amount (0.98)
+        subjectIntentAmount = usdc(2); // Intent expects 2 * 0.9 = 1.8, but actual payment is 0.98
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const [
+          verified,
+          intentHash,
+          releaseAmount
+        ] = await subjectCallStatic();
+
+        expect(verified).to.be.true;
+        expect(intentHash).to.eq(BigNumber.from("2618855330259351132643749738312276409026917421853980101201034599731745761128").toHexString());
+        // Payment is 0.98 EUR, conversion rate is 0.9, intent amount is 2 USDC
+        // Release amount = 0.98 / 0.9 = 1.0888... but capped at intent amount 1
+        expect(releaseAmount).to.eq(usdc(1.088888));   // restricted to 6 decimal places and rounded down
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"2618855330259351132643749738312276409026917421853980101201034599731745761128\",\"extractedParameters\":{\"amount\":\"-0\",\"completedDate\":\"1735758706771\",\"currency\":\"EUR\",\"id\":\"67759372-3c29-a180-8947-6f71f4788e5a\",\"state\":\"COMPLETED\",\"username\":\"0xb0c846964b3a3afc29e2b1f931f7d66ee9cd542459cda2f7d22777e12394f923\"},\"providerHash\":\"0xe0d6623ce129c5a9c9f042d2a8a8d8956b5bb994235920e0f2774874716bf0c8\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
-      });
-
-      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
-        beforeEach(async () => {
-          subjectIntentAmount = usdc(0.99);   // just 1 cent less than the actual ask amount (0.99 * 0.98 = 0.9702) which is less than the payment amount (0.98)
-        });
-
-        it("should not revert", async () => {
-          await expect(subject()).to.not.be.reverted;
-        });
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 

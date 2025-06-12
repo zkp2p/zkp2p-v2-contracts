@@ -6,7 +6,7 @@ import { Claims } from "../../external/Claims.sol";
 import { StringArrayUtils } from "../../external/StringArrayUtils.sol";
 
 import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
-import { INullifierRegistry } from "../nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../../interfaces/INullifierRegistry.sol";
 import { IReclaimVerifier } from "../interfaces/IReclaimVerifier.sol";
 
 pragma solidity ^0.8.18;
@@ -163,5 +163,27 @@ contract BaseReclaimVerifier is Ownable, IReclaimVerifier {
 
     function _validateProviderHash(string memory _providerHash) internal view returns (bool) {
         return isProviderHash[_providerHash];
+    }
+
+    /**
+     * Calculates the release amount based on the actual payment amount and conversion rate.
+     * 
+     * @param _paymentAmount The actual payment amount.
+     * @param _conversionRate The conversion rate of the deposit token to the fiat currency.
+     * @param _intentAmount The max amount of tokens the offchain payer wants to take.
+     * @return The release amount.
+     */
+    function _calculateReleaseAmount(uint256 _paymentAmount, uint256 _conversionRate, uint256 _intentAmount) internal pure returns (uint256) {
+
+        // TODO: IS THIS CORRECT?
+        // releaseAmount = paymentAmount / conversionRate
+        uint256 releaseAmount = (_paymentAmount * PRECISE_UNIT) / _conversionRate;
+        
+        // Ensure release amount doesn't exceed the intent amount (cap at intent amount)
+        if (releaseAmount > _intentAmount) {
+            releaseAmount = _intentAmount;
+        }
+
+        return releaseAmount;
     }
 }

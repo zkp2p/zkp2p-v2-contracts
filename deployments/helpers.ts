@@ -56,9 +56,9 @@ export async function addWhitelistedPaymentVerifier(
   feeShare: BigNumber
 ): Promise<void> {
   const currentOwner = await contract.owner();
-  if (!(await contract.whitelistedPaymentVerifiers(newWhitelistedAddress))) {
+  if (!(await contract.isWhitelistedVerifier(newWhitelistedAddress))) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      const data = contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare]);
+      const data = contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress]);
 
       await hre.deployments.rawTx({
         from: currentOwner,
@@ -68,7 +68,7 @@ export async function addWhitelistedPaymentVerifier(
     } else {
       console.log(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
-        ${contract.interface.encodeFunctionData("addWhitelistedPaymentVerifier", [newWhitelistedAddress, feeShare])}
+        ${contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress])}
         `
       );
     }
