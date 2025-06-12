@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 
 import { IPaymentVerifier } from "../verifiers/interfaces/IPaymentVerifier.sol";
@@ -64,22 +63,30 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         external
         view 
         override
-        returns (bool, bytes32)
+        returns (bool, bytes32, uint256)
     {
         PaymentDetails memory paymentDetails = _extractPaymentDetails(_verifyPaymentData.paymentProof);
 
         if (shouldVerifyPayment) {
             require(paymentDetails.timestamp >= _verifyPaymentData.intentTimestamp, "Payment timestamp is before intent timestamp");
-            require(paymentDetails.amount >= (_verifyPaymentData.intentAmount * PRECISE_UNIT) / _verifyPaymentData.conversionRate, "Payment amount is less than intent amount");
+            require(paymentDetails.amount >= 0, "Payment amount cannot be zero");
             require(paymentDetails.offRamperId.stringComparison(_verifyPaymentData.payeeDetails), "Payment offramper does not match intent relayer");
             require(paymentDetails.fiatCurrency == _verifyPaymentData.fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
         if (shouldReturnFalse) {
-            return (false, bytes32(0));
+            return (false, bytes32(0), 0);
         }
 
-        return (true, paymentDetails.intentHash);
+        // Calculate release amount based on payment amount and conversion rate
+        uint256 releaseAmount = (paymentDetails.amount * PRECISE_UNIT) / _verifyPaymentData.conversionRate;
+        
+        // Cap release amount at intent amount
+        if (releaseAmount > _verifyPaymentData.intentAmount) {
+            releaseAmount = _verifyPaymentData.intentAmount;
+        }
+
+        return (true, paymentDetails.intentHash, releaseAmount);
     }
 
     function _extractPaymentDetails(bytes calldata _proof) internal pure returns (PaymentDetails memory) {

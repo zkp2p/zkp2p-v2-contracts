@@ -48,7 +48,7 @@ const zelleBoAExtensionProof = {
   }
 }
 
-describe("ZelleBaseVerifier Tests", () => {
+describe("ZelleBaseVerifier", () => {
   let owner: Account;
   let user: Account;
   let escrow: Account;
@@ -261,7 +261,7 @@ describe("ZelleBaseVerifier Tests", () => {
       );
     });
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
       return await zelleBaseVerifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -277,11 +277,13 @@ describe("ZelleBaseVerifier Tests", () => {
     it("should verify the bank of america proof", async () => {
       const [
         verified,
-        intentHash
+        intentHash,
+        releaseAmount
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
       expect(intentHash).to.eq("0x28a5929360d217432e6db97002bf2a7670a92e82bc91fbc6b887188e41290ed5");
+      expect(releaseAmount).to.eq(usdc(1));
     });
 
     describe("when caller is not escrow", async () => {

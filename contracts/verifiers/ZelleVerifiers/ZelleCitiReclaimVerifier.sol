@@ -73,13 +73,16 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return success Whether the payment verification succeeded
+     * @return intentHash The hash of the intent being fulfilled
+     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32)
+        returns (bool, bytes32, uint256)
     {
         require(msg.sender == baseVerifier, "Only base verifier can call");
 
@@ -88,16 +91,22 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
                 
-        _verifyPaymentDetails(
+        uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
             _verifyPaymentData,
             isAppclipProof
         );
 
+        uint256 releaseAmount = _calculateReleaseAmount(
+            paymentAmount, 
+            _verifyPaymentData.conversionRate, 
+            _verifyPaymentData.intentAmount
+        );
+
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)), releaseAmount);
     }
 
     /* ============ Internal Functions ============ */
@@ -128,13 +137,12 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
         PaymentDetails memory paymentDetails,
         VerifyPaymentData memory _verifyPaymentData,
         bool /* _isAppclipProof */
-    ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+    ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        require(paymentAmount > 0, "Payment amount must be greater than zero");
         
         // Validate recipient
         require(
@@ -156,6 +164,8 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             keccak256(abi.encodePacked(paymentDetails.status)) == DELIVERED_STATUS,
             "Payment not delivered"
         );
+
+        return paymentAmount;
     }
 
     function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {

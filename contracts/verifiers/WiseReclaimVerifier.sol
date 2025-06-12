@@ -64,13 +64,16 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return success Whether the payment verification succeeded
+     * @return intentHash The hash of the intent being fulfilled
+     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32)
+        returns (bool, bytes32, uint256)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
@@ -79,10 +82,16 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
                 
-        _verifyPaymentDetails(
+        uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
             _verifyPaymentData,
             isAppclipProof
+        );
+
+        uint256 releaseAmount = _calculateReleaseAmount(
+            paymentAmount, 
+            _verifyPaymentData.conversionRate, 
+            _verifyPaymentData.intentAmount
         );
 
         // Nullify the payment
@@ -91,7 +100,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
         bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
         
-        return (true, intentHash);
+        return (true, intentHash, releaseAmount);
     }
 
     /* ============ Internal Functions ============ */
@@ -132,13 +141,12 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         PaymentDetails memory paymentDetails,
         VerifyPaymentData memory _verifyPaymentData,
         bool _isAppclipProof
-    ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+    ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        require(paymentAmount > 0, "Payment amount must be greater than zero");
         
         // Validate recipient
         if (_isAppclipProof) {
@@ -169,6 +177,8 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
             "Invalid payment status"
         );
+
+        return paymentAmount;
     }
 
     /**

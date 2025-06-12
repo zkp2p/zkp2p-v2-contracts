@@ -31,8 +31,8 @@ const mercadoOnlineTransferExtensionProof = {
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": {"0":106,"1":232,"2":106,"3":151,"4":63,"5":106,"6":116,"7":136,"8":175,"9":173,"10":116,"11":51,"12":79,"13":248,"14":27,"15":219,"16":248,"17":0,"18":32,"19":92,"20":213,"21":62,"22":36,"23":49,"24":10,"25":236,"26":120,"27":232,"28":242,"29":22,"30":14,"31":11,"32":127,"33":227,"34":246,"35":18,"36":9,"37":117,"38":14,"39":255,"40":174,"41":204,"42":111,"43":176,"44":4,"45":236,"46":31,"47":82,"48":119,"49":88,"50":252,"51":222,"52":32,"53":11,"54":33,"55":221,"56":124,"57":232,"58":72,"59":245,"60":63,"61":102,"62":166,"63":205,"64":27},
-    "resultSignature": {"0":185,"1":54,"2":48,"3":63,"4":138,"5":215,"6":211,"7":242,"8":228,"9":164,"10":24,"11":18,"12":185,"13":124,"14":4,"15":151,"16":57,"17":187,"18":149,"19":94,"20":150,"21":188,"22":188,"23":93,"24":186,"25":160,"26":202,"27":238,"28":150,"29":186,"30":26,"31":243,"32":44,"33":11,"34":22,"35":222,"36":252,"37":57,"38":222,"39":27,"40":19,"41":148,"42":52,"43":176,"44":250,"45":217,"46":141,"47":144,"48":140,"49":212,"50":245,"51":201,"52":208,"53":72,"54":194,"55":30,"56":142,"57":193,"58":240,"59":161,"60":61,"61":54,"62":53,"63":14,"64":27}
+    "claimSignature": { "0": 106, "1": 232, "2": 106, "3": 151, "4": 63, "5": 106, "6": 116, "7": 136, "8": 175, "9": 173, "10": 116, "11": 51, "12": 79, "13": 248, "14": 27, "15": 219, "16": 248, "17": 0, "18": 32, "19": 92, "20": 213, "21": 62, "22": 36, "23": 49, "24": 10, "25": 236, "26": 120, "27": 232, "28": 242, "29": 22, "30": 14, "31": 11, "32": 127, "33": 227, "34": 246, "35": 18, "36": 9, "37": 117, "38": 14, "39": 255, "40": 174, "41": 204, "42": 111, "43": 176, "44": 4, "45": 236, "46": 31, "47": 82, "48": 119, "49": 88, "50": 252, "51": 222, "52": 32, "53": 11, "54": 33, "55": 221, "56": 124, "57": 232, "58": 72, "59": 245, "60": 63, "61": 102, "62": 166, "63": 205, "64": 27 },
+    "resultSignature": { "0": 185, "1": 54, "2": 48, "3": 63, "4": 138, "5": 215, "6": 211, "7": 242, "8": 228, "9": 164, "10": 24, "11": 18, "12": 185, "13": 124, "14": 4, "15": 151, "16": 57, "17": 187, "18": 149, "19": 94, "20": 150, "21": 188, "22": 188, "23": 93, "24": 186, "25": 160, "26": 202, "27": 238, "28": 150, "29": 186, "30": 26, "31": 243, "32": 44, "33": 11, "34": 22, "35": 222, "36": 252, "37": 57, "38": 222, "39": 27, "40": 19, "41": 148, "42": 52, "43": 176, "44": 250, "45": 217, "46": 141, "47": 144, "48": 140, "49": 212, "50": 245, "51": 201, "52": 208, "53": 72, "54": 194, "55": 30, "56": 142, "57": 193, "58": 240, "59": 161, "60": 61, "61": 54, "62": 53, "63": 14, "64": 27 }
   }
 }
 
@@ -48,8 +48,8 @@ const mercadoP2PMoneyTransferExtensionProof = {
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
-    "claimSignature": {"0":97,"1":246,"2":62,"3":224,"4":145,"5":33,"6":170,"7":30,"8":225,"9":55,"10":117,"11":169,"12":228,"13":176,"14":62,"15":226,"16":76,"17":45,"18":176,"19":228,"20":71,"21":44,"22":201,"23":188,"24":113,"25":58,"26":214,"27":252,"28":212,"29":227,"30":144,"31":56,"32":43,"33":11,"34":15,"35":199,"36":103,"37":139,"38":118,"39":32,"40":110,"41":59,"42":108,"43":92,"44":190,"45":33,"46":79,"47":15,"48":228,"49":76,"50":219,"51":91,"52":100,"53":76,"54":229,"55":255,"56":193,"57":146,"58":166,"59":33,"60":235,"61":134,"62":237,"63":66,"64":27},
-    "resultSignature": {"0":243,"1":227,"2":60,"3":103,"4":68,"5":53,"6":167,"7":246,"8":232,"9":239,"10":33,"11":62,"12":155,"13":65,"14":36,"15":126,"16":215,"17":33,"18":248,"19":114,"20":65,"21":20,"22":132,"23":58,"24":231,"25":146,"26":118,"27":122,"28":97,"29":65,"30":194,"31":219,"32":4,"33":210,"34":80,"35":131,"36":1,"37":204,"38":194,"39":249,"40":140,"41":66,"42":148,"43":255,"44":123,"45":240,"46":34,"47":171,"48":96,"49":193,"50":41,"51":181,"52":117,"53":216,"54":231,"55":228,"56":251,"57":91,"58":251,"59":127,"60":21,"61":61,"62":196,"63":172,"64":27}
+    "claimSignature": { "0": 97, "1": 246, "2": 62, "3": 224, "4": 145, "5": 33, "6": 170, "7": 30, "8": 225, "9": 55, "10": 117, "11": 169, "12": 228, "13": 176, "14": 62, "15": 226, "16": 76, "17": 45, "18": 176, "19": 228, "20": 71, "21": 44, "22": 201, "23": 188, "24": 113, "25": 58, "26": 214, "27": 252, "28": 212, "29": 227, "30": 144, "31": 56, "32": 43, "33": 11, "34": 15, "35": 199, "36": 103, "37": 139, "38": 118, "39": 32, "40": 110, "41": 59, "42": 108, "43": 92, "44": 190, "45": 33, "46": 79, "47": 15, "48": 228, "49": 76, "50": 219, "51": 91, "52": 100, "53": 76, "54": 229, "55": 255, "56": 193, "57": 146, "58": 166, "59": 33, "60": 235, "61": 134, "62": 237, "63": 66, "64": 27 },
+    "resultSignature": { "0": 243, "1": 227, "2": 60, "3": 103, "4": 68, "5": 53, "6": 167, "7": 246, "8": 232, "9": 239, "10": 33, "11": 62, "12": 155, "13": 65, "14": 36, "15": 126, "16": 215, "17": 33, "18": 248, "19": 114, "20": 65, "21": 20, "22": 132, "23": 58, "24": 231, "25": 146, "26": 118, "27": 122, "28": 97, "29": 65, "30": 194, "31": 219, "32": 4, "33": 210, "34": 80, "35": 131, "36": 1, "37": 204, "38": 194, "39": 249, "40": 140, "41": 66, "42": 148, "43": 255, "44": 123, "45": 240, "46": 34, "47": 171, "48": 96, "49": 193, "50": 41, "51": 181, "52": 117, "53": 216, "54": 231, "55": 228, "56": 251, "57": 91, "58": 251, "59": 127, "60": 21, "61": 61, "62": 196, "63": 172, "64": 27 }
   }
 }
 
@@ -154,7 +154,7 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -170,11 +170,15 @@ describe("MercadoPagoReclaimVerifier", () => {
     it("should verify the proof", async () => {
       const [
         verified,
-        intentHash
+        intentHash,
+        releaseAmount
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
       expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+      // Payment is 1 ARS, conversion rate is .11, intent amount is 9
+      // Release amount = 1 / .11 = 9.0909... but capped at intent amount 9
+      expect(releaseAmount).to.eq(usdc(9));
     });
 
     it("should nullify the payment id", async () => {
@@ -229,23 +233,47 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount * conversion rate", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(9.1);   // just 1 cent more than the actual ask amount (9.1 * 110 = 1001) which is greater than the payment amount (1000)
+        subjectIntentAmount = usdc(10); // Intent expects 10 * .11 = 1.1 ARS, but actual payment is 1 ARS
+        subjectConversionRate = ether(.11);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const [
+          verified,
+          intentHash,
+          releaseAmount
+        ] = await subjectCallStatic();
+
+        expect(verified).to.be.true;
+        expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+        // Payment is 1 ARS, conversion rate is .11, intent amount is 10
+        // Release amount = 1 / .11 = 9.0909... but capped at intent amount 10
+        expect(releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(.11)));
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"4519540906848171844380991692694776058038564615875128315222420248570560176998\",\"extractedParameters\":{\"PAYMENT_ID\":\"online_transfer_movement-40397c71e99fb3afceeed91664536aa631484ceb\",\"URL_PARAMS_FROM\":\"mp-home\",\"amt\":\"\",\"cents\":\"00\",\"curr\":\"ARS\",\"date\":\"2025-03-21T19:54:05.000Z\",\"paymentId\":\"105936159704\",\"paymentStatus\":\"approved\",\"paymentType\":\"transfer_online\",\"recipientId\":\"0xf5b16d9e4edde5a51d378b8126eaffb65d0d06d0ad21f4d037611f945d3837e8\"},\"providerHash\":\"0x09ff1db71c6ed6f079954a9cd5539cacf65cd3cf3c76b3c3c33ebfc4e5c0f7ee\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
-      });
-
-      describe("when the payment amount is more than the intent amount * conversion rate", async () => {
-        beforeEach(async () => {
-          subjectIntentAmount = usdc(9.09);   // just 1 cent less than the actual ask amount (9.09 * 110 = 1000) which is less than the payment amount (1000)
-        });
-
-        it("should not revert", async () => {
-          await expect(subject()).to.not.be.reverted;
-        });
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 

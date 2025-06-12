@@ -35,7 +35,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe.only("Escrow", () => {
+describe("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperDelegate: Account;
@@ -424,7 +424,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("CurrencyNotSupportedByVerifier");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupportedByVerifier");
       });
     });
 
@@ -673,7 +673,7 @@ describe.only("Escrow", () => {
       expect(accountIntent[0].intentHash).to.eq(intentHash);
     });
 
-    it.skip("should emit an IntentSignaled event", async () => {
+    it("should emit an IntentSignaled event", async () => {
       const txn = await subject();
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -789,7 +789,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("AccountHasUnfulfilledIntent");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AccountHasUnfulfilledIntent");
       });
 
       describe("when the intent is cancelled", async () => {
@@ -848,7 +848,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("DepositDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositDoesNotExist");
       });
     });
 
@@ -858,7 +858,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("PaymentVerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentVerifierNotSupported");
       });
     });
 
@@ -936,7 +936,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("SignaledAmountMustBeGreaterThanMin");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "SignaledAmountMustBeGreaterThanMin");
       });
     });
 
@@ -946,7 +946,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("SignaledAmountMustBeLessThanMax");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "SignaledAmountMustBeLessThanMax");
       });
     });
 
@@ -956,7 +956,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("CannotSendToZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CannotSendToZeroAddress");
       });
     });
 
@@ -966,7 +966,7 @@ describe.only("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("InvalidGatingServiceSignature");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InvalidGatingServiceSignature");
       });
     });
 
@@ -1119,7 +1119,8 @@ describe.only("Escrow", () => {
       await subject();
 
       const finalBalance = await usdcToken.balanceOf(onRamper.address);
-      expect(finalBalance.sub(initialBalance)).to.eq(usdc(50));
+      const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+      expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
     });
 
     it("should prune the intent", async () => {
@@ -1136,17 +1137,21 @@ describe.only("Escrow", () => {
       await subject();
 
       const postDeposit = await ramp.getDeposit(ZERO);
-      expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
+      const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+      expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50))); // 50 USDC is the intent amount
+      // Not released amount is added to remaining deposits
+      expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(usdc(50).sub(releaseAmount)));
     });
 
     it("should emit an IntentFulfilled event", async () => {
+      const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
       await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
         intentHash,
         ZERO,
         verifier.address,
         onRamper.address,
         onRamper.address,
-        usdc(50),
+        releaseAmount,
         0,
         0
       );
@@ -1164,7 +1169,8 @@ describe.only("Escrow", () => {
         await subject();
 
         const finalBalance = await usdcToken.balanceOf(onRamper.address);
-        expect(finalBalance.sub(initialBalance)).to.eq(usdc(50));
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
       });
 
       it("should update the deposit balances correctly", async () => {
@@ -1173,7 +1179,10 @@ describe.only("Escrow", () => {
         await subject();
 
         const postDeposit = await ramp.getDeposit(ZERO);
-        expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50))); // 50 USDC is the intent amount
+        // Not released amount is added to remaining deposits
+        expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(usdc(50).sub(releaseAmount)));
       });
     });
 
@@ -1191,13 +1200,16 @@ describe.only("Escrow", () => {
         const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
         const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
 
-        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
-        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(fee));
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(releaseAmount.sub(fee));
         expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
       });
 
       it("should emit an IntentFulfilled event with fee details", async () => {
-        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
 
         await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
           intentHash,
@@ -1205,7 +1217,7 @@ describe.only("Escrow", () => {
           verifier.address,
           onRamper.address,
           onRamper.address,
-          usdc(49),
+          releaseAmount.sub(fee),
           fee,
           0 // No referrer fee
         );
@@ -1266,14 +1278,16 @@ describe.only("Escrow", () => {
         const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
         const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
-        const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        const referrerFee = releaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
 
-        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(referrerFee));
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(releaseAmount.sub(referrerFee));
         expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
       });
 
       it("should emit an IntentFulfilled event with referrer fee details", async () => {
-        const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        const referrerFee = releaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
 
         await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
           intentHash,
@@ -1281,7 +1295,7 @@ describe.only("Escrow", () => {
           verifier.address,
           onRamper.address,
           onRamper.address,
-          usdc(49.5),        // Amount transferred to the on-ramper
+          releaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
           0,               // No protocol fee in this test
           referrerFee
         );
@@ -1303,18 +1317,20 @@ describe.only("Escrow", () => {
           const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
           const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
-          const protocolFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
-          const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          const protocolFee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          const referrerFee = releaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
           const totalFees = protocolFee.add(referrerFee);
 
-          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFees));
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(releaseAmount.sub(totalFees));
           expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(protocolFee);
           expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
         });
 
         it("should emit an IntentFulfilled event with correct fee details", async () => {
-          const protocolFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
-          const referrerFee = usdc(50).mul(ether(0.01)).div(ether(1)); // 1% of 50 USDC = 0.5 USDC
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          const protocolFee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          const referrerFee = releaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
           const totalFees = protocolFee.add(referrerFee);
 
           await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
@@ -1323,7 +1339,7 @@ describe.only("Escrow", () => {
             verifier.address,
             onRamper.address,
             onRamper.address,
-            usdc(48.5),
+            releaseAmount.sub(totalFees),
             protocolFee,
             referrerFee
           );
@@ -1354,19 +1370,6 @@ describe.only("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("InvalidIntentHash");
-      });
-    });
-
-    describe("when the payment is invalid", async () => {
-      beforeEach(async () => {
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "string", "bytes32"],
-          [usdc(40), await blockchain.getCurrentTimestamp(), payeeDetails, Currency.USD, intentHash]
-        );
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Payment amount is less than intent amount");
       });
     });
 
@@ -1470,19 +1473,21 @@ describe.only("Escrow", () => {
         const finalIntentToBalance = await usdcToken.balanceOf(onRamper.address);
         const finalEscrowBalance = await usdcToken.balanceOf(ramp.address);
 
-        expect(finalTargetAddressBalance.sub(initialTargetAddressBalance)).to.eq(usdc(50));
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        expect(finalTargetAddressBalance.sub(initialTargetAddressBalance)).to.eq(releaseAmount);
         expect(finalIntentToBalance.sub(initialIntentToBalance)).to.eq(ZERO); // onRamper should not receive funds directly
-        expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(usdc(50)); // Escrow pays out the 50 USDC
+        expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(releaseAmount); // Escrow pays out the 50 USDC
       });
 
       it("should emit IntentFulfilled event with original intent.to address but funds routed by hook", async () => {
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
         await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
           subjectIntentHash,    // Hash of the intent fulfilled
           ZERO,    // ID of the deposit used
           verifier.address,     // Verifier used
           onRamper.address,     // Intent owner
           onRamper.address,     // Original intent.to (even though hook redirected funds)
-          usdc(50),             // Amount transferred (after 0 fees in this case)
+          releaseAmount,             // Amount transferred (after 0 fees in this case)
           ZERO,                 // Protocol fee
           ZERO                  // Referrer fee
         );
@@ -1504,24 +1509,103 @@ describe.only("Escrow", () => {
           const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
           const finalEscrowBalance = await usdcToken.balanceOf(ramp.address);
 
-          const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC = 1 USDC
-          expect(finalHookTargetBalance.sub(initialHookTargetBalance)).to.eq(usdc(50).sub(fee)); // 49 USDC
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          expect(finalHookTargetBalance.sub(initialHookTargetBalance)).to.eq(releaseAmount.sub(fee)); // 49 USDC
           expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee); // 1 USDC
-          expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(usdc(50)); // Escrow still pays out total of 50
+          expect(initialEscrowBalance.sub(finalEscrowBalance)).to.eq(releaseAmount); // Escrow still pays out total of 50
         });
 
         it("should emit IntentFulfilled with correct fee details when hook is used", async () => {
-          const fee = usdc(50).mul(ether(0.02)).div(ether(1));
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
           await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
             subjectIntentHash,
             ZERO,
             verifier.address,
             onRamper.address,
             onRamper.address,     // Original intent.to
-            usdc(50).sub(fee),    // Amount transferred to hook's destination
+            releaseAmount.sub(fee),    // Amount transferred to hook's destination
             fee,                  // Protocol fee
             ZERO                  // Referrer fee
           );
+        });
+      });
+    });
+
+    describe("when a partial payment is made", async () => {
+      beforeEach(async () => {
+        // Payment is only 40 USDC instead of the expected 50 USDC
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          [usdc(40), currentTimestamp, payeeDetails, Currency.USD, intentHash]
+        );
+
+        // Update the mock verifier to not check the payment amount (allow partial payments)
+        await verifier.setShouldVerifyPayment(false);
+      });
+
+      it("should transfer the partial amount to the on-ramper", async () => {
+        const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+        await subject();
+
+        const finalBalance = await usdcToken.balanceOf(onRamper.address);
+        // With conversion rate of 1.08, and payment of 40 USDC:
+        // Release amount = 40 / 1.08 = 37.03 USDC
+        const expectedAmount = usdc(40).mul(ether(1)).div(depositConversionRate);
+        expect(finalBalance.sub(initialBalance)).to.eq(expectedAmount);
+      });
+
+      it("should return unused funds to the deposit", async () => {
+        const preDeposit = await ramp.getDeposit(ZERO);
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(ZERO);
+        // Intent was for 50 USDC, but only 37.03 USDC released
+        const releasedAmount = usdc(40).mul(ether(1)).div(depositConversionRate);
+        const returnedAmount = usdc(50).sub(releasedAmount);
+
+        expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(returnedAmount));
+        expect(postDeposit.outstandingIntentAmount).to.eq(preDeposit.outstandingIntentAmount.sub(usdc(50)));
+      });
+
+      it("should emit an IntentFulfilled event with the partial amount", async () => {
+        const releasedAmount = usdc(40).mul(ether(1)).div(depositConversionRate);
+
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          intentHash,
+          ZERO,
+          verifier.address,
+          onRamper.address,
+          onRamper.address,
+          releasedAmount,
+          0,
+          0
+        );
+      });
+
+      describe("when protocol fee is set", async () => {
+        beforeEach(async () => {
+          await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
+        });
+
+        it("should calculate fees based on the partial release amount", async () => {
+          const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          await subject();
+
+          const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+          const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          const releasedAmount = usdc(40).mul(ether(1)).div(depositConversionRate);
+          const fee = releasedAmount.mul(ether(0.02)).div(ether(1)); // 2% of released amount
+
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(releasedAmount.sub(fee));
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
         });
       });
     });
@@ -1893,7 +1977,7 @@ describe.only("Escrow", () => {
 
       const accountIntents = await escrowViewer.getAccountIntents(onRamper.address);
 
-      expect(accountIntents[0].intentHash).to.eq(ZERO_BYTES32);
+      expect(accountIntents.length).to.eq(0);
     });
 
     it("should revert if the intent does not exist", async () => {
@@ -3580,7 +3664,7 @@ describe.only("Escrow", () => {
     });
   });
 
-  describe.only("#signalIntent with multiple intents", async () => {
+  describe("#signalIntent with multiple intents", async () => {
     let relayerAccount: Account;
     let nonRelayerAccount: Account;
 
@@ -3688,7 +3772,7 @@ describe.only("Escrow", () => {
         );
         await expect(
           ramp.connect(nonRelayerAccount.wallet).signalIntent(params2)
-        ).to.be.revertedWith("AccountHasUnfulfilledIntent");
+        ).to.be.revertedWithCustomError(ramp, "AccountHasUnfulfilledIntent");
       });
     });
 
@@ -3742,7 +3826,7 @@ describe.only("Escrow", () => {
   describe("#getAccountIntents", async () => {
     beforeEach(async () => {
       // Enable multiple intents for testing
-      await relayerRegistry.connect(owner.wallet).setAllowMultipleIntents(true);
+      await ramp.connect(owner.wallet).setAllowMultipleIntents(true);
 
       // Create a deposit
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
@@ -3807,7 +3891,7 @@ describe.only("Escrow", () => {
     });
   });
 
-  describe.only("#setRelayerRegistry", async () => {
+  describe("#setRelayerRegistry", async () => {
     let subjectRelayerRegistry: Address;
     let subjectCaller: Account;
 
@@ -3858,7 +3942,7 @@ describe.only("Escrow", () => {
     });
   });
 
-  describe.only("#setAllowMultipleIntents", async () => {
+  describe("#setAllowMultipleIntents", async () => {
     let subjectAllowMultiple: boolean;
     let subjectCaller: Account;
 

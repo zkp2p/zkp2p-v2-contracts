@@ -160,7 +160,7 @@ describe("VenmoReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -176,11 +176,15 @@ describe("VenmoReclaimVerifier", () => {
     it("should verify the proof", async () => {
       const [
         verified,
-        intentHash
+        intentHash,
+        releaseAmount
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
       expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
+      // Payment is $1.00, conversion rate is 0.9, intent amount is 1.1
+      // Release amount = 1.00 / 0.9 = 1.111... but capped at intent amount 1.1
+      expect(releaseAmount).to.eq(usdc(1.1));
     });
 
     it("should nullify the payment id", async () => {
@@ -209,11 +213,13 @@ describe("VenmoReclaimVerifier", () => {
       it("should verify the proof", async () => {
         const [
           verified,
-          intentHash
+          intentHash,
+          releaseAmount
         ] = await subjectCallStatic();
 
         expect(verified).to.be.true;
         expect(intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
+        expect(releaseAmount).to.eq(usdc(1.1));
       });
     });
 
@@ -228,13 +234,47 @@ describe("VenmoReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1000);  // 1000 * 0.9 = 900 [900 > 850]
+        subjectIntentAmount = usdc(5); // Intent expects 5 * 0.9 = 4.5, but actual payment is 1.00
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const [
+          verified,
+          intentHash,
+          releaseAmount
+        ] = await subjectCallStatic();
+
+        expect(verified).to.be.true;
+        expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
+        // Payment is $1.00, conversion rate is 0.9, intent amount is 5
+        // Release amount = 1.00 / 0.9 = 1.111... USDC
+        expect(releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"1130949156358289030228004429378196774671616229922798947763187449647160396233\",\"extractedParameters\":{\"SENDER_ID\":\"1168869611798528966\",\"amount\":\"0.00\",\"date\":\"2025-03-06T18:36:45\",\"paymentId\":\"4282537099205562654\",\"receiverId\":\"0xc70eb85ded26d9377e4f0b244c638ee8f7e731114911bf547bff27f7d8fc3bfa\"},\"providerHash\":\"0x709569cc5850c23c4d8966524137d40b82d3056949fb0912be29a10803784a75\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 

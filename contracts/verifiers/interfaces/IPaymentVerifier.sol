@@ -24,6 +24,6 @@ interface IPaymentVerifier {
         VerifyPaymentData calldata _verifyPaymentData
     )   
         external
-        returns(bool success, bytes32 intentHash);
+        returns(bool success, bytes32 intentHash, uint256 releaseAmount);
 
 }

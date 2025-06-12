@@ -431,7 +431,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (verifier == address(0)) revert IntentDoesNotExist();
         
         DepositVerifierData memory verifierData = depositVerifierData[intent.depositId][verifier];
-        (bool success, bytes32 intentHash) = IPaymentVerifier(verifier).verifyPayment(
+        (bool success, bytes32 intentHash, uint256 releaseAmount) = IPaymentVerifier(verifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
                 paymentProof: _paymentProof,
                 depositToken: address(deposit.token),
@@ -448,12 +448,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         _pruneIntent(deposit, _intentHash);
 
+        // Zero out outstanding intent amount regardless of release amount
         deposit.outstandingIntentAmount -= intent.amount;
+        // Return unused funds to remaining deposits
+        if (releaseAmount < intent.amount) {
+            deposit.remainingDeposits += (intent.amount - releaseAmount);
+        }
+        
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
         _transferFundsAndExecuteAction(
-            token, intentHash, intent, verifier, _data
+            token, intentHash, intent, verifier, releaseAmount, _data
         );
     }
 
@@ -480,7 +486,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // TODO: Should we execute action here?
         bytes memory emptyData = new bytes(0);
-        _transferFundsAndExecuteAction(token, _intentHash, intent, address(0), emptyData);
+        _transferFundsAndExecuteAction(token, _intentHash, intent, address(0), intent.amount, emptyData);
     }
 
     /**
@@ -1029,27 +1035,28 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _intentHash, 
         Intent memory _intent, 
         address _verifier,
+        uint256 _releaseAmount,
         bytes memory _fulfillIntentData
     ) internal {
         
         uint256 protocolFeeAmount;
         uint256 referrerFeeAmount; 
 
-        // Calculate protocol fee (taken from taker)
+        // Calculate protocol fee (taken from taker) - based on release amount
         if (protocolFeeRecipient != address(0) && protocolFee > 0) {
-            protocolFeeAmount = (_intent.amount * protocolFee) / PRECISE_UNIT;
+            protocolFeeAmount = (_releaseAmount * protocolFee) / PRECISE_UNIT;
         }
         
-        // Calculate referrer fee (taken from taker)
+        // Calculate referrer fee (taken from taker) - based on release amount
         if (_intent.referrer != address(0) && _intent.referrerFee > 0) {
-            referrerFeeAmount = (_intent.amount * _intent.referrerFee) / PRECISE_UNIT;
+            referrerFeeAmount = (_releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
         }
         
         // Total fees taken from taker
         uint256 totalFees = protocolFeeAmount + referrerFeeAmount;
         
         // Net amount the taker receives after fees
-        uint256 netAmount = _intent.amount - totalFees;
+        uint256 netAmount = _releaseAmount - totalFees;
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {

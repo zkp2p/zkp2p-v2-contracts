@@ -15,7 +15,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("RelayerRegistry", () => {
+describe("RelayerRegistry", () => {
   let owner: Account;
   let relayer: Account;
   let attacker: Account;

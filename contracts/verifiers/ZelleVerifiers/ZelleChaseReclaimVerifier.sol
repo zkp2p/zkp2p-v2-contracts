@@ -59,6 +59,9 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     /**
      * Verifies two Reclaim proofs for a Chase Zelle payment.
+     * @return success Whether the payment verification succeeded
+     * @return intentHash The hash of the intent being fulfilled
+     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
      * @param _verifyPaymentData Payment proof and intent details required for verification
      */
     function verifyPayment(
@@ -66,7 +69,7 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     )
         external
         override
-        returns (bool, bytes32)
+        returns (bool, bytes32, uint256)
     {
         require(msg.sender == baseVerifier, "Only base verifier can call");
 
@@ -74,15 +77,21 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             PaymentDetails memory paymentDetails
         ) = _verifyProofsAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
 
-        _verifyPaymentDetails(
+        uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails,
             _verifyPaymentData
+        );
+
+        uint256 releaseAmount = _calculateReleaseAmount(
+            paymentAmount, 
+            _verifyPaymentData.conversionRate, 
+            _verifyPaymentData.intentAmount
         );
 
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)));
+        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)), releaseAmount);
     }
 
     function _verifyProofsAndExtractValues(bytes calldata _proofs, bytes calldata _depositData)
@@ -153,13 +162,12 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
         VerifyPaymentData memory _verifyPaymentData
-    ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+    ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
         // Validate amount
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        require(paymentAmount > 0, "Payment amount must be greater than zero");
 
         // Validate recipient (recipientEmail is a hash, so compare as string)
         require(
@@ -180,6 +188,8 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
             keccak256(abi.encodePacked(paymentDetails.status)) == DELIVERED_STATUS,
             "Payment not completed or delivered"
         );
+
+        return paymentAmount;
     }
 
     function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {

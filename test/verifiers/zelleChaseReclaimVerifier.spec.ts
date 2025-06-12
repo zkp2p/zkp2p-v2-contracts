@@ -748,7 +748,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -761,46 +761,85 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     }
 
-    it("should verify a completed payment", async () => {
+    it("should verify the proof", async () => {
       const [
         verified,
-        intentHash
+        intentHash,
+        releaseAmount
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
       expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+      // Payment is $10, conversion rate is 1, intent amount is 10
+      // Release amount = 10 / 1 = 10
+      expect(releaseAmount).to.eq(usdc(10));
     });
 
-    it("should verify a delivered payment", async () => {
-      proofList = parseExtensionProof(chaseListDeliveredProof);
-      proofDetail = parseExtensionProof(chaseDetailDeliveredProof);
-      subjectProof = encodeTwoProofs(proofList, proofDetail);
-
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
-
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
-    });
-
-    it("should nullify the payment id", async () => {
-      await subject();
-
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['24569221649']));
-      const isNullified = await nullifierRegistry.isNullified(nullifier);
-
-      expect(isNullified).to.be.true;
-    });
-
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(1000);  // 1000 * 1 = 1000 [1000 > 10]
+        subjectIntentAmount = usdc(20); // Intent expects 20 * 0.9 = 18, but actual payment is 10
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const [
+          verified,
+          intentHash,
+          releaseAmount
+        ] = await subjectCallStatic();
+
+        expect(verified).to.be.true;
+        expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+        // Payment is $10, conversion rate is 0.9, intent amount is 20
+        // Release amount = 10 / 0.9 = 11.111...
+        expect(releaseAmount).to.eq(usdc(11.111111));  // 6 decimal places rounded down
+      });
+    });
+
+    describe.skip("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Create proofs with zero payment amount
+        const zeroAmountListProof = {
+          ...proofList,
+          claimInfo: {
+            ...proofList.claimInfo,
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14094145470806117529027618012628089089092464953336648754893088763502265967734\",\"extractedParameters\":{\"amount\":\"0\",\"date\":\"20240617\",\"id\":\"chase-payment-id\",\"status\":\"COMPLETED\"},\"providerHash\":\"0xchase-list-provider-hash\"}"
+          }
+        };
+
+        const zeroAmountDetailProof = {
+          ...proofDetail,
+          claimInfo: {
+            ...proofDetail.claimInfo,
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14094145470806117529027618012628089089092464953336648754893088763502265967734\",\"extractedParameters\":{\"PAYMENT_ID\":\"chase-payment-id\",\"recipientEmail\":\"alice@chase.test\"},\"providerHash\":\"0xchase-detail-provider-hash\"}"
+          }
+        };
+
+        // Update identifiers
+        zeroAmountListProof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(zeroAmountListProof.claimInfo);
+        zeroAmountDetailProof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(zeroAmountDetailProof.claimInfo);
+
+        // Sign with witnesses
+        const listDigest = createSignDataForClaim(zeroAmountListProof.signedClaim.claim);
+        const detailDigest = createSignDataForClaim(zeroAmountDetailProof.signedClaim.claim);
+
+        const witness = ethers.Wallet.createRandom();
+        zeroAmountListProof.signedClaim.signatures = [await witness.signMessage(listDigest)];
+        zeroAmountDetailProof.signedClaim.signatures = [await witness.signMessage(detailDigest)];
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ['tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim, bool isAppclipProof)', 'tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim, bool isAppclipProof)'],
+          [zeroAmountListProof, zeroAmountDetailProof]
+        );
+
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 

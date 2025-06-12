@@ -15,7 +15,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("PaymentVerifierRegistry", () => {
+describe("PaymentVerifierRegistry", () => {
   let owner: Account;
   let verifier: Account;
   let attacker: Account;

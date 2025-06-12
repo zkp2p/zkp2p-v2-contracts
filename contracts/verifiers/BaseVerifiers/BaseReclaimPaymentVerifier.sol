@@ -175,4 +175,25 @@ contract BaseReclaimPaymentVerifier is IReclaimVerifier, BasePaymentVerifier {
         require(!nullifierRegistry.isNullified(nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(nullifier);
     }
+
+    /**
+     * Calculates the release amount based on the actual payment amount and conversion rate.
+     * 
+     * @param _paymentAmount The actual payment amount.
+     * @param _conversionRate The conversion rate of the deposit token to the fiat currency.
+     * @param _intentAmount The max amount of tokens the offchain payer wants to take.
+     * @return The release amount.
+     */
+    function _calculateReleaseAmount(uint256 _paymentAmount, uint256 _conversionRate, uint256 _intentAmount) internal pure returns (uint256) {
+        // TODO: IS THIS CORRECT?
+        // releaseAmount = paymentAmount / conversionRate
+        uint256 releaseAmount = (_paymentAmount * PRECISE_UNIT) / _conversionRate;
+        
+        // Ensure release amount doesn't exceed the intent amount (cap at intent amount)
+        if (releaseAmount > _intentAmount) {
+            releaseAmount = _intentAmount;
+        }
+
+        return releaseAmount;
+    }
 }
