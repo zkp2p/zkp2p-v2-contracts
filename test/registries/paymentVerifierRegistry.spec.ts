@@ -64,7 +64,7 @@ describe("PaymentVerifierRegistry", () => {
     it("should correctly add the payment verifier", async () => {
       await subject();
 
-      const isWhitelisted = await paymentVerifierRegistry.whitelistedVerifiers(subjectVerifier);
+      const isWhitelisted = await paymentVerifierRegistry.isWhitelistedVerifier(subjectVerifier);
       const verifiers = await paymentVerifierRegistry.getWhitelistedVerifiers();
 
       expect(isWhitelisted).to.be.true;
@@ -126,7 +126,7 @@ describe("PaymentVerifierRegistry", () => {
     it("should correctly remove the payment verifier", async () => {
       await subject();
 
-      const isWhitelisted = await paymentVerifierRegistry.whitelistedVerifiers(subjectVerifier);
+      const isWhitelisted = await paymentVerifierRegistry.isWhitelistedVerifier(subjectVerifier);
       const verifiers = await paymentVerifierRegistry.getWhitelistedVerifiers();
 
       expect(isWhitelisted).to.be.false;

@@ -3721,7 +3721,7 @@ describe.only("Escrow", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      const newRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+      const newRegistry = await deployer.deployPostIntentHookRegistry();
       subjectPostIntentHookRegistry = newRegistry.address;
       subjectCaller = owner;
     });
