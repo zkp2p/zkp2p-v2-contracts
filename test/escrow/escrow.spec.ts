@@ -35,7 +35,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("Escrow", () => {
+describe.only("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperDelegate: Account;
@@ -532,7 +532,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -976,7 +976,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
 
@@ -1153,7 +1153,8 @@ describe("Escrow", () => {
         onRamper.address,
         releaseAmount,
         0,
-        0
+        0,
+        false
       );
     });
 
@@ -1219,7 +1220,8 @@ describe("Escrow", () => {
           onRamper.address,
           releaseAmount.sub(fee),
           fee,
-          0 // No referrer fee
+          0, // No referrer fee
+          false
         );
       });
     });
@@ -1297,7 +1299,8 @@ describe("Escrow", () => {
           onRamper.address,
           releaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
           0,               // No protocol fee in this test
-          referrerFee
+          referrerFee,
+          false
         );
       });
 
@@ -1341,7 +1344,8 @@ describe("Escrow", () => {
             onRamper.address,
             releaseAmount.sub(totalFees),
             protocolFee,
-            referrerFee
+            referrerFee,
+            false
           );
         });
       });
@@ -1389,7 +1393,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
 
       describe("when the escrow is unpaused", async () => {
@@ -1489,7 +1493,8 @@ describe("Escrow", () => {
           onRamper.address,     // Original intent.to (even though hook redirected funds)
           releaseAmount,             // Amount transferred (after 0 fees in this case)
           ZERO,                 // Protocol fee
-          ZERO                  // Referrer fee
+          ZERO,                  // Referrer fee
+          false
         );
       });
 
@@ -1527,7 +1532,8 @@ describe("Escrow", () => {
             onRamper.address,     // Original intent.to
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
             fee,                  // Protocol fee
-            ZERO                  // Referrer fee
+            ZERO,                  // Referrer fee
+            false
           );
         });
       });
@@ -1583,7 +1589,8 @@ describe("Escrow", () => {
           onRamper.address,
           releasedAmount,
           0,
-          0
+          0,
+          false
         );
       });
 
@@ -1613,6 +1620,8 @@ describe("Escrow", () => {
 
   describe("#releaseFundsToPayer", async () => {
     let subjectIntentHash: string;
+    let subjectReleaseAmount: BigNumber;
+    let subjectReleaseData: string;
     let subjectCaller: Account;
 
     let depositConversionRate: BigNumber;
@@ -1670,10 +1679,16 @@ describe("Escrow", () => {
       );
 
       subjectCaller = offRamper;
+      subjectReleaseAmount = usdc(40);  // releasing partial amount
+      subjectReleaseData = "0x";
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).releaseFundsToPayer(subjectIntentHash);
+      return ramp.connect(subjectCaller.wallet).releaseFundsToPayer(
+        subjectIntentHash,
+        subjectReleaseAmount,
+        subjectReleaseData
+      );
     }
 
     it("should transfer the usdc correctly to the payer", async () => {
@@ -1685,8 +1700,8 @@ describe("Escrow", () => {
       const receiverPostBalance = await usdcToken.balanceOf(receiver.address);
       const rampPostBalance = await usdcToken.balanceOf(ramp.address);
 
-      expect(receiverPostBalance).to.eq(receiverPreBalance.add(usdc(50)));
-      expect(rampPostBalance).to.eq(rampPreBalance.sub(usdc(50)));
+      expect(receiverPostBalance).to.eq(receiverPreBalance.add(usdc(40)));
+      expect(rampPostBalance).to.eq(rampPreBalance.sub(usdc(40)));
     });
 
     it("should delete the intent from the intents mapping", async () => {
@@ -1705,7 +1720,7 @@ describe("Escrow", () => {
 
       const postDeposit = await escrowViewer.getDeposit(ZERO);
 
-      expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.deposit.remainingDeposits);
+      expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.deposit.remainingDeposits.add(usdc(10)));
       expect(postDeposit.deposit.outstandingIntentAmount).to.eq(preDeposit.deposit.outstandingIntentAmount.sub(usdc(50)));
       expect(postDeposit.deposit.intentHashes).to.not.include(subjectIntentHash);
     });
@@ -1714,28 +1729,29 @@ describe("Escrow", () => {
       await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
         subjectIntentHash,
         ZERO,
-        ADDRESS_ZERO,   // cause manual release of funds
+        verifier.address,
         onRamper.address,
         receiver.address,
-        usdc(50),
+        usdc(40),
         0,
-        0
+        0,
+        true
       );
     });
 
     describe("when the intent zeroes out the deposit", async () => {
       beforeEach(async () => {
-        await subject();    // Release $50 to the payer; And then signal a new intent for $50
+        await subject();    // Release $40 to the payer; And then signal a new intent for $60
 
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(10).toNumber());
 
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
-          ZERO, usdc(50), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
+          ZERO, usdc(60), receiver.address, verifier.address, Currency.USD, depositConversionRate, chainId.toString()
         );
         const params = await createSignalIntentParams(
           ZERO,
-          usdc(50),
+          usdc(60),
           receiver.address,
           verifier.address,
           Currency.USD,
@@ -1757,6 +1773,7 @@ describe("Escrow", () => {
           ZERO,
           currentTimestamp
         );
+        subjectReleaseAmount = usdc(60);
       });
 
       it("should delete the deposit", async () => {
@@ -1802,67 +1819,141 @@ describe("Escrow", () => {
         const finalOnRamperBalance = await usdcToken.balanceOf(receiver.address);
         const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
 
-        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
-        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(fee));
+        const fee = usdc(40).mul(ether(0.02)).div(ether(1)); // 2% of 40 USDC
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(40).sub(fee));
         expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
       });
 
       it("should emit an IntentFulfilled event with fee details", async () => {
-        const fee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+        const fee = usdc(40).mul(ether(0.02)).div(ether(1)); // 2% of 40 USDC
 
         await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
           subjectIntentHash,
           ZERO,
-          ADDRESS_ZERO,
+          verifier.address,
           onRamper.address,
           receiver.address,
-          usdc(49),
+          usdc(40).sub(fee),
           fee,
-          0 // Assuming no verifier fee
+          0,
+          true
+        );
+      });
+    });
+
+    describe("when referrer and referrer fee are set", async () => {
+      beforeEach(async () => {
+        // Cancel the existing intent first
+        await ramp.connect(onRamper.wallet).cancelIntent(subjectIntentHash);
+
+        // Create a new intent with referrer
+        const gatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
+          ZERO,
+          usdc(40),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString()
+        );
+
+        const params = await createSignalIntentParams(
+          ZERO, // depositId
+          usdc(40),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          receiver.address,    // referrer
+          ether(0.01),         // referrerFee - 1%
+          null,                // passing null since we already have the signature
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+        params.gatingServiceSignature = gatingServiceSignature;
+        await ramp.connect(onRamper.wallet).signalIntent(params);
+
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        subjectIntentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+      });
+
+      it("should transfer the correct amounts including referrer fee", async () => {
+        const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const initialReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+        await subject();
+
+        const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
+        const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
+
+        const referrerFee = usdc(40).mul(ether(0.01)).div(ether(1)); // 1% of release amount
+
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(40).sub(referrerFee));
+        expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
+      });
+
+      it("should emit an IntentFulfilled event with referrer fee details", async () => {
+        const referrerFee = usdc(40).mul(ether(0.01)).div(ether(1)); // 1% of release amount
+
+        await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
+          subjectIntentHash,
+          ZERO,
+          verifier.address,
+          onRamper.address,
+          onRamper.address,
+          usdc(40).sub(referrerFee),        // Amount transferred to the on-ramper
+          0,               // No protocol fee in this test
+          referrerFee,
+          true
         );
       });
 
-      describe.skip("when the verifier fee share is set", async () => {
+      describe("when protocol fee is also set", async () => {
         beforeEach(async () => {
-          // await paymentVerifierRegistry.connect(owner.wallet).updateVerifierFeeShare(verifier.address, ether(0.3)); // 30% of total fee
+          await ramp.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
         });
 
-        it("should still not transfer the verifier fee", async () => {
-          const initialOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+        it("should transfer the correct amounts including both protocol and referrer fees", async () => {
+          const initialOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
           const initialFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const initialVerifierBalance = await usdcToken.balanceOf(verifier.address);
+          const initialReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
           await subject();
 
-          const finalOnRamperBalance = await usdcToken.balanceOf(receiver.address);
+          const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
           const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const finalVerifierBalance = await usdcToken.balanceOf(verifier.address);
+          const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
-          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
-          const verifierFee = totalFee.mul(ether(0.3)).div(ether(1)); // 30% of total fee
+          const protocolFee = usdc(40).mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          const referrerFee = usdc(40).mul(ether(0.01)).div(ether(1)); // 1% of release amount
+          const totalFees = protocolFee.add(referrerFee);
 
-          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(50).sub(totalFee));
-          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(totalFee);
-          expect(finalVerifierBalance.sub(initialVerifierBalance)).to.eq(ZERO);
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(usdc(40).sub(totalFees));
+          expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(protocolFee);
+          expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
         });
 
-        it("should emit an IntentFulfilled event with both fee details", async () => {
-          const totalFee = usdc(50).mul(ether(0.02)).div(ether(1)); // 2% of 50 USDC
+        it("should emit an IntentFulfilled event with correct fee details", async () => {
+          const protocolFee = usdc(40).mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          const referrerFee = usdc(40).mul(ether(0.01)).div(ether(1)); // 1% of release amount
+          const totalFees = protocolFee.add(referrerFee);
 
           await expect(subject()).to.emit(ramp, "IntentFulfilled").withArgs(
             subjectIntentHash,
             ZERO,
-            ADDRESS_ZERO,
+            verifier.address,
             onRamper.address,
-            receiver.address,
-            usdc(50).sub(totalFee),
-            totalFee,
-            ZERO
+            onRamper.address,
+            usdc(40).sub(totalFees),
+            protocolFee,
+            referrerFee,
+            true
           );
         });
       });
     });
-
 
     describe("when the intent does not exist", async () => {
       beforeEach(async () => {
@@ -1871,6 +1962,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentDoesNotExist");
+      });
+    });
+
+    describe("when the release amount exceeds the intent amount", async () => {
+      beforeEach(async () => {
+        subjectReleaseAmount = usdc(50.1);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ReleaseAmountExceedsIntentAmount");
       });
     });
 
@@ -2131,7 +2232,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -2436,7 +2537,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
 
@@ -2446,7 +2547,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -2480,7 +2581,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
 
@@ -2490,7 +2591,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: not paused");
+        await expect(subject()).to.be.revertedWith("Pausable: not paused");
       });
     });
   });
@@ -2542,7 +2643,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -2594,7 +2695,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -2646,7 +2747,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -2853,7 +2954,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -2998,7 +3099,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -3125,7 +3226,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -3260,7 +3361,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -3371,7 +3472,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Pausable: paused");
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -3600,7 +3701,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Payment verifier registry cannot be zero address");
+        await expect(subject()).to.be.revertedWith("Payment verifier registry cannot be zero address");
       });
     });
 
@@ -3610,7 +3711,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -3649,7 +3750,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Post intent hook registry cannot be zero address");
+        await expect(subject()).to.be.revertedWith("Post intent hook registry cannot be zero address");
       });
     });
 
@@ -3659,7 +3760,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -3927,7 +4028,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Relayer registry cannot be zero address");
+        await expect(subject()).to.be.revertedWith("Relayer registry cannot be zero address");
       });
     });
 
@@ -3937,7 +4038,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });
@@ -3988,7 +4089,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "Ownable: caller is not the owner");
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

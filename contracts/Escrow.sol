@@ -50,7 +50,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     error CannotSetReferrerFeeWithoutReferrer();
     error IntentDoesNotExist();
     error NotEnoughLiquidity();
-    
+    error ReleaseAmountExceedsIntentAmount();
+
     // Verifier and currency errors
     error PaymentVerifierNotSupported();
     error PaymentVerifierNotWhitelisted();
@@ -152,7 +153,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address to,
         uint256 amount,
         uint256 protocolFee,
-        uint256 referrerFee
+        uint256 referrerFee,
+        bool isManualRelease
     );
 
     event DepositWithdrawn(
@@ -458,9 +460,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
-        _transferFundsAndExecuteAction(
-            token, intentHash, intent, verifier, releaseAmount, _data
-        );
+        _transferFundsAndExecuteAction(token, intentHash, intent, releaseAmount, _data, false);
     }
 
 
@@ -470,23 +470,32 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * deposit state is updated. Deposit token is transferred to the payer.
      *
      * @param _intentHash        Hash of intent to resolve by releasing the funds
+     * @param _releaseAmount     Amount of funds to release to the payer
+     * @param _releaseData       Data to be passed to the post intent hook
      */
-    function releaseFundsToPayer(bytes32 _intentHash) external {
+    function releaseFundsToPayer(
+        bytes32 _intentHash, 
+        uint256 _releaseAmount, 
+        bytes calldata _releaseData
+    ) external {
         Intent memory intent = intents[_intentHash];
-        Deposit storage deposit = deposits[intent.depositId];
-
         if (intent.owner == address(0)) revert IntentDoesNotExist();
+        if (_releaseAmount > intent.amount) revert ReleaseAmountExceedsIntentAmount();
+
+        Deposit storage deposit = deposits[intent.depositId];
         if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
 
         _pruneIntent(deposit, _intentHash);
 
         deposit.outstandingIntentAmount -= intent.amount;
+        if (_releaseAmount < intent.amount) {
+            deposit.remainingDeposits += (intent.amount - _releaseAmount);
+        }
+
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(intent.depositId, deposit);
 
-        // TODO: Should we execute action here?
-        bytes memory emptyData = new bytes(0);
-        _transferFundsAndExecuteAction(token, _intentHash, intent, address(0), intent.amount, emptyData);
+        _transferFundsAndExecuteAction(token, _intentHash, intent, _releaseAmount, _releaseData, true);
     }
 
     /**
@@ -1034,9 +1043,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 _token, 
         bytes32 _intentHash, 
         Intent memory _intent, 
-        address _verifier,
         uint256 _releaseAmount,
-        bytes memory _fulfillIntentData
+        bytes memory _fulfillIntentData,
+        bool _isManualRelease
     ) internal {
         
         uint256 protocolFeeAmount;
@@ -1080,12 +1089,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit IntentFulfilled(
             _intentHash, 
             _intent.depositId, 
-            _verifier, 
+            _intent.paymentVerifier, 
             _intent.owner, 
             _intent.to, 
             netAmount, 
             protocolFeeAmount,
-            referrerFeeAmount
+            referrerFeeAmount,
+            _isManualRelease
         );
     }
 
