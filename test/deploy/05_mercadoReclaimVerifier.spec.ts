@@ -11,6 +11,8 @@ import {
   MercadoPagoReclaimVerifier__factory,
   NullifierRegistry__factory,
   Escrow__factory,
+  PaymentVerifierRegistry,
+  PaymentVerifierRegistry__factory,
 } from "../../typechain";
 
 import {
@@ -45,6 +47,7 @@ describe("MercadoPagoReclaimVerifier Deployment", () => {
   let escrow: Escrow;
   let mercadoPagoReclaimVerifier: MercadoPagoReclaimVerifier;
   let nullifierRegistry: NullifierRegistry;
+  let paymentVerifierRegistry: PaymentVerifierRegistry;
 
   const network: string = deployments.getNetworkName();
 
@@ -61,6 +64,9 @@ describe("MercadoPagoReclaimVerifier Deployment", () => {
 
     escrowAddress = getDeployedContractAddress(network, "Escrow");
     escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
+
+    const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
+    paymentVerifierRegistry = new PaymentVerifierRegistry__factory(deployer.wallet).attach(paymentVerifierRegistryAddress);
 
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
@@ -98,15 +104,10 @@ describe("MercadoPagoReclaimVerifier Deployment", () => {
     });
   });
 
-  // describe("Whitelisted Payment Verifier", async () => {
-  //   it("should add the MercadoPagoReclaimVerifier to the whitelisted payment verifiers", async () => {
-  //     const hasWritePermission = await escrow.whitelistedPaymentVerifiers(mercadoPagoReclaimVerifier.address);
-  //     expect(hasWritePermission).to.be.true;
-  //   });
-
-  //   it("should set the correct fee share", async () => {
-  //     const feeShare = await escrow.paymentVerifierFeeShare(mercadoPagoReclaimVerifier.address);
-  //     expect(feeShare).to.eq(MERCADO_RECLAIM_FEE_SHARE[network]);
-  //   });
-  // });
+  describe("Payment Verifier Registry", async () => {
+    it("should add the MercadoPagoReclaimVerifier to the payment verifier registry", async () => {
+      const isWhitelisted = await paymentVerifierRegistry.isWhitelistedVerifier(mercadoPagoReclaimVerifier.address);
+      expect(isWhitelisted).to.be.true;
+    });
+  });
 });

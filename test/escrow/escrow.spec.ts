@@ -82,9 +82,9 @@ describe.only("Escrow", () => {
 
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
-    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
-    relayerRegistry = await deployer.deployRelayerRegistry(owner.address);
+    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
+    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
+    relayerRegistry = await deployer.deployRelayerRegistry();
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
@@ -3672,7 +3672,7 @@ describe.only("Escrow", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      const newRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
+      const newRegistry = await deployer.deployPaymentVerifierRegistry();
       subjectPaymentVerifierRegistry = newRegistry.address;
       subjectCaller = owner;
     });
@@ -3997,9 +3997,8 @@ describe.only("Escrow", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      const RelayerRegistry = await ethers.getContractFactory("RelayerRegistry");
-      const newRegistry = await RelayerRegistry.deploy(owner.address);
-      await newRegistry.deployed();
+      const newRegistry = await deployer.deployRelayerRegistry();
+
       subjectRelayerRegistry = newRegistry.address;
       subjectCaller = owner;
     });

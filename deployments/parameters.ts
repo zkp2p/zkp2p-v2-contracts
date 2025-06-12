@@ -10,7 +10,7 @@ export const INTENT_EXPIRATION_PERIOD: any = {
   "base_staging": THREE_MINUTES_IN_SECONDS,
 };
 
-export const SUSTAINABILITY_FEE: any = {
+export const PROTOCOL_FEE: any = {
   "localhost": ether(.001),
   "goerli": ether(.001),
   "sepolia": ether(.001),
@@ -18,7 +18,7 @@ export const SUSTAINABILITY_FEE: any = {
   "base_staging": ZERO
 };
 
-export const SUSTAINABILITY_FEE_RECIPIENT: any = {
+export const PROTOCOL_FEE_RECIPIENT: any = {
   "localhost": "",
   "goerli": "",
   "sepolia": "",

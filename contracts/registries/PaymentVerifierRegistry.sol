@@ -17,13 +17,11 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
 
     /* ============ State Variables ============ */
     bool public acceptAllVerifiers;
-    mapping(address => bool) public whitelistedVerifiers;
+    mapping(address => bool) public isWhitelistedVerifier;
     address[] public verifiers;
 
     /* ============ Constructor ============ */
-    constructor(address _owner) Ownable() {
-        transferOwnership(_owner);
-    }
+    constructor() Ownable() {}
     
     /* ============ External Functions ============ */
 
@@ -34,9 +32,9 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
      */
     function addPaymentVerifier(address _verifier) external onlyOwner {
         require(_verifier != address(0), "Payment verifier cannot be zero address");
-        require(!whitelistedVerifiers[_verifier], "Payment verifier already whitelisted");
+        require(!isWhitelistedVerifier[_verifier], "Payment verifier already whitelisted");
         
-        whitelistedVerifiers[_verifier] = true;
+        isWhitelistedVerifier[_verifier] = true;
         verifiers.push(_verifier);
         
         emit PaymentVerifierAdded(_verifier);
@@ -48,9 +46,9 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
      * @param _verifier   The payment verifier address to remove
      */
     function removePaymentVerifier(address _verifier) external onlyOwner {
-        require(whitelistedVerifiers[_verifier], "Payment verifier not whitelisted");
+        require(isWhitelistedVerifier[_verifier], "Payment verifier not whitelisted");
         
-        whitelistedVerifiers[_verifier] = false;
+        isWhitelistedVerifier[_verifier] = false;
         verifiers.removeStorage(_verifier);
         
         emit PaymentVerifierRemoved(_verifier);
@@ -68,10 +66,6 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
     }
 
     /* ============ External View Functions ============ */
-
-    function isWhitelistedVerifier(address _verifier) external view returns (bool) {
-        return whitelistedVerifiers[_verifier];
-    }
 
     function isAcceptingAllVerifiers() external view returns (bool) {
         return acceptAllVerifiers;

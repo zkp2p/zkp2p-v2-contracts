@@ -9,8 +9,8 @@ const circom = require("circomlibjs");
 import {
   INTENT_EXPIRATION_PERIOD,
   MULTI_SIG,
-  SUSTAINABILITY_FEE,
-  SUSTAINABILITY_FEE_RECIPIENT,
+  PROTOCOL_FEE,
+  PROTOCOL_FEE_RECIPIENT,
   USDC,
   USDC_MINT_AMOUNT,
   USDC_RECIPIENT,
@@ -38,20 +38,46 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     usdcAddress = USDC[network];
   }
 
+  // Deploy payment verifier registry
+  const paymentVerifierRegistry = await deploy("PaymentVerifierRegistry", {
+    from: deployer,
+    args: [],
+  });
+  console.log("Payment verifier registry deployed at", paymentVerifierRegistry.address);
+
+  // Deploy post intent hook registry
+  const postIntentHookRegistry = await deploy("PostIntentHookRegistry", {
+    from: deployer,
+    args: [],
+  });
+  console.log("Post intent hook registry deployed at", postIntentHookRegistry.address);
+
+  // Deploy relayer registry
+  const relayerRegistry = await deploy("RelayerRegistry", {
+    from: deployer,
+    args: [],
+  });
+  console.log("Relayer registry deployed at", relayerRegistry.address);
+
+  // Deploy escrow
   const escrow = await deploy("Escrow", {
     from: deployer,
     args: [
       deployer,
       chainId,
       INTENT_EXPIRATION_PERIOD[network],
-      SUSTAINABILITY_FEE[network],
-      SUSTAINABILITY_FEE_RECIPIENT[network] != ""
-        ? SUSTAINABILITY_FEE_RECIPIENT[network]
+      paymentVerifierRegistry.address,
+      postIntentHookRegistry.address,
+      relayerRegistry.address,
+      PROTOCOL_FEE[network],
+      PROTOCOL_FEE_RECIPIENT[network] != ""
+        ? PROTOCOL_FEE_RECIPIENT[network]
         : deployer,
     ],
   });
   console.log("Escrow deployed at", escrow.address);
 
+  // Deploy nullifier registry
   const nullifierRegistry = await deploy("NullifierRegistry", {
     from: deployer,
     args: [],
@@ -59,6 +85,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Nullifier deployed at", nullifierRegistry.address);
 
   const escrowContract = await ethers.getContractAt("Escrow", escrow.address);
+  const paymentVerifierRegistryContract = await ethers.getContractAt("PaymentVerifierRegistry", paymentVerifierRegistry.address);
+  const postIntentHookRegistryContract = await ethers.getContractAt("PostIntentHookRegistry", postIntentHookRegistry.address);
+  const relayerRegistryContract = await ethers.getContractAt("RelayerRegistry", relayerRegistry.address);
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistry.address);
 
   if (network == "goerli") {
@@ -75,6 +104,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("Transferring ownership of contracts...");
   await setNewOwner(hre, escrowContract, multiSig);
+  await setNewOwner(hre, paymentVerifierRegistryContract, multiSig);
+  await setNewOwner(hre, postIntentHookRegistryContract, multiSig);
+  await setNewOwner(hre, relayerRegistryContract, multiSig);
   await setNewOwner(hre, nullifierRegistryContract, multiSig);
 
   console.log("Deploy finished...");

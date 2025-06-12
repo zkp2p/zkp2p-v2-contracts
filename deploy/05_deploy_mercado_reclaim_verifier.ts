@@ -31,6 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
+  const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   // Mercado only returns 1 transaction at a time
@@ -57,10 +58,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("NullifierRegistry permissions added...");
 
-  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
+  // Add MercadoPagoReclaimVerifier to registry
+  const paymentVerifierRegistryContract = await ethers.getContractAt(
+    "PaymentVerifierRegistry", paymentVerifierRegistryAddress
+  );
   await addWhitelistedPaymentVerifier(
     hre,
-    escrowContract,
+    paymentVerifierRegistryContract,
     mercadoVerifier.address,
     MERCADO_RECLAIM_FEE_SHARE[network]
   );

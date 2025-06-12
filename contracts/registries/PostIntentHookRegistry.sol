@@ -20,9 +20,7 @@ contract PostIntentHookRegistry is Ownable, IPostIntentHookRegistry {
     address[] public hooks;
 
     /* ============ Constructor ============ */
-    constructor(address _owner) Ownable() {
-        transferOwnership(_owner);
-    }
+    constructor() Ownable() {}
     
     /* ============ External Functions ============ */
 

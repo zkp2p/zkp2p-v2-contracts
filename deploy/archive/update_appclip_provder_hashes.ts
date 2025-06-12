@@ -6,20 +6,20 @@ import { ethers } from "hardhat";
 
 import {
   MULTI_SIG,
-} from "../deployments/parameters";
+} from "../../deployments/parameters";
 import {
   getDeployedContractAddress,
   removeProviderHash,
   addProviderHash
-} from "../deployments/helpers";
+} from "../../deployments/helpers";
 import {
   REVOLUT_OLD_APPCLIP_PROVIDER_HASHES,
   REVOLUT_APPCLIP_PROVIDER_HASHES
-} from "../deployments/verifiers/revolut_reclaim";
+} from "../../deployments/verifiers/revolut_reclaim";
 import {
   VENMO_APPCLIP_PROVIDER_HASHES,
   VENMO_OLD_APPCLIP_PROVIDER_HASHES
-} from "../deployments/verifiers/venmo_reclaim";
+} from "../../deployments/verifiers/venmo_reclaim";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

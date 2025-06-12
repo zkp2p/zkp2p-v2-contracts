@@ -17,6 +17,8 @@ import {
   Escrow__factory,
   ZelleBaseVerifier,
   ZelleBaseVerifier__factory,
+  PaymentVerifierRegistry,
+  PaymentVerifierRegistry__factory,
 } from "../../typechain";
 
 import {
@@ -47,6 +49,7 @@ describe("Zelle Reclaim Verifier Deployments", () => {
 
   let escrow: Escrow;
   let nullifierRegistry: NullifierRegistry;
+  let paymentVerifierRegistry: PaymentVerifierRegistry;
 
   let zelleBaseVerifier: ZelleBaseVerifier;
   let chaseVerifier: ZelleChaseReclaimVerifier;
@@ -70,6 +73,9 @@ describe("Zelle Reclaim Verifier Deployments", () => {
 
     escrowAddress = getDeployedContractAddress(network, "Escrow");
     escrow = new Escrow__factory(deployer.wallet).attach(escrowAddress);
+
+    const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
+    paymentVerifierRegistry = new PaymentVerifierRegistry__factory(deployer.wallet).attach(paymentVerifierRegistryAddress);
 
     const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
@@ -102,16 +108,6 @@ describe("Zelle Reclaim Verifier Deployments", () => {
       expect([...actualCurrencies].sort()).to.deep.eq([...ZELLE_RECLAIM_CURRENCIES].sort());
     });
 
-    // it("should be added to the whitelisted payment verifiers in Escrow", async () => {
-    //   const isWhitelisted = await escrow.whitelistedPaymentVerifiers(zelleBaseVerifier.address);
-    //   expect(isWhitelisted).to.be.true;
-    // });
-
-    // it("should have the correct fee share set in Escrow", async () => {
-    //   const feeShare = await escrow.paymentVerifierFeeShare(zelleBaseVerifier.address);
-    //   expect(feeShare).to.eq(ZELLE_RECLAIM_FEE_SHARE[network]);
-    // });
-
     it("should have the correct payment method mappings", async () => {
       const chaseVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CHASE_PAYMENT_METHOD);
       const citiVerifierAddress = await zelleBaseVerifier.paymentMethodToVerifier(CITI_PAYMENT_METHOD);
@@ -120,6 +116,11 @@ describe("Zelle Reclaim Verifier Deployments", () => {
       expect(chaseVerifierAddress).to.eq(chaseVerifier.address);
       expect(citiVerifierAddress).to.eq(citiVerifier.address);
       expect(boaVerifierAddress).to.eq(boaVerifier.address);
+    });
+
+    it("should be added to the payment verifier registry", async () => {
+      const isWhitelisted = await paymentVerifierRegistry.isWhitelistedVerifier(zelleBaseVerifier.address);
+      expect(isWhitelisted).to.be.true;
     });
   });
 
@@ -188,14 +189,5 @@ describe("Zelle Reclaim Verifier Deployments", () => {
         expect(hasWritePermission).to.be.true;
       });
     });
-
-    // Individual verifiers should no longer be directly whitelisted in escrow
-    // describe(`${name} Escrow Integration`, () => {
-    //   it("should NOT be directly added to the whitelisted payment verifiers", async () => {
-    //     const verifier = getVerifier();
-    //     const isWhitelisted = await escrow.whitelistedPaymentVerifiers(verifier.address);
-    //     expect(isWhitelisted).to.be.false;
-    //   });
-    // });
   }
 });

@@ -34,6 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
+  const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
 
   // Deploy ZelleBaseVerifier first
   const zelleBaseVerifier = await deploy("ZelleBaseVerifier", {
@@ -137,9 +138,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWritePermission(hre, nullifierRegistryContract, chaseVerifier.address);
   console.log("NullifierRegistry permissions added for Citi, BoA, and Chase verifiers...");
 
-  // Add ZelleBaseVerifier to whitelist
-  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, zelleBaseVerifier.address, ZELLE_RECLAIM_FEE_SHARE[network]);
+  // Add ZelleBaseVerifier to registry
+  const paymentVerifierRegistryContract = await ethers.getContractAt(
+    "PaymentVerifierRegistry", paymentVerifierRegistryAddress
+  );
+  await addWhitelistedPaymentVerifier(
+    hre,
+    paymentVerifierRegistryContract,
+    zelleBaseVerifier.address,
+    ZELLE_RECLAIM_FEE_SHARE[network]
+  );
   console.log("ZelleBaseVerifier added to whitelisted payment verifiers...");
 
   // Transfer ownership

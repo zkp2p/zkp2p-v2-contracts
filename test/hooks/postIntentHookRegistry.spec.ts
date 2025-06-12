@@ -31,7 +31,7 @@ describe.only("PostIntentHookRegistry", () => {
 
     deployer = new DeployHelper(owner.wallet);
 
-    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
   });
 
   describe("#constructor", async () => {

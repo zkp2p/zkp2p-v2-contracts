@@ -312,15 +312,15 @@ export default class DeployHelper {
     return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
   }
 
-  public async deployPaymentVerifierRegistry(owner: Address): Promise<PaymentVerifierRegistry> {
-    return await new PaymentVerifierRegistry__factory(this._deployerSigner).deploy(owner);
+  public async deployPaymentVerifierRegistry(): Promise<PaymentVerifierRegistry> {
+    return await new PaymentVerifierRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployPostIntentHookRegistry(owner: Address): Promise<PostIntentHookRegistry> {
-    return await new PostIntentHookRegistry__factory(this._deployerSigner).deploy(owner);
+  public async deployPostIntentHookRegistry(): Promise<PostIntentHookRegistry> {
+    return await new PostIntentHookRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployRelayerRegistry(owner: Address): Promise<RelayerRegistry> {
-    return await new RelayerRegistry__factory(this._deployerSigner).deploy(owner);
+  public async deployRelayerRegistry(): Promise<RelayerRegistry> {
+    return await new RelayerRegistry__factory(this._deployerSigner).deploy();
   }
 }

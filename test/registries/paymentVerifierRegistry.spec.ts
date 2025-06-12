@@ -33,7 +33,7 @@ describe("PaymentVerifierRegistry", () => {
 
     deployer = new DeployHelper(owner.wallet);
 
-    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
+    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
   });
 
   describe("#constructor", async () => {

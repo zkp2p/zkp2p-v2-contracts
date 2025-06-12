@@ -31,6 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
+  const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
 
   // Cashapp page size is 15
   const extensionProviderHashes = await getCashappReclaimProviderHashes(15);
@@ -55,10 +56,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("NullifierRegistry permissions added...");
 
-  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
+  // Add CashappReclaimVerifier to registry
+  const paymentVerifierRegistryContract = await ethers.getContractAt(
+    "PaymentVerifierRegistry", paymentVerifierRegistryAddress
+  );
   await addWhitelistedPaymentVerifier(
     hre,
-    escrowContract,
+    paymentVerifierRegistryContract,
     cashappVerifier.address,
     CASHAPP_RECLAIM_FEE_SHARE[network]
   );

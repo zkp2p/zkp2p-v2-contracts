@@ -77,7 +77,7 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.NZD,
   Currency.AUD,
   Currency.CAD,
-  Currency.JPY,
+  // Currency.JPY,    // Does not has 2 decimal places parsing; hence removed
   Currency.HKD,
   Currency.MXN,
   Currency.SAR,

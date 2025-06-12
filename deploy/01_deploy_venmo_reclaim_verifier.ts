@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const paymentService = PaymentService.VenmoReclaim;
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
+  const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   // Venmo only returns 10 stories at a time
@@ -58,8 +59,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("NullifierRegistry permissions added...");
 
-  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
-  await addWhitelistedPaymentVerifier(hre, escrowContract, venmoVerifier.address, VENMO_RECLAIM_FEE_SHARE[network]);
+  // Add VenmoReclaimVerifier to registry
+  const paymentVerifierRegistryContract = await ethers.getContractAt(
+    "PaymentVerifierRegistry", paymentVerifierRegistryAddress
+  );
+  await addWhitelistedPaymentVerifier(
+    hre,
+    paymentVerifierRegistryContract,
+    venmoVerifier.address,
+    VENMO_RECLAIM_FEE_SHARE[network]
+  );
 
   console.log("VenmoReclaimVerifier added to whitelisted payment verifiers...");
 

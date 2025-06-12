@@ -6,15 +6,15 @@ import { ethers } from "hardhat";
 
 import {
   MULTI_SIG,
-} from "../deployments/parameters";
+} from "../../deployments/parameters";
 import {
   getDeployedContractAddress,
   addCurrency
-} from "../deployments/helpers";
-import { VENMO_RECLAIM_CURRENCIES } from "../deployments/verifiers/venmo_reclaim";
-import { CASHAPP_RECLAIM_CURRENCIES } from "../deployments/verifiers/cashapp_reclaim";
-import { REVOLUT_RECLAIM_CURRENCIES } from "../deployments/verifiers/revolut_reclaim";
-import { WISE_RECLAIM_CURRENCIES } from "../deployments/verifiers/wise_reclaim";
+} from "../../deployments/helpers";
+import { VENMO_RECLAIM_CURRENCIES } from "../../deployments/verifiers/venmo_reclaim";
+import { CASHAPP_RECLAIM_CURRENCIES } from "../../deployments/verifiers/cashapp_reclaim";
+import { REVOLUT_RECLAIM_CURRENCIES } from "../../deployments/verifiers/revolut_reclaim";
+import { WISE_RECLAIM_CURRENCIES } from "../../deployments/verifiers/wise_reclaim";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

@@ -6,13 +6,13 @@ import { ethers } from "hardhat";
 
 import {
   MULTI_SIG,
-} from "../deployments/parameters";
+} from "../../deployments/parameters";
 import {
   getDeployedContractAddress,
   removeProviderHash
-} from "../deployments/helpers";
-import { CASHAPP_APPCLIP_PROVIDER_HASHES } from "../deployments/verifiers/cashapp_reclaim";
-import { WISE_APPCLIP_PROVIDER_HASHES } from "../deployments/verifiers/wise_reclaim";
+} from "../../deployments/helpers";
+import { CASHAPP_APPCLIP_PROVIDER_HASHES } from "../../deployments/verifiers/cashapp_reclaim";
+import { WISE_APPCLIP_PROVIDER_HASHES } from "../../deployments/verifiers/wise_reclaim";
 
 
 // Deployment Scripts

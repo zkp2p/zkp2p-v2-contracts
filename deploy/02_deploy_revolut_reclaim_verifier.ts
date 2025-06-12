@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
 
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
+  const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
 
@@ -58,10 +59,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("NullifierRegistry permissions added...");
 
-  const escrowContract = await ethers.getContractAt("Escrow", escrowAddress);
+  // Add RevolutReclaimVerifier to registry
+  const paymentVerifierRegistryContract = await ethers.getContractAt(
+    "PaymentVerifierRegistry", paymentVerifierRegistryAddress
+  );
   await addWhitelistedPaymentVerifier(
     hre,
-    escrowContract,
+    paymentVerifierRegistryContract,
     revolutVerifier.address,
     REVOLUT_RECLAIM_FEE_SHARE[network]
   );

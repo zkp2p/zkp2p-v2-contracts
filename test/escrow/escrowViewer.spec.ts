@@ -77,12 +77,12 @@ describe("EscrowViewer", () => {
 
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry(owner.address);
-    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry(owner.address);
+    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
+    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
 
     // Deploy RelayerRegistry (using the factory directly to avoid import issues)
     const RelayerRegistry = await ethers.getContractFactory("RelayerRegistry");
-    relayerRegistry = await RelayerRegistry.deploy(owner.address);
+    relayerRegistry = await RelayerRegistry.deploy();
     await relayerRegistry.deployed();
 
     await usdcToken.transfer(offRamper.address, usdc(10000));

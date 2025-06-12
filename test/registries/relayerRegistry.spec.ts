@@ -33,7 +33,7 @@ describe("RelayerRegistry", () => {
 
     deployer = new DeployHelper(owner.wallet);
 
-    relayerRegistry = await deployer.deployRelayerRegistry(owner.address);
+    relayerRegistry = await deployer.deployRelayerRegistry();
   });
 
   describe("#constructor", async () => {

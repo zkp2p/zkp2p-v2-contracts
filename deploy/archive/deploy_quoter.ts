@@ -2,7 +2,7 @@ import "module-alias/register";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { getDeployedContractAddress } from "../deployments/helpers";
+import { getDeployedContractAddress } from "../../deployments/helpers";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
