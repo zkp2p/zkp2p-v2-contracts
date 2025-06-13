@@ -95,6 +95,19 @@ const config: HardhatUserConfig = {
         }
       },
     },
+    scroll: {
+      url: "https://scroll-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
+      // @ts-ignore
+      accounts: [
+        `0x${process.env.BASE_DEPLOY_PRIVATE_KEY}`,
+      ],
+      verify: {
+        etherscan: {
+          apiUrl: "https://api.scrollscan.com/",
+          apiKey: process.env.SCROLLSCAN_API_KEY
+        }
+      },
+    }
   },
   // @ts-ignore
   typechain: {

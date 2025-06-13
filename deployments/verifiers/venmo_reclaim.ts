@@ -82,7 +82,7 @@ export const VENMO_OLD_APPCLIP_PROVIDER_HASHES = [
 ]
 
 export const VENMO_APPCLIP_PROVIDER_HASHES = [
-  "0xdc3505a6f5dd7255197394680a426672247489bfc5b50ad9f263289a9b47d74e"
+  // "0xdc3505a6f5dd7255197394680a426672247489bfc5b50ad9f263289a9b47d74e"
 ]
 
 export const VENMO_RECLAIM_CURRENCIES: any = [
@@ -96,4 +96,5 @@ export const VENMO_RECLAIM_FEE_SHARE: any = {
   "base_staging": BigNumber.from(30),  // 30% of sustainability fee
   "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
   "localhost": BigNumber.from(0),  // 0% of sustainability fee
+  "scroll": BigNumber.from(0),  // 0% of sustainability fee
 }
