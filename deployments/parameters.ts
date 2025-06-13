@@ -35,7 +35,7 @@ export const MULTI_SIG: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
-  "scroll": "",
+  "scroll": "", // keep it empty for now
 };
 
 export const USDC: any = {
