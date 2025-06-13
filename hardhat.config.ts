@@ -103,6 +103,7 @@ const config: HardhatUserConfig = {
       ],
       verify: {
         etherscan: {
+          apiUrl: "https://api.scrollscan.com/",
           apiKey: process.env.SCROLLSCAN_API_KEY
         }
       },
