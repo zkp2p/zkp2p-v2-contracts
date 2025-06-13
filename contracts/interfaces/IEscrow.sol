@@ -9,6 +9,12 @@ interface IEscrow {
     
     /* ============ Structs ============ */
 
+    struct Intent {
+        bytes32 intentHash;                        // Unique identifier for the intent
+        uint256 amount;                            // Amount locked
+        uint256 expiryTime;                        // When this intent expires
+    }
+
     struct Range {
         uint256 min;                                // Minimum value
         uint256 max;                                // Maximum value
@@ -24,7 +30,6 @@ interface IEscrow {
         bool acceptingIntents;                      // State: True if the deposit is accepting intents, False otherwise
         uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
-        bytes32[] intentHashes;                     // State: Array of hashes of all open intents (may include some expired if not pruned)
     }
 
     struct Currency {
@@ -40,54 +45,84 @@ interface IEscrow {
                                                     // in case of TLS proofs, domain key hash in case of zkEmail proofs, currency code etc.
     }
 
-    struct Intent {
-        address owner;                              // Address of the intent owner  
-        address to;                                 // Address to forward funds to (can be same as owner)
-        uint256 depositId;                          // ID of the deposit the intent is associated with
-        uint256 amount;                             // Amount of the deposit.token the owner wants to take
-        uint256 timestamp;                          // Timestamp of the intent
-        address paymentVerifier;                    // Address of the payment verifier corresponding to payment service the owner is 
-                                                    // going to pay with offchain
-        bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
-        uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
-        address referrer;                           // Address of the referrer who brought this intent (if any)
-        uint256 referrerFee;                        // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
-        IPostIntentHook postIntentHook;             // Address of the post-intent hook that will execute any post-intent actions
-        bytes data;                                 // Additional data to be passed to the post-intent hook contract
-    }
+    /* ============ Events ============ */
 
-    struct SignalIntentParams {
-        uint256 depositId;                          // The ID of the deposit the taker intends to use
-        uint256 amount;                             // The amount of deposit.token the user wants to take
-        address to;                                 // Address to forward funds to
-        address verifier;                           // The payment verifier for the payment service
-        bytes32 fiatCurrency;                       // The currency code for offchain payment
-        uint256 conversionRate;                     // The conversion rate agreed offchain
-        address referrer;                           // Address of the referrer (address(0) if no referrer)
-        uint256 referrerFee;                        // Fee to be paid to the referrer
-        bytes gatingServiceSignature;               // Signature from the deposit's gating service
-        IPostIntentHook postIntentHook;             // Optional post-intent hook (address(0) for no hook)
-        bytes data;                                 // Additional data for the intent
-    }
+    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate);
 
-    struct VerifierDataView {
-        address verifier;
-        DepositVerifierData verificationData;
-        Currency[] currencies;
-    }
+    event DepositVerifierAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed payeeDetailsHash, address intentGatingService);
+    event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
 
-    struct DepositView {
-        uint256 depositId;
-        Deposit deposit;
-        uint256 availableLiquidity;                 // Amount of liquidity available to signal intents (net of expired intents)
-        VerifierDataView[] verifiers;
-    }
+    event DepositCurrencyAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 conversionRate);
+    event DepositCurrencyRemoved(uint256 indexed depositId, address indexed verifier, bytes32 indexed currencyCode);        
 
-    struct IntentView {
-        bytes32 intentHash;
-        Intent intent;
-        DepositView deposit;
-    }
+    event DepositFundsAdded(uint256 indexed depositId, address indexed depositor, uint256 amount);
+    event DepositWithdrawn(uint256 indexed depositId, address indexed depositor, uint256 amount, bool acceptingIntents);
+    event DepositClosed(uint256 depositId, address depositor);
+
+    event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
+    event DepositMinConversionRateUpdated(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 newMinConversionRate);
+
+    event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
+    event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
+
+    event MinDepositAmountSet(uint256 minDepositAmount);
+
+    event OrchestratorUpdated(address indexed orchestrator);
+    event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
+
+    /* ============ Custom Errors ============ */
+    
+    // Authorization errors
+    error CallerMustBeDepositorOrDelegate();
+    error CallerMustBeDepositor();
+    error OnlyDepositorCanSetDelegate();
+    error OnlyDepositorCanRemoveDelegate();
+    error OnlyOrchestratorCanCallThis();
+    
+    // Deposit validation errors
+    error MinIntentAmountCannotBeZero();
+    error MinIntentAmountMustBeLessThanMax();
+    error MinCannotBeZero();
+    error MinMustBeLessThanMax();
+    error DepositDoesNotExist();
+    error DepositNotAcceptingIntents();
+    error NoDelegateSetForDeposit();
+    error NotEnoughLiquidity();
+    
+    error CurrencyOrVerifierNotSupported();
+    error PaymentVerifierNotWhitelisted();
+    error VerifierNotFoundForDeposit();
+    error CurrencyNotFoundForVerifier();
+    error CurrencyNotSupportedByVerifier();
+    error VerifierDataAlreadyExists();
+    error CurrencyRateAlreadyExists();
+    
+    // Locking errors
+    error IntentDoesNotExist();
+    error AmountMustBeLessThanMaxIntent();
+    error AmountMustBeGreaterThanMinIntent();
+
+    // Configuration errors
+    error MinConversionRateMustBeGreaterThanZero();
+    error ConversionRateMustBeGreaterThanZero();
+    error DelegateCannotBeZeroAddress();
+    error VerifierCannotBeZeroAddress();
+    error PayeeDetailsCannotBeEmpty();
+    error OrchestratorCannotBeZeroAddress();
+    error PaymentVerifierRegistryCannotBeZeroAddress();
+    
+    // Array length errors
+    error VerifiersAndDepositVerifierDataLengthMismatch();
+    error VerifiersAndCurrenciesLengthMismatch();
+
+    
+    /* ============ External Functions for Orchestrator ============ */
+
+    function lockFunds(uint256 _depositId, bytes32 _intentHash, uint256 _amount, uint256 _expiryTime) external;
+    function unlockFunds(uint256 _depositId, bytes32 _intentHash) external;
+    function unlockAndTransferFunds(uint256 _depositId, bytes32 _intentHash, uint256 _transferAmount, address _to) external;
+
+    /* ============ View Functions ============ */
 
     function getDeposit(uint256 _depositId) external view returns (Deposit memory);
     function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
@@ -95,8 +130,6 @@ interface IEscrow {
     function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
     function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory);
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
-    
-    function getIntent(bytes32 _intentHash) external view returns (Intent memory);
-    function getAccountIntents(address _account) external view returns (bytes32[] memory);
-    function getPrunableIntents(uint256 _depositId) external view returns (bytes32[] memory prunableIntents, uint256 reclaimedAmount);
+    function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
+    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount);
 }

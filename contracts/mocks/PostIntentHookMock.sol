@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPostIntentHook } from "../interfaces/IPostIntentHook.sol";
-import { IEscrow } from "../interfaces/IEscrow.sol";
+import { IOrchestrator } from "../interfaces/IOrchestrator.sol";
 
 /**
  * @title PostIntentHookMock
@@ -27,12 +27,12 @@ contract PostIntentHookMock is IPostIntentHook {
     /**
      * @notice Executes post-intent action by transferring funds to target address
      * @param _intent The intent data containing the target address in the data field
-     * @param _fulfillIntentData Data passed from fulfillIntent containing the token address
+     * @param _amountNetFees Amount of funds to transfer to the target address after fees are deducted
      */
     function execute(
-        IEscrow.Intent memory _intent,
+        IOrchestrator.Intent memory _intent,
         uint256 _amountNetFees,
-        bytes calldata _fulfillIntentData
+        bytes calldata /*_fulfillIntentData*/
     ) external override {
         // Decode target address and token from intent data
         address targetAddress = abi.decode(_intent.data, (address));

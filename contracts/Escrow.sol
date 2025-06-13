@@ -12,6 +12,7 @@ import { StringArrayUtils } from "./external/StringArrayUtils.sol";
 import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 
 import { IEscrow } from "./interfaces/IEscrow.sol";
+import { IOrchestrator } from "./interfaces/IOrchestrator.sol";  // NEW: Added for orchestrator calls
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
@@ -23,72 +24,6 @@ pragma solidity ^0.8.18;
 
 contract Escrow is Ownable, Pausable, IEscrow {
 
-    /* ============ Custom Errors ============ */
-    // Authorization errors
-    error CallerMustBeDepositorOrDelegate();
-    error CallerMustBeDepositor();
-    error SenderMustBeIntentOwner();
-    error OnlyDepositorCanSetDelegate();
-    error OnlyDepositorCanRemoveDelegate();
-    
-    // Deposit validation errors
-    error MinIntentAmountCannotBeZero();
-    error MinIntentAmountMustBeLessThanMax();
-    error AmountMustBeGreaterThanMinIntent();
-    error MinCannotBeZero();
-    error MinMustBeLessThanMax();
-    error DepositDoesNotExist();
-    error DepositNotAcceptingIntents();
-    error NoDelegateSetForDeposit();
-    
-    // Intent validation errors
-    error AccountHasUnfulfilledIntent();
-    error SignaledAmountMustBeGreaterThanMin();
-    error SignaledAmountMustBeLessThanMax();
-    error CannotSendToZeroAddress();
-    error ReferrerFeeExceedsMaximum();
-    error CannotSetReferrerFeeWithoutReferrer();
-    error IntentDoesNotExist();
-    error NotEnoughLiquidity();
-    error ReleaseAmountExceedsIntentAmount();
-
-    // Verifier and currency errors
-    error PaymentVerifierNotSupported();
-    error PaymentVerifierNotWhitelisted();
-    error CurrencyNotSupported();
-    error CurrencyOrVerifierNotSupported();
-    error RateMustBeGreaterThanOrEqualToMin();
-    error InvalidGatingServiceSignature();
-    error PostIntentHookNotWhitelisted();
-    error VerifierNotFoundForDeposit();
-    error CurrencyNotFoundForVerifier();
-    error CurrencyNotSupportedByVerifier();
-    error VerifierDataAlreadyExists();
-    error CurrencyRateAlreadyExists();
-    
-    // Payment verification errors
-    error PaymentVerificationFailed();
-    error InvalidIntentHash();
-    
-    // Configuration errors
-    error MinConversionRateMustBeGreaterThanZero();
-    error ConversionRateMustBeGreaterThanZero();
-    error DelegateCannotBeZeroAddress();
-    error VerifierCannotBeZeroAddress();
-    error PayeeDetailsCannotBeEmpty();
-    error ProtocolFeeExceedsMaximum();
-    error ProtocolFeeRecipientCannotBeZeroAddress();
-    error MaxIntentExpirationPeriodCannotBeZero();
-    
-    // Array length errors
-    error VerifiersAndDepositVerifierDataLengthMismatch();
-    error VerifiersAndCurrenciesLengthMismatch();
-    
-    // Transfer errors
-    error ProtocolFeeTransferFailed();
-    error ReferrerFeeTransferFailed();
-    error TransferToRecipientFailed();
-
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
@@ -96,106 +31,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
     using StringArrayUtils for string[];
     using Uint256ArrayUtils for uint256[];
 
-    /* ============ Events ============ */
-
-    event DepositReceived(
-        uint256 indexed depositId,
-        address indexed depositor,
-        IERC20 indexed token,
-        uint256 amount,
-        Range intentAmountRange,
-        address delegate
-    );
-
-    event DepositVerifierAdded(
-        uint256 indexed depositId,
-        address indexed verifier,
-        bytes32 indexed payeeDetailsHash,
-        address intentGatingService
-    );
-
-    event DepositCurrencyAdded(
-        uint256 indexed depositId,
-        address indexed verifier,
-        bytes32 indexed currency,
-        uint256 conversionRate
-    );
-
-    event DepositMinConversionRateUpdated(
-        uint256 indexed depositId,
-        address indexed verifier,
-        bytes32 indexed currency,
-        uint256 newMinConversionRate
-    );
-
-    event IntentSignaled(
-        bytes32 indexed intentHash,
-        uint256 indexed depositId,
-        address indexed verifier,
-        address owner,
-        address to,
-        uint256 amount,
-        bytes32 fiatCurrency,
-        uint256 conversionRate,
-        uint256 timestamp
-    );
-
-    event IntentPruned(
-        bytes32 indexed intentHash,
-        uint256 indexed depositId
-    );
-
-    event IntentFulfilled(
-        bytes32 indexed intentHash,
-        uint256 indexed depositId,
-        address indexed verifier,
-        address owner,
-        address to,
-        uint256 amount,
-        uint256 protocolFee,
-        uint256 referrerFee,
-        bool isManualRelease
-    );
-
-    event DepositWithdrawn(
-        uint256 indexed depositId,
-        address indexed depositor,
-        uint256 amount
-    );
-
-    event DepositClosed(uint256 depositId, address depositor);
-    
-    event MinDepositAmountSet(uint256 minDepositAmount);
-    event AllowMultipleIntentsUpdated(bool allowMultiple);
-    event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
-    
-    event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
-    event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
-    event DepositCurrencyRemoved(uint256 indexed depositId, address indexed verifier, bytes32 indexed currencyCode);
-    
-    event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
-    event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
-
-    event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
-    event PostIntentHookRegistryUpdated(address indexed postIntentHookRegistry);
-    event RelayerRegistryUpdated(address indexed relayerRegistry);
-    
-    event ProtocolFeeUpdated(uint256 protocolFee);
-    event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
-
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
-    uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-    uint256 constant MAX_REFERRER_FEE = 5e16;      // 5% max referrer fee
-    uint256 constant MAX_PROTOCOL_FEE = 5e16;      // 5% max protocol fee
     
     /* ============ State Variables ============ */
 
-    uint256 immutable public chainId;                                      // chainId of the chain the escrow is deployed on
+    address public orchestrator;                                     // Address of the orchestrator contract
+    IPaymentVerifierRegistry public paymentVerifierRegistry;         // Address of the payment verifier registry contract
+    uint256 immutable public chainId;                                // chainId of the chain the escrow is deployed on
 
-    mapping(address => uint256[]) internal accountDeposits;           // Mapping of address to depositIds
-    mapping(address => bytes32[]) internal accountIntents;             // Mapping of address to array of intentHashes (Multiple intents per address allowed for relayers)
-    
+    mapping(address => uint256[]) internal accountDeposits;          // Mapping of address to depositIds
+
     // Mapping of depositId to verifier address to deposit's verification data. A single deposit can support multiple payment 
     // services. Each payment service has it's own verification data which includes the payee details hash and the data used for 
     // payment verification.
@@ -211,25 +57,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => mapping(address => mapping(bytes32 => uint256))) internal depositCurrencyMinRate;
     mapping(uint256 => mapping(address => bytes32[])) internal depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
 
-    mapping(uint256 => Deposit) internal deposits;                    // Mapping of depositIds to deposit structs
-    mapping(bytes32 => Intent) internal intents;                      // Mapping of intentHashes to intent structs
-
-    // Registry contracts
-    IPaymentVerifierRegistry public paymentVerifierRegistry;
-    IPostIntentHookRegistry public postIntentHookRegistry;
-    IRelayerRegistry public relayerRegistry;
-
-    // Protocol fee configuration
-    uint256 public protocolFee;                                     // Protocol fee taken from taker (in preciseUnits, 1e16 = 1%)
-    address public protocolFeeRecipient;                            // Address that receives protocol fees
-
-    bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
-    uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
+    mapping(uint256 => Deposit) internal deposits;                          // Mapping of depositIds to deposit structs
+    mapping(uint256 => bytes32[]) internal depositIntentHashes;             // Mapping of depositId to array of intentHashes
+    mapping(uint256 => mapping(bytes32 => Intent)) internal depositIntents; // Mapping of depositId to intentHash to intent
 
     uint256 public depositCounter;                                  // Counter for depositIds
-
-    // Todo: Update how we calculate intent hash to allow multiple 
-    // intents per account (for relayer accounts).
 
     /* ============ Modifiers ============ */
 
@@ -246,26 +78,24 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _;
     }
 
+    /**
+     * @notice Modifier to restrict access to orchestrator-only functions
+     */
+    modifier onlyOrchestrator() {
+        if (msg.sender != orchestrator) revert OnlyOrchestratorCanCallThis();
+        _;
+    }
+
     /* ============ Constructor ============ */
     constructor(
         address _owner,
         uint256 _chainId,
-        uint256 _intentExpirationPeriod,
-        address _paymentVerifierRegistry,
-        address _postIntentHookRegistry,
-        address _relayerRegistry,
-        uint256 _protocolFee,
-        address _protocolFeeRecipient
+        address _paymentVerifierRegistry
     )
         Ownable()
     {
         chainId = _chainId;
-        intentExpirationPeriod = _intentExpirationPeriod;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
-        postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
-        relayerRegistry = IRelayerRegistry(_relayerRegistry);
-        protocolFee = _protocolFee;
-        protocolFeeRecipient = _protocolFeeRecipient;
 
         transferOwnership(_owner);
     }
@@ -299,7 +129,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
-        _validateDepositAmount(_amount, _intentAmountRange);
+        if (_intentAmountRange.min == 0) revert MinIntentAmountCannotBeZero();
+        if (_intentAmountRange.min > _intentAmountRange.max) revert MinIntentAmountMustBeLessThanMax();
+        if (_amount < _intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
 
         uint256 depositId = depositCounter++;
 
@@ -312,7 +144,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _amount,
             intentAmountRange: _intentAmountRange,
             acceptingIntents: true,
-            intentHashes: new bytes32[](0),
             remainingDeposits: _amount,
             outstandingIntentAmount: 0
         });
@@ -325,177 +156,91 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Signals intent to pay the depositor defined in the _depositId the _amount * deposit conversionRate off-chain
-     * in order to unlock _amount of funds on-chain. Caller must provide a signature from the deposit's gating service to prove
-     * their eligibility to take liquidity. The offchain gating service can perform any additional verification, for example, 
-     * verifying the payer's identity, checking the payer's KYC status, etc. If there are prunable intents then they will be 
-     * deleted from the deposit to be able to maintain state hygiene.
+     * @notice Adds additional funds to an existing deposit. Only the depositor can add funds.
+     * The funds will be added to the remaining deposits amount, making it available for new intents.
      *
-     * @param _params                   Struct containing all the intent parameters
+     * @param _depositId    The deposit ID to add funds to
+     * @param _amount       The amount of tokens to add
      */
-    function signalIntent(SignalIntentParams calldata _params)
+    function addFundsToDeposit(uint256 _depositId, uint256 _amount)
         external
         whenNotPaused
     {
-        Deposit storage deposit = deposits[_params.depositId];
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
         
-        _validateIntent(_params, deposit);
-
-        bytes32 intentHash = _calculateIntentHash(msg.sender, _params.verifier, _params.depositId);
-
-        if (deposit.remainingDeposits < _params.amount) {
-            (
-                bytes32[] memory prunableIntents,
-                uint256 reclaimableAmount
-            ) = _getPrunableIntents(_params.depositId);
-
-            if (deposit.remainingDeposits + reclaimableAmount < _params.amount) revert NotEnoughLiquidity();
-
-            _pruneIntents(deposit, prunableIntents);
-            deposit.remainingDeposits += reclaimableAmount;
-            deposit.outstandingIntentAmount -= reclaimableAmount;
-        }
-
-        intents[intentHash] = Intent({
-            owner: msg.sender,
-            to: _params.to,
-            depositId: _params.depositId,
-            amount: _params.amount,
-            paymentVerifier: _params.verifier,
-            fiatCurrency: _params.fiatCurrency,
-            conversionRate: _params.conversionRate,
-            timestamp: block.timestamp,
-            referrer: _params.referrer,
-            referrerFee: _params.referrerFee,
-            postIntentHook: _params.postIntentHook,
-            data: _params.data
-        });
-
-        accountIntents[msg.sender].push(intentHash);
-
-        deposit.remainingDeposits -= _params.amount;
-        deposit.outstandingIntentAmount += _params.amount;
-        deposit.intentHashes.push(intentHash);
-
-        emit IntentSignaled(
-            intentHash, 
-            _params.depositId, 
-            _params.verifier, 
-            msg.sender, 
-            _params.to, 
-            _params.amount, 
-            _params.fiatCurrency, 
-            _params.conversionRate, 
-            block.timestamp
-        );
+        deposit.amount += _amount;
+        deposit.remainingDeposits += _amount;
+        
+        emit DepositFundsAdded(_depositId, msg.sender, _amount);
+        
+        deposit.token.transferFrom(msg.sender, address(this), _amount);
     }
 
-    /**
-     * @notice Only callable by the originator of the intent. Cancels an outstanding intent. Deposit state is 
-     * updated to reflect the cancelled intent.
-     *
-     * @param _intentHash    Hash of intent being cancelled
-     */
-    function cancelIntent(bytes32 _intentHash) external {
-        Intent memory intent = intents[_intentHash];
-        
-        if (intent.timestamp == 0) revert IntentDoesNotExist();
-        if (intent.owner != msg.sender) revert SenderMustBeIntentOwner();
-
-        Deposit storage deposit = deposits[intent.depositId];
-
-        _pruneIntent(deposit, _intentHash);
-
-        deposit.remainingDeposits += intent.amount;
-        deposit.outstandingIntentAmount -= intent.amount;
-    }
+    // TODO: Is there an opportunity to combine the two functions below?
 
     /**
-     * @notice Anyone can submit a fulfill intent transaction, even if caller isn't the intent owner. Upon submission the
-     * offchain payment proof is verified, payment details are validated, intent is removed, and deposit state is updated. 
-     * Deposit token is transferred to the intent.to address.
+     * @notice Removes funds from an existing deposit. Only the depositor can remove funds.
+     * Can remove funds from the remaining deposits and prunable intents.
      *
-     * @param _paymentProof         Payment proof. Can be Groth16 Proof, TLSNotary proof, TLSProxy proof, attestation etc.
-     * @param _intentHash           Identifier of intent being fulfilled
+     * @param _depositId    The deposit ID to remove funds from
+     * @param _amount       The amount of tokens to remove
      */
-    function fulfillIntent( 
-        bytes calldata _paymentProof,
-        bytes32 _intentHash,
-        bytes calldata _data
-    )
+    function removeFundsFromDeposit(uint256 _depositId, uint256 _amount)
         external
-        whenNotPaused
     {
-        Intent memory intent = intents[_intentHash];
-        Deposit storage deposit = deposits[intent.depositId];
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
         
-        address verifier = intent.paymentVerifier;
-        if (verifier == address(0)) revert IntentDoesNotExist();
-        
-        DepositVerifierData memory verifierData = depositVerifierData[intent.depositId][verifier];
-        (bool success, bytes32 intentHash, uint256 releaseAmount) = IPaymentVerifier(verifier).verifyPayment(
-            IPaymentVerifier.VerifyPaymentData({
-                paymentProof: _paymentProof,
-                depositToken: address(deposit.token),
-                intentAmount: intent.amount,
-                intentTimestamp: intent.timestamp,
-                payeeDetails: verifierData.payeeDetails,
-                fiatCurrency: intent.fiatCurrency,
-                conversionRate: intent.conversionRate,
-                data: verifierData.data
-            })
-        );
-        if (!success) revert PaymentVerificationFailed();
-        if (intentHash != _intentHash) revert InvalidIntentHash();
-
-        _pruneIntent(deposit, _intentHash);
-
-        // Zero out outstanding intent amount regardless of release amount
-        deposit.outstandingIntentAmount -= intent.amount;
-        // Return unused funds to remaining deposits
-        if (releaseAmount < intent.amount) {
-            deposit.remainingDeposits += (intent.amount - releaseAmount);
+        if (deposit.remainingDeposits < _amount) {
+            _pruneExpiredIntents(deposit, _depositId, _amount);
         }
+        
+        deposit.amount -= _amount;
+        deposit.remainingDeposits -= _amount;
+        
+        emit DepositWithdrawn(_depositId, msg.sender, _amount, true);
         
         IERC20 token = deposit.token;
-        _closeDepositIfNecessary(intent.depositId, deposit);
-
-        _transferFundsAndExecuteAction(token, intentHash, intent, releaseAmount, _data, false);
+        _closeDepositIfNecessary(_depositId, deposit);
+        
+        token.transfer(msg.sender, _amount);
     }
 
-
     /**
-     * @notice Allows depositor to release funds to the payer in case of a failed fulfill intent or because of some other arrangement
-     * between the two parties. Upon submission we check to make sure the msg.sender is the depositor, the  intent is removed, and 
-     * deposit state is updated. Deposit token is transferred to the payer.
+     * @notice Caller must be the depositor for depositId, if not revert. Depositor is returned all remaining deposits and any
+     * outstanding intents that are expired. If an intent is not expired then those funds will not be returned. Deposit is marked 
+     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this function
+     * again. Deposit will be deleted as long as there are no more outstanding intents.
      *
-     * @param _intentHash        Hash of intent to resolve by releasing the funds
-     * @param _releaseAmount     Amount of funds to release to the payer
-     * @param _releaseData       Data to be passed to the post intent hook
+     * @param _depositId   DepositId the depositor is attempting to withdraw
      */
-    function releaseFundsToPayer(
-        bytes32 _intentHash, 
-        uint256 _releaseAmount, 
-        bytes calldata _releaseData
-    ) external {
-        Intent memory intent = intents[_intentHash];
-        if (intent.owner == address(0)) revert IntentDoesNotExist();
-        if (_releaseAmount > intent.amount) revert ReleaseAmountExceedsIntentAmount();
+    function withdrawDeposit(uint256 _depositId) external {
+        Deposit storage deposit = deposits[_depositId];
 
-        Deposit storage deposit = deposits[intent.depositId];
         if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
 
-        _pruneIntent(deposit, _intentHash);
+        (
+            bytes32[] memory expiredIntents,
+            uint256 reclaimableAmount
+        ) = _getExpiredIntents(_depositId);
 
-        deposit.outstandingIntentAmount -= intent.amount;
-        if (_releaseAmount < intent.amount) {
-            deposit.remainingDeposits += (intent.amount - _releaseAmount);
-        }
+        _pruneIntents(_depositId, expiredIntents);
 
+        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
+        
+        deposit.outstandingIntentAmount -= reclaimableAmount;
+
+        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
+        
+        delete deposit.remainingDeposits;
+        delete deposit.acceptingIntents;
         IERC20 token = deposit.token;
-        _closeDepositIfNecessary(intent.depositId, deposit);
-
-        _transferFundsAndExecuteAction(token, _intentHash, intent, _releaseAmount, _releaseData, true);
+        _closeDepositIfNecessary(_depositId, deposit);
+        
+        token.transfer(msg.sender, returnAmount);
     }
 
     /**
@@ -573,6 +318,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
     }
 
+    // todo: Should we store verifier data on the intent?
+
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
      * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
@@ -639,6 +386,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
     }
 
+    // Todo: Should we update this function to support multiple currencies per verifier?
+
     /**
      * @notice Allows depositor to remove an existing currency from a verifier for a deposit.
      *
@@ -696,88 +445,149 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Caller must be the depositor for depositId, if not revert. Depositor is returned all remaining deposits and any
-     * outstanding intents that are expired. If an intent is not expired then those funds will not be returned. Deposit is marked 
-     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this function
-     * again. Deposit will be deleted as long as there are no more outstanding intents.
-     *
-     * @param _depositId   DepositId the depositor is attempting to withdraw
+     * @notice ANYONE: Can be called by anyone to clean up expired intents.
+     * 
+     * @param _depositId The deposit ID to prune expired intents for
      */
-    function withdrawDeposit(uint256 _depositId) external {
+    function pruneExpiredIntents(uint256 _depositId) external {
+        _pruneExpiredIntents(deposits[_depositId], _depositId, 0);
+    }
+
+
+     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
+
+    /**
+     * @notice ORCHESTRATOR ONLY: Locks funds for an intent with expiry time. Only callable by orchestrator.
+     *
+     * @param _depositId The deposit ID to lock funds from
+     * @param _amount The amount to lock
+     * @param _expiryTime When this intent expires (block.timestamp + intentExpirationPeriod)
+     * @param _intentHash The intent hash this intent corresponds to
+     */
+    function lockFunds(
+        uint256 _depositId, 
+        bytes32 _intentHash,
+        uint256 _amount, 
+        uint256 _expiryTime
+    ) 
+        external 
+        onlyOrchestrator 
+    {
         Deposit storage deposit = deposits[_depositId];
-
-        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
-
-        (
-            bytes32[] memory prunableIntents,
-            uint256 reclaimableAmount
-        ) = _getPrunableIntents(_depositId);
-
-        _pruneIntents(deposit, prunableIntents);
-
-        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
         
-        deposit.outstandingIntentAmount -= reclaimableAmount;
-
-        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount);
+        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
+        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
+        if (_amount < deposit.intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
+        if (_amount > deposit.intentAmountRange.max) revert AmountMustBeLessThanMaxIntent();
         
-        delete deposit.remainingDeposits;
-        delete deposit.acceptingIntents;
+        // Check if we need to reclaim expired liquidity first
+        if (deposit.remainingDeposits < _amount) {
+            _pruneExpiredIntents(deposit, _depositId, _amount);
+        }
+        
+        // Update deposit state
+        deposit.remainingDeposits -= _amount;
+        deposit.outstandingIntentAmount += _amount;
+        
+        depositIntentHashes[_depositId].push(_intentHash);
+        depositIntents[_depositId][_intentHash] = Intent({
+            intentHash: _intentHash,
+            amount: _amount,
+            expiryTime: _expiryTime
+        });
+    }
+
+    /**
+     * @notice ORCHESTRATOR ONLY: Unlocks funds from a cancelled intent by removing the specific intent. 
+     * Only callable by orchestrator.
+     * 
+     * @param _depositId The deposit ID to unlock funds from
+     * @param _intentHash The intent hash to find and remove the intent for
+     */
+    function unlockFunds(uint256 _depositId, bytes32 _intentHash) 
+        external 
+        onlyOrchestrator 
+    {
+        Deposit storage deposit = deposits[_depositId];
+        Intent storage intent = depositIntents[_depositId][_intentHash];
+
+        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
+        if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
+
+        // Update deposit state
+        deposit.remainingDeposits += intent.amount;
+        deposit.outstandingIntentAmount -= intent.amount;
+
+        delete depositIntents[_depositId][_intentHash];
+        depositIntentHashes[_depositId].removeStorage(_intentHash);
+    }
+
+    /**
+     * @notice ORCHESTRATOR ONLY: Unlocks and transfers funds from a fulfilled intent by removing the specific intent.
+     * Only callable by orchestrator.
+     * 
+     * @param _depositId The deposit ID to transfer from
+     * @param _intentHash The intent hash to find and remove the intent for
+     * @param _transferAmount The amount to actually transfer (may be less than intent amount)
+     * @param _to The address to transfer to (orchestrator)
+     */
+    function unlockAndTransferFunds(
+        uint256 _depositId, 
+        bytes32 _intentHash,
+        uint256 _transferAmount, 
+        address _to
+    ) 
+        external 
+        onlyOrchestrator 
+    {
+        Deposit storage deposit = deposits[_depositId];
+        Intent storage intent = depositIntents[_depositId][_intentHash];
+        
+        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
+        if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
+        
+        // Update deposit state
+        deposit.outstandingIntentAmount -= intent.amount;
+        if (_transferAmount < intent.amount) {
+            // Return unused funds to remaining deposits (partial release)
+            deposit.remainingDeposits += (intent.amount - _transferAmount);
+        }
+
+        delete depositIntents[_depositId][_intentHash];
+        depositIntentHashes[_depositId].removeStorage(_intentHash);
+        
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(_depositId, deposit);
         
-        token.transfer(msg.sender, returnAmount);
+        token.transfer(_to, _transferAmount);
     }
 
     /* ============ Governance Functions ============ */
 
+    
     /**
-     * @notice GOVERNANCE ONLY: Updates the protocol fee. This fee is charged to takers upon a successful
-     * fulfillment of an intent.
+     * @notice NEW: Sets the orchestrator contract address. Only callable by owner.
      *
-     * @param _protocolFee   New protocol fee in preciseUnits (1e16 = 1%)
+     * @param _orchestrator The orchestrator contract address
      */
-    function setProtocolFee(uint256 _protocolFee) external onlyOwner {
-        if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeExceedsMaximum();
+    function setOrchestrator(address _orchestrator) external onlyOwner {
+        if (_orchestrator == address(0)) revert OrchestratorCannotBeZeroAddress();
         
-        protocolFee = _protocolFee;
-        emit ProtocolFeeUpdated(_protocolFee);
+        orchestrator = _orchestrator;
+        emit OrchestratorUpdated(_orchestrator);
     }
 
+
     /**
-     * @notice GOVERNANCE ONLY: Updates the protocol fee recipient address.
+     * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
      *
-     * @param _protocolFeeRecipient   New protocol fee recipient address
+     * @param _paymentVerifierRegistry   New payment verifier registry address
      */
-    function setProtocolFeeRecipient(address _protocolFeeRecipient) external onlyOwner {
-        if (_protocolFeeRecipient == address(0)) revert ProtocolFeeRecipientCannotBeZeroAddress();
+    function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
+        if (_paymentVerifierRegistry == address(0)) revert PaymentVerifierRegistryCannotBeZeroAddress();
         
-        protocolFeeRecipient = _protocolFeeRecipient;
-        emit ProtocolFeeRecipientUpdated(_protocolFeeRecipient);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Sets whether all accounts can signal multiple intents.
-     *
-     * @param _allowMultiple   True to allow all accounts to signal multiple intents, false to restrict to whitelisted relayers only
-     */
-    function setAllowMultipleIntents(bool _allowMultiple) external onlyOwner {
-        allowMultipleIntents = _allowMultiple;
-        
-        emit AllowMultipleIntentsUpdated(_allowMultiple);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the intent expiration period, after this period elapses an intent can be pruned to prevent
-     * locking up a depositor's funds.
-     *
-     * @param _intentExpirationPeriod   New intent expiration period
-     */
-    function setIntentExpirationPeriod(uint256 _intentExpirationPeriod) external onlyOwner {
-        if (_intentExpirationPeriod == 0) revert MaxIntentExpirationPeriodCannotBeZero();
-
-        intentExpirationPeriod = _intentExpirationPeriod;
-        emit IntentExpirationPeriodSet(_intentExpirationPeriod);
+        paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+        emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
     }
 
     /**
@@ -785,14 +595,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * Functionalities that are paused:
      * - Deposit creation
      * - Updating conversion rates
-     * - Intent creation
-     * - Intent fulfillment
      * TODO: Update this list.
      *
      * Functionalities that remain unpaused to allow users to retrieve funds in contract:
-     * - Intent cancellation
      * - Deposit withdrawal
-     * - Manual intent fulfillment
      */
     function pauseEscrow() external onlyOwner {
         _pause();
@@ -805,60 +611,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _unpause();
     }
 
-    /**
-     * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
-     *
-     * @param _paymentVerifierRegistry   New payment verifier registry address
-     */
-    function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
-        require(_paymentVerifierRegistry != address(0), "Payment verifier registry cannot be zero address");
-        
-        paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
-        emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the post intent hook registry address.
-     *
-     * @param _postIntentHookRegistry   New post intent hook registry address
-     */
-    function setPostIntentHookRegistry(address _postIntentHookRegistry) external onlyOwner {
-        require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
-        
-        postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
-        emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the relayer registry address.
-     *
-     * @param _relayerRegistry   New relayer registry address
-     */
-    function setRelayerRegistry(address _relayerRegistry) external onlyOwner {
-        require(_relayerRegistry != address(0), "Relayer registry cannot be zero address");
-        
-        relayerRegistry = IRelayerRegistry(_relayerRegistry);
-        emit RelayerRegistryUpdated(_relayerRegistry);
-    }
-
     /* ============ External View Functions ============ */
 
-    /**
-     * @notice Cycles through all intents currently open on a deposit and sees if any have expired. If they have expired
-     * the outstanding amounts are summed up to get the reclaimable amount and returned alongside the intentHashes.
-     *
-     * @param _depositId   The deposit ID
-     */
-    function getPrunableIntents(uint256 _depositId) external view returns (bytes32[] memory prunableIntents, uint256 reclaimedAmount) {
-        return _getPrunableIntents(_depositId);
-    }
 
     function getDeposit(uint256 _depositId) external view returns (Deposit memory) {
         return deposits[_depositId];
     }
 
-    function getIntent(bytes32 _intentHash) external view returns (Intent memory) {
-        return intents[_intentHash];
+    function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory) {
+        return depositIntentHashes[_depositId];
+    }
+
+    function getDepositIntent(uint256 _depositId, bytes32 _intentHash) external view returns (Intent memory) {
+        return depositIntents[_depositId][_intentHash];
     }
 
     function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory) {
@@ -880,130 +645,70 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory) {
         return accountDeposits[_account];
     }
-
-    function getAccountIntents(address _account) external view returns (bytes32[] memory) {
-        return accountIntents[_account];
+    
+    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount) {
+        return _getExpiredIntents(_depositId);
     }
 
-    function getDepositDelegate(uint256 _depositId) external view returns (address) {
-        return deposits[_depositId].delegate;
-    }
- 
+
     /* ============ Internal Functions ============ */
-
-    function _validateDepositAmount(
-        uint256 _amount,
-        Range memory _intentAmountRange
-    ) internal view {
-        if (_intentAmountRange.min == 0) revert MinIntentAmountCannotBeZero();
-        if (_intentAmountRange.min > _intentAmountRange.max) revert MinIntentAmountMustBeLessThanMax();
-        if (_amount < _intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
-    }
-
-    function _validateIntent(SignalIntentParams memory _intent, Deposit storage _deposit) internal view {
-
-        // Check if account can have multiple intents
-        bool canHaveMultipleIntents = relayerRegistry.isWhitelistedRelayer(msg.sender) || allowMultipleIntents;
-        if (!canHaveMultipleIntents && accountIntents[msg.sender].length > 0) {
-            revert AccountHasUnfulfilledIntent();
-        }
-
-        if (_deposit.depositor == address(0)) revert DepositDoesNotExist();
-        if (!_deposit.acceptingIntents) revert DepositNotAcceptingIntents();
-        if (_intent.amount < _deposit.intentAmountRange.min) revert SignaledAmountMustBeGreaterThanMin();
-        if (_intent.amount > _deposit.intentAmountRange.max) revert SignaledAmountMustBeLessThanMax();
-        if (_intent.to == address(0)) revert CannotSendToZeroAddress();
-        
-        if (_intent.referrerFee > MAX_REFERRER_FEE) revert ReferrerFeeExceedsMaximum();
-        if (_intent.referrer == address(0)) {
-            if (_intent.referrerFee != 0) revert CannotSetReferrerFeeWithoutReferrer();
-        }
-
-        if (address(_intent.postIntentHook) != address(0)) {
-            if (!postIntentHookRegistry.isWhitelistedHook(address(_intent.postIntentHook))) {
-                revert PostIntentHookNotWhitelisted();
-            }
-        }
-
-        uint256 depositId = _intent.depositId;
-        DepositVerifierData memory verifierData = depositVerifierData[depositId][_intent.verifier];
-        if (bytes(verifierData.payeeDetails).length == 0) revert PaymentVerifierNotSupported();
-        
-        uint256 minConversionRate = depositCurrencyMinRate[depositId][_intent.verifier][_intent.fiatCurrency];
-        uint256 conversionRate = _intent.conversionRate;
-        if (minConversionRate == 0) revert CurrencyNotSupported();
-        if (conversionRate < minConversionRate) revert RateMustBeGreaterThanOrEqualToMin();
-
-        address intentGatingService = verifierData.intentGatingService;
-        if (intentGatingService != address(0)) {
-            if (!_isValidSignature(
-                abi.encodePacked(depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
-                _intent.gatingServiceSignature,
-                intentGatingService
-            )) {
-                revert InvalidGatingServiceSignature();
-            }
-        }
-    }
-
-    function _calculateIntentHash(
-        address _intentOwner,
-        address _verifier,
-        uint256 _depositId
-    )
-        internal
-        view
-        virtual
-        returns (bytes32 intentHash)
-    {
-        // Mod with circom prime field to make sure it fits in a 254-bit field
-        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_intentOwner, _verifier, _depositId, block.timestamp)));
-        intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
-    }
 
     /**
      * @notice Cycles through all intents currently open on a deposit and sees if any have expired. If they have expired
-     * the outstanding amounts are summed and returned alongside the intentHashes
+     * the outstanding amounts are summed and returned alongside the intentHashes.
      */
-    function _getPrunableIntents(
+    function _getExpiredIntents(
         uint256 _depositId
     )
         internal
         view
-        returns(bytes32[] memory prunableIntents, uint256 reclaimedAmount)
+        returns(bytes32[] memory expiredIntents, uint256 reclaimedAmount)
     {
-        bytes32[] memory intentHashes = deposits[_depositId].intentHashes;
-        prunableIntents = new bytes32[](intentHashes.length);
+        bytes32[] memory intentHashes = depositIntentHashes[_depositId];
+        expiredIntents = new bytes32[](intentHashes.length);
 
         for (uint256 i = 0; i < intentHashes.length; ++i) {
-            Intent memory intent = intents[intentHashes[i]];
-            if (intent.timestamp + intentExpirationPeriod < block.timestamp) {
-                prunableIntents[i] = intentHashes[i];
+            Intent memory intent = depositIntents[_depositId][intentHashes[i]];
+            if (intent.expiryTime < block.timestamp) {
+                expiredIntents[i] = intentHashes[i];
                 reclaimedAmount += intent.amount;
             }
         }
     }
 
-    function _pruneIntents(Deposit storage _deposit, bytes32[] memory _intentHashes) internal {
-        for (uint256 i = 0; i < _intentHashes.length; ++i) {
-            if (_intentHashes[i] != bytes32(0)) {
-                _pruneIntent(_deposit, _intentHashes[i]);
-            }
-        }
+    /**
+     * @notice Free up deposit liquidity by removing intents that have expired. Tries to remove all expired intents that are expired
+     * and adds the reclaimable amount to the deposit's remaining deposits. If the remaining amount including the new recovered amount
+     * is less than the minimum required amount, this function will revert with a NotEnoughLiquidity error.
+     */
+    function _pruneExpiredIntents(Deposit storage _deposit, uint256 _depositId, uint256 _minRequiredAmount) internal {
+        (
+            bytes32[] memory expiredIntents,
+            uint256 reclaimableAmount
+        ) = _getExpiredIntents(_depositId);
+        
+        uint256 availableAmount = _deposit.remainingDeposits;
+        availableAmount += reclaimableAmount;
+        
+        if (availableAmount < _minRequiredAmount) revert NotEnoughLiquidity();
+        
+        // Prune expired intents to free up funds
+        _pruneIntents(_depositId, expiredIntents);
+        _deposit.remainingDeposits += reclaimableAmount;
+        _deposit.outstandingIntentAmount -= reclaimableAmount;
     }
 
     /**
-     * @notice Pruning an intent involves deleting its state from the intents mapping, deleting the intent from it's owners intents 
-     * array, and deleting the intentHash from the deposit's intentHashes array.
+     * @notice Prunes given intents from a deposit. Also calls orchestrator to clean up intents.
      */
-    function _pruneIntent(Deposit storage _deposit, bytes32 _intentHash) internal {
-        Intent memory intent = intents[_intentHash];
+    function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
+        for (uint256 i = 0; i < _intents.length; i++) {
+            delete depositIntents[_depositId][_intents[i]];
+            depositIntentHashes[_depositId].removeStorage(_intents[i]);
+        }
 
-        accountIntents[intent.owner].removeStorage(_intentHash);
-        delete intents[_intentHash];
-        _deposit.intentHashes.removeStorage(_intentHash);
-
-        emit IntentPruned(_intentHash, intent.depositId);
+        // Call orchestrator to clean up intents
+        IOrchestrator(orchestrator).pruneIntents(_intents);
     }
 
     /**
@@ -1037,82 +742,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Handles fee calculations and transfers, then executes any post-intent hooks
+     * @notice Adds list of verifiers and corresponding verification data and currencies to a deposit.
      */
-    function _transferFundsAndExecuteAction(
-        IERC20 _token, 
-        bytes32 _intentHash, 
-        Intent memory _intent, 
-        uint256 _releaseAmount,
-        bytes memory _fulfillIntentData,
-        bool _isManualRelease
-    ) internal {
-        
-        uint256 protocolFeeAmount;
-        uint256 referrerFeeAmount; 
-
-        // Calculate protocol fee (taken from taker) - based on release amount
-        if (protocolFeeRecipient != address(0) && protocolFee > 0) {
-            protocolFeeAmount = (_releaseAmount * protocolFee) / PRECISE_UNIT;
-        }
-        
-        // Calculate referrer fee (taken from taker) - based on release amount
-        if (_intent.referrer != address(0) && _intent.referrerFee > 0) {
-            referrerFeeAmount = (_releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
-        }
-        
-        // Total fees taken from taker
-        uint256 totalFees = protocolFeeAmount + referrerFeeAmount;
-        
-        // Net amount the taker receives after fees
-        uint256 netAmount = _releaseAmount - totalFees;
-        
-        // Transfer protocol fee to recipient
-        if (protocolFeeAmount > 0) {
-            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert ProtocolFeeTransferFailed();
-        }
-        
-        // Transfer referrer fee
-        if (referrerFeeAmount > 0) {
-            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert ReferrerFeeTransferFailed();
-        }
-
-        // If there's a post-intent hook, handle it
-        if (address(_intent.postIntentHook) != address(0)) {
-            _token.approve(address(_intent.postIntentHook), netAmount);
-            _intent.postIntentHook.execute(_intent, netAmount, _fulfillIntentData);
-        } else {
-            // Otherwise transfer directly to the intent recipient
-            if (!_token.transfer(_intent.to, netAmount)) revert TransferToRecipientFailed();
-        }
-
-        emit IntentFulfilled(
-            _intentHash, 
-            _intent.depositId, 
-            _intent.paymentVerifier, 
-            _intent.owner, 
-            _intent.to, 
-            netAmount, 
-            protocolFeeAmount,
-            referrerFeeAmount,
-            _isManualRelease
-        );
-    }
-
-    function _isValidSignature(
-        bytes memory _message,
-        bytes memory _signature,
-        address _signer
-    )
-        internal
-        view
-        returns(bool)
-    {
-        bytes32 verifierPayload = keccak256(_message).toEthSignedMessageHash();
-
-        return _signer.isValidSignatureNow(verifierPayload, _signature);
-    }
-
     function _addVerifiersToDeposit(
         uint256 _depositId,
         address[] calldata _verifiers,
@@ -1154,6 +785,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
     }
 
+    /**
+     * @notice Adds a currency to a deposit.
+     */
     function _addCurrencyToDeposit(
         uint256 _depositId,
         address _verifier,

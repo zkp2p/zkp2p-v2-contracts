@@ -3,6 +3,7 @@
 pragma solidity ^0.8.18;
 
 import { IEscrow } from "./IEscrow.sol";
+import { IOrchestrator } from "./IOrchestrator.sol";
 
 interface IEscrowViewer {
     
@@ -19,11 +20,12 @@ interface IEscrowViewer {
         IEscrow.Deposit deposit;
         uint256 availableLiquidity;                 // Amount of liquidity available to signal intents (net of expired intents)
         VerifierDataView[] verifiers;
+        bytes32[] intentHashes;
     }
 
     struct IntentView {
         bytes32 intentHash;
-        IEscrow.Intent intent;
+        IOrchestrator.Intent intent;
         DepositView deposit;
     }
 

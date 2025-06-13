@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.18;
 
-import { IEscrow } from "./IEscrow.sol";
+import { IOrchestrator } from "./IOrchestrator.sol";
 
 /**
  * @title IPostIntentHook
@@ -18,7 +18,7 @@ interface IPostIntentHook {
      * @param _fulfillIntentData The data passed to fulfillIntent
      */
     function execute(
-        IEscrow.Intent memory _intent,
+        IOrchestrator.Intent memory _intent,
         uint256 _amountNetFees,
         bytes calldata _fulfillIntentData
     ) external;
