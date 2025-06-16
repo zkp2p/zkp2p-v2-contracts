@@ -15,7 +15,7 @@ import {
   USDC_MINT_AMOUNT,
   USDC_RECIPIENT,
 } from "../deployments/parameters";
-import { getDeployedContractAddress, setNewOwner } from "../deployments/helpers";
+import { getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -59,13 +59,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
   console.log("Relayer registry deployed at", relayerRegistry.address);
 
+  // Deploy nullifier registry
+  const nullifierRegistry = await deploy("NullifierRegistry", {
+    from: deployer,
+    args: [],
+  });
+  console.log("Nullifier deployed at", nullifierRegistry.address);
+
   // Deploy escrow
   const escrow = await deploy("Escrow", {
     from: deployer,
     args: [
       deployer,
       chainId,
+      paymentVerifierRegistry.address
+    ],
+  });
+  console.log("Escrow deployed at", escrow.address);
+
+  // Deploy orchestrator
+  const orchestrator = await deploy("Orchestrator", {
+    from: deployer,
+    args: [
+      deployer,
+      chainId,
       INTENT_EXPIRATION_PERIOD[network],
+      escrow.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,
@@ -75,16 +94,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         : deployer,
     ],
   });
-  console.log("Escrow deployed at", escrow.address);
+  console.log("Orchestrator deployed at", orchestrator.address);
 
-  // Deploy nullifier registry
-  const nullifierRegistry = await deploy("NullifierRegistry", {
-    from: deployer,
-    args: [],
-  });
-  console.log("Nullifier deployed at", nullifierRegistry.address);
-
+  // Set orchestrator on escrow
   const escrowContract = await ethers.getContractAt("Escrow", escrow.address);
+  await setOrchestrator(hre, escrowContract, orchestrator.address);
+  console.log("Orchestrator set on escrow");
+
+  // Deploy protocol viewer
+  const protocolViewer = await deploy("ProtocolViewer", {
+    from: deployer,
+    args: [escrow.address, orchestrator.address],
+  });
+  console.log("Protocol viewer deployed at", protocolViewer.address);
+
   const paymentVerifierRegistryContract = await ethers.getContractAt("PaymentVerifierRegistry", paymentVerifierRegistry.address);
   const postIntentHookRegistryContract = await ethers.getContractAt("PostIntentHookRegistry", postIntentHookRegistry.address);
   const relayerRegistryContract = await ethers.getContractAt("RelayerRegistry", relayerRegistry.address);

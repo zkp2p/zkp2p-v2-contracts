@@ -18,7 +18,7 @@ import {
   PaymentVerifierRegistry,
   RelayerRegistry,
   NullifierRegistry,
-  EscrowViewer
+  protocolViewer
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -57,7 +57,7 @@ describe("Orchestrator", () => {
 
   let escrow: Escrow;
   let orchestrator: Orchestrator;
-  let escrowViewer: EscrowViewer;
+  let protocolViewer: protocolViewer;
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
@@ -118,7 +118,7 @@ describe("Orchestrator", () => {
       feeRecipient.address               // protocol fee recipient
     );
 
-    escrowViewer = await deployer.deployEscrowViewer(escrow.address, orchestrator.address);
+    protocolViewer = await deployer.deployProtocolViewer(escrow.address, orchestrator.address);
 
     // Set orchestrator in escrow
     await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);
@@ -368,7 +368,7 @@ describe("Orchestrator", () => {
       });
 
       it("should prune the old intent and update the deposit mapping correctly", async () => {
-        const preDeposit = await escrowViewer.getDeposit(subjectDepositId);
+        const preDeposit = await protocolViewer.getDeposit(subjectDepositId);
 
         await subject();
 
@@ -379,7 +379,7 @@ describe("Orchestrator", () => {
           await blockchain.getCurrentTimestamp()
         );
 
-        const postDeposit = await escrowViewer.getDeposit(subjectDepositId);
+        const postDeposit = await protocolViewer.getDeposit(subjectDepositId);
 
         expect(postDeposit.deposit.outstandingIntentAmount).to.eq(subjectAmount);
         expect(postDeposit.deposit.remainingDeposits).to.eq(preDeposit.deposit.remainingDeposits.sub(usdc(10))); // 10 usdc difference between old and new intent

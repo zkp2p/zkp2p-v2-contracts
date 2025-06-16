@@ -28,6 +28,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     multiSig nonce:             ${await hre.ethers.provider.getTransactionCount(multiSig)}
     ----------------------------------------------------------------------
     Escrow:                             ${getDeployedContractAddress(network, "Escrow")}
+    Orchestrator:                       ${getDeployedContractAddress(network, "Orchestrator")}
+    ProtocolViewer:                     ${getDeployedContractAddress(network, "ProtocolViewer")}
     NullifierRegistry:                  ${getDeployedContractAddress(network, "NullifierRegistry")}
     VenmoReclaimVerifier:               ${getDeployedContractAddress(network, "VenmoReclaimVerifier")}
     RevolutReclaimVerifier:             ${getDeployedContractAddress(network, "RevolutReclaimVerifier")}
