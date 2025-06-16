@@ -57,7 +57,7 @@ describe("Orchestrator", () => {
 
   let escrow: Escrow;
   let orchestrator: Orchestrator;
-  let protocolViewer: protocolViewer;
+  let protocolViewer: ProtocolViewer;
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
