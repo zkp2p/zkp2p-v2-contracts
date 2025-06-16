@@ -2,10 +2,10 @@
 pragma solidity ^0.8.18;
 
 import { IEscrow } from "./interfaces/IEscrow.sol";
-import { IEscrowViewer } from "./interfaces/IEscrowViewer.sol";
+import { IProtocolViewer } from "./interfaces/IProtocolViewer.sol";
 import { IOrchestrator } from "./interfaces/IOrchestrator.sol";
 
-contract EscrowViewer is IEscrowViewer {
+contract ProtocolViewer is IProtocolViewer {
 
     /* ============ State Variables ============ */
     IEscrow public immutable escrowContract;
@@ -25,7 +25,7 @@ contract EscrowViewer is IEscrowViewer {
      * @param _depositId The ID of the deposit.
      * @return depositView The DepositView struct.
      */
-    function getDeposit(uint256 _depositId) public view returns (IEscrowViewer.DepositView memory depositView) {
+    function getDeposit(uint256 _depositId) public view returns (IProtocolViewer.DepositView memory depositView) {
         IEscrow.Deposit memory deposit = escrowContract.getDeposit(_depositId);
         ( , uint256 reclaimableAmount) = escrowContract.getExpiredIntents(_depositId);
         bytes32[] memory intentHashes = escrowContract.getDepositIntentHashes(_depositId);
@@ -64,7 +64,7 @@ contract EscrowViewer is IEscrowViewer {
      */
     function getDepositFromIds(
         uint256[] memory _depositIds
-    ) external view override returns (IEscrowViewer.DepositView[] memory depositArray) {
+    ) external view override returns (IProtocolViewer.DepositView[] memory depositArray) {
         depositArray = new DepositView[](_depositIds.length);
 
         for (uint256 i = 0; i < _depositIds.length; ++i) {
@@ -78,7 +78,7 @@ contract EscrowViewer is IEscrowViewer {
      * @param _account The account address.
      * @return depositArray Array of DepositView structs.
      */
-    function getAccountDeposits(address _account) external view returns (IEscrowViewer.DepositView[] memory depositArray) {
+    function getAccountDeposits(address _account) external view returns (IProtocolViewer.DepositView[] memory depositArray) {
         uint256[] memory accountDepositIds = escrowContract.getAccountDeposits(_account);
         depositArray = new DepositView[](accountDepositIds.length);
         
@@ -93,7 +93,7 @@ contract EscrowViewer is IEscrowViewer {
      * @param _intentHash The hash of the intent.
      * @return intentView The IntentView struct.
      */
-    function getIntent(bytes32 _intentHash) public view returns (IEscrowViewer.IntentView memory intentView) {
+    function getIntent(bytes32 _intentHash) public view returns (IProtocolViewer.IntentView memory intentView) {
         IOrchestrator.Intent memory intent = orchestrator.getIntent(_intentHash);
         DepositView memory deposit = getDeposit(intent.depositId);
         intentView = IntentView({
@@ -108,7 +108,7 @@ contract EscrowViewer is IEscrowViewer {
      * @param _intentHashes Array of intent hashes.
      * @return intentArray Array of IntentView structs.
      */
-    function getIntents(bytes32[] calldata _intentHashes) external view returns (IEscrowViewer.IntentView[] memory intentArray) {
+    function getIntents(bytes32[] calldata _intentHashes) external view returns (IProtocolViewer.IntentView[] memory intentArray) {
         intentArray = new IntentView[](_intentHashes.length);
 
         for (uint256 i = 0; i < _intentHashes.length; ++i) {
@@ -121,7 +121,7 @@ contract EscrowViewer is IEscrowViewer {
      * @param _account The account address.
      * @return intentViews Array of IntentView structs.
      */
-    function getAccountIntents(address _account) external view returns (IEscrowViewer.IntentView[] memory intentViews) {
+    function getAccountIntents(address _account) external view returns (IProtocolViewer.IntentView[] memory intentViews) {
         bytes32[] memory intentHashes = orchestrator.getAccountIntents(_account);
         intentViews = new IntentView[](intentHashes.length);
         

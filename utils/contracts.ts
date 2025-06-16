@@ -6,7 +6,7 @@ export {
   PostIntentHookMock,
   OrchestratorMock,
   Escrow,
-  EscrowViewer,
+  ProtocolViewer,
   Orchestrator,
   BasePaymentVerifier,
   BaseReclaimVerifier,

@@ -8,12 +8,13 @@ import {
 import { Account } from "@utils/test/types";
 import {
   Escrow,
-  EscrowViewer,
+  ProtocolViewer,
   IEscrow,
   USDCMock,
   PaymentVerifierMock,
   PostIntentHookRegistry,
-  PaymentVerifierRegistry
+  PaymentVerifierRegistry,
+  Orchestrator
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -33,7 +34,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("EscrowViewer", () => {
+describe("ProtocolViewer", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperNewAcct: Account;
@@ -47,8 +48,9 @@ describe("EscrowViewer", () => {
   let witness: Account;
   let chainId: BigNumber = ONE;
 
-  let ramp: Escrow;
-  let escrowViewer: EscrowViewer;
+  let escrow: Escrow;
+  let orchestrator: Orchestrator;
+  let protocolViewer: ProtocolViewer;
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
@@ -87,10 +89,17 @@ describe("EscrowViewer", () => {
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
-    ramp = await deployer.deployEscrow(
+    escrow = await deployer.deployEscrow(
       owner.address,
-      ONE_DAY_IN_SECONDS,                // intent expiration period
       chainId,
+      paymentVerifierRegistry.address
+    );
+
+    orchestrator = await deployer.deployOrchestrator(
+      owner.address,
+      chainId,
+      ONE_DAY_IN_SECONDS,                // intent expiration period
+      escrow.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
@@ -98,20 +107,23 @@ describe("EscrowViewer", () => {
       feeRecipient.address               // protocol fee recipient
     );
 
-    escrowViewer = await deployer.deployEscrowViewer(
-      ramp.address
+    await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);
+
+    protocolViewer = await deployer.deployProtocolViewer(
+      escrow.address,
+      orchestrator.address
     );
 
     const nullifierRegistry = await deployer.deployNullifierRegistry();
 
     verifier = await deployer.deployPaymentVerifierMock(
-      ramp.address,
+      escrow.address,
       nullifierRegistry.address,
       ZERO,
       [Currency.USD, Currency.EUR]
     );
     otherVerifier = await deployer.deployPaymentVerifierMock(
-      ramp.address,
+      escrow.address,
       nullifierRegistry.address,
       ZERO,
       [Currency.USD]
@@ -127,7 +139,7 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Create a deposit first
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
       const payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
       const depositData = ethers.utils.defaultAbiCoder.encode(
@@ -135,7 +147,7 @@ describe("EscrowViewer", () => {
         [witness.address]
       );
 
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -155,7 +167,7 @@ describe("EscrowViewer", () => {
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getDeposit(subjectDepositId);
+      return protocolViewer.getDeposit(subjectDepositId);
     }
 
     it("should return the correct deposit details", async () => {
@@ -207,7 +219,7 @@ describe("EscrowViewer", () => {
           "0x"
         );
 
-        await ramp.connect(onRamper.wallet).signalIntent(params);
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
         // Move time forward past intent expiration
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
@@ -239,9 +251,9 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Create a few deposits for the test account
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
 
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -257,7 +269,7 @@ describe("EscrowViewer", () => {
         ethers.constants.AddressZero
       );
 
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(200),
         { min: usdc(10), max: usdc(200) },
@@ -277,7 +289,7 @@ describe("EscrowViewer", () => {
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getAccountDeposits(subjectAccount);
+      return protocolViewer.getAccountDeposits(subjectAccount);
     }
 
     it("should return correct deposit IDs for account", async () => {
@@ -305,8 +317,8 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Create two deposits
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -322,7 +334,7 @@ describe("EscrowViewer", () => {
         ethers.constants.AddressZero
       );
 
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(200),
         { min: usdc(10), max: usdc(200) },
@@ -342,7 +354,7 @@ describe("EscrowViewer", () => {
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getDepositFromIds(subjectDepositIds);
+      return protocolViewer.getDepositFromIds(subjectDepositIds);
     }
 
     it("should return correct deposits", async () => {
@@ -372,9 +384,9 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -416,7 +428,7 @@ describe("EscrowViewer", () => {
         "0x"
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(params);
+      await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
@@ -428,7 +440,7 @@ describe("EscrowViewer", () => {
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getIntent(subjectIntentHash);
+      return protocolViewer.getIntent(subjectIntentHash);
     }
 
     it("should return correct intent", async () => {
@@ -448,9 +460,9 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -492,7 +504,7 @@ describe("EscrowViewer", () => {
         "0x"
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(params);
+      await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
@@ -506,7 +518,7 @@ describe("EscrowViewer", () => {
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getIntents(subjectIntentHashes);
+      return protocolViewer.getIntents(subjectIntentHashes);
     }
 
     it("should return correct intents", async () => {
@@ -525,12 +537,12 @@ describe("EscrowViewer", () => {
 
     beforeEach(async () => {
       // Enable multiple intents for testing
-      await ramp.connect(owner.wallet).setAllowMultipleIntents(true);
+      await orchestrator.connect(owner.wallet).setAllowMultipleIntents(true);
 
       // Create deposit and signal intent
-      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
+      await escrow.connect(offRamper.wallet).createDeposit(
         usdcToken.address,
         usdc(100),
         { min: usdc(10), max: usdc(200) },
@@ -561,13 +573,13 @@ describe("EscrowViewer", () => {
         "0x"
       );
 
-      await ramp.connect(onRamper.wallet).signalIntent(params);
+      await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
       subjectAccount = onRamper.address;
     });
 
     async function subject(): Promise<any> {
-      return escrowViewer.getAccountIntents(subjectAccount);
+      return protocolViewer.getAccountIntents(subjectAccount);
     }
 
     it("should return correct intents for account", async () => {
@@ -606,7 +618,7 @@ describe("EscrowViewer", () => {
           "0x"
         );
 
-        await ramp.connect(onRamper.wallet).signalIntent(params2);
+        await orchestrator.connect(onRamper.wallet).signalIntent(params2);
       });
 
       it("should return all intents for the account", async () => {

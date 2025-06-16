@@ -7,7 +7,7 @@ const circom = require("circomlibjs");
 import {
   USDCMock,
   Escrow,
-  EscrowViewer,
+  ProtocolViewer,
   Orchestrator,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
@@ -47,7 +47,7 @@ import { RelayerRegistry__factory } from "../typechain/factories/contracts/regis
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
-import { EscrowViewer__factory } from "../typechain/factories/contracts/index";
+import { ProtocolViewer__factory } from "../typechain/factories/contracts/index";
 import { Orchestrator__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -106,8 +106,8 @@ export default class DeployHelper {
     );
   }
 
-  public async deployEscrowViewer(escrowAddress: Address, orchestratorAddress: Address): Promise<EscrowViewer> {
-    return await new EscrowViewer__factory(this._deployerSigner).deploy(escrowAddress, orchestratorAddress);
+  public async deployProtocolViewer(escrowAddress: Address, orchestratorAddress: Address): Promise<ProtocolViewer> {
+    return await new ProtocolViewer__factory(this._deployerSigner).deploy(escrowAddress, orchestratorAddress);
   }
 
   public async deployBasePaymentVerifier(

@@ -5,8 +5,8 @@ pragma solidity ^0.8.18;
 import { IEscrow } from "./IEscrow.sol";
 import { IOrchestrator } from "./IOrchestrator.sol";
 
-interface IEscrowViewer {
-    
+interface IProtocolViewer {
+
     /* ============ Structs ============ */
 
     struct VerifierDataView {
@@ -29,9 +29,11 @@ interface IEscrowViewer {
         DepositView deposit;
     }
 
+    /* ============ Functions ============ */
+
     function getDepositFromIds(
         uint256[] memory _depositIds
-    ) external view returns (DepositView[] memory depositArray);
+    ) external view returns (DepositView[] memory);
 
     function getAccountIntents(
         address _account
