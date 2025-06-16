@@ -768,7 +768,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with IntentDoesNotExist", async () => {
-        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
       });
     });
 
@@ -778,7 +778,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with SenderMustBeIntentOwner", async () => {
-        await expect(subject()).to.be.revertedWith("SenderMustBeIntentOwner");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "SenderMustBeIntentOwner");
       });
     });
 
@@ -1805,7 +1805,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with IntentDoesNotExist", async () => {
-        await expect(subject()).to.be.revertedWith("IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
       });
     });
 
@@ -1815,7 +1815,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWith("ReleaseAmountExceedsIntentAmount");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ReleaseAmountExceedsIntentAmount");
       });
     });
 
@@ -1825,7 +1825,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with CallerMustBeDepositor", async () => {
-        await expect(subject()).to.be.revertedWith("CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "CallerMustBeDepositor");
       });
     });
 
@@ -1835,7 +1835,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWith("ReleaseAmountExceedsIntentAmount");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ReleaseAmountExceedsIntentAmount");
       });
     });
   });
@@ -2133,7 +2133,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with EscrowCannotBeZeroAddress", async () => {
-        await expect(subject()).to.be.revertedWith("EscrowCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "EscrowCannotBeZeroAddress");
       });
     });
   });
@@ -2178,7 +2178,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ProtocolFeeExceedsMaximum", async () => {
-        await expect(subject()).to.be.revertedWith("ProtocolFeeExceedsMaximum");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ProtocolFeeExceedsMaximum");
       });
     });
   });
