@@ -101,6 +101,8 @@ interface IEscrow {
     error IntentDoesNotExist();
     error AmountMustBeLessThanMaxIntent();
     error AmountMustBeGreaterThanMinIntent();
+    error TransferAmountCannotBeZero();
+    error TransferAmountCannotBeGreaterThanIntentAmount();
 
     // Configuration errors
     error MinConversionRateMustBeGreaterThanZero();

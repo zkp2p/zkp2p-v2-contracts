@@ -4,8 +4,10 @@ export {
   StringConversionUtilsMock,
   ClaimVerifierMock,
   PostIntentHookMock,
+  OrchestratorMock,
   Escrow,
   EscrowViewer,
+  Orchestrator,
   BasePaymentVerifier,
   BaseReclaimVerifier,
   PaymentVerifierRegistry,
@@ -25,3 +27,4 @@ export {
   ZelleChaseReclaimVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
+export { IOrchestrator } from "../typechain/contracts/Orchestrator";

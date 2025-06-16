@@ -454,7 +454,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
 
-     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
+    /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
 
     /**
      * @notice ORCHESTRATOR ONLY: Locks funds for an intent with expiry time. Only callable by orchestrator.
@@ -518,8 +518,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.remainingDeposits += intent.amount;
         deposit.outstandingIntentAmount -= intent.amount;
 
-        delete depositIntents[_depositId][_intentHash];
-        depositIntentHashes[_depositId].removeStorage(_intentHash);
+        _pruneIntent(_depositId, _intentHash);
     }
 
     /**
@@ -545,6 +544,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         if (deposit.depositor == address(0)) revert DepositDoesNotExist();
         if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
+        if (_transferAmount == 0) revert TransferAmountCannotBeZero();
+        if (_transferAmount > intent.amount) revert TransferAmountCannotBeGreaterThanIntentAmount();
         
         // Update deposit state
         deposit.outstandingIntentAmount -= intent.amount;
@@ -553,8 +554,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             deposit.remainingDeposits += (intent.amount - _transferAmount);
         }
 
-        delete depositIntents[_depositId][_intentHash];
-        depositIntentHashes[_depositId].removeStorage(_intentHash);
+        _pruneIntent(_depositId, _intentHash);
         
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(_depositId, deposit);
@@ -563,7 +563,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /* ============ Governance Functions ============ */
-
     
     /**
      * @notice NEW: Sets the orchestrator contract address. Only callable by owner.
@@ -576,7 +575,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         orchestrator = _orchestrator;
         emit OrchestratorUpdated(_orchestrator);
     }
-
 
     /**
      * @notice GOVERNANCE ONLY: Updates the payment verifier registry address.
@@ -612,7 +610,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /* ============ External View Functions ============ */
-
 
     function getDeposit(uint256 _depositId) external view returns (Deposit memory) {
         return deposits[_depositId];
@@ -703,12 +700,23 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
         for (uint256 i = 0; i < _intents.length; i++) {
-            delete depositIntents[_depositId][_intents[i]];
-            depositIntentHashes[_depositId].removeStorage(_intents[i]);
+            if (_intents[i] != bytes32(0)) {
+                _pruneIntent(_depositId, _intents[i]);
+            }
         }
 
         // Call orchestrator to clean up intents
         IOrchestrator(orchestrator).pruneIntents(_intents);
+    }
+
+    /**
+     * @notice Prunes an intent from a deposit. Does not call orchestrator.
+     */
+    function _pruneIntent(uint256 _depositId, bytes32 _intentHash) internal {
+        delete depositIntents[_depositId][_intentHash];
+        depositIntentHashes[_depositId].removeStorage(_intentHash);
+
+        // todo: emit event??
     }
 
     /**

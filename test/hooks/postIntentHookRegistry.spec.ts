@@ -13,7 +13,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("PostIntentHookRegistry", () => {
+describe("PostIntentHookRegistry", () => {
   let owner: Account;
   let hook: Account;
   let attacker: Account;

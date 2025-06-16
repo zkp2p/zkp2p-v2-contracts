@@ -8,6 +8,7 @@ import {
   USDCMock,
   Escrow,
   EscrowViewer,
+  Orchestrator,
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
@@ -28,14 +29,16 @@ import {
   PostIntentHookMock,
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
-  RelayerRegistry
+  RelayerRegistry,
+  OrchestratorMock
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
   USDCMock__factory,
   PaymentVerifierMock__factory,
   ClaimVerifierMock__factory,
-  PostIntentHookMock__factory
+  PostIntentHookMock__factory,
+  OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
@@ -45,6 +48,7 @@ import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } fro
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { EscrowViewer__factory } from "../typechain/factories/contracts/index";
+import { Orchestrator__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
@@ -68,18 +72,32 @@ export default class DeployHelper {
 
   public async deployEscrow(
     owner: Address,
-    intentExpirationPeriod: BigNumber,
     chainId: BigNumber,
+    paymentVerifierRegistry: Address
+  ): Promise<Escrow> {
+    return await new Escrow__factory(this._deployerSigner).deploy(
+      owner,
+      chainId.toString(),
+      paymentVerifierRegistry
+    );
+  }
+
+  public async deployOrchestrator(
+    owner: Address,
+    chainId: BigNumber,
+    intentExpirationPeriod: BigNumber,
+    escrow: Address,
     paymentVerifierRegistry: Address,
     postIntentHookRegistry: Address,
     relayerRegistry: Address,
     protocolFee: BigNumber,
     protocolFeeRecipient: Address
-  ): Promise<Escrow> {
-    return await new Escrow__factory(this._deployerSigner).deploy(
+  ): Promise<Orchestrator> {
+    return await new Orchestrator__factory(this._deployerSigner).deploy(
       owner,
       chainId.toString(),
       intentExpirationPeriod,
+      escrow,
       paymentVerifierRegistry,
       postIntentHookRegistry,
       relayerRegistry,
@@ -88,8 +106,8 @@ export default class DeployHelper {
     );
   }
 
-  public async deployEscrowViewer(escrowAddress: Address): Promise<EscrowViewer> {
-    return await new EscrowViewer__factory(this._deployerSigner).deploy(escrowAddress);
+  public async deployEscrowViewer(escrowAddress: Address, orchestratorAddress: Address): Promise<EscrowViewer> {
+    return await new EscrowViewer__factory(this._deployerSigner).deploy(escrowAddress, orchestratorAddress);
   }
 
   public async deployBasePaymentVerifier(
@@ -310,6 +328,12 @@ export default class DeployHelper {
     escrow: Address
   ): Promise<PostIntentHookMock> {
     return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
+  }
+
+  public async deployOrchestratorMock(
+    escrow: Address
+  ): Promise<OrchestratorMock> {
+    return await new OrchestratorMock__factory(this._deployerSigner).deploy(escrow);
   }
 
   public async deployPaymentVerifierRegistry(): Promise<PaymentVerifierRegistry> {
