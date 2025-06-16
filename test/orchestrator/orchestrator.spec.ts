@@ -18,7 +18,7 @@ import {
   PaymentVerifierRegistry,
   RelayerRegistry,
   NullifierRegistry,
-  protocolViewer
+  ProtocolViewer
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 

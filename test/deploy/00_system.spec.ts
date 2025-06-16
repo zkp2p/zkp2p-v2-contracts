@@ -18,6 +18,7 @@ import {
   ProtocolViewer__factory,
   RelayerRegistry,
   RelayerRegistry__factory,
+  Orchestrator
 } from "../../typechain";
 
 import {
