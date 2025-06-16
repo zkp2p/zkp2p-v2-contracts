@@ -9,7 +9,7 @@ import {
 import { Account } from "@utils/test/types";
 import {
   Escrow,
-  EscrowViewer,
+  ProtocolViewer,
   IEscrow,
   USDCMock,
   PaymentVerifierMock,
@@ -54,7 +54,7 @@ describe("Escrow", () => {
   let chainId: BigNumber = ONE;
 
   let ramp: Escrow;
-  let escrowViewer: EscrowViewer;
+  let protocolViewer: ProtocolViewer;
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
@@ -113,7 +113,7 @@ describe("Escrow", () => {
 
     await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
 
-    escrowViewer = await deployer.deployEscrowViewer(ramp.address, orchestrator.address);
+    protocolViewer = await deployer.deployProtocolViewer(ramp.address, orchestrator.address);
 
     const nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -206,7 +206,7 @@ describe("Escrow", () => {
     it("should correctly update the deposits mapping", async () => {
       await subject();
 
-      const depositView = await escrowViewer.getDeposit(0);
+      const depositView = await protocolViewer.getDeposit(0);
 
       expect(depositView.deposit.depositor).to.eq(offRamper.address);
       expect(depositView.deposit.token).to.eq(subjectToken);
@@ -906,7 +906,7 @@ describe("Escrow", () => {
     });
 
     it("should remove the deposit from the user deposits mapping", async () => {
-      const preUserDeposits = await escrowViewer.getAccountDeposits(offRamper.address);
+      const preUserDeposits = await protocolViewer.getAccountDeposits(offRamper.address);
       expect(preUserDeposits.some(deposit => deposit.depositId.eq(subjectDepositId))).to.be.true;
 
       await subject();
