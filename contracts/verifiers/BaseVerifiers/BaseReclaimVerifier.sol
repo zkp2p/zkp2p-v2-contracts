@@ -167,6 +167,10 @@ contract BaseReclaimVerifier is Ownable, IReclaimVerifier {
 
     /**
      * Calculates the release amount based on the actual payment amount and conversion rate.
+     * Caps the release amount at the intent amount.
+     * NOTES:
+     * - Assumes that _conversionRate is not zero and is in the same precision as PRECISE_UNIT.
+     * - Function might overflow if _paymentAmount is very very large.
      * 
      * @param _paymentAmount The actual payment amount.
      * @param _conversionRate The conversion rate of the deposit token to the fiat currency.
@@ -175,7 +179,6 @@ contract BaseReclaimVerifier is Ownable, IReclaimVerifier {
      */
     function _calculateReleaseAmount(uint256 _paymentAmount, uint256 _conversionRate, uint256 _intentAmount) internal pure returns (uint256) {
 
-        // TODO: IS THIS CORRECT?
         // releaseAmount = paymentAmount / conversionRate
         uint256 releaseAmount = (_paymentAmount * PRECISE_UNIT) / _conversionRate;
         
