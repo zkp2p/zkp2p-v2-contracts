@@ -18,7 +18,8 @@ import {
   PaymentVerifierRegistry,
   RelayerRegistry,
   NullifierRegistry,
-  ProtocolViewer
+  ProtocolViewer,
+  EscrowRegistry
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -39,7 +40,7 @@ const expect = getWaffleExpect();
 const blockchain = new Blockchain(ethers.provider);
 
 
-describe("Orchestrator", () => {
+describe.only("Orchestrator", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperDelegate: Account;
@@ -63,6 +64,7 @@ describe("Orchestrator", () => {
   let postIntentHookRegistry: PostIntentHookRegistry;
   let relayerRegistry: RelayerRegistry;
   let nullifierRegistry: NullifierRegistry;
+  let escrowRegistry: EscrowRegistry;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -90,6 +92,8 @@ describe("Orchestrator", () => {
 
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
+    escrowRegistry = await deployer.deployEscrowRegistry();
+
     paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
 
     postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
@@ -106,11 +110,13 @@ describe("Orchestrator", () => {
       paymentVerifierRegistry.address
     );
 
+    await escrowRegistry.addEscrow(escrow.address);
+
     orchestrator = await deployer.deployOrchestrator(
       owner.address,
       chainId,
       ONE_DAY_IN_SECONDS,                // intent expiration period
-      escrow.address,
+      escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
@@ -147,7 +153,7 @@ describe("Orchestrator", () => {
   describe("#constructor", async () => {
     it("should set the correct state variables", async () => {
       const actualChainId = await orchestrator.chainId();
-      const actualEscrow = await orchestrator.escrow();
+      const actualEscrowRegistry = await orchestrator.escrowRegistry();
       const actualPaymentVerifierRegistry = await orchestrator.paymentVerifierRegistry();
       const actualPostIntentHookRegistry = await orchestrator.postIntentHookRegistry();
       const actualRelayerRegistry = await orchestrator.relayerRegistry();
@@ -156,7 +162,7 @@ describe("Orchestrator", () => {
       const actualIntentExpirationPeriod = await orchestrator.intentExpirationPeriod();
 
       expect(actualChainId).to.eq(chainId);
-      expect(actualEscrow).to.eq(escrow.address);
+      expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
       expect(actualPaymentVerifierRegistry).to.eq(paymentVerifierRegistry.address);
       expect(actualPostIntentHookRegistry).to.eq(postIntentHookRegistry.address);
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
@@ -167,6 +173,7 @@ describe("Orchestrator", () => {
   });
 
   describe("#signalIntent", async () => {
+    let subjectEscrow: Address;
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectTo: Address;
@@ -203,6 +210,7 @@ describe("Orchestrator", () => {
         offRamperDelegate.address
       );
 
+      subjectEscrow = escrow.address;
       subjectDepositId = ZERO;
       subjectAmount = usdc(50);
       subjectTo = receiver.address;
@@ -213,6 +221,7 @@ describe("Orchestrator", () => {
       subjectReferrerFee = ZERO;             // No referrer fee by default
       subjectGatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        escrow.address,
         subjectDepositId,
         subjectAmount,
         subjectTo,
@@ -230,6 +239,7 @@ describe("Orchestrator", () => {
 
     async function subject(): Promise<any> {
       const params = await createSignalIntentParams(
+        subjectEscrow,
         subjectDepositId,
         subjectAmount,
         subjectTo,
@@ -252,6 +262,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -278,6 +289,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -299,6 +311,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -307,6 +320,8 @@ describe("Orchestrator", () => {
       await subject();
 
       const accountIntents = await orchestrator.getAccountIntents(onRamper.address);
+      console.log("accountIntents", accountIntents);
+      console.log("intentHash", intentHash);
       expect(accountIntents).to.include(intentHash);
     });
 
@@ -314,6 +329,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -321,6 +337,7 @@ describe("Orchestrator", () => {
 
       await expect(subject()).to.emit(orchestrator, "IntentSignaled").withArgs(
         intentHash,
+        escrow.address,
         subjectDepositId,
         subjectVerifier,
         onRamper.address,
@@ -346,6 +363,7 @@ describe("Orchestrator", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         oldIntentHash = calculateIntentHash(
           subjectCaller.address,
+          escrow.address,
           subjectVerifier,
           subjectDepositId,
           currentTimestamp
@@ -357,6 +375,7 @@ describe("Orchestrator", () => {
         subjectCaller = onRamperTwo;
         subjectGatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          escrow.address,
           subjectDepositId,
           subjectAmount,
           subjectTo,
@@ -374,6 +393,7 @@ describe("Orchestrator", () => {
 
         const newIntentHash = calculateIntentHash(
           subjectCaller.address,
+          escrow.address,
           subjectVerifier,
           subjectDepositId,
           await blockchain.getCurrentTimestamp()
@@ -399,6 +419,7 @@ describe("Orchestrator", () => {
       it("should emit an IntentPruned event", async () => {
         await expect(subject()).to.emit(orchestrator, "IntentPruned").withArgs(
           oldIntentHash,
+          escrow.address,
           subjectDepositId
         );
       });
@@ -432,6 +453,7 @@ describe("Orchestrator", () => {
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           const oldIntentHash = calculateIntentHash(
             subjectCaller.address,
+            escrow.address,
             subjectVerifier,
             subjectDepositId,
             currentTimestamp
@@ -478,6 +500,7 @@ describe("Orchestrator", () => {
 
         const intent = await orchestrator.getIntent(calculateIntentHash(
           subjectCaller.address,
+          escrow.address,
           subjectVerifier,
           subjectDepositId,
           await blockchain.getCurrentTimestamp()
@@ -542,6 +565,7 @@ describe("Orchestrator", () => {
 
           subjectGatingServiceSignature = await generateGatingServiceSignature(
             gatingService,
+            escrow.address,
             subjectDepositId,
             subjectAmount,
             subjectTo,
@@ -558,10 +582,31 @@ describe("Orchestrator", () => {
       });
     });
 
+    describe("when the escrow is not whitelisted", async () => {
+      beforeEach(async () => {
+        await escrowRegistry.connect(owner.wallet).removeEscrow(escrow.address);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "EscrowNotWhitelisted");
+      });
+
+      describe("when the escrow registry is accepting all escrows", async () => {
+        beforeEach(async () => {
+          await escrowRegistry.connect(owner.wallet).setAcceptAllEscrows(true);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+    });
+
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Create and signal an intent first to lock some liquidity
         const params = await createSignalIntentParams(
+          escrow.address,
           subjectDepositId,
           usdc(50),
           receiver.address,
@@ -669,6 +714,7 @@ describe("Orchestrator", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash = calculateIntentHash(
           subjectCaller.address,
+          escrow.address,
           subjectVerifier,
           subjectDepositId,
           currentTimestamp
@@ -708,6 +754,7 @@ describe("Orchestrator", () => {
 
       // Signal an intent
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -727,6 +774,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -835,6 +883,7 @@ describe("Orchestrator", () => {
       // Signal an intent
       intentAmount = usdc(50);
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         intentAmount,
         onRamper.address,
@@ -854,6 +903,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -912,6 +962,7 @@ describe("Orchestrator", () => {
       const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
       await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
         intentHash,
+        escrow.address,
         ZERO,
         verifier.address,
         onRamper.address,
@@ -974,6 +1025,7 @@ describe("Orchestrator", () => {
 
         // Signal a new intent for $50
         const params = await createSignalIntentParams(
+          escrow.address,
           ZERO,
           intentAmount,
           onRamper.address,
@@ -993,6 +1045,7 @@ describe("Orchestrator", () => {
         const currentTimestamp2 = await blockchain.getCurrentTimestamp();
         subjectIntentHash = calculateIntentHash(
           onRamper.address,
+          escrow.address,
           verifier.address,
           ZERO,
           currentTimestamp2
@@ -1059,6 +1112,7 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
+          escrow.address,
           ZERO,
           verifier.address,
           onRamper.address,
@@ -1079,6 +1133,7 @@ describe("Orchestrator", () => {
         // Create a new intent with referrer
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          escrow.address,
           ZERO,
           usdc(50),
           onRamper.address,
@@ -1089,6 +1144,7 @@ describe("Orchestrator", () => {
         );
 
         const params = await createSignalIntentParams(
+          escrow.address,
           ZERO, // depositId
           usdc(50),
           onRamper.address,
@@ -1106,7 +1162,7 @@ describe("Orchestrator", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp);
 
         // Update the subject variables
         subjectProof = ethers.utils.defaultAbiCoder.encode(
@@ -1138,6 +1194,7 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
+          escrow.address,
           ZERO,
           verifier.address,
           onRamper.address,
@@ -1183,6 +1240,7 @@ describe("Orchestrator", () => {
 
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             intentHash,
+            escrow.address,
             ZERO,
             verifier.address,
             onRamper.address,
@@ -1262,6 +1320,7 @@ describe("Orchestrator", () => {
         // Create a new intent with post intent hook action
         const gatingServiceSignatureForHook = await generateGatingServiceSignature(
           gatingService,
+          escrow.address,
           ZERO,
           usdc(50),
           onRamper.address,
@@ -1276,6 +1335,7 @@ describe("Orchestrator", () => {
 
         // Signal an intent that uses the postIntentHookMock
         const params = await createSignalIntentParams(
+          escrow.address,
           ZERO,
           usdc(50),
           onRamper.address,
@@ -1293,7 +1353,7 @@ describe("Orchestrator", () => {
         params.gatingServiceSignature = gatingServiceSignatureForHook;
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp);
 
         // Set the verifier to verify payment
         await verifier.setShouldVerifyPayment(true);
@@ -1329,6 +1389,7 @@ describe("Orchestrator", () => {
         const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           subjectIntentHash,    // Hash of the intent fulfilled
+          escrow.address,
           ZERO,    // ID of the deposit used
           verifier.address,     // Verifier used
           onRamper.address,     // Intent owner
@@ -1368,6 +1429,7 @@ describe("Orchestrator", () => {
           const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             subjectIntentHash,
+            escrow.address,
             ZERO,
             verifier.address,
             onRamper.address,
@@ -1425,6 +1487,7 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
+          escrow.address,
           ZERO,
           verifier.address,
           onRamper.address,
@@ -1495,6 +1558,7 @@ describe("Orchestrator", () => {
 
       // Signal an intent
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         intentAmount,
         onRamper.address,
@@ -1514,6 +1578,7 @@ describe("Orchestrator", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -1570,6 +1635,7 @@ describe("Orchestrator", () => {
     it("should emit an IntentFulfilled event", async () => {
       await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
         subjectIntentHash,
+        escrow.address,
         ZERO,
         verifier.address,
         onRamper.address,
@@ -1588,6 +1654,7 @@ describe("Orchestrator", () => {
 
         // Signal a new intent for $50
         const params = await createSignalIntentParams(
+          escrow.address,
           ZERO,
           intentAmount,
           onRamper.address,
@@ -1607,6 +1674,7 @@ describe("Orchestrator", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash2 = calculateIntentHash(
           onRamper.address,
+          escrow.address,
           verifier.address,
           ZERO,
           currentTimestamp
@@ -1670,6 +1738,7 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
+          escrow.address,
           ZERO,
           verifier.address,
           onRamper.address,
@@ -1690,6 +1759,7 @@ describe("Orchestrator", () => {
         // Create a new intent with referrer
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          escrow.address,
           ZERO,
           usdc(50),
           onRamper.address,
@@ -1700,6 +1770,7 @@ describe("Orchestrator", () => {
         );
 
         const params = await createSignalIntentParams(
+          escrow.address,
           ZERO, // depositId
           usdc(50),
           onRamper.address,
@@ -1717,7 +1788,7 @@ describe("Orchestrator", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, verifier.address, ZERO, currentTimestamp);
+        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp);
 
         // Update the subject variables
         subjectIntentHash = intentHash;
@@ -1743,6 +1814,7 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
+          escrow.address,
           ZERO,
           verifier.address,
           onRamper.address,
@@ -1786,6 +1858,7 @@ describe("Orchestrator", () => {
 
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             intentHash,
+            escrow.address,
             ZERO,
             verifier.address,
             onRamper.address,
@@ -1879,6 +1952,7 @@ describe("Orchestrator", () => {
       // Signal multiple intents
       for (let i = 0; i < 3; i++) {
         const params = await createSignalIntentParams(
+          escrow.address,
           depositId,
           intentAmounts[i],
           onRamper.address,
@@ -1898,6 +1972,7 @@ describe("Orchestrator", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash = calculateIntentHash(
           onRamper.address,
+          escrow.address,
           verifier.address,
           depositId,
           currentTimestamp
@@ -1915,10 +1990,10 @@ describe("Orchestrator", () => {
     async function subject(): Promise<any> {
       // For testing, we need to set escrow as the caller
       // In production, only escrow can call this function
-      await orchestrator.connect(owner.wallet).setEscrow(subjectCaller.address);
+      await escrowRegistry.connect(owner.wallet).addEscrow(subjectCaller.address);
       const tx = await orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents);
       // Reset orchestrator
-      await orchestrator.connect(owner.wallet).setEscrow(escrow.address);
+      await escrowRegistry.connect(owner.wallet).removeEscrow(subjectCaller.address);
       return tx;
     }
 
@@ -1957,6 +2032,7 @@ describe("Orchestrator", () => {
       for (let i = 0; i < intentHashes.length; i++) {
         await expect(tx).to.emit(orchestrator, "IntentPruned").withArgs(
           intentHashes[i],
+          escrow.address,
           depositId
         );
       }
@@ -2013,7 +2089,7 @@ describe("Orchestrator", () => {
       it("should revert", async () => {
         await expect(
           orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents)
-        ).to.be.revertedWith("Only escrow can call this function");
+        ).to.be.revertedWith("Only whitelisted escrow can call this function");
       });
     });
 
@@ -2023,6 +2099,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         // Signal an intent from a different account
         const params = await createSignalIntentParams(
+          escrow.address,
           depositId,
           usdc(40),
           onRamperTwo.address,
@@ -2042,6 +2119,7 @@ describe("Orchestrator", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         onRamperTwoIntentHash = calculateIntentHash(
           onRamperTwo.address,
+          escrow.address,
           verifier.address,
           depositId,
           currentTimestamp
@@ -2093,7 +2171,7 @@ describe("Orchestrator", () => {
 
   // Governance Functions
 
-  describe("#setEscrow", async () => {
+  describe("#setEscrowRegistry", async () => {
     let subjectEscrow: Address;
     let subjectCaller: Account;
 
@@ -2103,18 +2181,18 @@ describe("Orchestrator", () => {
     });
 
     async function subject(): Promise<any> {
-      return orchestrator.connect(subjectCaller.wallet).setEscrow(subjectEscrow);
+      return orchestrator.connect(subjectCaller.wallet).setEscrowRegistry(subjectEscrow);
     }
 
     it("should set the escrow address", async () => {
       await subject();
 
-      const escrowAddress = await orchestrator.escrow();
+      const escrowAddress = await orchestrator.escrowRegistry();
       expect(escrowAddress).to.eq(subjectEscrow);
     });
 
     it("should emit EscrowUpdated event", async () => {
-      await expect(subject()).to.emit(orchestrator, "EscrowUpdated").withArgs(subjectEscrow);
+      await expect(subject()).to.emit(orchestrator, "EscrowRegistryUpdated").withArgs(subjectEscrow);
     });
 
     describe("when the caller is not the owner", async () => {
@@ -2133,7 +2211,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with EscrowCannotBeZeroAddress", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "EscrowCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "EscrowRegistryCannotBeZeroAddress");
       });
     });
   });
@@ -2530,6 +2608,7 @@ describe("Orchestrator", () => {
     it("should return all intents for an account", async () => {
       // Signal two intents
       const params1 = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(50),
         receiver.address,
@@ -2546,6 +2625,7 @@ describe("Orchestrator", () => {
       await orchestrator.connect(onRamper.wallet).signalIntent(params1);
 
       const params2 = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(75),
         receiver.address,

@@ -13,6 +13,7 @@ import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
 
 import { IOrchestrator } from "./interfaces/IOrchestrator.sol";
 import { IEscrow } from "./interfaces/IEscrow.sol";
+import { IEscrowRegistry } from "./interfaces/IEscrowRegistry.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
@@ -45,7 +46,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     mapping(address => bytes32[]) internal accountIntents;             // Mapping of address to array of intentHashes
 
     // Contract references
-    IEscrow public escrow;                                             // Escrow contract on which deposits are stored
+    IEscrowRegistry public escrowRegistry;                              // Registry of escrow contracts
     IPaymentVerifierRegistry public  paymentVerifierRegistry;          // Registry of payment verifiers
     IPostIntentHookRegistry public postIntentHookRegistry;             // Registry of post intent hooks
     IRelayerRegistry public relayerRegistry;                           // Registry of relayers
@@ -59,8 +60,11 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
     /* ============ Modifiers ============ */
 
-    modifier onlyEscrow() {
-        require(msg.sender == address(escrow), "Only escrow can call this function");
+    modifier onlyWhitelistedEscrow() {
+        require(
+            escrowRegistry.isWhitelistedEscrow(msg.sender) || escrowRegistry.isAcceptingAllEscrows(),
+            "Only whitelisted escrow can call this function"
+        );
         _;
     }
 
@@ -69,7 +73,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         address _owner,
         uint256 _chainId,
         uint256 _intentExpirationPeriod,
-        address _escrow,
+        address _escrowRegistry,
         address _paymentVerifierRegistry,
         address _postIntentHookRegistry,
         address _relayerRegistry,
@@ -80,7 +84,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     {
         chainId = _chainId;
         intentExpirationPeriod = _intentExpirationPeriod;
-        escrow = IEscrow(_escrow);
+        escrowRegistry = IEscrowRegistry(_escrowRegistry);
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
@@ -106,15 +110,16 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     {
         _validateSignalIntent(_params);
 
-        bytes32 intentHash = _calculateIntentHash(msg.sender, _params.verifier, _params.depositId);
+        bytes32 intentHash = _calculateIntentHash(msg.sender, _params.escrow, _params.verifier, _params.depositId);
 
         // Lock liquidity in escrow with expiry time
         uint256 expiryTime = block.timestamp + intentExpirationPeriod;
-        escrow.lockFunds(_params.depositId, intentHash, _params.amount, expiryTime);
+        IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount, expiryTime);
 
         intents[intentHash] = Intent({
             owner: msg.sender,
             to: _params.to,
+            escrow: _params.escrow,
             depositId: _params.depositId,
             amount: _params.amount,
             paymentVerifier: _params.verifier,
@@ -131,6 +136,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         emit IntentSignaled(
             intentHash, 
+            _params.escrow,
             _params.depositId, 
             _params.verifier, 
             msg.sender, 
@@ -156,7 +162,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         _pruneIntent(_intentHash);
 
-        escrow.unlockFunds(intent.depositId, _intentHash);
+        IEscrow(intent.escrow).unlockFunds(intent.depositId, _intentHash);
     }
 
     /**
@@ -181,8 +187,8 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         
         // Get deposit and verifier data from escrow contract
         // TODO: Should we store verifier data on the intent?
-        IEscrow.Deposit memory deposit = escrow.getDeposit(intent.depositId);
-        IEscrow.DepositVerifierData memory verifierData = escrow.getDepositVerifierData(
+        IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
+        IEscrow.DepositVerifierData memory verifierData = IEscrow(intent.escrow).getDepositVerifierData(
             intent.depositId, intent.paymentVerifier
         );
         
@@ -203,7 +209,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         _pruneIntent(_intentHash);
 
-        escrow.unlockAndTransferFunds(intent.depositId, _intentHash, releaseAmount, address(this));
+        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, releaseAmount, address(this));
 
         _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, releaseAmount, _data, false);
     }
@@ -229,12 +235,12 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         if (intent.owner == address(0)) revert IntentDoesNotExist();
         if (_releaseAmount > intent.amount) revert ReleaseAmountExceedsIntentAmount();
 
-        IEscrow.Deposit memory deposit = escrow.getDeposit(intent.depositId);
+        IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
         if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
 
         _pruneIntent(_intentHash);
 
-        escrow.unlockAndTransferFunds(intent.depositId, _intentHash, _releaseAmount, address(this));
+        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, _releaseAmount, address(this));
 
         _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, _releaseAmount, _releaseData, true);
     }
@@ -247,7 +253,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * 
      * @param _intents   Array of intent hashes to prune
      */
-    function pruneIntents(bytes32[] calldata _intents) external onlyEscrow {
+    function pruneIntents(bytes32[] calldata _intents) external onlyWhitelistedEscrow {
         for (uint256 i = 0; i < _intents.length; i++) {
             bytes32 intentHash = _intents[i];
             if (intentHash != bytes32(0)) {
@@ -262,15 +268,15 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     /* ============ Governance Functions ============ */
 
     /**
-     * @notice GOVERNANCE ONLY: Updates the escrow contract address.
+     * @notice GOVERNANCE ONLY: Updates the escrow registry address.
      *
-     * @param _escrow   New escrow contract address
+     * @param _escrowRegistry   New escrow registry address
      */
-    function setEscrow(address _escrow) external onlyOwner {
-        if (_escrow == address(0)) revert EscrowCannotBeZeroAddress();
+    function setEscrowRegistry(address _escrowRegistry) external onlyOwner {
+        if (_escrowRegistry == address(0)) revert EscrowRegistryCannotBeZeroAddress();
         
-        escrow = IEscrow(_escrow);
-        emit EscrowUpdated(_escrow);
+        escrowRegistry = IEscrowRegistry(_escrowRegistry);
+        emit EscrowRegistryUpdated(_escrowRegistry);
     }
 
     /**
@@ -396,7 +402,13 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
             }
         }
 
+        // Validate escrow is whitelisted
+        if (!escrowRegistry.isWhitelistedEscrow(_intent.escrow) && !escrowRegistry.isAcceptingAllEscrows()) {
+            revert EscrowNotWhitelisted();
+        }
+
         uint256 depositId = _intent.depositId;
+        IEscrow escrow = IEscrow(_intent.escrow);
         IEscrow.DepositVerifierData memory verifierData = escrow.getDepositVerifierData(depositId, _intent.verifier);
         if (bytes(verifierData.payeeDetails).length == 0) revert PaymentVerifierNotSupported();
         
@@ -408,7 +420,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
             if (!_isValidSignature(
-                abi.encodePacked(depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
+                abi.encodePacked(_intent.escrow, depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
                 _intent.gatingServiceSignature,
                 intentGatingService
             )) {
@@ -422,6 +434,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      */
     function _calculateIntentHash(
         address _intentOwner,
+        address _escrow,
         address _verifier,
         uint256 _depositId
     )
@@ -430,7 +443,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         returns (bytes32 intentHash)
     {
         // Mod with circom prime field to make sure it fits in a 254-bit field
-        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_intentOwner, _verifier, _depositId, block.timestamp)));
+        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_intentOwner, _escrow, _verifier, _depositId, block.timestamp)));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }
 
@@ -443,7 +456,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         accountIntents[intent.owner].removeStorage(_intentHash);
         delete intents[_intentHash];
 
-        emit IntentPruned(_intentHash, intent.depositId);
+        emit IntentPruned(_intentHash, intent.escrow, intent.depositId);
     }
 
     /**
@@ -498,6 +511,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         emit IntentFulfilled(
             _intentHash, 
+            _intent.escrow,
             _intent.depositId, 
             _intent.paymentVerifier, 
             _intent.owner, 

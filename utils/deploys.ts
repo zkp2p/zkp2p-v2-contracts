@@ -30,7 +30,8 @@ import {
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
   RelayerRegistry,
-  OrchestratorMock
+  OrchestratorMock,
+  EscrowRegistry
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -44,6 +45,7 @@ import { NullifierRegistry__factory } from "../typechain/factories/contracts/reg
 import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
 import { RelayerRegistry__factory } from "../typechain/factories/contracts/registries";
+import { EscrowRegistry__factory } from "../typechain/factories/contracts/registries";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
@@ -86,7 +88,7 @@ export default class DeployHelper {
     owner: Address,
     chainId: BigNumber,
     intentExpirationPeriod: BigNumber,
-    escrow: Address,
+    escrowRegistry: Address,
     paymentVerifierRegistry: Address,
     postIntentHookRegistry: Address,
     relayerRegistry: Address,
@@ -97,7 +99,7 @@ export default class DeployHelper {
       owner,
       chainId.toString(),
       intentExpirationPeriod,
-      escrow,
+      escrowRegistry,
       paymentVerifierRegistry,
       postIntentHookRegistry,
       relayerRegistry,
@@ -346,5 +348,9 @@ export default class DeployHelper {
 
   public async deployRelayerRegistry(): Promise<RelayerRegistry> {
     return await new RelayerRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployEscrowRegistry(): Promise<EscrowRegistry> {
+    return await new EscrowRegistry__factory(this._deployerSigner).deploy();
   }
 }

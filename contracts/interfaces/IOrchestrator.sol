@@ -12,6 +12,7 @@ interface IOrchestrator {
     struct Intent {
         address owner;                              // Address of the intent owner  
         address to;                                 // Address to forward funds to (can be same as owner)
+        address escrow;                             // Address of the escrow contract holding the deposit
         uint256 depositId;                          // ID of the deposit the intent is associated with
         uint256 amount;                             // Amount of the deposit.token the owner wants to take
         uint256 timestamp;                          // Timestamp of the intent
@@ -26,6 +27,7 @@ interface IOrchestrator {
     }
 
     struct SignalIntentParams {
+        address escrow;                             // The escrow contract where the deposit is held
         uint256 depositId;                          // The ID of the deposit the taker intends to use
         uint256 amount;                             // The amount of deposit.token the user wants to take
         address to;                                 // Address to forward funds to
@@ -43,8 +45,9 @@ interface IOrchestrator {
 
     event IntentSignaled(
         bytes32 indexed intentHash, 
+        address indexed escrow,
         uint256 indexed depositId, 
-        address indexed verifier, 
+        address verifier, 
         address owner, 
         address to, 
         uint256 amount, 
@@ -55,13 +58,15 @@ interface IOrchestrator {
 
     event IntentPruned(
         bytes32 indexed intentHash,
+        address indexed escrow,
         uint256 indexed depositId
     );
 
     event IntentFulfilled(
         bytes32 indexed intentHash,
+        address indexed escrow,
         uint256 indexed depositId,
-        address indexed verifier,
+        address verifier,
         address owner,
         address to,
         uint256 amount,
@@ -80,7 +85,7 @@ interface IOrchestrator {
     event ProtocolFeeUpdated(uint256 protocolFee);
     event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
 
-    event EscrowUpdated(address indexed escrow);
+    event EscrowRegistryUpdated(address indexed escrowRegistry);
 
     /* ============ Custom Errors ============ */
     
@@ -115,6 +120,8 @@ interface IOrchestrator {
     error ProtocolFeeRecipientCannotBeZeroAddress();
     error MaxIntentExpirationPeriodCannotBeZero();
     error EscrowCannotBeZeroAddress();
+    error EscrowNotWhitelisted();
+    error EscrowRegistryCannotBeZeroAddress();
     
     // Transfer errors
     error ProtocolFeeTransferFailed();

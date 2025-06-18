@@ -5,6 +5,7 @@ import { Address } from "@utils/types";
 
 export const generateGatingServiceSignature = async (
   gatingService: Account,
+  escrow: Address,
   depositId: BigNumber,
   amount: BigNumber,
   to: Address,
@@ -14,13 +15,14 @@ export const generateGatingServiceSignature = async (
   chainId: string
 ) => {
   const messageHash = ethers.utils.solidityKeccak256(
-    ["uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256"],
-    [depositId, amount, to, verifier, fiatCurrency, conversionRate, chainId]
+    ["address", "uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256"],
+    [escrow, depositId, amount, to, verifier, fiatCurrency, conversionRate, chainId]
   );
   return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
 }
 
 export const createSignalIntentParams = async (
+  escrow: Address,
   depositId: BigNumber,
   amount: BigNumber,
   to: Address,
@@ -39,6 +41,7 @@ export const createSignalIntentParams = async (
   if (gatingService) {
     gatingServiceSignature = await generateGatingServiceSignature(
       gatingService,
+      escrow,
       depositId,
       amount,
       to,
@@ -50,6 +53,7 @@ export const createSignalIntentParams = async (
   }
 
   return {
+    escrow,
     depositId,
     amount,
     to,

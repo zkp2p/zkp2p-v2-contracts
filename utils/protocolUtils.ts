@@ -50,14 +50,15 @@ export const getCurrencyCodeFromHash = (hash: string): string => {
 
 export const calculateIntentHash = (
   onRamper: string,
+  escrow: string,
   verifier: string,
   depositId: BigNumber,
   timestamp: BigNumber
 ): string => {
 
   const intermediateHash = ethers.utils.solidityKeccak256(
-    ["address", "address", "uint256", "uint256"],
-    [onRamper, verifier, depositId, timestamp]
+    ["address", "address", "address", "uint256", "uint256"],
+    [onRamper, escrow, verifier, depositId, timestamp]
   );
 
   return ethers.utils.hexZeroPad(BigNumber.from(intermediateHash).mod(CIRCOM_FIELD).toHexString(), 32);

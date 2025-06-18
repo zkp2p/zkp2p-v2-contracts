@@ -13,6 +13,7 @@ export {
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
   RelayerRegistry,
+  EscrowRegistry,
   NullifierRegistry,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,

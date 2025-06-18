@@ -752,6 +752,7 @@ describe("Escrow", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
           onRamper.address,
+          ramp.address,
           verifier.address,
           subjectDepositId,
           currentTimestamp
@@ -988,6 +989,7 @@ describe("Escrow", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
           onRamper.address,
+          ramp.address,
           verifier.address,
           ZERO,
           currentTimestamp
@@ -2195,6 +2197,7 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
         onRamper.address,
+        ramp.address,
         verifier.address,
         subjectDepositId,
         currentTimestamp
@@ -2393,6 +2396,7 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
         onRamper.address,
+        ramp.address,
         verifier.address,
         subjectDepositId,
         currentTimestamp
@@ -2518,6 +2522,7 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
         onRamper.address,
+        ramp.address,
         verifier.address,
         subjectDepositId,
         currentTimestamp
