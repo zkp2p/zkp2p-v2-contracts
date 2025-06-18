@@ -630,6 +630,9 @@ describe("ProtocolViewer", () => {
         );
 
         await orchestrator.connect(onRamper.wallet).signalIntent(params2);
+
+        // Add a small delay to prevent gas estimation issues
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
 
       it("should return all intents for the account", async () => {

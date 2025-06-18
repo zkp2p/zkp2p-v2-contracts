@@ -2716,6 +2716,9 @@ describe("Orchestrator", () => {
       );
       await orchestrator.connect(onRamper.wallet).signalIntent(params1);
 
+      // Add a small delay to prevent gas estimation issues
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const params2 = await createSignalIntentParams(
         escrow.address,
         ZERO,

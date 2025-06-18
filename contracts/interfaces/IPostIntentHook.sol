@@ -10,8 +10,6 @@ import { IOrchestrator } from "./IOrchestrator.sol";
  */
 interface IPostIntentHook {
 
-    // TODO: See if there's a way to avoid passing the entire intent data structure and just pass the data that is needed
-
     /**
      * @notice Post-intent hook
      * @param _intent The intent data structure containing all intent information
