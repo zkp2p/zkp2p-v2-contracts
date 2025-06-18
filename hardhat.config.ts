@@ -39,6 +39,9 @@ const config: HardhatUserConfig = {
     hardhat: {
       initialDate: "2024-01-20 01:15:15 PM",
       allowBlocksWithSameTimestamp: true,
+      initialBaseFeePerGas: 0,
+      blockGasLimit: 100_000_000,
+      gas: 100_000_000,
     },
     localhost: {
       allowBlocksWithSameTimestamp: true,
