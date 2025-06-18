@@ -168,7 +168,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
-        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
         
         deposit.amount += _amount;
         deposit.remainingDeposits += _amount;
@@ -178,21 +177,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.token.transferFrom(msg.sender, address(this), _amount);
     }
 
-    // TODO: Is there an opportunity to combine the two functions below?
-
     /**
-     * @notice Removes funds from an existing deposit. Only the depositor can remove funds.
-     * Can remove funds from the remaining deposits and prunable intents.
+     * @notice Removes funds from an existing deposit. Only the depositor can remove funds. If the amount to remove is greater
+     * than the remaining deposits, then expired intents will be pruned to reclaim liquidity. If the remaining deposits is less 
+     * than the min intent amount, then the deposit will be marked as not accepting intents (PAUSED). Does not close the deposit
+     * to prevent losing access to the deposit configuration.
      *
      * @param _depositId    The deposit ID to remove funds from
      * @param _amount       The amount of tokens to remove
      */
     function removeFundsFromDeposit(uint256 _depositId, uint256 _amount)
         external
+        whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
-        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
         
         if (deposit.remainingDeposits < _amount) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
@@ -201,19 +200,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.amount -= _amount;
         deposit.remainingDeposits -= _amount;
         
-        emit DepositWithdrawn(_depositId, msg.sender, _amount, true);
+        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
+            deposit.acceptingIntents = false;
+        }
+
+        emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
         
-        IERC20 token = deposit.token;
-        _closeDepositIfNecessary(_depositId, deposit);
-        
-        token.transfer(msg.sender, _amount);
+        deposit.token.transfer(msg.sender, _amount);
     }
 
     /**
-     * @notice Caller must be the depositor for depositId, if not revert. Depositor is returned all remaining deposits and any
-     * outstanding intents that are expired. If an intent is not expired then those funds will not be returned. Deposit is marked 
-     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this function
-     * again. Deposit will be deleted as long as there are no more outstanding intents.
+     * @notice Depositor is returned all remaining deposits and any outstanding intents that are expired. Only the depositor can withdraw.
+     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds locked due 
+     * to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there are no more outstanding 
+     * intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
@@ -318,7 +318,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
     }
 
-    // TODO: Should we store verifier data on the intent?
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
      * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
@@ -338,21 +337,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert VerifierNotFoundForDeposit();
         }
 
-        // Remove verifier from the list
         depositVerifiers[_depositId].removeStorage(_verifier);
 
-        // Delete associated currency data first
         bytes32[] storage currenciesForVerifier = depositCurrencies[_depositId][_verifier];
-        for (uint256 i = currenciesForVerifier.length; i > 0; i--) {
-            // Iterate backwards for safe deletion if removeStorage reorders/shrinks
-            bytes32 currencyCode = currenciesForVerifier[i-1];
+        for (uint256 i = 0; i < currenciesForVerifier.length; i++) {
+            bytes32 currencyCode = currenciesForVerifier[i];
             delete depositCurrencyMinRate[_depositId][_verifier][currencyCode];
         }
         delete depositCurrencies[_depositId][_verifier];
         
-        // Delete verifier data
-        // Don't delete deposit verifier data to prevent reverting on existing intents
-        // delete depositVerifierData[_depositId][_verifier];
+        // Don't delete deposit verifier data to allow existing intents to be fulfilled        
 
         emit DepositVerifierRemoved(_depositId, _verifier);
     }
@@ -384,8 +378,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             );
         }
     }
-
-    // Todo: Should we update this function to support multiple currencies per verifier?
 
     /**
      * @notice Allows depositor to remove an existing currency from a verifier for a deposit.

@@ -186,7 +186,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         if (intent.paymentVerifier == address(0)) revert IntentDoesNotExist();
         
         // Get deposit and verifier data from escrow contract
-        // TODO: Should we store verifier data on the intent?
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
         IEscrow.DepositVerifierData memory verifierData = IEscrow(intent.escrow).getDepositVerifierData(
             intent.depositId, intent.paymentVerifier
@@ -257,8 +256,8 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         for (uint256 i = 0; i < _intents.length; i++) {
             bytes32 intentHash = _intents[i];
             if (intentHash != bytes32(0)) {
-                Intent memory intent = intents[intentHash];    // TODO: Is this necessary?
-                if (intent.timestamp != 0) {
+                Intent memory intent = intents[intentHash];
+                if (intent.timestamp != 0) {    // Only prune if intent exists
                     _pruneIntent(intentHash);
                 }
             }
