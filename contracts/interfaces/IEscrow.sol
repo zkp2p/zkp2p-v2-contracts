@@ -70,6 +70,10 @@ interface IEscrow {
     event OrchestratorUpdated(address indexed orchestrator);
     event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
 
+    event FundsLocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount, uint256 expiryTime);
+    event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
+    event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, address to);
+
     /* ============ Custom Errors ============ */
     
     // Authorization errors

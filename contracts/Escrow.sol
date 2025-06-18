@@ -517,6 +517,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _amount,
             expiryTime: _expiryTime
         });
+
+        emit FundsLocked(_depositId, _intentHash, _amount, _expiryTime);
     }
 
     /**
@@ -531,7 +533,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyOrchestrator 
     {
         Deposit storage deposit = deposits[_depositId];
-        Intent storage intent = depositIntents[_depositId][_intentHash];
+        Intent memory intent = depositIntents[_depositId][_intentHash];
 
         if (deposit.depositor == address(0)) revert DepositDoesNotExist();
         if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
@@ -541,6 +543,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.outstandingIntentAmount -= intent.amount;
 
         _pruneIntent(_depositId, _intentHash);
+
+        emit FundsUnlocked(_depositId, _intentHash, intent.amount);
     }
 
     /**
@@ -562,7 +566,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyOrchestrator 
     {
         Deposit storage deposit = deposits[_depositId];
-        Intent storage intent = depositIntents[_depositId][_intentHash];
+        Intent memory intent = depositIntents[_depositId][_intentHash];
         
         if (deposit.depositor == address(0)) revert DepositDoesNotExist();
         if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
@@ -582,6 +586,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _closeDepositIfNecessary(_depositId, deposit);
         
         token.transfer(_to, _transferAmount);
+
+        emit FundsUnlockedAndTransferred(_depositId, _intentHash, intent.amount, _transferAmount, _to);
     }
 
     /* ============ Governance Functions ============ */
@@ -721,14 +727,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Prunes given intents from a deposit. Also calls orchestrator to clean up intents.
      */
     function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
+        // Call orchestrator to clean up intents first
+        IOrchestrator(orchestrator).pruneIntents(_intents);
+
         for (uint256 i = 0; i < _intents.length; i++) {
-            if (_intents[i] != bytes32(0)) {
-                _pruneIntent(_depositId, _intents[i]);
+            Intent memory intent = depositIntents[_depositId][_intents[i]];
+            if (intent.intentHash != bytes32(0)) {
+                _pruneIntent(_depositId, intent.intentHash);
+                
+                emit FundsUnlocked(_depositId, intent.intentHash, intent.amount);
             }
         }
-
-        // Call orchestrator to clean up intents
-        IOrchestrator(orchestrator).pruneIntents(_intents);
     }
 
     /**
@@ -737,8 +746,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function _pruneIntent(uint256 _depositId, bytes32 _intentHash) internal {
         delete depositIntents[_depositId][_intentHash];
         depositIntentHashes[_depositId].removeStorage(_intentHash);
-
-        // todo: emit event??
     }
 
     /**

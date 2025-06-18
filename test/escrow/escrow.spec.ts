@@ -18,7 +18,8 @@ import {
   PaymentVerifierRegistry,
   Orchestrator,
   RelayerRegistry,
-  OrchestratorMock
+  OrchestratorMock,
+  EscrowRegistry
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -2445,6 +2446,15 @@ describe("Escrow", () => {
       expect(intentHashes).to.include(subjectIntentHash);
     });
 
+    it("should emit the correct event", async () => {
+      await expect(subject()).to.emit(ramp, "FundsLocked").withArgs(
+        subjectDepositId,
+        subjectIntentHash,
+        subjectAmount,
+        subjectExpiryTime
+      );
+    });
+
     describe("when caller is not orchestrator", async () => {
       beforeEach(async () => {
         // remove the orchestrator mock
@@ -2653,6 +2663,14 @@ describe("Escrow", () => {
       expect(postIntentHashes).to.not.include(subjectIntentHash);
     });
 
+    it("should emit the correct event", async () => {
+      await expect(subject()).to.emit(ramp, "FundsUnlocked").withArgs(
+        subjectDepositId,
+        subjectIntentHash,
+        intentAmount
+      );
+    });
+
     describe("when caller is not orchestrator", async () => {
       beforeEach(async () => {
         // remove the orchestrator mock
@@ -2777,6 +2795,16 @@ describe("Escrow", () => {
 
       const postIntent = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
       expect(postIntent.intentHash).to.eq(ZERO_BYTES32);
+    });
+
+    it("should emit the correct event", async () => {
+      await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
+        subjectDepositId,
+        subjectIntentHash,
+        intentAmount,
+        subjectTransferAmount,
+        subjectTo
+      );
     });
 
     it("should remove intent hash from deposit intent hashes", async () => {
