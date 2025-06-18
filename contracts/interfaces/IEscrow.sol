@@ -35,7 +35,6 @@ interface IEscrow {
     struct Currency {
         bytes32 code;                               // Currency code (keccak256 hash of the currency code)
         uint256 minConversionRate;                  // Minimum rate of deposit token to fiat currency (in preciseUnits)
-        // todo: Do we need maxConversionRate?
     }
 
     struct DepositVerifierData {
@@ -61,6 +60,7 @@ interface IEscrow {
 
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
     event DepositMinConversionRateUpdated(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 newMinConversionRate);
+    event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
@@ -88,6 +88,8 @@ interface IEscrow {
     error DepositNotAcceptingIntents();
     error NoDelegateSetForDeposit();
     error NotEnoughLiquidity();
+    error DepositAlreadyInState();
+    error DepositHasNoLiquidity();
     
     error CurrencyOrVerifierNotSupported();
     error PaymentVerifierNotWhitelisted();

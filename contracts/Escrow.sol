@@ -318,8 +318,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _addVerifiersToDeposit(_depositId, _verifiers, _verifierData, _currencies);
     }
 
-    // todo: Should we store verifier data on the intent?
-
+    // TODO: Should we store verifier data on the intent?
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
      * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
@@ -411,6 +410,29 @@ contract Escrow is Ownable, Pausable, IEscrow {
         delete depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
 
         emit DepositCurrencyRemoved(_depositId, _verifier, _currencyCode);
+    }
+
+    /**
+     * @notice Allows depositor or delegateto set the accepting intents state for a deposit.
+     *
+     * @param _depositId             The deposit ID
+     * @param _acceptingIntents      The new accepting intents state
+     */
+    function setDepositAcceptingIntents(
+        uint256 _depositId, 
+        bool _acceptingIntents
+    )
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.acceptingIntents == _acceptingIntents) revert DepositAlreadyInState();
+        // Doesn't reclaim liquidity for gas savings
+        if (deposit.remainingDeposits == 0) revert DepositHasNoLiquidity();
+        
+        deposit.acceptingIntents = _acceptingIntents;
+        emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
     }
 
     /**

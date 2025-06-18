@@ -14,7 +14,9 @@ import {
   PaymentVerifierMock,
   PostIntentHookRegistry,
   PaymentVerifierRegistry,
-  Orchestrator
+  Orchestrator,
+  RelayerRegistry,
+  EscrowRegistry
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -54,7 +56,8 @@ describe("ProtocolViewer", () => {
   let usdcToken: USDCMock;
   let paymentVerifierRegistry: PaymentVerifierRegistry;
   let postIntentHookRegistry: PostIntentHookRegistry;
-  let relayerRegistry: any; // Using any for now to avoid compilation issues
+  let relayerRegistry: RelayerRegistry;
+  let escrowRegistry: EscrowRegistry;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -81,11 +84,8 @@ describe("ProtocolViewer", () => {
 
     paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
     postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
-
-    // Deploy RelayerRegistry (using the factory directly to avoid import issues)
-    const RelayerRegistry = await ethers.getContractFactory("RelayerRegistry");
-    relayerRegistry = await RelayerRegistry.deploy();
-    await relayerRegistry.deployed();
+    escrowRegistry = await deployer.deployEscrowRegistry();
+    relayerRegistry = await deployer.deployRelayerRegistry();
 
     await usdcToken.transfer(offRamper.address, usdc(10000));
 
@@ -95,11 +95,13 @@ describe("ProtocolViewer", () => {
       paymentVerifierRegistry.address
     );
 
+    await escrowRegistry.addEscrow(escrow.address);
+
     orchestrator = await deployer.deployOrchestrator(
       owner.address,
       chainId,
       ONE_DAY_IN_SECONDS,                // intent expiration period
-      escrow.address,
+      escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
@@ -205,6 +207,7 @@ describe("ProtocolViewer", () => {
       beforeEach(async () => {
         // Create and signal an intent
         const params = await createSignalIntentParams(
+          escrow.address,
           subjectDepositId,
           usdc(50),
           onRamper.address,
@@ -404,6 +407,7 @@ describe("ProtocolViewer", () => {
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -414,6 +418,7 @@ describe("ProtocolViewer", () => {
       );
 
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -433,6 +438,7 @@ describe("ProtocolViewer", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -480,6 +486,7 @@ describe("ProtocolViewer", () => {
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -490,6 +497,7 @@ describe("ProtocolViewer", () => {
       );
 
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -509,6 +517,7 @@ describe("ProtocolViewer", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
         onRamper.address,
+        escrow.address,
         verifier.address,
         ZERO,
         currentTimestamp
@@ -559,6 +568,7 @@ describe("ProtocolViewer", () => {
       );
 
       const params = await createSignalIntentParams(
+        escrow.address,
         ZERO,
         usdc(50),
         onRamper.address,
@@ -604,6 +614,7 @@ describe("ProtocolViewer", () => {
       beforeEach(async () => {
         // Signal a second intent
         const params2 = await createSignalIntentParams(
+          escrow.address,
           ZERO,
           usdc(30),
           onRamper.address,
