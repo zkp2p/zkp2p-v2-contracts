@@ -213,9 +213,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, releaseAmount, _data, false);
     }
 
-    // Todo: Should this sit on the orchestrator or escrow? Or in other words, should we charge protocol fees
-    // and referrer fees on a manually released intent, and should we perform the post intent hook on a manually released intent?
-
     /**
      * @notice Allows depositor to release funds to the payer in case of a failed fulfill intent or because of some other arrangement
      * between the two parties. Upon submission we check to make sure the msg.sender is the depositor, the intent is removed, and 
@@ -499,10 +496,13 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
             if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert ReferrerFeeTransferFailed();
         }
 
-        // If there's a post-intent hook, handle it
-        if (address(_intent.postIntentHook) != address(0)) {
+        // If there's a post-intent hook, handle it; skip if manual release
+        address fundsTransferredTo = _intent.to;
+        if (address(_intent.postIntentHook) != address(0) && !_isManualRelease) {
             _token.approve(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _fulfillIntentData);
+
+            fundsTransferredTo = address(_intent.postIntentHook);
         } else {
             // Otherwise transfer directly to the intent recipient
             if (!_token.transfer(_intent.to, netAmount)) revert TransferToRecipientFailed();
@@ -514,7 +514,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
             _intent.depositId, 
             _intent.paymentVerifier, 
             _intent.owner, 
-            _intent.to, 
+            fundsTransferredTo, 
             netAmount, 
             protocolFeeAmount,
             referrerFeeAmount,

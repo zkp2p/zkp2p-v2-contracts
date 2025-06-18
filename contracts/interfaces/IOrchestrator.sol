@@ -68,7 +68,7 @@ interface IOrchestrator {
         uint256 indexed depositId,
         address verifier,
         address owner,
-        address to,
+        address fundsTransferredTo,   // Address that funds were transferred to; can be intent.to or postIntentHook address
         uint256 amount,
         uint256 protocolFee,
         uint256 referrerFee,

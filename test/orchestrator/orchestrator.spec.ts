@@ -1393,7 +1393,7 @@ describe("Orchestrator", () => {
           ZERO,    // ID of the deposit used
           verifier.address,     // Verifier used
           onRamper.address,     // Intent owner
-          onRamper.address,     // Original intent.to (even though hook redirected funds)
+          postIntentHookMock.address,     // Post intent hook address
           releaseAmount,             // Amount transferred (after 0 fees in this case)
           ZERO,                 // Protocol fee
           ZERO,                  // Referrer fee
@@ -1433,7 +1433,7 @@ describe("Orchestrator", () => {
             ZERO,
             verifier.address,
             onRamper.address,
-            onRamper.address,     // Original intent.to
+            postIntentHookMock.address,     // Post intent hook address
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
             fee,                  // Protocol fee
             ZERO,                  // Referrer fee
@@ -1879,6 +1879,98 @@ describe("Orchestrator", () => {
 
       it("should revert with IntentDoesNotExist", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
+      });
+    });
+
+    describe("when a postIntentHook is used", async () => {
+      let hookTargetAddress: Address;
+
+      beforeEach(async () => {
+        hookTargetAddress = receiver.address;
+        const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetAddress]);
+
+        // Create a new intent with post intent hook action
+        const gatingServiceSignatureForHook = await generateGatingServiceSignature(
+          gatingService,
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString()
+        );
+
+        // First cancel the existing intent
+        await orchestrator.connect(onRamper.wallet).cancelIntent(intentHash);
+
+        // Signal an intent that uses the postIntentHookMock
+        const params = await createSignalIntentParams(
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          depositConversionRate,
+          ADDRESS_ZERO,
+          ZERO,
+          null, // passing null since we already have the signature
+          chainId.toString(),
+          postIntentHookMock.address,
+          signalIntentDataForHook
+        );
+        // Override the signature since we generated it manually
+        params.gatingServiceSignature = gatingServiceSignatureForHook;
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp);
+
+        subjectIntentHash = intentHash;
+      });
+
+      it("should STILL transfer funds to the intent.to address", async () => {
+        const preBalance = await usdcToken.balanceOf(onRamper.address);
+
+        await subject();
+
+        const postBalance = await usdcToken.balanceOf(onRamper.address);
+        expect(postBalance.sub(preBalance)).to.eq(subjectReleaseAmount);
+      });
+
+
+      describe("when protocol fee is set with a hook", async () => {
+        beforeEach(async () => {
+          await orchestrator.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee
+        });
+
+        it("should transfer (intent amount - fee) to the intent.to address", async () => {
+          const initialIntentToBalance = await usdcToken.balanceOf(onRamper.address);
+
+          await subject();
+
+          const finalIntentToBalance = await usdcToken.balanceOf(onRamper.address);
+
+          const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          expect(finalIntentToBalance.sub(initialIntentToBalance)).to.eq(subjectReleaseAmount.sub(fee)); // 49 USDC
+        });
+
+        it("should emit IntentFulfilled with correct fee details when hook is used", async () => {
+          const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
+            subjectIntentHash,
+            escrow.address,
+            ZERO,
+            verifier.address,
+            onRamper.address,
+            onRamper.address,     // Original intent.to
+            subjectReleaseAmount.sub(fee),    // Amount transferred to hook's destination
+            fee,                  // Protocol fee
+            ZERO,                  // Referrer fee
+            true
+          );
+        });
       });
     });
 
