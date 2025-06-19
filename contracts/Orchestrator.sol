@@ -60,10 +60,9 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     /* ============ Modifiers ============ */
 
     modifier onlyWhitelistedEscrow() {
-        require(
-            escrowRegistry.isWhitelistedEscrow(msg.sender) || escrowRegistry.isAcceptingAllEscrows(),
-            "Only whitelisted escrow can call this function"
-        );
+        if (!escrowRegistry.isWhitelistedEscrow(msg.sender) && !escrowRegistry.isAcceptingAllEscrows()) {
+            revert UnauthorizedEscrowCaller(msg.sender);
+        }
         _;
     }
 
@@ -156,8 +155,8 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     function cancelIntent(bytes32 _intentHash) external {
         Intent memory intent = intents[_intentHash];
         
-        if (intent.timestamp == 0) revert IntentDoesNotExist();
-        if (intent.owner != msg.sender) revert SenderMustBeIntentOwner();
+        if (intent.timestamp == 0) revert IntentNotFound(_intentHash);
+        if (intent.owner != msg.sender) revert UnauthorizedCaller(msg.sender, intent.owner);
 
         _pruneIntent(_intentHash);
 
@@ -182,7 +181,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         whenNotPaused
     {
         Intent memory intent = intents[_intentHash];
-        if (intent.paymentVerifier == address(0)) revert IntentDoesNotExist();
+        if (intent.paymentVerifier == address(0)) revert IntentNotFound(_intentHash);
         
         // Get deposit and verifier data from escrow contract
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
@@ -203,7 +202,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
             })
         );
         if (!success) revert PaymentVerificationFailed();
-        if (intentHash != _intentHash) revert InvalidIntentHash();
+        if (intentHash != _intentHash) revert HashMismatch(_intentHash, intentHash);
 
         _pruneIntent(_intentHash);
 
@@ -227,11 +226,11 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         bytes calldata _releaseData
     ) external {
         Intent memory intent = intents[_intentHash];
-        if (intent.owner == address(0)) revert IntentDoesNotExist();
-        if (_releaseAmount > intent.amount) revert ReleaseAmountExceedsIntentAmount();
+        if (intent.owner == address(0)) revert IntentNotFound(_intentHash);
+        if (_releaseAmount > intent.amount) revert AmountExceedsLimit(_releaseAmount, intent.amount);
 
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
-        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
         _pruneIntent(_intentHash);
 
@@ -268,7 +267,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _escrowRegistry   New escrow registry address
      */
     function setEscrowRegistry(address _escrowRegistry) external onlyOwner {
-        if (_escrowRegistry == address(0)) revert EscrowRegistryCannotBeZeroAddress();
+        if (_escrowRegistry == address(0)) revert ZeroAddress();
         
         escrowRegistry = IEscrowRegistry(_escrowRegistry);
         emit EscrowRegistryUpdated(_escrowRegistry);
@@ -281,7 +280,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _protocolFee   New protocol fee in preciseUnits (1e16 = 1%)
      */
     function setProtocolFee(uint256 _protocolFee) external onlyOwner {
-        if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeExceedsMaximum();
+        if (_protocolFee > MAX_PROTOCOL_FEE) revert FeeExceedsMaximum(_protocolFee, MAX_PROTOCOL_FEE);
         
         protocolFee = _protocolFee;
         emit ProtocolFeeUpdated(_protocolFee);
@@ -293,7 +292,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _protocolFeeRecipient   New protocol fee recipient address
      */
     function setProtocolFeeRecipient(address _protocolFeeRecipient) external onlyOwner {
-        if (_protocolFeeRecipient == address(0)) revert ProtocolFeeRecipientCannotBeZeroAddress();
+        if (_protocolFeeRecipient == address(0)) revert ZeroAddress();
         
         protocolFeeRecipient = _protocolFeeRecipient;
         emit ProtocolFeeRecipientUpdated(_protocolFeeRecipient);
@@ -317,7 +316,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _intentExpirationPeriod   New intent expiration period
      */
     function setIntentExpirationPeriod(uint256 _intentExpirationPeriod) external onlyOwner {
-        if (_intentExpirationPeriod == 0) revert MaxIntentExpirationPeriodCannotBeZero();
+        if (_intentExpirationPeriod == 0) revert ZeroValue();
 
         intentExpirationPeriod = _intentExpirationPeriod;
         emit IntentExpirationPeriodSet(_intentExpirationPeriod);
@@ -330,7 +329,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _postIntentHookRegistry   New post intent hook registry address
      */
     function setPostIntentHookRegistry(address _postIntentHookRegistry) external onlyOwner {
-        require(_postIntentHookRegistry != address(0), "Post intent hook registry cannot be zero address");
+        if (_postIntentHookRegistry == address(0)) revert ZeroAddress();
         
         postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
         emit PostIntentHookRegistryUpdated(_postIntentHookRegistry);
@@ -342,7 +341,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @param _relayerRegistry   New relayer registry address
      */
     function setRelayerRegistry(address _relayerRegistry) external onlyOwner {
-        require(_relayerRegistry != address(0), "Relayer registry cannot be zero address");
+        if (_relayerRegistry == address(0)) revert ZeroAddress();
         
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
         emit RelayerRegistryUpdated(_relayerRegistry);
@@ -381,45 +380,54 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         // Check if account can have multiple intents
         bool canHaveMultipleIntents = relayerRegistry.isWhitelistedRelayer(msg.sender) || allowMultipleIntents;
         if (!canHaveMultipleIntents && accountIntents[msg.sender].length > 0) {
-            revert AccountHasUnfulfilledIntent();
+            revert AccountHasActiveIntent(msg.sender, accountIntents[msg.sender][0]);
         }
 
-        if (_intent.to == address(0)) revert CannotSendToZeroAddress();
+        if (_intent.to == address(0)) revert ZeroAddress();
         
-        if (_intent.referrerFee > MAX_REFERRER_FEE) revert ReferrerFeeExceedsMaximum();
+        if (_intent.referrerFee > MAX_REFERRER_FEE) revert FeeExceedsMaximum(_intent.referrerFee, MAX_REFERRER_FEE);
         if (_intent.referrer == address(0)) {
-            if (_intent.referrerFee != 0) revert CannotSetReferrerFeeWithoutReferrer();
+            if (_intent.referrerFee != 0) revert InvalidReferrerFeeConfiguration();
         }
 
         if (address(_intent.postIntentHook) != address(0)) {
             if (!postIntentHookRegistry.isWhitelistedHook(address(_intent.postIntentHook))) {
-                revert PostIntentHookNotWhitelisted();
+                revert PostIntentHookNotWhitelisted(address(_intent.postIntentHook));
             }
         }
 
         // Validate escrow is whitelisted
         if (!escrowRegistry.isWhitelistedEscrow(_intent.escrow) && !escrowRegistry.isAcceptingAllEscrows()) {
-            revert EscrowNotWhitelisted();
+            revert EscrowNotWhitelisted(_intent.escrow);
         }
 
         uint256 depositId = _intent.depositId;
         IEscrow escrow = IEscrow(_intent.escrow);
         IEscrow.DepositVerifierData memory verifierData = escrow.getDepositVerifierData(depositId, _intent.verifier);
-        if (bytes(verifierData.payeeDetails).length == 0) revert PaymentVerifierNotSupported();
+        if (bytes(verifierData.payeeDetails).length == 0) revert VerifierNotSupported(depositId, _intent.verifier);
         
         uint256 minConversionRate = escrow.getDepositCurrencyMinRate(depositId, _intent.verifier, _intent.fiatCurrency);
         uint256 conversionRate = _intent.conversionRate;
-        if (minConversionRate == 0) revert CurrencyNotSupported();
-        if (conversionRate < minConversionRate) revert RateMustBeGreaterThanOrEqualToMin();
+        if (minConversionRate == 0) revert CurrencyNotSupported(_intent.verifier, _intent.fiatCurrency);
+        if (conversionRate < minConversionRate) revert RateBelowMinimum(conversionRate, minConversionRate);
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
             if (!_isValidSignature(
-                abi.encodePacked(_intent.escrow, depositId, _intent.amount, _intent.to, _intent.verifier, _intent.fiatCurrency, conversionRate, chainId),
+                abi.encodePacked(
+                    _intent.escrow, 
+                    depositId, 
+                    _intent.amount, 
+                    _intent.to, 
+                    _intent.verifier, 
+                    _intent.fiatCurrency, 
+                    conversionRate, 
+                    chainId
+                ),
                 _intent.gatingServiceSignature,
                 intentGatingService
             )) {
-                revert InvalidGatingServiceSignature();
+                revert InvalidSignature(intentGatingService);
             }
         }
     }
@@ -438,7 +446,15 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         returns (bytes32 intentHash)
     {
         // Mod with circom prime field to make sure it fits in a 254-bit field
-        uint256 intermediateHash = uint256(keccak256(abi.encodePacked(_intentOwner, _escrow, _verifier, _depositId, block.timestamp)));
+        uint256 intermediateHash = uint256(
+            keccak256(
+                abi.encodePacked(
+                    _intentOwner, 
+                    _escrow, 
+                    _verifier, 
+                    _depositId, 
+                    block.timestamp)
+            ));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }
 
@@ -487,12 +503,12 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {
-            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert ProtocolFeeTransferFailed();
+            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert TransferFailed(protocolFeeRecipient, protocolFeeAmount);
         }
         
         // Transfer referrer fee
         if (referrerFeeAmount > 0) {
-            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert ReferrerFeeTransferFailed();
+            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert TransferFailed(_intent.referrer, referrerFeeAmount);
         }
 
         // If there's a post-intent hook, handle it; skip if manual release
@@ -504,7 +520,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
             // Otherwise transfer directly to the intent recipient
-            if (!_token.transfer(_intent.to, netAmount)) revert TransferToRecipientFailed();
+            if (!_token.transfer(_intent.to, netAmount)) revert TransferFailed(_intent.to, netAmount);
         }
 
         emit IntentFulfilled(

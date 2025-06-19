@@ -449,7 +449,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AccountHasUnfulfilledIntent");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AccountHasActiveIntent");
       });
 
       describe("when the intent is cancelled", async () => {
@@ -530,7 +530,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentVerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "VerifierNotSupported");
       });
     });
 
@@ -540,7 +540,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentVerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "VerifierNotSupported");
       });
     });
 
@@ -560,7 +560,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "RateMustBeGreaterThanOrEqualToMin");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "RateBelowMinimum");
       });
 
       describe("when the conversion rate is equal to the min conversion rate", async () => {
@@ -660,7 +660,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "CannotSendToZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroAddress");
       });
     });
 
@@ -670,7 +670,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidGatingServiceSignature");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidSignature");
       });
     });
 
@@ -691,7 +691,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ReferrerFeeExceedsMaximum");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "FeeExceedsMaximum");
       });
     });
 
@@ -702,7 +702,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "CannotSetReferrerFeeWithoutReferrer");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidReferrerFeeConfiguration");
       });
     });
 
@@ -820,7 +820,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with IntentDoesNotExist", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentNotFound");
       });
     });
 
@@ -830,7 +830,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with SenderMustBeIntentOwner", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "SenderMustBeIntentOwner");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "UnauthorizedCaller");
       });
     });
 
@@ -1264,7 +1264,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentNotFound");
       });
     });
 
@@ -1280,7 +1280,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidIntentHash");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "HashMismatch");
       });
     });
 
@@ -1882,7 +1882,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with IntentDoesNotExist", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentNotFound");
       });
     });
 
@@ -1984,7 +1984,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ReleaseAmountExceedsIntentAmount");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountExceedsLimit");
       });
     });
 
@@ -1994,7 +1994,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with CallerMustBeDepositor", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "UnauthorizedCaller");
       });
     });
 
@@ -2004,7 +2004,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ReleaseAmountExceedsIntentAmount");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountExceedsLimit");
       });
     });
   });
@@ -2185,7 +2185,7 @@ describe("Orchestrator", () => {
       it("should revert", async () => {
         await expect(
           orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents)
-        ).to.be.revertedWith("Only whitelisted escrow can call this function");
+        ).to.be.revertedWithCustomError(orchestrator, "UnauthorizedEscrowCaller");
       });
     });
 
@@ -2307,7 +2307,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with EscrowCannotBeZeroAddress", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "EscrowRegistryCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroAddress");
       });
     });
   });
@@ -2352,7 +2352,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert with ProtocolFeeExceedsMaximum", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ProtocolFeeExceedsMaximum");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "FeeExceedsMaximum");
       });
     });
   });
@@ -2394,7 +2394,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ProtocolFeeRecipientCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroAddress");
       });
     });
 
@@ -2446,7 +2446,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "MaxIntentExpirationPeriodCannotBeZero");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroValue");
       });
     });
 
@@ -2495,7 +2495,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Post intent hook registry cannot be zero address");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroAddress");
       });
     });
 
@@ -2545,7 +2545,7 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Relayer registry cannot be zero address");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroAddress");
       });
     });
 

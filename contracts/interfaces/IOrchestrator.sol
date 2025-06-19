@@ -87,49 +87,45 @@ interface IOrchestrator {
 
     event EscrowRegistryUpdated(address indexed escrowRegistry);
 
-    /* ============ Custom Errors ============ */
+    /* ============ Standardized Custom Errors ============ */
+    
+    // Zero value errors
+    error ZeroAddress();
+    error ZeroValue();
     
     // Authorization errors
-    error SenderMustBeIntentOwner();
-    error CallerMustBeDepositor();
+    error UnauthorizedEscrowCaller(address caller);
+    error UnauthorizedCaller(address caller, address authorized);
     
-    // Intent validation errors
-    error AccountHasUnfulfilledIntent();
-    error SignaledAmountMustBeGreaterThanMin();
-    error SignaledAmountMustBeLessThanMax();
-    error CannotSendToZeroAddress();
-    error ReferrerFeeExceedsMaximum();
-    error CannotSetReferrerFeeWithoutReferrer();
-    error IntentDoesNotExist();
-    error ReleaseAmountExceedsIntentAmount();
-
-    // Verifier and currency errors
-    error PaymentVerifierNotSupported();
-    error PaymentVerifierNotWhitelisted();
-    error CurrencyNotSupported();
-    error RateMustBeGreaterThanOrEqualToMin();
-    error InvalidGatingServiceSignature();
-    error PostIntentHookNotWhitelisted();
+    // Not found errors
+    error IntentNotFound(bytes32 intentHash);
+    error VerifierNotSupported(uint256 depositId, address verifier);
+    error CurrencyNotSupported(address verifier, bytes32 currency);
     
-    // Payment verification errors
+    // Whitelist errors
+    error VerifierNotWhitelisted(address verifier);
+    error PostIntentHookNotWhitelisted(address hook);
+    error EscrowNotWhitelisted(address escrow);
+    
+    // Amount and fee errors
+    error AmountBelowMin(uint256 amount, uint256 min);
+    error AmountAboveMax(uint256 amount, uint256 max);
+    error AmountExceedsLimit(uint256 amount, uint256 limit);
+    error FeeExceedsMaximum(uint256 fee, uint256 maximum);
+    error RateBelowMinimum(uint256 rate, uint256 minRate);
+    
+    // Validation errors
+    error AccountHasActiveIntent(address account, bytes32 existingIntent);
+    error InvalidReferrerFeeConfiguration();
+    error InvalidSignature(address expectedSigner);
+    
+    // Verification errors
     error PaymentVerificationFailed();
-    error InvalidIntentHash();
-    
-    // Configuration errors
-    error ProtocolFeeExceedsMaximum();
-    error ProtocolFeeRecipientCannotBeZeroAddress();
-    error MaxIntentExpirationPeriodCannotBeZero();
-    error EscrowCannotBeZeroAddress();
-    error EscrowNotWhitelisted();
-    error EscrowRegistryCannotBeZeroAddress();
-    
+    error HashMismatch(bytes32 expected, bytes32 actual);
+     
     // Transfer errors
-    error ProtocolFeeTransferFailed();
-    error ReferrerFeeTransferFailed();
-    error TransferToRecipientFailed();
-
-    // Escrow errors
-    error FailedToLockLiquidity();
+    error TransferFailed(address recipient, uint256 amount);
+    error EscrowLockFailed();
 
 
     /* ============ View Functions ============ */
