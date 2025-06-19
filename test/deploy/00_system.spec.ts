@@ -18,7 +18,9 @@ import {
   ProtocolViewer__factory,
   RelayerRegistry,
   RelayerRegistry__factory,
-  Orchestrator
+  Orchestrator,
+  EscrowRegistry__factory,
+  EscrowRegistry
 } from "../../typechain";
 
 import {
@@ -52,6 +54,7 @@ describe("Escrow and NullifierRegistry Deployment", () => {
   let postIntentHookRegistry: PostIntentHookRegistry;
   let relayerRegistry: RelayerRegistry;
   let protocolViewer: ProtocolViewer;
+  let escrowRegistry: EscrowRegistry;
 
   const network: string = deployments.getNetworkName();
 
@@ -84,8 +87,18 @@ describe("Escrow and NullifierRegistry Deployment", () => {
     const nullifierRegistryAddress = await getDeployedContractAddress(network, "NullifierRegistry");
     nullifierRegistry = new NullifierRegistry__factory(deployer.wallet).attach(nullifierRegistryAddress);
 
+    const escrowRegistryAddress = await getDeployedContractAddress(network, "EscrowRegistry");
+    escrowRegistry = new EscrowRegistry__factory(deployer.wallet).attach(escrowRegistryAddress);
+
     const protocolViewerAddress = await getDeployedContractAddress(network, "ProtocolViewer");
     protocolViewer = new ProtocolViewer__factory(deployer.wallet).attach(protocolViewerAddress);
+  });
+
+  describe("EscrowRegistry", async () => {
+    it("should have the correct owner", async () => {
+      const actualOwner = await escrowRegistry.owner();
+      expect(actualOwner).to.eq(multiSig);
+    });
   });
 
   describe("Escrow", async () => {
@@ -107,6 +120,11 @@ describe("Escrow and NullifierRegistry Deployment", () => {
     it("should have the correct chain id set", async () => {
       const actualChainId = await escrow.chainId();
       expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
+    });
+
+    it("should have the escrow whitelisted", async () => {
+      const isWhitelisted = await escrowRegistry.isWhitelistedEscrow(escrow.address);
+      expect(isWhitelisted).to.eq(true);
     });
   });
 
@@ -140,6 +158,11 @@ describe("Escrow and NullifierRegistry Deployment", () => {
     it("should have the correct relayer registry set", async () => {
       const actualRelayerRegistry = await orchestrator.relayerRegistry();
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
+    });
+
+    it("should have the correct escrow registry set", async () => {
+      const actualEscrowRegistry = await orchestrator.escrowRegistry();
+      expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
     });
   });
 

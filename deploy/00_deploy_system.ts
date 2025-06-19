@@ -15,7 +15,7 @@ import {
   USDC_MINT_AMOUNT,
   USDC_RECIPIENT,
 } from "../deployments/parameters";
-import { getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
+import { addEscrowToRegistry, getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -66,6 +66,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
   console.log("Nullifier deployed at", nullifierRegistry.address);
 
+  // Deploy escrow registry
+  const escrowRegistry = await deploy("EscrowRegistry", {
+    from: deployer,
+    args: [],
+  });
+  console.log("Escrow registry deployed at", escrowRegistry.address);
+
   // Deploy escrow
   const escrow = await deploy("Escrow", {
     from: deployer,
@@ -77,6 +84,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
   console.log("Escrow deployed at", escrow.address);
 
+  // Set escrow registry on escrow
+  const escrowRegistryContract = await ethers.getContractAt("EscrowRegistry", escrowRegistry.address);
+  await addEscrowToRegistry(hre, escrowRegistryContract, escrow.address);
+  console.log("Escrow added to escrow registry");
+
   // Deploy orchestrator
   const orchestrator = await deploy("Orchestrator", {
     from: deployer,
@@ -84,7 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       deployer,
       chainId,
       INTENT_EXPIRATION_PERIOD[network],
-      escrow.address,
+      escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,

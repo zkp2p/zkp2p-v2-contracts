@@ -49,6 +49,32 @@ export async function setOrchestrator(
   }
 }
 
+export async function addEscrowToRegistry(
+  hre: HardhatRuntimeEnvironment,
+  contract: any,
+  escrow: Address
+): Promise<void> {
+  const currentOwner = await contract.owner();
+
+  if (!(await contract.isWhitelistedEscrow(escrow))) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      const data = contract.interface.encodeFunctionData("addEscrow", [escrow]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: contract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${contract.interface.encodeFunctionData("addEscrow", [escrow])}
+        `
+      );
+    }
+  }
+}
+
+
 export async function addWritePermission(
   hre: HardhatRuntimeEnvironment,
   contract: any,
