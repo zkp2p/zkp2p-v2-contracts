@@ -39,7 +39,7 @@ const expect = getWaffleExpect();
 
 const blockchain = new Blockchain(ethers.provider);
 
-describe("Escrow", () => {
+describe.only("Escrow", () => {
   let owner: Account;
   let offRamper: Account;
   let offRamperDelegate: Account;
@@ -370,7 +370,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "MinIntentAmountCannotBeZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroMinValue");
       });
     });
 
@@ -381,7 +381,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "MinIntentAmountMustBeLessThanMax");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InvalidRange");
       });
     });
 
@@ -392,7 +392,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountMustBeGreaterThanMinIntent");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
       });
     });
 
@@ -402,7 +402,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifiersAndDepositVerifierDataLengthMismatch");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ArrayLengthMismatch");
       });
     });
 
@@ -424,7 +424,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifiersAndCurrenciesLengthMismatch");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ArrayLengthMismatch");
       });
     });
 
@@ -434,7 +434,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupportedByVerifier");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupported");
       });
     });
 
@@ -444,7 +444,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "ConversionRateMustBeGreaterThanZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroConversionRate");
       });
     });
 
@@ -454,7 +454,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroAddress");
       });
     });
 
@@ -464,7 +464,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentVerifierNotWhitelisted");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotWhitelisted");
       });
 
       describe("when accept all verifiers is true", async () => {
@@ -485,7 +485,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PayeeDetailsCannotBeEmpty");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "EmptyPayeeDetails");
       });
     });
 
@@ -511,7 +511,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierDataAlreadyExists");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierAlreadyExists");
       });
     });
 
@@ -532,7 +532,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyRateAlreadyExists");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyAlreadyExists");
       });
     });
 
@@ -637,7 +637,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -647,7 +647,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -879,7 +879,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "NotEnoughLiquidity");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
       });
     });
 
@@ -889,7 +889,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -899,7 +899,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -1165,7 +1165,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
 
       describe("when the caller is delegate", async () => {
@@ -1174,7 +1174,7 @@ describe("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositor");
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
         });
       });
     });
@@ -1270,7 +1270,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1280,7 +1280,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyOrVerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupported");
       });
     });
 
@@ -1290,7 +1290,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "MinConversionRateMustBeGreaterThanZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroConversionRate");
       });
     });
 
@@ -1372,7 +1372,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1382,7 +1382,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "MinCannotBeZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroMinValue");
       });
     });
 
@@ -1392,7 +1392,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "MinMustBeLessThanMax");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InvalidRange");
       });
     });
 
@@ -1521,7 +1521,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1537,7 +1537,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentVerifierNotWhitelisted");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotWhitelisted");
       });
     });
 
@@ -1648,7 +1648,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1664,7 +1664,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFoundForDeposit");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
       });
     });
 
@@ -1755,7 +1755,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1765,7 +1765,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFoundForDeposit");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
       });
     });
 
@@ -1777,7 +1777,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupportedByVerifier");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotSupported");
       });
     });
 
@@ -1787,7 +1787,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "ConversionRateMustBeGreaterThanZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroConversionRate");
       });
     });
 
@@ -1799,7 +1799,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyRateAlreadyExists");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyAlreadyExists");
       });
     });
 
@@ -1890,7 +1890,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -1900,7 +1900,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFoundForDeposit");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
       });
     });
 
@@ -1910,7 +1910,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotFoundForVerifier");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "CurrencyNotFound");
       });
     });
 
@@ -1982,7 +1982,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyDepositorCanSetDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
 
       describe("when the caller is delegate", async () => {
@@ -1991,7 +1991,7 @@ describe("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyDepositorCanSetDelegate");
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
         });
       });
     });
@@ -2002,7 +2002,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DelegateCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroAddress");
       });
     });
 
@@ -2082,7 +2082,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyDepositorCanRemoveDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
 
       describe("when the caller is delegate", async () => {
@@ -2091,7 +2091,7 @@ describe("Escrow", () => {
         });
 
         it("should still revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyDepositorCanRemoveDelegate");
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
         });
       });
     });
@@ -2103,7 +2103,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "NoDelegateSetForDeposit");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DelegateNotFound");
       });
     });
   });
@@ -2204,13 +2204,23 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
+      });
+    });
+
     describe("when the caller is not the depositor or delegate", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -2245,7 +2255,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositHasNoLiquidity");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
       });
     });
 
@@ -2282,7 +2292,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "CallerMustBeDepositorOrDelegate");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -2520,7 +2530,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyOrchestratorCanCallThis");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -2530,7 +2540,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -2559,7 +2569,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountMustBeGreaterThanMinIntent");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
       });
     });
 
@@ -2569,7 +2579,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountMustBeLessThanMaxIntent");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
       });
     });
 
@@ -2624,7 +2634,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "NotEnoughLiquidity");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
       });
     });
   });
@@ -2736,7 +2746,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyOrchestratorCanCallThis");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -2746,7 +2756,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -2756,7 +2766,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentNotFound");
       });
     });
   });
@@ -2901,7 +2911,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "TransferAmountCannotBeZero");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
       });
     });
 
@@ -2933,7 +2943,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "TransferAmountCannotBeGreaterThanIntentAmount");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountExceedsAvailable");
       });
     });
 
@@ -2944,7 +2954,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OnlyOrchestratorCanCallThis");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -2954,7 +2964,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -2964,7 +2974,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentDoesNotExist");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentNotFound");
       });
     });
   });
@@ -3016,7 +3026,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "OrchestratorCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroAddress");
       });
     });
 
@@ -3065,7 +3075,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentVerifierRegistryCannotBeZeroAddress");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroAddress");
       });
     });
 

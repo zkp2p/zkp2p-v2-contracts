@@ -71,9 +71,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     modifier onlyDepositorOrDelegate(uint256 _depositId) {
         Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        
         if (!(deposit.depositor == msg.sender || 
             (deposit.delegate != address(0) && deposit.delegate == msg.sender))) {
-            revert CallerMustBeDepositorOrDelegate();
+            revert UnauthorizedCallerOrDelegate(msg.sender, deposit.depositor, deposit.delegate);
         }
         _;
     }
@@ -82,7 +84,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Modifier to restrict access to orchestrator-only functions
      */
     modifier onlyOrchestrator() {
-        if (msg.sender != orchestrator) revert OnlyOrchestratorCanCallThis();
+        if (msg.sender != orchestrator) revert UnauthorizedCaller(msg.sender, orchestrator);
         _;
     }
 
@@ -129,9 +131,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
-        if (_intentAmountRange.min == 0) revert MinIntentAmountCannotBeZero();
-        if (_intentAmountRange.min > _intentAmountRange.max) revert MinIntentAmountMustBeLessThanMax();
-        if (_amount < _intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
+        if (_intentAmountRange.min == 0) revert ZeroMinValue();
+        if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
+        if (_amount < _intentAmountRange.min) revert AmountBelowMin(_amount, _intentAmountRange.min);
 
         uint256 depositId = depositCounter++;
 
@@ -167,7 +169,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         
         deposit.amount += _amount;
         deposit.remainingDeposits += _amount;
@@ -191,7 +194,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
     {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         
         if (deposit.remainingDeposits < _amount) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
@@ -211,16 +215,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Depositor is returned all remaining deposits and any outstanding intents that are expired. Only the depositor can withdraw.
-     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds locked due 
-     * to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there are no more outstanding 
-     * intents.
+     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds 
+     * locked due to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there 
+     * are no more outstanding intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
     function withdrawDeposit(uint256 _depositId) external {
         Deposit storage deposit = deposits[_depositId];
-
-        if (deposit.depositor != msg.sender) revert CallerMustBeDepositor();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
         (
             bytes32[] memory expiredIntents,
@@ -265,8 +269,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         uint256 oldMinConversionRate = depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency];
 
-        if (oldMinConversionRate == 0) revert CurrencyOrVerifierNotSupported();
-        if (_newMinConversionRate == 0) revert MinConversionRateMustBeGreaterThanZero();
+        if (oldMinConversionRate == 0) revert CurrencyNotSupported(_verifier, _fiatCurrency);
+        if (_newMinConversionRate == 0) revert ZeroConversionRate();
 
         depositCurrencyMinRate[_depositId][_verifier][_fiatCurrency] = _newMinConversionRate;
 
@@ -289,8 +293,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyDepositorOrDelegate(_depositId)
     {
         Deposit storage deposit = deposits[_depositId];
-        if (_intentAmountRange.min == 0) revert MinCannotBeZero();
-        if (_intentAmountRange.min > _intentAmountRange.max) revert MinMustBeLessThanMax();
+        if (_intentAmountRange.min == 0) revert ZeroMinValue();
+        if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
 
         deposit.intentAmountRange = _intentAmountRange;
 
@@ -334,7 +338,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyDepositorOrDelegate(_depositId)
     {
         if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) {
-            revert VerifierNotFoundForDeposit();
+            revert VerifierNotFound(_depositId, _verifier);
         }
 
         depositVerifiers[_depositId].removeStorage(_verifier);
@@ -367,7 +371,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) revert VerifierNotFoundForDeposit();
+        string memory payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
+        if (bytes(payeeDetails).length == 0) revert VerifierNotFound(_depositId, _verifier);
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -395,8 +400,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) revert VerifierNotFoundForDeposit();
-        if (depositCurrencyMinRate[_depositId][_verifier][_currencyCode] == 0) revert CurrencyNotFoundForVerifier();
+        string memory payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
+        if (bytes(payeeDetails).length == 0) revert VerifierNotFound(_depositId, _verifier);
+
+        uint256 currencyMinRate = depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
+        if (currencyMinRate == 0) revert CurrencyNotFound(_verifier, _currencyCode);
 
         depositCurrencies[_depositId][_verifier].removeStorage(_currencyCode);
         delete depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
@@ -419,9 +427,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         onlyDepositorOrDelegate(_depositId)
     {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.acceptingIntents == _acceptingIntents) revert DepositAlreadyInState();
+        if (deposit.acceptingIntents == _acceptingIntents) revert DepositAlreadyInState(_depositId, _acceptingIntents);
         // Doesn't reclaim liquidity for gas savings
-        if (deposit.remainingDeposits == 0) revert DepositHasNoLiquidity();
+        if (deposit.remainingDeposits == 0) revert InsufficientDepositLiquidity(_depositId, 0, 1);
         
         deposit.acceptingIntents = _acceptingIntents;
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
@@ -435,8 +443,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function setDepositDelegate(uint256 _depositId, address _delegate) external {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert OnlyDepositorCanSetDelegate();
-        if (_delegate == address(0)) revert DelegateCannotBeZeroAddress();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (_delegate == address(0)) revert ZeroAddress();
         
         deposit.delegate = _delegate;
         
@@ -450,8 +459,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function removeDepositDelegate(uint256 _depositId) external {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert OnlyDepositorCanRemoveDelegate();
-        if (deposit.delegate == address(0)) revert NoDelegateSetForDeposit();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
         
         delete deposit.delegate;
         
@@ -489,10 +499,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         Deposit storage deposit = deposits[_depositId];
         
-        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
-        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents();
-        if (_amount < deposit.intentAmountRange.min) revert AmountMustBeGreaterThanMinIntent();
-        if (_amount > deposit.intentAmountRange.max) revert AmountMustBeLessThanMaxIntent();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents(_depositId);
+        if (_amount < deposit.intentAmountRange.min) revert AmountBelowMin(_amount, deposit.intentAmountRange.min);
+        if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
         
         // Check if we need to reclaim expired liquidity first
         if (deposit.remainingDeposits < _amount) {
@@ -527,8 +537,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Deposit storage deposit = deposits[_depositId];
         Intent memory intent = depositIntents[_depositId][_intentHash];
 
-        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
-        if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (intent.intentHash == bytes32(0)) revert IntentNotFound(_intentHash);
 
         // Update deposit state
         deposit.remainingDeposits += intent.amount;
@@ -560,10 +570,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Deposit storage deposit = deposits[_depositId];
         Intent memory intent = depositIntents[_depositId][_intentHash];
         
-        if (deposit.depositor == address(0)) revert DepositDoesNotExist();
-        if (intent.intentHash == bytes32(0)) revert IntentDoesNotExist();
-        if (_transferAmount == 0) revert TransferAmountCannotBeZero();
-        if (_transferAmount > intent.amount) revert TransferAmountCannotBeGreaterThanIntentAmount();
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (intent.intentHash == bytes32(0)) revert IntentNotFound(_intentHash);
+        if (_transferAmount == 0) revert ZeroValue();
+        if (_transferAmount > intent.amount) revert AmountExceedsAvailable(_transferAmount, intent.amount);
         
         // Update deposit state
         deposit.outstandingIntentAmount -= intent.amount;
@@ -590,7 +600,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _orchestrator The orchestrator contract address
      */
     function setOrchestrator(address _orchestrator) external onlyOwner {
-        if (_orchestrator == address(0)) revert OrchestratorCannotBeZeroAddress();
+        if (_orchestrator == address(0)) revert ZeroAddress();
         
         orchestrator = _orchestrator;
         emit OrchestratorUpdated(_orchestrator);
@@ -602,7 +612,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _paymentVerifierRegistry   New payment verifier registry address
      */
     function setPaymentVerifierRegistry(address _paymentVerifierRegistry) external onlyOwner {
-        if (_paymentVerifierRegistry == address(0)) revert PaymentVerifierRegistryCannotBeZeroAddress();
+        if (_paymentVerifierRegistry == address(0)) revert ZeroAddress();
         
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
@@ -707,7 +717,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 availableAmount = _deposit.remainingDeposits;
         availableAmount += reclaimableAmount;
         
-        if (availableAmount < _minRequiredAmount) revert NotEnoughLiquidity();
+        if (availableAmount < _minRequiredAmount) revert InsufficientDepositLiquidity(_depositId, availableAmount, _minRequiredAmount);
         
         // Prune expired intents to free up funds
         _pruneIntents(_depositId, expiredIntents);
@@ -781,19 +791,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
     ) internal {
 
         // Check that the length of the verifiers, depositVerifierData, and currencies arrays are the same
-        if (_verifiers.length != _verifierData.length) revert VerifiersAndDepositVerifierDataLengthMismatch();
-        if (_verifiers.length != _currencies.length) revert VerifiersAndCurrenciesLengthMismatch();
+        if (_verifiers.length != _verifierData.length) revert ArrayLengthMismatch(_verifiers.length, _verifierData.length);
+        if (_verifiers.length != _currencies.length) revert ArrayLengthMismatch(_verifiers.length, _currencies.length);
 
         for (uint256 i = 0; i < _verifiers.length; i++) {
             address verifier = _verifiers[i];
             
-            if (verifier == address(0)) revert VerifierCannotBeZeroAddress();
+            if (verifier == address(0)) revert ZeroAddress();
             if (!(paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
                 paymentVerifierRegistry.isAcceptingAllVerifiers())) {
-                revert PaymentVerifierNotWhitelisted();
+                revert VerifierNotWhitelisted(verifier);
             }
-            if (bytes(_verifierData[i].payeeDetails).length == 0) revert PayeeDetailsCannotBeEmpty();
-            if (bytes(depositVerifierData[_depositId][verifier].payeeDetails).length != 0) revert VerifierDataAlreadyExists();
+            if (bytes(_verifierData[i].payeeDetails).length == 0) revert EmptyPayeeDetails();
+            if (bytes(depositVerifierData[_depositId][verifier].payeeDetails).length != 0) revert VerifierAlreadyExists(_depositId, verifier);
 
             depositVerifierData[_depositId][verifier] = _verifierData[i];
             depositVerifiers[_depositId].push(verifier);
@@ -824,11 +834,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _minConversionRate
     ) internal {
         if (!IBasePaymentVerifier(_verifier).isCurrency(_currencyCode)) {
-            revert CurrencyNotSupportedByVerifier();
+            revert CurrencyNotSupported(_verifier, _currencyCode);
         }
-        if (_minConversionRate == 0) revert ConversionRateMustBeGreaterThanZero();
+        if (_minConversionRate == 0) revert ZeroConversionRate();
         if (depositCurrencyMinRate[_depositId][_verifier][_currencyCode] != 0) {
-            revert CurrencyRateAlreadyExists();
+            revert CurrencyAlreadyExists(_verifier, _currencyCode);
         }
         depositCurrencyMinRate[_depositId][_verifier][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_verifier].push(_currencyCode);

@@ -74,54 +74,47 @@ interface IEscrow {
     event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
     event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, address to);
 
-    /* ============ Custom Errors ============ */
+    /* ============ Standardized Custom Errors ============ */
     
-    // Authorization errors
-    error CallerMustBeDepositorOrDelegate();
-    error CallerMustBeDepositor();
-    error OnlyDepositorCanSetDelegate();
-    error OnlyDepositorCanRemoveDelegate();
-    error OnlyOrchestratorCanCallThis();
-    
-    // Deposit validation errors
-    error MinIntentAmountCannotBeZero();
-    error MinIntentAmountMustBeLessThanMax();
-    error MinCannotBeZero();
-    error MinMustBeLessThanMax();
-    error DepositDoesNotExist();
-    error DepositNotAcceptingIntents();
-    error NoDelegateSetForDeposit();
-    error NotEnoughLiquidity();
-    error DepositAlreadyInState();
-    error DepositHasNoLiquidity();
-    
-    error CurrencyOrVerifierNotSupported();
-    error PaymentVerifierNotWhitelisted();
-    error VerifierNotFoundForDeposit();
-    error CurrencyNotFoundForVerifier();
-    error CurrencyNotSupportedByVerifier();
-    error VerifierDataAlreadyExists();
-    error CurrencyRateAlreadyExists();
-    
-    // Locking errors
-    error IntentDoesNotExist();
-    error AmountMustBeLessThanMaxIntent();
-    error AmountMustBeGreaterThanMinIntent();
-    error TransferAmountCannotBeZero();
-    error TransferAmountCannotBeGreaterThanIntentAmount();
+    // Zero value errors
+    error ZeroAddress();
+    error ZeroValue();
+    error ZeroMinValue();
+    error ZeroConversionRate();
 
-    // Configuration errors
-    error MinConversionRateMustBeGreaterThanZero();
-    error ConversionRateMustBeGreaterThanZero();
-    error DelegateCannotBeZeroAddress();
-    error VerifierCannotBeZeroAddress();
-    error PayeeDetailsCannotBeEmpty();
-    error OrchestratorCannotBeZeroAddress();
-    error PaymentVerifierRegistryCannotBeZeroAddress();
-    
-    // Array length errors
-    error VerifiersAndDepositVerifierDataLengthMismatch();
-    error VerifiersAndCurrenciesLengthMismatch();
+    // Authorization errors
+    error UnauthorizedCaller(address caller, address authorized);
+    error UnauthorizedCallerOrDelegate(address caller, address owner, address delegate);
+
+    // Range and amount errors
+    error InvalidRange(uint256 min, uint256 max);
+    error AmountBelowMin(uint256 amount, uint256 min);
+    error AmountAboveMax(uint256 amount, uint256 max);
+    error AmountExceedsAvailable(uint256 requested, uint256 available);
+
+    // Not found errors
+    error DepositNotFound(uint256 depositId);
+    error IntentNotFound(bytes32 intentHash);
+    error VerifierNotFound(uint256 depositId, address verifier);
+    error CurrencyNotFound(address verifier, bytes32 currency);
+    error DelegateNotFound(uint256 depositId);
+
+    // Already exists errors
+    error VerifierAlreadyExists(uint256 depositId, address verifier);
+    error CurrencyAlreadyExists(address verifier, bytes32 currency);
+
+    // State errors
+    error DepositNotAcceptingIntents(uint256 depositId);
+    error DepositAlreadyInState(uint256 depositId, bool currentState);
+    error InsufficientDepositLiquidity(uint256 depositId, uint256 available, uint256 required);
+
+    // Validation errors
+    error EmptyPayeeDetails();
+    error ArrayLengthMismatch(uint256 length1, uint256 length2);
+
+    // Verifier errors
+    error VerifierNotWhitelisted(address verifier);
+    error CurrencyNotSupported(address verifier, bytes32 currency);
 
     
     /* ============ External Functions for Orchestrator ============ */
