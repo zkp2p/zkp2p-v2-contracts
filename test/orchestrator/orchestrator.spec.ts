@@ -308,34 +308,38 @@ describe("Orchestrator", () => {
     });
 
     it("should add the intent hash to the account's intents", async () => {
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
+      const tx = await subject();
+      const receipt = await tx.wait();
+
+      // Get the block timestamp from the transaction receipt
+      const block = await ethers.provider.getBlock(receipt.blockNumber);
       const intentHash = calculateIntentHash(
         onRamper.address,
         escrow.address,
         verifier.address,
         ZERO,
-        currentTimestamp
+        block.timestamp
       );
 
-      await subject();
-
       const accountIntents = await orchestrator.getAccountIntents(onRamper.address);
-      console.log("accountIntents", accountIntents);
-      console.log("intentHash", intentHash);
       expect(accountIntents).to.include(intentHash);
     });
 
     it("should emit an IntentSignaled event", async () => {
-      const currentTimestamp = await blockchain.getCurrentTimestamp();
+      const tx = await subject();
+      const receipt = await tx.wait();
+
+      // Get the block timestamp from the transaction receipt
+      const block = await ethers.provider.getBlock(receipt.blockNumber);
       const intentHash = calculateIntentHash(
         onRamper.address,
         escrow.address,
         verifier.address,
         ZERO,
-        currentTimestamp
+        block.timestamp
       );
 
-      await expect(subject()).to.emit(orchestrator, "IntentSignaled").withArgs(
+      expect(tx).to.emit(orchestrator, "IntentSignaled").withArgs(
         intentHash,
         escrow.address,
         subjectDepositId,
@@ -345,7 +349,7 @@ describe("Orchestrator", () => {
         subjectAmount,
         subjectFiatCurrency,
         subjectConversionRate,
-        currentTimestamp
+        block.timestamp
       );
     });
 

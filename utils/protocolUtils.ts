@@ -53,7 +53,7 @@ export const calculateIntentHash = (
   escrow: string,
   verifier: string,
   depositId: BigNumber,
-  timestamp: BigNumber
+  timestamp: BigNumber | number
 ): string => {
 
   const intermediateHash = ethers.utils.solidityKeccak256(
