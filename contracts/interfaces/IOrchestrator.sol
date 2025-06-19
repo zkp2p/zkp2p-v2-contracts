@@ -64,21 +64,13 @@ interface IOrchestrator {
     );
 
     event IntentPruned(
-        bytes32 indexed intentHash,
-        address indexed escrow,
-        uint256 indexed depositId
+        bytes32 indexed intentHash
     );
 
     event IntentFulfilled(
         bytes32 indexed intentHash,
-        address indexed escrow,
-        uint256 indexed depositId,
-        address verifier,
-        address owner,
-        address fundsTransferredTo,   // Address that funds were transferred to; can be intent.to or postIntentHook address
+        address indexed fundsTransferredTo,   // Address that funds were transferred to; can be intent.to or postIntentHook address
         uint256 amount,
-        uint256 protocolFee,
-        uint256 referrerFee,
         bool isManualRelease,
         bytes32 paymentCurrency,      // The currency that was actually paid
         string paymentId              // The payment ID from the payment platform

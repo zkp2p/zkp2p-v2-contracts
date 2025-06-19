@@ -179,50 +179,41 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         // Checks
         Intent memory intent = intents[_params.intentHash];
         if (intent.paymentVerifier == address(0)) revert IntentNotFound(_params.intentHash);
-
-        (
-            IPaymentVerifier.PaymentVerificationResult memory verificationResult, 
-            IERC20 _depositToken
-        ) = _verifyPayment(_params, intent);
+        
+        IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
+        IEscrow.DepositVerifierData memory depositData = IEscrow(intent.escrow).getDepositVerifierData(
+            intent.depositId, intent.paymentVerifier
+        );
+        
+        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(intent.paymentVerifier).verifyPayment(
+            IPaymentVerifier.VerifyPaymentData({
+                paymentProof: _params.paymentProof,
+                depositToken: address(deposit.token),
+                intentAmount: intent.amount,
+                intentTimestamp: intent.timestamp,
+                payeeDetails: depositData.payeeDetails,
+                fiatCurrency: intent.fiatCurrency,
+                conversionRate: intent.conversionRate,
+                depositData: depositData.data,
+                data: _params.verificationData
+            })
+        );
+        if (!verificationResult.success) revert PaymentVerificationFailed();
+        if (verificationResult.intentHash != _params.intentHash) revert HashMismatch(_params.intentHash, verificationResult.intentHash);
 
         // Effects
         _pruneIntent(_params.intentHash);
 
         // Interactions
-        IEscrow(intent.escrow).unlockAndTransferFunds(
-            intent.depositId, 
-            _params.intentHash, 
-            verificationResult.releaseAmount, 
-            address(this)
-        );
+        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _params.intentHash, verificationResult.releaseAmount, address(this));
 
-        (
-            address fundsTransferredTo, 
-            uint256 netAmountAfterFees, 
-            uint256 protocolFeeAmount, 
-            uint256 referrerFeeAmount
-        ) = _transferFundsAndExecuteAction(
-            _depositToken, 
+        _transferFundsAndExecuteAction(
+            deposit.token, 
+            _params.intentHash, 
             intent, 
-            verificationResult.releaseAmount, 
+            verificationResult,
             _params.postIntentHookData,
             false
-        );
-
-        // Events
-        emit IntentFulfilled(
-            _params.intentHash, 
-            intent.escrow,
-            intent.depositId, 
-            intent.paymentVerifier, 
-            intent.owner, 
-            fundsTransferredTo, 
-            netAmountAfterFees, 
-            protocolFeeAmount,
-            referrerFeeAmount,
-            false,
-            verificationResult.paymentCurrency,
-            verificationResult.paymentId
         );
     }
 
@@ -254,34 +245,16 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         // Interactions
         IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, _releaseAmount, address(this));
 
-        (
-            address fundsTransferredTo, 
-            uint256 netAmountAfterFees, 
-            uint256 protocolFeeAmount, 
-            uint256 referrerFeeAmount
-        ) = _transferFundsAndExecuteAction(
-            deposit.token, 
-            intent, 
-            _releaseAmount, 
-            _releaseData, 
-            true
-        );
-
-        // Events
-        emit IntentFulfilled(
-            _intentHash, 
-            intent.escrow,
-            intent.depositId, 
-            intent.paymentVerifier, 
-            intent.owner, 
-            fundsTransferredTo, 
-            netAmountAfterFees, 
-            protocolFeeAmount,
-            referrerFeeAmount,
-            true,
-            intent.fiatCurrency,
-            ""
-        );
+        // Create a result struct for manual release
+        IPaymentVerifier.PaymentVerificationResult memory manualReleaseResult = IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: _intentHash,
+            releaseAmount: _releaseAmount,
+            paymentCurrency: intent.fiatCurrency,
+            paymentId: ""
+        });
+        
+        _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, manualReleaseResult, _releaseData, true);
     }
 
     /* ============ Escrow Functions ============ */
@@ -503,37 +476,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }
 
-    function _verifyPayment(
-        FulfillIntentParams calldata _params,
-        Intent memory _intent
-    ) internal returns (
-        IPaymentVerifier.PaymentVerificationResult memory, IERC20 _depositToken
-    ) {
-        // Get deposit and verifier data from escrow contract
-        IEscrow.Deposit memory deposit = IEscrow(_intent.escrow).getDeposit(_intent.depositId);
-        IEscrow.DepositVerifierData memory depositData = IEscrow(_intent.escrow).getDepositVerifierData(
-            _intent.depositId, _intent.paymentVerifier
-        );
-        
-        _depositToken = deposit.token;
-        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(_intent.paymentVerifier).verifyPayment(
-            IPaymentVerifier.VerifyPaymentData({
-                paymentProof: _params.paymentProof,
-                depositToken: address(_depositToken),
-                intentAmount: _intent.amount,
-                intentTimestamp: _intent.timestamp,
-                payeeDetails: depositData.payeeDetails,
-                fiatCurrency: _intent.fiatCurrency,
-                conversionRate: _intent.conversionRate,
-                depositData: depositData.data,
-                data: _params.verificationData
-            })
-        );
-        if (!verificationResult.success) revert PaymentVerificationFailed();
-        if (verificationResult.intentHash != _params.intentHash) revert HashMismatch(_params.intentHash, verificationResult.intentHash);
-
-        return (verificationResult, _depositToken);
-    }
 
     /**
      * @notice Deletes an intent from storage mappings.
@@ -544,7 +486,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         accountIntents[intent.owner].removeStorage(_intentHash);
         delete intents[_intentHash];
 
-        emit IntentPruned(_intentHash, intent.escrow, intent.depositId);
+        emit IntentPruned(_intentHash);
     }
 
     /**
@@ -552,60 +494,61 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      */
     function _transferFundsAndExecuteAction(
         IERC20 _token, 
+        bytes32 _intentHash, 
         Intent memory _intent, 
-        uint256 _releaseAmount,
-        bytes memory _fulfillIntentData,
+        IPaymentVerifier.PaymentVerificationResult memory _verificationResult,
+        bytes memory _postIntentHookData,
         bool _isManualRelease
-    ) internal 
-        returns (
-            address fundsTransferredTo, 
-            uint256 netAmountAfterFees, 
-            uint256 protocolFeeAmount, 
-            uint256 referrerFeeAmount
-        )
-    {
+    ) internal {
         
+        uint256 protocolFeeAmount;
+        uint256 referrerFeeAmount; 
+
         // Calculate protocol fee (taken from taker) - based on release amount
         if (protocolFeeRecipient != address(0) && protocolFee > 0) {
-            protocolFeeAmount = (_releaseAmount * protocolFee) / PRECISE_UNIT;
+            protocolFeeAmount = (_verificationResult.releaseAmount * protocolFee) / PRECISE_UNIT;
         }
         
         // Calculate referrer fee (taken from taker) - based on release amount
         if (_intent.referrer != address(0) && _intent.referrerFee > 0) {
-            referrerFeeAmount = (_releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
+            referrerFeeAmount = (_verificationResult.releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
         }
         
-        // Total fees taken from taker
-        uint256 totalFees = protocolFeeAmount + referrerFeeAmount;
-        
         // Net amount the taker receives after fees
-        netAmountAfterFees = _releaseAmount - totalFees;
+        uint256 netAmount = _verificationResult.releaseAmount - protocolFeeAmount - referrerFeeAmount;
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {
-            _token.transfer(protocolFeeRecipient, protocolFeeAmount);
+            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert TransferFailed(protocolFeeRecipient, protocolFeeAmount);
         }
         
         // Transfer referrer fee
         if (referrerFeeAmount > 0) {
-            _token.transfer(_intent.referrer, referrerFeeAmount);
+            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert TransferFailed(_intent.referrer, referrerFeeAmount);
         }
 
         // If there's a post-intent hook, handle it; skip if manual release
+        address fundsTransferredTo = _intent.to;
         if (address(_intent.postIntentHook) != address(0) && !_isManualRelease) {
-            _token.approve(address(_intent.postIntentHook), netAmountAfterFees);
-            _intent.postIntentHook.execute(_intent, netAmountAfterFees, _fulfillIntentData);
+            _token.approve(address(_intent.postIntentHook), netAmount);
+            _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
 
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
             // Otherwise transfer directly to the intent recipient
-            _token.transfer(_intent.to, netAmountAfterFees);
-            
-            fundsTransferredTo = _intent.to;
+            if (!_token.transfer(_intent.to, netAmount)) revert TransferFailed(_intent.to, netAmount);
         }
 
-        return (fundsTransferredTo, netAmountAfterFees, protocolFeeAmount, referrerFeeAmount);
+        emit IntentFulfilled(
+            _intentHash, 
+            fundsTransferredTo, 
+            netAmount, 
+            _isManualRelease,
+            _verificationResult.paymentCurrency,
+            _verificationResult.paymentId
+        );
     }
+
 
     /**
      * @notice Checks if a signature is valid.

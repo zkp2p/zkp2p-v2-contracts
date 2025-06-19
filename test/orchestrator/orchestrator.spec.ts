@@ -422,9 +422,7 @@ describe("Orchestrator", () => {
 
       it("should emit an IntentPruned event", async () => {
         await expect(subject()).to.emit(orchestrator, "IntentPruned").withArgs(
-          oldIntentHash,
-          escrow.address,
-          subjectDepositId
+          oldIntentHash
         );
       });
 
@@ -969,14 +967,8 @@ describe("Orchestrator", () => {
       const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
       await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
         intentHash,
-        escrow.address,
-        ZERO,
-        verifier.address,
-        onRamper.address,
         onRamper.address,
         releaseAmount,
-        0,
-        0,
         false,
         Currency.USD,
         "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1122,14 +1114,8 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
-          escrow.address,
-          ZERO,
-          verifier.address,
-          onRamper.address,
           onRamper.address,
           releaseAmount.sub(fee),
-          fee,
-          0, // No referrer fee
           false,
           Currency.USD,
           "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1206,14 +1192,8 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
-          escrow.address,
-          ZERO,
-          verifier.address,
-          onRamper.address,
           onRamper.address,
           releaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
-          0,               // No protocol fee in this test
-          referrerFee,
           false,
           Currency.USD,
           "1234abcd"    // hardcoded payment ID in mock verifier  
@@ -1254,14 +1234,8 @@ describe("Orchestrator", () => {
 
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             intentHash,
-            escrow.address,
-            ZERO,
-            verifier.address,
-            onRamper.address,
             onRamper.address,
             releaseAmount.sub(totalFees),
-            protocolFee,
-            referrerFee,
             false,
             Currency.USD,
             "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1405,14 +1379,8 @@ describe("Orchestrator", () => {
         const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           subjectIntentHash,    // Hash of the intent fulfilled
-          escrow.address,
-          ZERO,    // ID of the deposit used
-          verifier.address,     // Verifier used
-          onRamper.address,     // Intent owner
           postIntentHookMock.address,     // Post intent hook address
           releaseAmount,             // Amount transferred (after 0 fees in this case)
-          ZERO,                 // Protocol fee
-          ZERO,                  // Referrer fee
           false,
           Currency.USD,
           "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1447,14 +1415,8 @@ describe("Orchestrator", () => {
           const fee = releaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             subjectIntentHash,
-            escrow.address,
-            ZERO,
-            verifier.address,
-            onRamper.address,
             postIntentHookMock.address,     // Post intent hook address
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
-            fee,                  // Protocol fee
-            ZERO,                  // Referrer fee
             false,
             Currency.USD,
             "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1507,14 +1469,8 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
-          escrow.address,
-          ZERO,
-          verifier.address,
-          onRamper.address,
           onRamper.address,
           releasedAmount,
-          0,
-          0,
           false,
           Currency.USD,
           "1234abcd"    // hardcoded payment ID in mock verifier
@@ -1657,14 +1613,8 @@ describe("Orchestrator", () => {
     it("should emit an IntentFulfilled event", async () => {
       await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
         subjectIntentHash,
-        escrow.address,
-        ZERO,
-        verifier.address,
-        onRamper.address,
         onRamper.address,
         subjectReleaseAmount,
-        ZERO, // protocol fee
-        ZERO, // referrer fee
         true, // manual release
         Currency.USD,
         ""    // Empty payment ID since release is manual
@@ -1762,14 +1712,8 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
-          escrow.address,
-          ZERO,
-          verifier.address,
-          onRamper.address,
           onRamper.address,
           subjectReleaseAmount.sub(fee),
-          fee,
-          0, // No referrer fee
           true,  // manual release
           Currency.USD,
           ""    // Empty payment ID since release is manual
@@ -1840,14 +1784,8 @@ describe("Orchestrator", () => {
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
-          escrow.address,
-          ZERO,
-          verifier.address,
-          onRamper.address,
           onRamper.address,
           subjectReleaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
-          0,               // No protocol fee in this test
-          referrerFee,
           true,  // manual release
           Currency.USD,
           ""    // Empty payment ID since release is manual
@@ -1886,14 +1824,8 @@ describe("Orchestrator", () => {
 
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             intentHash,
-            escrow.address,
-            ZERO,
-            verifier.address,
-            onRamper.address,
             onRamper.address,
             subjectReleaseAmount.sub(totalFees),
-            protocolFee,
-            referrerFee,
             true,  // manual release
             Currency.USD,
             ""    // Empty payment ID since release is manual
@@ -1990,14 +1922,8 @@ describe("Orchestrator", () => {
           const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             subjectIntentHash,
-            escrow.address,
-            ZERO,
-            verifier.address,
-            onRamper.address,
             onRamper.address,     // Original intent.to
             subjectReleaseAmount.sub(fee),    // Amount transferred to hook's destination
-            fee,                  // Protocol fee
-            ZERO,                  // Referrer fee
             true,
             Currency.USD,
             ""    // Empty payment ID since release is manual
@@ -2155,9 +2081,7 @@ describe("Orchestrator", () => {
 
       for (let i = 0; i < intentHashes.length; i++) {
         await expect(tx).to.emit(orchestrator, "IntentPruned").withArgs(
-          intentHashes[i],
-          escrow.address,
-          depositId
+          intentHashes[i]
         );
       }
     });
