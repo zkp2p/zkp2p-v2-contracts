@@ -134,7 +134,7 @@ describe("CashappReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -149,17 +149,15 @@ describe("CashappReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
       // Payment is $1.00, conversion rate is 0.9, intent amount is 1.11
       // Release amount = 1.00 / 0.9 = 1.111... but capped at intent amount 1.11
-      expect(releaseAmount).to.eq(usdc(1.11));
+      expect(result.releaseAmount).to.eq(usdc(1.11));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('7cwz2mgva');
     });
 
     it("should nullify the payment id", async () => {
@@ -190,17 +188,15 @@ describe("CashappReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
         // Payment is $1.00, conversion rate is 0.9, intent amount is 5
         // Release amount = 1.00 / 0.9 = 1.111... USDC
-        expect(releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+        expect(result.releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('7cwz2mgva');
       });
 
       it("should nullify the payment", async () => {

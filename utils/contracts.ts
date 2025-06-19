@@ -25,7 +25,8 @@ export {
   ZelleBaseVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
-  ZelleChaseReclaimVerifier
+  ZelleChaseReclaimVerifier,
+  IPaymentVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
 export { IOrchestrator } from "../typechain/contracts/Orchestrator";

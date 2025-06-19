@@ -157,7 +157,7 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -172,17 +172,15 @@ describe("MercadoPagoReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
       // Payment is 1 ARS, conversion rate is .11, intent amount is 9
       // Release amount = 1 / .11 = 9.0909... but capped at intent amount 9
-      expect(releaseAmount).to.eq(usdc(9));
+      expect(result.releaseAmount).to.eq(usdc(9));
+      expect(result.paymentCurrency).to.eq(Currency.ARS);
+      expect(result.paymentId).to.eq('105936159704');
     });
 
     it("should nullify the payment id", async () => {
@@ -209,10 +207,13 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
 
       it("should verify the proof", async () => {
-        const [verified, intentHash] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+        expect(result.releaseAmount).to.eq(usdc(36.36));
+        expect(result.paymentCurrency).to.eq(Currency.ARS);
+        expect(result.paymentId).to.eq('\\"105505128951\\"');
       });
 
       it("should nullify the payment id", async () => {
@@ -244,17 +245,15 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
         // Payment is 1 ARS, conversion rate is .11, intent amount is 10
         // Release amount = 1 / .11 = 9.0909... but capped at intent amount 10
-        expect(releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(.11)));
+        expect(result.releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(.11)));
+        expect(result.paymentCurrency).to.eq(Currency.ARS);
+        expect(result.paymentId).to.eq('105936159704');
       });
     });
 

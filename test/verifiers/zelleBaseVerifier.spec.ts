@@ -255,7 +255,7 @@ describe("ZelleBaseVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(1748393775); // Slightly after payment timestamp
       subjectConversionRate = ether(0.9);   // 110 * 0.9 = 99 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0x907677337cbb16e036508f13be415d848b3b8237d038189fa94825fe05f64614";
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectData = "0x";
       subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -263,7 +263,7 @@ describe("ZelleBaseVerifier", () => {
       );
     });
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await zelleBaseVerifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -278,15 +278,13 @@ describe("ZelleBaseVerifier", () => {
     }
 
     it("should verify the bank of america proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x28a5929360d217432e6db97002bf2a7670a92e82bc91fbc6b887188e41290ed5");
-      expect(releaseAmount).to.eq(usdc(1));
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq("0x28a5929360d217432e6db97002bf2a7670a92e82bc91fbc6b887188e41290ed5");
+      expect(result.releaseAmount).to.eq(usdc(1));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('jqaa7v4iw');
     });
 
     describe("when caller is not escrow", async () => {

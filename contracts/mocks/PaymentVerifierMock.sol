@@ -63,7 +63,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         external
         view 
         override
-        returns (bool, bytes32, uint256)
+        returns (PaymentVerificationResult memory)
     {
         PaymentDetails memory paymentDetails = _extractPaymentDetails(_verifyPaymentData.paymentProof);
 
@@ -75,7 +75,13 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         }
         
         if (shouldReturnFalse) {
-            return (false, bytes32(0), 0);
+            return PaymentVerificationResult({
+                success: false,
+                intentHash: bytes32(0),
+                releaseAmount: 0,
+                paymentCurrency: bytes32(0),
+                paymentId: ""
+            });
         }
 
         // Calculate release amount based on payment amount and conversion rate
@@ -86,7 +92,13 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
             releaseAmount = _verifyPaymentData.intentAmount;
         }
 
-        return (true, paymentDetails.intentHash, releaseAmount);
+        return PaymentVerificationResult({
+            success: true,
+            intentHash: paymentDetails.intentHash,
+            releaseAmount: releaseAmount,
+            paymentCurrency: paymentDetails.fiatCurrency,
+            paymentId: "1234abcd"
+        });
     }
 
     function _extractPaymentDetails(bytes calldata _proof) internal pure returns (PaymentDetails memory) {

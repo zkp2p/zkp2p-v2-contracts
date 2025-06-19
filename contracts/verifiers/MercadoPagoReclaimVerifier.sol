@@ -69,16 +69,14 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
      * Additionaly, checks the right fiatCurrency was paid and the payment status is correct.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
-     * @return success Whether the payment verification succeeded
-     * @return intentHash The hash of the intent being fulfilled
-     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32, uint256)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
@@ -103,7 +101,14 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         _validateAndAddNullifier(nullifier);
 
         bytes32 intentHashBytes = bytes32(paymentDetails.intentHash.stringToUint(0));
-        return (true, intentHashBytes, releaseAmount);
+        
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: intentHashBytes,
+            releaseAmount: releaseAmount,
+            paymentCurrency: _verifyPaymentData.fiatCurrency, // Use the intended currency as payment currency
+            paymentId: paymentDetails.paymentId
+        });
     }
 
     /* ============ Internal Functions ============ */

@@ -64,16 +64,14 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      * Additionaly, checks the right fiatCurrency was paid and the payment status is COMPLETED.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
-     * @return success Whether the payment verification succeeded
-     * @return intentHash The hash of the intent being fulfilled
-     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32, uint256)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
@@ -97,7 +95,13 @@ contract RevolutReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)), releaseAmount);
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: bytes32(paymentDetails.intentHash.stringToUint(0)),
+            releaseAmount: releaseAmount,
+            paymentCurrency: _verifyPaymentData.fiatCurrency, // Use the intended currency as payment currency
+            paymentId: paymentDetails.paymentId
+        });
     }
 
     /* ============ Internal Functions ============ */

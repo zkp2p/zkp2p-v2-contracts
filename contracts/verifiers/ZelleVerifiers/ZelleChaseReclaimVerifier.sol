@@ -59,17 +59,15 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     /**
      * Verifies two Reclaim proofs for a Chase Zelle payment.
-     * @return success Whether the payment verification succeeded
-     * @return intentHash The hash of the intent being fulfilled
-     * @return releaseAmount The amount of tokens to release based on actual payment and conversion rate
      * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external
         override
-        returns (bool, bytes32, uint256)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == baseVerifier, "Only base verifier can call");
 
@@ -91,7 +89,13 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
         // Nullify the payment
         _validateAndAddNullifier(keccak256(abi.encodePacked(paymentDetails.paymentId)));
 
-        return (true, bytes32(paymentDetails.intentHash.stringToUint(0)), releaseAmount);
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: bytes32(paymentDetails.intentHash.stringToUint(0)),
+            releaseAmount: releaseAmount,
+            paymentCurrency: _verifyPaymentData.fiatCurrency, // Zelle only supports USD
+            paymentId: paymentDetails.paymentId
+        });
     }
 
     function _verifyProofsAndExtractValues(bytes calldata _proofs, bytes calldata _depositData)

@@ -143,7 +143,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(0.99);   // 5 * 0.99 = 4.95 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectData = "0x";
       subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -165,7 +165,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -180,17 +180,15 @@ describe("ZelleBoAReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('8326399457664203853385587893474801619762725624996440086480664263627804731444').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('8326399457664203853385587893474801619762725624996440086480664263627804731444').toHexString());
       // Payment is $5, conversion rate is 0.99, intent amount is 5
       // Release amount = 5 / 0.99 = 5.05050505... but capped at intent amount 5
-      expect(releaseAmount).to.eq(usdc(5));
+      expect(result.releaseAmount).to.eq(usdc(5));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('osmgnjz2u');
     });
 
     it("should nullify the payment id", async () => {
@@ -220,17 +218,15 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from("8326399457664203853385587893474801619762725624996440086480664263627804731444").toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("8326399457664203853385587893474801619762725624996440086480664263627804731444").toHexString());
         // Payment is $5, conversion rate is 0.9, intent amount is 20
         // Release amount = 5 / 0.9 = 5.55555555... USDC
-        expect(releaseAmount).to.eq(usdc(5.555555));  // limited to 6 decimal places and rounded down
+        expect(result.releaseAmount).to.eq(usdc(5.555555));  // limited to 6 decimal places and rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('osmgnjz2u');
       });
     });
 

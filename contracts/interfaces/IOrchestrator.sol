@@ -79,7 +79,9 @@ interface IOrchestrator {
         uint256 amount,
         uint256 protocolFee,
         uint256 referrerFee,
-        bool isManualRelease
+        bool isManualRelease,
+        bytes32 paymentCurrency,      // The currency that was actually paid
+        string paymentId              // The payment ID from the payment platform
     );
 
     event AllowMultipleIntentsUpdated(bool allowMultiple);

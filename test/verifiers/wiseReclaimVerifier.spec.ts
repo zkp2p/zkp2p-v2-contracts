@@ -143,7 +143,7 @@ describe("WiseReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -158,17 +158,15 @@ describe("WiseReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
       // Payment is 0.11 EUR, conversion rate is 1.1, intent amount is 0.1 USDC
       // Release amount = 0.11 / 1.1 = 0.1 USDC
-      expect(releaseAmount).to.eq(usdc(0.1));
+      expect(result.releaseAmount).to.eq(usdc(0.1));
+      expect(result.paymentCurrency).to.eq(Currency.EUR);
+      expect(result.paymentId).to.eq('1036122853');
     });
 
     it("should nullify the payment id", async () => {
@@ -219,17 +217,15 @@ describe("WiseReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from("3255272855445122854259407670991079284015086279635495324568586132056928581139").toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("3255272855445122854259407670991079284015086279635495324568586132056928581139").toHexString());
         // Payment is 0.11 EUR, conversion rate is 1.01, intent amount is 2 USDC
         // Release amount = 0.11 / 1.01 = 0.10891089
-        expect(releaseAmount).to.eq(usdc(0.108910));  // limited to 6 decimal places and rounded down
+        expect(result.releaseAmount).to.eq(usdc(0.108910));  // limited to 6 decimal places and rounded down
+        expect(result.paymentCurrency).to.eq(Currency.EUR);
+        expect(result.paymentId).to.eq('1036122853');
       });
     });
 
@@ -420,18 +416,16 @@ describe("WiseReclaimVerifier", () => {
         });
 
         it("should verify the proof with penalty applied", async () => {
-          const [
-            verified,
-            intentHash,
-            releaseAmount
-          ] = await subjectCallStatic();
+          const result = await subjectCallStatic();
 
-          expect(verified).to.be.true;
-          expect(intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
+          expect(result.success).to.be.true;
+          expect(result.intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
           // Payment is 0.11 USD, conversion rate is 1.01, intent amount is 0.1 USDC
           // Release amount before penalty = 0.11 / 1.01 = 0.1 (capped at intent amount)
           // With 1% penalty: 0.1 * 0.99 = 0.099 USDC
-          expect(releaseAmount).to.eq(usdc(0.099));  // limited to 6 decimal places and rounded down
+          expect(result.releaseAmount).to.eq(usdc(0.099));  // limited to 6 decimal places and rounded down
+          expect(result.paymentCurrency).to.eq(Currency.USD);
+          expect(result.paymentId).to.eq('1036122853');
         });
 
         describe("when payment amount is less than the expected payment amount", async () => {
@@ -461,16 +455,15 @@ describe("WiseReclaimVerifier", () => {
           });
 
           it("should verify the proof with penalty applied", async () => {
-            const [
-              verified,
-              intentHash,
-              releaseAmount
-            ] = await subjectCallStatic();
+            const result = await subjectCallStatic();
 
+            expect(result.success).to.be.true;
             // Payment is 0.11 USD, conversion rate is 2, intent amount is 0.1 USDC
             // Release amount before penalty = 0.11 / 2 = 0.055 USDC
             // With 1% penalty: 0.055 * 0.99 = 0.05445 USDC
-            expect(releaseAmount).to.eq(usdc(0.05445));  // limited to 6 decimal places and rounded down
+            expect(result.releaseAmount).to.eq(usdc(0.05445));  // limited to 6 decimal places and rounded down
+            expect(result.paymentCurrency).to.eq(Currency.USD);
+            expect(result.paymentId).to.eq('1036122853');
           });
         });
 

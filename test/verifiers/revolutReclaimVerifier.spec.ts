@@ -160,7 +160,7 @@ describe("RevolutReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -175,17 +175,15 @@ describe("RevolutReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('2618855330259351132643749738312276409026917421853980101201034599731745761128').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('2618855330259351132643749738312276409026917421853980101201034599731745761128').toHexString());
       // Payment is 0.98 EUR, conversion rate is 0.9, intent amount is 1 USDC
       // Release amount = 0.98 / 0.9 = 1.0888... but capped at intent amount 1
-      expect(releaseAmount).to.eq(usdc(1));
+      expect(result.releaseAmount).to.eq(usdc(1));
+      expect(result.paymentCurrency).to.eq(Currency.EUR);
+      expect(result.paymentId).to.eq('67759372-3c29-a180-8947-6f71f4788e5a');
     });
 
     it("should nullify the payment id", async () => {
@@ -209,13 +207,13 @@ describe("RevolutReclaimVerifier", () => {
       });
 
       it("should verify the proof", async () => {
-        const [
-          verified,
-          intentHash
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('21138964711553769010780423915557687380568289483182695160148231659899695028258').toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from('21138964711553769010780423915557687380568289483182695160148231659899695028258').toHexString());
+        expect(result.releaseAmount).to.eq(usdc(1));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('677c3686-4589-a4d3-b190-fc8380389c49');
       });
     });
 
@@ -238,17 +236,15 @@ describe("RevolutReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from("2618855330259351132643749738312276409026917421853980101201034599731745761128").toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("2618855330259351132643749738312276409026917421853980101201034599731745761128").toHexString());
         // Payment is 0.98 EUR, conversion rate is 0.9, intent amount is 2 USDC
         // Release amount = 0.98 / 0.9 = 1.0888... but capped at intent amount 1
-        expect(releaseAmount).to.eq(usdc(1.088888));   // restricted to 6 decimal places and rounded down
+        expect(result.releaseAmount).to.eq(usdc(1.088888));   // restricted to 6 decimal places and rounded down
+        expect(result.paymentCurrency).to.eq(Currency.EUR);
+        expect(result.paymentId).to.eq('67759372-3c29-a180-8947-6f71f4788e5a');
       });
     });
 

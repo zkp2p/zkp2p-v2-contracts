@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { NullifierRegistry, VenmoReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, VenmoReclaimVerifier, USDCMock, IPaymentVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -141,7 +141,7 @@ describe("VenmoReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(0.9);   // 1.1 * 0.9 = 0.99 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0xc70eb85ded26d9377e4f0b244c638ee8f7e731114911bf547bff27f7d8fc3bfa";
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
@@ -163,7 +163,7 @@ describe("VenmoReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<IPaymentVerifier.PaymentVerificationResultStruct> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -178,17 +178,15 @@ describe("VenmoReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
       // Payment is $1.00, conversion rate is 0.9, intent amount is 1.1
       // Release amount = 1.00 / 0.9 = 1.111... but capped at intent amount 1.1
-      expect(releaseAmount).to.eq(usdc(1.1));
+      expect(result.releaseAmount).to.eq(usdc(1.1));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('4282537099205562654');
     });
 
     it("should nullify the payment id", async () => {
@@ -215,15 +213,13 @@ describe("VenmoReclaimVerifier", () => {
       });
 
       it("should verify the proof", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
-        expect(releaseAmount).to.eq(usdc(1.1));
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
+        expect(result.releaseAmount).to.eq(usdc(1.1));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('4239767587180066226');
       });
     });
 
@@ -245,17 +241,15 @@ describe("VenmoReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
         // Payment is $1.00, conversion rate is 0.9, intent amount is 5
         // Release amount = 1.00 / 0.9 = 1.111... USDC
-        expect(releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+        expect(result.releaseAmount).to.eq(usdc(1).mul(ether(1)).div(ether(0.9)));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('4282537099205562654');
       });
     });
 

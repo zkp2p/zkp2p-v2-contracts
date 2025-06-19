@@ -848,7 +848,8 @@ describe("Orchestrator", () => {
   describe("#fulfillIntent", async () => {
     let subjectProof: string;
     let subjectIntentHash: string;
-    let subjectFulfillIntentData: string;
+    let subjectVerificationData: string;
+    let subjectPostIntentDataData: string;
     let subjectCaller: Account;
 
     let intentAmount: BigNumber;
@@ -920,16 +921,18 @@ describe("Orchestrator", () => {
         [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
       );
       subjectIntentHash = intentHash;
-      subjectFulfillIntentData = "0x";
+      subjectVerificationData = "0x";
+      subjectPostIntentDataData = "0x";
       subjectCaller = onRamper;
     });
 
     async function subject(): Promise<any> {
-      return orchestrator.connect(subjectCaller.wallet).fulfillIntent(
-        subjectProof,
-        subjectIntentHash,
-        subjectFulfillIntentData
-      );
+      return orchestrator.connect(subjectCaller.wallet).fulfillIntent({
+        paymentProof: subjectProof,
+        intentHash: subjectIntentHash,
+        verificationData: subjectVerificationData,
+        postIntentHookData: subjectPostIntentDataData
+      });
     }
 
     it("should transfer the correct amount to the on-ramper", async () => {
@@ -974,7 +977,9 @@ describe("Orchestrator", () => {
         releaseAmount,
         0,
         0,
-        false
+        false,
+        Currency.USD,
+        "1234abcd"    // hardcoded payment ID in mock verifier
       );
     });
 
@@ -1018,11 +1023,12 @@ describe("Orchestrator", () => {
         );
 
         // Release 60 / 1.08 = 55.56 USDC > 50 USDC intent amount; so release full $50 to the payer
-        await orchestrator.connect(onRamper.wallet).fulfillIntent(
-          proof1,
-          intentHash,
-          "0x"
-        );
+        await orchestrator.connect(onRamper.wallet).fulfillIntent({
+          paymentProof: proof1,
+          intentHash: intentHash,
+          verificationData: "0x",
+          postIntentHookData: "0x"
+        });
 
         // // Wait for 1 day
         // await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(10).toNumber());
@@ -1124,7 +1130,9 @@ describe("Orchestrator", () => {
           releaseAmount.sub(fee),
           fee,
           0, // No referrer fee
-          false
+          false,
+          Currency.USD,
+          "1234abcd"    // hardcoded payment ID in mock verifier
         );
       });
     });
@@ -1206,7 +1214,9 @@ describe("Orchestrator", () => {
           releaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
           0,               // No protocol fee in this test
           referrerFee,
-          false
+          false,
+          Currency.USD,
+          "1234abcd"    // hardcoded payment ID in mock verifier  
         );
       });
 
@@ -1252,7 +1262,9 @@ describe("Orchestrator", () => {
             releaseAmount.sub(totalFees),
             protocolFee,
             referrerFee,
-            false
+            false,
+            Currency.USD,
+            "1234abcd"    // hardcoded payment ID in mock verifier
           );
         });
       });
@@ -1369,7 +1381,7 @@ describe("Orchestrator", () => {
         );
         subjectIntentHash = intentHash;
         subjectCaller = onRamper;
-        subjectFulfillIntentData = "0x"; // Still keep it empty
+        subjectPostIntentDataData = "0x"; // Still keep it empty
       });
 
       it("should transfer funds to the hook's target address, not the intent.to address", async () => {
@@ -1401,7 +1413,9 @@ describe("Orchestrator", () => {
           releaseAmount,             // Amount transferred (after 0 fees in this case)
           ZERO,                 // Protocol fee
           ZERO,                  // Referrer fee
-          false
+          false,
+          Currency.USD,
+          "1234abcd"    // hardcoded payment ID in mock verifier
         );
       });
 
@@ -1441,7 +1455,9 @@ describe("Orchestrator", () => {
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
             fee,                  // Protocol fee
             ZERO,                  // Referrer fee
-            false
+            false,
+            Currency.USD,
+            "1234abcd"    // hardcoded payment ID in mock verifier
           );
         });
       });
@@ -1499,7 +1515,9 @@ describe("Orchestrator", () => {
           releasedAmount,
           0,
           0,
-          false
+          false,
+          Currency.USD,
+          "1234abcd"    // hardcoded payment ID in mock verifier
         );
       });
 
@@ -1647,7 +1665,9 @@ describe("Orchestrator", () => {
         subjectReleaseAmount,
         ZERO, // protocol fee
         ZERO, // referrer fee
-        true // manual release
+        true, // manual release
+        Currency.USD,
+        ""    // Empty payment ID since release is manual
       );
     });
 
@@ -1750,7 +1770,9 @@ describe("Orchestrator", () => {
           subjectReleaseAmount.sub(fee),
           fee,
           0, // No referrer fee
-          true  // manual release
+          true,  // manual release
+          Currency.USD,
+          ""    // Empty payment ID since release is manual
         );
       });
     });
@@ -1826,7 +1848,9 @@ describe("Orchestrator", () => {
           subjectReleaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
           0,               // No protocol fee in this test
           referrerFee,
-          true  // manual release
+          true,  // manual release
+          Currency.USD,
+          ""    // Empty payment ID since release is manual
         );
       });
 
@@ -1870,7 +1894,9 @@ describe("Orchestrator", () => {
             subjectReleaseAmount.sub(totalFees),
             protocolFee,
             referrerFee,
-            true  // manual release
+            true,  // manual release
+            Currency.USD,
+            ""    // Empty payment ID since release is manual
           );
         });
       });
@@ -1972,7 +1998,9 @@ describe("Orchestrator", () => {
             subjectReleaseAmount.sub(fee),    // Amount transferred to hook's destination
             fee,                  // Protocol fee
             ZERO,                  // Referrer fee
-            true
+            true,
+            Currency.USD,
+            ""    // Empty payment ID since release is manual
           );
         });
       });

@@ -84,16 +84,14 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * Note: The depositor needs to provide a currency resolution service address in the deposit data.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
-     * @return success Whether the payment verification succeeded
-     * @return intentHash The hash of the intent being fulfilled
-     * @return releaseAmount The amount of tokens to release (adjusted for penalties if applicable)
+     * @return result PaymentVerificationResult struct containing verification status and payment details
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32, uint256)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
@@ -150,7 +148,13 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
         _validateAndAddNullifier(nullifier);
 
-        return (true, intentHash, releaseAmount);
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: intentHash,
+            releaseAmount: releaseAmount,
+            paymentCurrency: paymentCurrency,
+            paymentId: paymentDetails.paymentId
+        });
     }
 
     /* ============ Internal Functions ============ */

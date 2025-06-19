@@ -729,7 +729,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(1);   // 10 * 1 = 10
       subjectPayeeDetailsHash = "0x829bf7a59c5884cda204d6932e01e010a0b609e16dcef6da89b571a30b8b7cbb";
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectData = "0x";
       subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -751,7 +751,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -766,17 +766,15 @@ describe("ZelleChaseReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
       // Payment is $10, conversion rate is 1, intent amount is 10
       // Release amount = 10 / 1 = 10
-      expect(releaseAmount).to.eq(usdc(10));
+      expect(result.releaseAmount).to.eq(usdc(10));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('24569221649');
     });
 
     describe("when the payment amount is less than the expected payment amount", async () => {
@@ -786,17 +784,15 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
         // Payment is $10, conversion rate is 0.9, intent amount is 20
         // Release amount = 10 / 0.9 = 11.111...
-        expect(releaseAmount).to.eq(usdc(11.111111));  // 6 decimal places rounded down
+        expect(result.releaseAmount).to.eq(usdc(11.111111));  // 6 decimal places rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('24569221649');
       });
     });
 

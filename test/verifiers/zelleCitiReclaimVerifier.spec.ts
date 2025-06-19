@@ -271,7 +271,7 @@ describe("ZelleCitiReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp - 86400); // 1 day before
       subjectConversionRate = ether(0.9);
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
-      subjectFiatCurrency = ZERO_BYTES32;
+      subjectFiatCurrency = Currency.USD;
       subjectData = "0x";
       subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -293,7 +293,7 @@ describe("ZelleCitiReclaimVerifier", () => {
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string, BigNumber]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -308,17 +308,15 @@ describe("ZelleCitiReclaimVerifier", () => {
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash,
-        releaseAmount
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('4948915460758196888156147053328476497446483899021706653248173960948416723660').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('4948915460758196888156147053328476497446483899021706653248173960948416723660').toHexString());
       // Payment is $10, conversion rate is 0.9, intent amount is 11
       // Release amount = 10 / 0.9 = 11.111... but capped at intent amount 11
-      expect(releaseAmount).to.eq(usdc(11));
+      expect(result.releaseAmount).to.eq(usdc(11));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('CTIwjcKauxso');
     });
 
     it("should nullify the payment id", async () => {
@@ -348,17 +346,15 @@ describe("ZelleCitiReclaimVerifier", () => {
       });
 
       it("should succeed with partial payment", async () => {
-        const [
-          verified,
-          intentHash,
-          releaseAmount
-        ] = await subjectCallStatic();
+        const result = await subjectCallStatic();
 
-        expect(verified).to.be.true;
-        expect(intentHash).to.eq(BigNumber.from("4948915460758196888156147053328476497446483899021706653248173960948416723660").toHexString());
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("4948915460758196888156147053328476497446483899021706653248173960948416723660").toHexString());
         // Payment is $10, conversion rate is 0.9, intent amount is 20
         // Release amount = 10 / 0.9 = 11.111... USDC
-        expect(releaseAmount).to.eq(usdc(11.111111));  // 6 decimals rounded down
+        expect(result.releaseAmount).to.eq(usdc(11.111111));  // 6 decimals rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('CTIwjcKauxso');
       });
     });
 
