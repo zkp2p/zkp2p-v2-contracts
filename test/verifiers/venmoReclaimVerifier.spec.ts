@@ -122,6 +122,7 @@ describe("VenmoReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -141,10 +142,11 @@ describe("VenmoReclaimVerifier", () => {
       subjectConversionRate = ether(0.9);   // 1.1 * 0.9 = 0.99 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0xc70eb85ded26d9377e4f0b244c638ee8f7e731114911bf547bff27f7d8fc3bfa";
       subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
+      subjectData = "0x";
     });
 
     async function subject(): Promise<any> {
@@ -156,6 +158,7 @@ describe("VenmoReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
@@ -169,6 +172,7 @@ describe("VenmoReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
@@ -267,7 +271,7 @@ describe("VenmoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -340,7 +344,7 @@ describe("VenmoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

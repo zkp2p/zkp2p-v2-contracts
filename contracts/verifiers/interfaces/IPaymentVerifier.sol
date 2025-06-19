@@ -15,7 +15,8 @@ interface IPaymentVerifier {
         string payeeDetails;                    // Payee details (hash of payee's payment platform ID OR just raw ID)
         bytes32 fiatCurrency;                   // Fiat currency the offchain payer paid in
         uint256 conversionRate;                 // Conversion rate of deposit token to fiat currency
-        bytes data;                             // Additional data required for verification (e.g. attester address)
+        bytes depositData;                      // Additional data provided by the depositor (e.g. witness signatures)
+        bytes data;                             // Additional data provided by the taker (e.g. currency price etc.)
     }
 
     /* ============ External Functions ============ */

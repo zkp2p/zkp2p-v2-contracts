@@ -116,6 +116,7 @@ describe("MercadoPagoReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -135,7 +136,8 @@ describe("MercadoPagoReclaimVerifier", () => {
       subjectConversionRate = ether(.11);     // 9 USDC * .11 ARS / USDC = .99 ARS required payment amount
       subjectPayeeDetailsHash = "0xf5b16d9e4edde5a51d378b8126eaffb65d0d06d0ad21f4d037611f945d3837e8";
       subjectFiatCurrency = Currency.ARS;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -150,7 +152,8 @@ describe("MercadoPagoReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -163,7 +166,8 @@ describe("MercadoPagoReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -266,7 +270,7 @@ describe("MercadoPagoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -338,7 +342,7 @@ describe("MercadoPagoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof)
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -360,7 +364,7 @@ describe("MercadoPagoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof)
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -382,7 +386,7 @@ describe("MercadoPagoReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof)
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

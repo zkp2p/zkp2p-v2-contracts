@@ -90,7 +90,8 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
                 payeeDetails: _verifyPaymentData.payeeDetails,
                 fiatCurrency: _verifyPaymentData.fiatCurrency,
                 conversionRate: _verifyPaymentData.conversionRate,
-                data: _verifyPaymentData.data
+                depositData: _verifyPaymentData.depositData,
+                data: bytes("")
             })
         );
     }

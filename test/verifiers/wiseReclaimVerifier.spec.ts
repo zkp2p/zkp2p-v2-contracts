@@ -1,7 +1,7 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
-import { BigNumber, BytesLike } from "ethers";
+import { BigNumber, BytesLike, Wallet } from "ethers";
 
 import { NullifierRegistry, WiseReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
@@ -10,7 +10,7 @@ import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
 import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof, parseAppclipProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
-import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
+import { ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
 import {
   getWaffleExpect,
@@ -102,6 +102,7 @@ describe("WiseReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -121,10 +122,11 @@ describe("WiseReclaimVerifier", () => {
         ethers.utils.solidityPack(['string'], ['402863684'])
       );
       subjectFiatCurrency = Currency.EUR;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
+      subjectData = "0x";
     });
 
     async function subject(): Promise<any> {
@@ -136,7 +138,8 @@ describe("WiseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -149,7 +152,8 @@ describe("WiseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -241,7 +245,7 @@ describe("WiseReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -303,16 +307,6 @@ describe("WiseReclaimVerifier", () => {
       });
     });
 
-    describe("when the currency is not supported", async () => {
-      beforeEach(async () => {
-        subjectFiatCurrency = ZERO_BYTES32;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment currency");
-      });
-    });
-
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
         proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"3255272855445122854259407670991079284015086279635495324568586132056928581139\",\"extractedParameters\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\",\"paymentId\":\"1036122853\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"0.11\",\"targetCurrency\":\"EUR\",\"targetRecipientId\":\"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4\",\"timestamp\":\"1713200478000\"},\"providerHash\":\"0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9647\"}";
@@ -324,7 +318,7 @@ describe("WiseReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -346,7 +340,7 @@ describe("WiseReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -364,6 +358,260 @@ describe("WiseReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Only escrow can call");
+      });
+    });
+
+    describe("when the wrong currency is sent", async () => {
+      let currencyResolutionService: Wallet;
+      let wrongCurrency: BytesLike;
+      let penaltyBps: BigNumber;
+      let signature: string;
+      let witness: Wallet;
+
+      beforeEach(async () => {
+        // Create a new proof with wrong currency (USD instead of EUR)
+        wrongCurrency = Currency.USD;
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"3255272855445122854259407670991079284015086279635495324568586132056928581139\",\"extractedParameters\":{\"PROFILE_ID\":\"41246868\",\"TRANSACTION_ID\":\"1036122853\",\"paymentId\":\"1036122853\",\"state\":\"OUTGOING_PAYMENT_SENT\",\"targetAmount\":\"0.11\",\"targetCurrency\":\"USD\",\"targetRecipientId\":\"0x267d153c16d2605a4664ed8ede0a04a35cd406ecb879b8f119c2fe997a6921c4\",\"timestamp\":\"1713200478000\"},\"providerHash\":\"0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9646\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+
+        // Setup currency resolution service
+        currencyResolutionService = ethers.Wallet.createRandom();
+        penaltyBps = ether(0.01); // 1 basis points = 0.01% penalty
+
+        // Add currency resolution service to deposit data
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]', 'address'],
+          [[witness.address], currencyResolutionService.address]
+        );
+        subjectConversionRate = ether(1.01);
+      });
+
+      describe("when currency resolution data is provided", async () => {
+        beforeEach(async () => {
+          // Create resolution data signature
+          const resolutionData = {
+            intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+            paymentCurrency: wrongCurrency,
+            conversionRate: subjectConversionRate,
+            penaltyBps: penaltyBps
+          };
+
+          const messageHash = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['bytes32', 'bytes32', 'uint256', 'uint256'],
+              [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps.toString()]
+            )
+          );
+
+          signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+          // Add resolution data to subject data
+          subjectData = ethers.utils.defaultAbiCoder.encode(
+            ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+            [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+          );
+        });
+
+        it("should verify the proof with penalty applied", async () => {
+          const [
+            verified,
+            intentHash,
+            releaseAmount
+          ] = await subjectCallStatic();
+
+          expect(verified).to.be.true;
+          expect(intentHash).to.eq(BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString());
+          // Payment is 0.11 USD, conversion rate is 1.01, intent amount is 0.1 USDC
+          // Release amount before penalty = 0.11 / 1.01 = 0.1 (capped at intent amount)
+          // With 1% penalty: 0.1 * 0.99 = 0.099 USDC
+          expect(releaseAmount).to.eq(usdc(0.099));  // limited to 6 decimal places and rounded down
+        });
+
+        describe("when payment amount is less than the expected payment amount", async () => {
+          beforeEach(async () => {
+            // Create resolution data signature
+            const resolutionData = {
+              intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+              paymentCurrency: wrongCurrency,
+              conversionRate: ether(2),
+              penaltyBps: penaltyBps
+            };
+
+            const messageHash = ethers.utils.keccak256(
+              ethers.utils.defaultAbiCoder.encode(
+                ['bytes32', 'bytes32', 'uint256', 'uint256'],
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps.toString()]
+              )
+            );
+
+            signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+            // Add resolution data to subject data
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+              [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+          });
+
+          it("should verify the proof with penalty applied", async () => {
+            const [
+              verified,
+              intentHash,
+              releaseAmount
+            ] = await subjectCallStatic();
+
+            // Payment is 0.11 USD, conversion rate is 2, intent amount is 0.1 USDC
+            // Release amount before penalty = 0.11 / 2 = 0.055 USDC
+            // With 1% penalty: 0.055 * 0.99 = 0.05445 USDC
+            expect(releaseAmount).to.eq(usdc(0.05445));  // limited to 6 decimal places and rounded down
+          });
+        });
+
+        describe("when penalty is too high", async () => {
+          beforeEach(async () => {
+            // Create resolution data with excessive penalty (21% = 0.21)
+            penaltyBps = ether(0.21);
+            const resolutionData = {
+              intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+              paymentCurrency: wrongCurrency,
+              conversionRate: subjectConversionRate,
+              penaltyBps: penaltyBps
+            };
+
+            const messageHash = ethers.utils.keccak256(
+              ethers.utils.defaultAbiCoder.encode(
+                ['bytes32', 'bytes32', 'uint256', 'uint256'],
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
+              )
+            );
+
+            signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+              [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+          });
+
+          it("should revert", async () => {
+            await expect(subject()).to.be.revertedWith("Penalty exceeds max allowed");
+          });
+        });
+
+        describe("when resolution currency doesn't match payment currency", async () => {
+          beforeEach(async () => {
+            // Create resolution data with wrong currency (GBP instead of USD)
+            const resolutionData = {
+              intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+              paymentCurrency: Currency.GBP, // Wrong currency in resolution
+              conversionRate: subjectConversionRate,
+              penaltyBps: penaltyBps
+            };
+
+            const messageHash = ethers.utils.keccak256(
+              ethers.utils.defaultAbiCoder.encode(
+                ['bytes32', 'bytes32', 'uint256', 'uint256'],
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
+              )
+            );
+
+            signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+              [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+          });
+
+          it("should revert", async () => {
+            await expect(subject()).to.be.revertedWith("Resolution currency doesn't match payment");
+          });
+        });
+
+        describe("when signature is invalid", async () => {
+          beforeEach(async () => {
+            // Use a different signer for the signature
+            const wrongSigner = ethers.Wallet.createRandom();
+            const resolutionData = {
+              intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+              paymentCurrency: wrongCurrency,
+              conversionRate: subjectConversionRate,
+              penaltyBps: penaltyBps
+            };
+
+            const messageHash = ethers.utils.keccak256(
+              ethers.utils.defaultAbiCoder.encode(
+                ['bytes32', 'bytes32', 'uint256', 'uint256'],
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
+              )
+            );
+
+            signature = await wrongSigner.signMessage(ethers.utils.arrayify(messageHash));
+
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+              [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+          });
+
+          it("should revert", async () => {
+            await expect(subject()).to.be.revertedWith("Invalid currency resolution service signature");
+          });
+        });
+      });
+
+      describe("when currency resolution data is not provided", async () => {
+        beforeEach(async () => {
+          subjectData = "0x";
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Currency mismatch without resolution data");
+        });
+      });
+
+      describe("when currency resolution service is not set in deposit data", async () => {
+        beforeEach(async () => {
+          // Only include witnesses, no currency resolution service
+          subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+            ['address[]', 'address'],
+            [[witness.address], ADDRESS_ZERO]
+          );
+
+          // Try to provide resolution data anyway
+          const resolutionData = {
+            intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581139').toHexString(),
+            paymentCurrency: wrongCurrency,
+            conversionRate: subjectConversionRate,
+            penaltyBps: penaltyBps
+          };
+
+          const messageHash = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['bytes32', 'bytes32', 'uint256', 'uint256'],
+              [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
+            )
+          );
+
+
+          signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+          subjectData = ethers.utils.defaultAbiCoder.encode(
+            ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+            [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+          );
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Incorrect payment currency");
+        });
       });
     });
   });

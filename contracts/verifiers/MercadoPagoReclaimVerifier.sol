@@ -85,7 +85,7 @@ contract MercadoPagoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerif
         (
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
         
         uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 

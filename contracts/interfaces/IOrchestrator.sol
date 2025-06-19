@@ -41,6 +41,13 @@ interface IOrchestrator {
         bytes data;                                 // Additional data for the intent
     }
 
+    struct FulfillIntentParams {
+        bytes paymentProof;                         // Payment proof. Can be Groth16 Proof, TLSNotary proof, TLSProxy proof, attestation etc.
+        bytes32 intentHash;                         // Identifier of intent being fulfilled
+        bytes verificationData;                     // Additional data for payment verifier (e.g. currency resolution data)
+        bytes postIntentHookData;                   // Additional data for post intent hook
+    }
+
     /* ============ Events ============ */
 
     event IntentSignaled(
@@ -139,11 +146,7 @@ interface IOrchestrator {
 
     function cancelIntent(bytes32 intentHash) external;
 
-    function fulfillIntent(
-        bytes calldata paymentProof,
-        bytes32 intentHash,
-        bytes calldata data
-    ) external;
+    function fulfillIntent(FulfillIntentParams calldata params) external;
 
     function releaseFundsToPayer(
         bytes32 intentHash, 

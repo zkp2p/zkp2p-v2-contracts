@@ -123,6 +123,7 @@ describe("RevolutReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     beforeEach(async () => {
@@ -138,7 +139,8 @@ describe("RevolutReclaimVerifier", () => {
         ethers.utils.solidityPack(['string'], ['alexgx7gy'])
       );
       subjectFiatCurrency = Currency.EUR;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -153,7 +155,8 @@ describe("RevolutReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -166,7 +169,8 @@ describe("RevolutReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -260,7 +264,7 @@ describe("RevolutReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -343,7 +347,7 @@ describe("RevolutReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof)
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -365,7 +369,7 @@ describe("RevolutReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof)
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

@@ -75,7 +75,7 @@ contract ZelleChaseReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
         (
             PaymentDetails memory paymentDetails
-        ) = _verifyProofsAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+        ) = _verifyProofsAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
 
         uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails,

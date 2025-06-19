@@ -709,6 +709,7 @@ describe("ZelleChaseReclaimVerifier", () => {
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
     let subjectData: BytesLike;
+    let subjectDepositData: BytesLike;
 
     let paymentTimestamp: number;
 
@@ -729,7 +730,8 @@ describe("ZelleChaseReclaimVerifier", () => {
       subjectConversionRate = ether(1);   // 10 * 1 = 10
       subjectPayeeDetailsHash = "0x829bf7a59c5884cda204d6932e01e010a0b609e16dcef6da89b571a30b8b7cbb";
       subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -744,7 +746,8 @@ describe("ZelleChaseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -757,7 +760,8 @@ describe("ZelleChaseReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -888,7 +892,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -914,7 +918,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -936,7 +940,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );
@@ -958,7 +962,7 @@ describe("ZelleChaseReclaimVerifier", () => {
 
         // Re-encode
         subjectProof = encodeTwoProofs(proofList, proofDetail);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address, witnesses[0]]]
         );

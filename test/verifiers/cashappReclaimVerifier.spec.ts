@@ -99,6 +99,7 @@ describe("CashappReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     beforeEach(async () => {
@@ -112,7 +113,8 @@ describe("CashappReclaimVerifier", () => {
       subjectConversionRate = ether(0.9);   // 1.11 * 0.9 = 0.999 (payment amount)
       subjectPayeeDetailsHash = '0x7dfd873a8a837f59842e5493dcea3a71b6f559dacd5886d3ce65542e51240585'
       subjectFiatCurrency = Currency.USD;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -127,7 +129,8 @@ describe("CashappReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -140,7 +143,8 @@ describe("CashappReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
-        data: subjectData
+        data: subjectData,
+        depositData: subjectDepositData
       });
     }
 
@@ -221,7 +225,7 @@ describe("CashappReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -293,7 +297,7 @@ describe("CashappReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -315,7 +319,7 @@ describe("CashappReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

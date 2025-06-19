@@ -168,47 +168,51 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * offchain payment proof is verified, payment details are validated, intent is removed, and escrow state is updated. 
      * Deposit token is transferred to the intent.to address.
      *
-     * @param _paymentProof         Payment proof. Can be Groth16 Proof, TLSNotary proof, TLSProxy proof, attestation etc.
-     * @param _intentHash           Identifier of intent being fulfilled
-     * @param _data                 Additional data for hooks
+     * @param _params               Struct containing all the fulfill intent parameters
      */
-    function fulfillIntent( 
-        bytes calldata _paymentProof,
-        bytes32 _intentHash,
-        bytes calldata _data
+    function fulfillIntent(
+        FulfillIntentParams calldata _params
     )
         external
         whenNotPaused
     {
-        Intent memory intent = intents[_intentHash];
-        if (intent.paymentVerifier == address(0)) revert IntentNotFound(_intentHash);
+        Intent memory intent = intents[_params.intentHash];
+        if (intent.paymentVerifier == address(0)) revert IntentNotFound(_params.intentHash);
         
         // Get deposit and verifier data from escrow contract
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
-        IEscrow.DepositVerifierData memory verifierData = IEscrow(intent.escrow).getDepositVerifierData(
+        IEscrow.DepositVerifierData memory depositData = IEscrow(intent.escrow).getDepositVerifierData(
             intent.depositId, intent.paymentVerifier
         );
         
         (bool success, bytes32 intentHash, uint256 releaseAmount) = IPaymentVerifier(intent.paymentVerifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
-                paymentProof: _paymentProof,
+                paymentProof: _params.paymentProof,
                 depositToken: address(deposit.token),
                 intentAmount: intent.amount,
                 intentTimestamp: intent.timestamp,
-                payeeDetails: verifierData.payeeDetails,
+                payeeDetails: depositData.payeeDetails,
                 fiatCurrency: intent.fiatCurrency,
                 conversionRate: intent.conversionRate,
-                data: verifierData.data
+                depositData: depositData.data,
+                data: _params.verificationData
             })
         );
         if (!success) revert PaymentVerificationFailed();
-        if (intentHash != _intentHash) revert HashMismatch(_intentHash, intentHash);
+        if (intentHash != _params.intentHash) revert HashMismatch(_params.intentHash, intentHash);
 
-        _pruneIntent(_intentHash);
+        _pruneIntent(_params.intentHash);
 
-        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, releaseAmount, address(this));
+        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _params.intentHash, releaseAmount, address(this));
 
-        _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, releaseAmount, _data, false);
+        _transferFundsAndExecuteAction(
+            deposit.token, 
+            _params.intentHash, 
+            intent, 
+            releaseAmount, 
+            _params.postIntentHookData,
+            false
+        );
     }
 
     /**

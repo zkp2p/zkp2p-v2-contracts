@@ -125,6 +125,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -143,7 +144,8 @@ describe("ZelleBoAReclaimVerifier", () => {
       subjectConversionRate = ether(0.99);   // 5 * 0.99 = 4.95 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
       subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -158,6 +160,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
@@ -171,6 +174,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
@@ -242,7 +246,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -296,7 +300,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -317,7 +321,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

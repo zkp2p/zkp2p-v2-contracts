@@ -234,6 +234,7 @@ describe("ZelleBaseVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     beforeEach(async () => {
@@ -255,7 +256,8 @@ describe("ZelleBaseVerifier", () => {
       subjectConversionRate = ether(0.9);   // 110 * 0.9 = 99 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0x907677337cbb16e036508f13be415d848b3b8237d038189fa94825fe05f64614";
       subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [["0x0636c417755e3ae25c6c166d181c0607f4c572a3"]]
       );
@@ -270,6 +272,7 @@ describe("ZelleBaseVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
