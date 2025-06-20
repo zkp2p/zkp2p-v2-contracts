@@ -545,6 +545,51 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
+
+    describe("when maker fees are enabled", async () => {
+      let makerFeeRate: BigNumber;
+
+      beforeEach(async () => {
+        // Set maker fee to 1%
+        makerFeeRate = ether(0.01);
+        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+      });
+
+      it("should calculate and reserve maker fees correctly", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(0);
+        const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1));
+        const expectedNetAmount = subjectAmount.sub(expectedMakerFees);
+
+        expect(deposit.reservedMakerFees).to.eq(expectedMakerFees);
+        expect(deposit.accruedMakerFees).to.eq(0);
+        expect(deposit.remainingDeposits).to.eq(expectedNetAmount);
+        expect(deposit.amount).to.eq(subjectAmount);
+      });
+
+      it("should transfer the full gross amount from depositor", async () => {
+        await subject();
+
+        const rampBalance = await usdcToken.balanceOf(ramp.address);
+        expect(rampBalance).to.eq(subjectAmount);
+      });
+
+      describe("when net amount after fees is below minimum intent amount", async () => {
+        beforeEach(async () => {
+          // Set high fee rate so net amount is below minimum
+          makerFeeRate = ether(0.05); // 5% fee
+          await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+          subjectAmount = usdc(100);
+          subjectIntentAmountRange = { min: usdc(99), max: usdc(200) };
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
+        });
+      });
+    });
   });
 
   describe("#addFundsToDeposit", async () => {
@@ -658,6 +703,59 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+
+    describe("when maker fees are enabled", async () => {
+      let makerFeeRate: BigNumber;
+      let initialDeposit: any;
+
+      beforeEach(async () => {
+        // Set maker fee to 1%
+        makerFeeRate = ether(0.01);
+        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+        // Get initial deposit state
+        initialDeposit = await ramp.getDeposit(subjectDepositId);
+      });
+
+      it("should calculate and add maker fees for additional amount", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        const expectedAdditionalFees = subjectAmount.mul(makerFeeRate).div(ether(1));
+        const expectedNetAdditional = subjectAmount.sub(expectedAdditionalFees);
+
+        expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedAdditionalFees));
+        expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
+        expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
+      });
+
+      it("should transfer the full additional amount from depositor", async () => {
+        const rampPreBalance = await usdcToken.balanceOf(ramp.address);
+
+        await subject();
+
+        const rampPostBalance = await usdcToken.balanceOf(ramp.address);
+        expect(rampPostBalance.sub(rampPreBalance)).to.eq(subjectAmount);
+      });
+
+      describe("when adding large amount with fees", async () => {
+        beforeEach(async () => {
+          subjectAmount = usdc(1000);
+        });
+
+        it("should handle large amounts correctly", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+          const expectedAdditionalFees = subjectAmount.mul(makerFeeRate).div(ether(1));
+          const expectedNetAdditional = subjectAmount.sub(expectedAdditionalFees);
+
+          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedAdditionalFees));
+          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
+        });
       });
     });
   });
@@ -912,6 +1010,170 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
+
+    // describe("when maker fees are enabled", async () => {
+    //   let makerFeeRate: BigNumber;
+    //   let grossDepositAmount: BigNumber;
+    //   let reservedFees: BigNumber;
+    //   let netDepositAmount: BigNumber;
+
+    //   beforeEach(async () => {
+    //     // Set maker fee to 1%
+    //     makerFeeRate = ether(0.01);
+    //     await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+    //     await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+    //     // Create deposit with fees
+    //     grossDepositAmount = usdc(100);
+    //     reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
+    //     netDepositAmount = grossDepositAmount.sub(reservedFees);
+
+    //     await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+    //     await ramp.connect(offRamper.wallet).createDeposit(
+    //       usdcToken.address,
+    //       grossDepositAmount,
+    //       { min: usdc(10), max: usdc(200) },
+    //       [verifier.address],
+    //       [{
+    //         intentGatingService: gatingService.address,
+    //         payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+    //         data: "0x"
+    //       }],
+    //       [
+    //         [{ code: Currency.USD, minConversionRate: ether(1.08) }]
+    //       ],
+    //       offRamperDelegate.address
+    //     );
+
+    //     subjectDepositId = BigNumber.from(1); // New deposit created
+    //     subjectAmount = usdc(30); // Partial withdrawal
+    //   });
+
+    //   it("should only allow withdrawal from net deposits", async () => {
+    //     const preDeposit = await ramp.getDeposit(subjectDepositId);
+    //     expect(preDeposit.remainingDeposits).to.eq(netDepositAmount);
+    //     expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
+
+    //     await subject();
+
+    //     const postDeposit = await ramp.getDeposit(subjectDepositId);
+    //     expect(postDeposit.remainingDeposits).to.eq(netDepositAmount.sub(subjectAmount));
+    //     expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Fees unchanged
+    //     expect(postDeposit.amount).to.eq(grossDepositAmount.sub(subjectAmount));
+    //   });
+
+    //   it("should transfer the correct amount to depositor", async () => {
+    //     const preBalance = await usdcToken.balanceOf(offRamper.address);
+
+    //     await subject();
+
+    //     const postBalance = await usdcToken.balanceOf(offRamper.address);
+    //     expect(postBalance).to.eq(preBalance.add(subjectAmount));
+    //   });
+
+    //   describe("when trying to withdraw more than net deposits", async () => {
+    //     beforeEach(async () => {
+    //       // Try to withdraw 100 USDC when only 99 is net deposits
+    //       subjectAmount = usdc(100);
+    //     });
+
+    //     it("should revert", async () => {
+    //       await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
+    //     });
+    //   });
+
+    //   describe("when withdrawing all net deposits", async () => {
+    //     beforeEach(async () => {
+    //       subjectAmount = netDepositAmount; // Withdraw all 99 USDC
+    //     });
+
+    //     it("should leave only reserved fees in deposit", async () => {
+    //       await subject();
+
+    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
+    //       expect(postDeposit.remainingDeposits).to.eq(ZERO);
+    //       expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // 1 USDC reserved
+    //       expect(postDeposit.amount).to.eq(reservedFees); // Only fees remain
+    //       expect(postDeposit.depositor).to.eq(offRamper.address); // Deposit not closed
+    //     });
+
+    //     it("should auto-disable accepting intents", async () => {
+    //       await subject();
+
+    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
+    //       expect(postDeposit.acceptingIntents).to.be.false;
+    //     });
+    //   });
+
+    //   describe("when fees have been partially accrued", async () => {
+    //     let intentHash: string;
+    //     let intentAmount: BigNumber;
+
+    //     beforeEach(async () => {
+    //       // Signal and fulfill an intent to accrue some fees
+    //       intentAmount = usdc(50);
+    //       const conversionRate = ether(1.1);
+
+    //       const signalIntentParams = await createSignalIntentParams(
+    //         ramp.address,
+    //         subjectDepositId,
+    //         intentAmount,
+    //         onRamper.address,
+    //         verifier.address,
+    //         Currency.USD,
+    //         conversionRate,
+    //         ADDRESS_ZERO,
+    //         ZERO,
+    //         gatingService,
+    //         chainId.toString(),
+    //         ADDRESS_ZERO,
+    //         "0x"
+    //       );
+
+    //       await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
+
+    //       const currentTimestamp = await blockchain.getCurrentTimestamp();
+    //       intentHash = calculateIntentHash(
+    //         onRamper.address,
+    //         ramp.address,
+    //         verifier.address,
+    //         subjectDepositId,
+    //         currentTimestamp
+    //       );
+
+    //       // Fulfill the intent - this will accrue fees
+    //       const paymentData = ethers.utils.defaultAbiCoder.encode(
+    //         ["bytes32", "string", "bytes"],
+    //         [intentHash, "", "0x00"]
+    //       );
+    //       const fulfillParams = {
+    //         paymentProof: paymentData,
+    //         intentHash: intentHash,
+    //         verificationData: "0x",
+    //         postIntentHookData: "0x"
+    //       };
+
+    //       await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
+
+    //       // After fulfillment, try to withdraw funds
+    //       subjectAmount = usdc(20);
+    //     });
+
+    //     it("should still only allow withdrawal from remaining deposits", async () => {
+    //       const preDeposit = await ramp.getDeposit(subjectDepositId);
+    //       const expectedAccruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
+
+    //       expect(preDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
+    //       expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
+
+    //       await subject();
+
+    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
+    //       expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Reserved fees unchanged
+    //       expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees); // Accrued fees unchanged
+    //     });
+    //   });
+    // });
   });
 
   describe("#withdrawDeposit", async () => {
@@ -1186,6 +1448,253 @@ describe("Escrow", () => {
 
       it("should NOT revert", async () => {
         await expect(subject()).to.not.be.reverted;
+      });
+    });
+
+    describe("when maker fees are enabled", async () => {
+      let makerFeeRate: BigNumber;
+      let grossDepositAmount: BigNumber;
+      let reservedFees: BigNumber;
+      let netDepositAmount: BigNumber;
+
+      beforeEach(async () => {
+        // Set maker fee to 1%
+        makerFeeRate = ether(0.01);
+        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+        // Create deposit with fees
+        grossDepositAmount = usdc(100);
+        reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
+        netDepositAmount = grossDepositAmount.sub(reservedFees);
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+        await ramp.connect(offRamper.wallet).createDeposit(
+          usdcToken.address,
+          grossDepositAmount,
+          { min: usdc(10), max: usdc(200) },
+          [verifier.address],
+          [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          [
+            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
+          ],
+          offRamperDelegate.address
+        );
+
+        subjectDepositId = BigNumber.from(1); // New deposit created
+      });
+
+      it("should return full amount including unused fees", async () => {
+        const preBalance = await usdcToken.balanceOf(offRamper.address);
+        const preRampBalance = await usdcToken.balanceOf(ramp.address);
+        const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        await subject();
+
+        const postBalance = await usdcToken.balanceOf(offRamper.address);
+        const postRampBalance = await usdcToken.balanceOf(ramp.address);
+        const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+        // Depositor gets back full gross amount (including unused fees)
+        expect(postBalance).to.eq(preBalance.add(grossDepositAmount));
+        expect(postRampBalance).to.eq(preRampBalance.sub(grossDepositAmount));
+        // No fees collected since no intents were fulfilled
+        expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance);
+      });
+
+      it("should emit DepositClosed event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositClosed").withArgs(
+          subjectDepositId,
+          offRamper.address
+        );
+      });
+
+      describe("when some fees have been accrued", async () => {
+        let intentHash: string;
+        let intentAmount: BigNumber;
+        let paymentAmount: BigNumber;
+
+        beforeEach(async () => {
+          // Signal and fulfill an intent to accrue some fees
+          intentAmount = usdc(50);
+          paymentAmount = intentAmount.mul(ether(1.1));  // pay the full amount
+          const conversionRate = ether(1.1);
+
+          const signalIntentParams = await createSignalIntentParams(
+            ramp.address,
+            subjectDepositId,
+            intentAmount,
+            onRamper.address,
+            verifier.address,
+            Currency.USD,
+            conversionRate,
+            ADDRESS_ZERO,
+            ZERO,
+            gatingService,
+            chainId.toString(),
+            ADDRESS_ZERO,
+            "0x"
+          );
+
+          await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
+
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          intentHash = calculateIntentHash(
+            onRamper.address,
+            ramp.address,
+            verifier.address,
+            subjectDepositId,
+            currentTimestamp
+          );
+
+          // Fulfill the intent - this will accrue fees
+          const paymentData = ethers.utils.defaultAbiCoder.encode(
+            ["uint256", "uint256", "string", "bytes32", "bytes32"],
+            [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
+          );
+          const fulfillParams = {
+            paymentProof: paymentData,
+            intentHash: intentHash,
+            verificationData: "0x",
+            postIntentHookData: "0x"
+          };
+
+          await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
+        });
+
+        it("should return remaining deposits plus unused fees", async () => {
+          const preDepositorBalance = await usdcToken.balanceOf(offRamper.address);
+          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          await subject();
+
+          const postDepositorBalance = await usdcToken.balanceOf(offRamper.address);
+          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          // Depositor gets: remaining deposits (49 USDC) + unused fees (1 - 0.5 = 0.5 USDC)
+          let accruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
+          const expectedReturn = netDepositAmount.sub(intentAmount).add(reservedFees.sub(accruedFees));
+          expect(postDepositorBalance).to.eq(preDepositorBalance.add(expectedReturn));
+
+          // Fee recipient gets the accrued fees (0.5 USDC)
+          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(accruedFees));
+        });
+
+        it("should emit MakerFeesCollected event", async () => {
+          let accruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
+          await expect(subject()).to.emit(ramp, "MakerFeesCollected").withArgs(
+            subjectDepositId,
+            accruedFees,
+            feeRecipient.address
+          );
+        });
+      });
+
+      describe("when all fees and dust have been collected", async () => {
+        let fulfillParams: any;
+        let intentAmount: BigNumber;
+
+        beforeEach(async () => {
+          // Set dust threshold
+          // Signal intent for 99 USDC, reserved fees were 100 * 0.01 = 1 USDC
+          // accrued fees after intent fulfillment are 99 * 0.01 = 0.99 USDC
+          // dust threshold is 0.01 USDC
+          // remaining deposits (non reserved fees) are 99 - 99 = 0 USDC
+          // total remaining is 0 + (1 - 0.99) (reserved fees - accrued fees) = 0.01 USDC
+
+          // Set dust threshold
+          const dustThreshold = usdc(0.01);
+          await ramp.connect(owner.wallet).setDustThreshold(dustThreshold);
+
+          // Fulfill intent for full net deposit amount to accrue all fees
+          intentAmount = netDepositAmount;
+          const paymentAmount = intentAmount.mul(ether(1.1));  // pay the full amount
+          const conversionRate = ether(1.1);
+
+          const signalIntentParams = await createSignalIntentParams(
+            ramp.address,
+            subjectDepositId,
+            intentAmount,
+            onRamper.address,
+            verifier.address,
+            Currency.USD,
+            conversionRate,
+            ADDRESS_ZERO,
+            ZERO,
+            gatingService,
+            chainId.toString(),
+            ADDRESS_ZERO,
+            "0x"
+          );
+
+          await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
+
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          const intentHash = calculateIntentHash(
+            onRamper.address,
+            ramp.address,
+            verifier.address,
+            subjectDepositId,
+            currentTimestamp
+          );
+
+          // Fulfill the intent
+          const paymentData = ethers.utils.defaultAbiCoder.encode(
+            ["uint256", "uint256", "string", "bytes32", "bytes32"],
+            [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
+          );
+          fulfillParams = {
+            paymentProof: paymentData,
+            intentHash: intentHash,
+            verificationData: "0x",
+            postIntentHookData: "0x"
+          };
+        });
+
+        it("should only transfer accrued fees to fee recipient", async () => {
+          const preDepositorBalance = await usdcToken.balanceOf(offRamper.address);
+          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          // Fulfill the intent; close the deposit automatically; collect fees
+          await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
+
+          const postDepositorBalance = await usdcToken.balanceOf(offRamper.address);
+          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          // Depositor gets nothing (all net deposits were fulfilled)
+          expect(postDepositorBalance).to.eq(preDepositorBalance);
+
+          // Fee recipient gets all reserved fees
+          const feesCollected = intentAmount.mul(makerFeeRate).div(ether(1));
+          const dustCollected = usdc(0.01);
+          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(feesCollected).add(dustCollected));
+        });
+
+        it("should emit MakerFeesCollected event", async () => {
+          const feesCollected = intentAmount.mul(makerFeeRate).div(ether(1));
+          await expect(orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams)).to.emit(
+            ramp, "MakerFeesCollected"
+          ).withArgs(
+            subjectDepositId,
+            feesCollected,
+            feeRecipient.address
+          );
+        });
+
+        it("should emit DustCollected event", async () => {
+          const dustCollected = usdc(0.01);
+          await expect(orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams)).to.emit(
+            ramp, "DustCollected"
+          ).withArgs(
+            subjectDepositId,
+            dustCollected,
+            feeRecipient.address
+          );
+        });
       });
     });
   });
@@ -2871,6 +3380,7 @@ describe("Escrow", () => {
         subjectIntentHash,
         intentAmount,
         subjectTransferAmount,
+        ZERO,     // maker fee
         subjectTo
       );
     });
@@ -2975,6 +3485,266 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentNotFound");
+      });
+    });
+
+    describe("when maker fees are enabled", async () => {
+      let makerFeeRate: BigNumber;
+      let grossDepositAmount: BigNumber;
+      let reservedFees: BigNumber;
+      let netDepositAmount: BigNumber;
+      let expectedAccruedFees: BigNumber;
+
+      beforeEach(async () => {
+        // Set maker fee to 1%
+        makerFeeRate = ether(0.01);
+        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+        // Create deposit with fees
+        grossDepositAmount = usdc(100);
+        reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
+        netDepositAmount = grossDepositAmount.sub(reservedFees);
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+        await ramp.connect(offRamper.wallet).createDeposit(
+          usdcToken.address,
+          grossDepositAmount,
+          { min: usdc(10), max: usdc(100) },
+          [verifier.address],
+          [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          [
+            [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+          ],
+          offRamperDelegate.address
+        );
+
+        // Lock funds
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        subjectDepositId = BigNumber.from(1); // New deposit
+        subjectIntentHash = calculateIntentHash(
+          onRamper.address,
+          ramp.address,
+          verifier.address,
+          subjectDepositId,
+          currentTimestamp
+        );
+        intentAmount = usdc(30);
+        intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
+
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          subjectIntentHash,
+          intentAmount,
+          intentExpiryTime
+        );
+
+        subjectTransferAmount = intentAmount; // Full amount by default
+        expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
+      });
+
+      it("should accrue maker fees on transfer", async () => {
+        const preDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(preDeposit.accruedMakerFees).to.eq(ZERO);
+        expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
+        expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Reserved fees unchanged
+      });
+
+      it("should update the deposit state correctly with fees", async () => {
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        // Remaining = 99 - 30 = 69 USDC
+        expect(postDeposit.remainingDeposits).to.eq(netDepositAmount.sub(intentAmount));
+        expect(postDeposit.outstandingIntentAmount).to.eq(ZERO);
+      });
+
+      it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
+        await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
+          subjectDepositId,
+          subjectIntentHash,
+          intentAmount,
+          subjectTransferAmount,
+          expectedAccruedFees,
+          subjectTo
+        );
+      });
+
+      describe("when transferring partial amount", async () => {
+        beforeEach(async () => {
+          subjectTransferAmount = usdc(20); // Less than intent amount
+          expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
+        });
+
+        it("should accrue fees proportional to transfer amount", async () => {
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees); // 0.2 USDC
+        });
+
+        it("should return unused portion to remaining deposits", async () => {
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          // Remaining = 69 + 10 (unused) = 79 USDC
+          const expectedRemaining = netDepositAmount.sub(intentAmount).add(intentAmount.sub(subjectTransferAmount));
+          expect(postDeposit.remainingDeposits).to.eq(expectedRemaining);
+        });
+      });
+
+      describe("when transferring would accrue fees but not close deposit", async () => {
+        beforeEach(async () => {
+          // Remove most funds, leaving only the intent amount
+          await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, netDepositAmount.sub(intentAmount));
+        });
+
+        it("should collect accrued fees and close deposit", async () => {
+          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          await subject();
+
+          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+
+          // All fees should be collected (both the new accrued fees and any previously accrued)
+          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance);
+          expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
+        });
+
+        it("should zero out the outstanding intent amount and remaining deposits", async () => {
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          expect(postDeposit.outstandingIntentAmount).to.eq(ZERO);
+          expect(postDeposit.remainingDeposits).to.eq(ZERO);
+        });
+
+        it("should NOT emit MakerFeesCollected event", async () => {
+          await expect(subject()).to.not.emit(ramp, "MakerFeesCollected");
+        });
+
+        describe("should allow the depositor to withdraw the reamaining reserved fees later", async () => {
+          beforeEach(async () => {
+            // Unlock and transfer to accrue fees
+            await subject();
+          });
+
+          it("should allow the depositor to withdraw the reamaining funds", async () => {
+            const preOffRamperBalance = await usdcToken.balanceOf(offRamper.address);
+
+            await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
+
+            const postOffRamperBalance = await usdcToken.balanceOf(offRamper.address);
+            expect(postOffRamperBalance).to.eq(preOffRamperBalance.add(reservedFees.sub(expectedAccruedFees)));
+          });
+        });
+      });
+
+      describe("when deposit has remaining funds less than dust threshold", async () => {
+        beforeEach(async () => {
+          // Remove the old intent
+          await orchestratorMock.connect(owner.wallet).unlockFunds(subjectDepositId, subjectIntentHash);
+
+          // Set dust threshold
+          await ramp.connect(owner.wallet).setDustThreshold(usdc(1));
+
+          // Create a smaller intent that will leave dust
+          intentAmount = netDepositAmount.sub(usdc(0.5)); // Leave 0.5 USDC
+
+          // Re-lock funds with new amount
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("newIntent"));
+
+          await orchestratorMock.connect(owner.wallet).lockFunds(
+            subjectDepositId,
+            subjectIntentHash,
+            intentAmount,
+            currentTimestamp.add(ONE_DAY_IN_SECONDS)
+          );
+
+          subjectTransferAmount = intentAmount;
+          expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
+        });
+
+        it("should collect dust and close deposit", async () => {
+          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+
+          await subject();
+
+          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+
+          // Fee recipient gets accrued fees + dust
+          // accrued fees is 0.01 * (99 - 0.5) = 0.985 USDC
+          // remaining reserved fees is 1 - 0.985 = 0.015 USDC
+          // dust is 0.5 USDC
+          // and total remaining is 0.5 + 0.015 = 0.515 USDC
+          const expectedTotal = expectedAccruedFees.add(usdc(0.5)).add(usdc(0.015));
+          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(expectedTotal));
+          expect(postDeposit.depositor).to.eq(ADDRESS_ZERO); // Deposit closed
+        });
+
+        it("should emit both MakerFeesCollected and DustCollected events", async () => {
+          const tx = await subject();
+
+          await expect(tx).to.emit(ramp, "MakerFeesCollected").withArgs(
+            subjectDepositId,
+            expectedAccruedFees, // All accrued fees collected
+            feeRecipient.address
+          );
+
+          await expect(tx).to.emit(ramp, "DustCollected").withArgs(
+            subjectDepositId,
+            usdc(0.5).add(usdc(0.015)), // dust + remaining reserved fees
+            feeRecipient.address
+          );
+        });
+      });
+
+      describe("when multiple intents fulfilled", async () => {
+        let secondIntentHash: string;
+        let secondIntentAmount: BigNumber;
+
+        beforeEach(async () => {
+          // First fulfill the original intent
+          await subject();
+
+          // Create and lock a second intent
+          secondIntentAmount = usdc(40);
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          secondIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("secondIntent"));
+
+          await orchestratorMock.connect(owner.wallet).lockFunds(
+            subjectDepositId,
+            secondIntentHash,
+            secondIntentAmount,
+            currentTimestamp.add(ONE_DAY_IN_SECONDS)
+          );
+
+          // Update subject params for second intent
+          subjectIntentHash = secondIntentHash;
+          subjectTransferAmount = secondIntentAmount;
+        });
+
+        it("should accumulate accrued fees", async () => {
+          const firstIntentFees = intentAmount.mul(makerFeeRate).div(ether(1));
+          const secondIntentFees = secondIntentAmount.mul(makerFeeRate).div(ether(1));
+
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          expect(postDeposit.accruedMakerFees).to.eq(firstIntentFees.add(secondIntentFees));
+        });
       });
     });
   });
@@ -3173,6 +3943,201 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Pausable: not paused");
+      });
+    });
+  });
+
+  describe("#setMakerProtocolFee", async () => {
+    let subjectMakerProtocolFee: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectMakerProtocolFee = ether(0.02); // 2%
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setMakerProtocolFee(subjectMakerProtocolFee);
+    }
+
+    it("should set the correct maker protocol fee", async () => {
+      const preFee = await ramp.makerProtocolFee();
+      expect(preFee).to.eq(ZERO);
+
+      await subject();
+
+      const postFee = await ramp.makerProtocolFee();
+      expect(postFee).to.eq(subjectMakerProtocolFee);
+    });
+
+    it("should emit a MakerProtocolFeeSet event", async () => {
+      await expect(subject()).to.emit(ramp, "MakerProtocolFeeSet").withArgs(subjectMakerProtocolFee);
+    });
+
+    describe("when setting fee to zero", async () => {
+      beforeEach(async () => {
+        // First set a non-zero fee
+        await ramp.connect(owner.wallet).setMakerProtocolFee(ether(0.01));
+        // Then set to zero
+        subjectMakerProtocolFee = ZERO;
+      });
+
+      it("should allow setting fee to zero", async () => {
+        await subject();
+
+        const postFee = await ramp.makerProtocolFee();
+        expect(postFee).to.eq(ZERO);
+      });
+    });
+
+    describe("when the fee exceeds maximum", async () => {
+      beforeEach(async () => {
+        subjectMakerProtocolFee = ether(0.051); // 5.1%, exceeds max of 5%
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setMakerFeeRecipient", async () => {
+    let subjectMakerFeeRecipient: Address;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectMakerFeeRecipient = receiver.address;
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setMakerFeeRecipient(subjectMakerFeeRecipient);
+    }
+
+    it("should set the correct maker fee recipient", async () => {
+      const preRecipient = await ramp.makerFeeRecipient();
+      expect(preRecipient).to.eq(ADDRESS_ZERO);
+
+      await subject();
+
+      const postRecipient = await ramp.makerFeeRecipient();
+      expect(postRecipient).to.eq(subjectMakerFeeRecipient);
+    });
+
+    it("should emit a MakerFeeRecipientUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "MakerFeeRecipientUpdated").withArgs(subjectMakerFeeRecipient);
+    });
+
+    describe("when updating existing recipient", async () => {
+      beforeEach(async () => {
+        // First set an initial recipient
+        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+        // Then update to new recipient
+        subjectMakerFeeRecipient = receiver.address;
+      });
+
+      it("should update to new recipient", async () => {
+        const preRecipient = await ramp.makerFeeRecipient();
+        expect(preRecipient).to.eq(feeRecipient.address);
+
+        await subject();
+
+        const postRecipient = await ramp.makerFeeRecipient();
+        expect(postRecipient).to.eq(subjectMakerFeeRecipient);
+      });
+    });
+
+    describe("when the recipient is zero address", async () => {
+      beforeEach(async () => {
+        subjectMakerFeeRecipient = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroAddress");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setDustThreshold", async () => {
+    let subjectDustThreshold: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectDustThreshold = usdc(1); // 1 USDC
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setDustThreshold(subjectDustThreshold);
+    }
+
+    it("should set the correct dust threshold", async () => {
+      const preThreshold = await ramp.dustThreshold();
+      expect(preThreshold).to.eq(ZERO);
+
+      await subject();
+
+      const postThreshold = await ramp.dustThreshold();
+      expect(postThreshold).to.eq(subjectDustThreshold);
+    });
+
+    it("should emit a DustThresholdSet event", async () => {
+      await expect(subject()).to.emit(ramp, "DustThresholdSet").withArgs(subjectDustThreshold);
+    });
+
+    describe("when setting threshold to zero", async () => {
+      beforeEach(async () => {
+        // First set a non-zero threshold
+        await ramp.connect(owner.wallet).setDustThreshold(usdc(1));
+        // Then set to zero
+        subjectDustThreshold = ZERO;
+      });
+
+      it("should allow setting threshold to zero", async () => {
+        await subject();
+
+        const postThreshold = await ramp.dustThreshold();
+        expect(postThreshold).to.eq(ZERO);
+      });
+    });
+
+    describe("when setting a large threshold", async () => {
+      beforeEach(async () => {
+        subjectDustThreshold = usdc(100); // 100 USDC
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

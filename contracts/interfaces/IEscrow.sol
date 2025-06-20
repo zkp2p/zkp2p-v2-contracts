@@ -24,12 +24,15 @@ interface IEscrow {
         address depositor;                          // Address of depositor
         address delegate;                           // Address that can manage this deposit (address(0) if no delegate)
         IERC20 token;                               // Address of deposit token
-        uint256 amount;                             // Amount of deposit token
+        uint256 amount;                             // Amount of deposit token (gross amount including reserved fees)
         Range intentAmountRange;                    // Range of take amount per intent
         // Deposit state
         bool acceptingIntents;                      // State: True if the deposit is accepting intents, False otherwise
-        uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity
+        uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity (net of reserved fees)
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
+        // Fee tracking
+        uint256 reservedMakerFees;                  // State: Total fees reserved from maker (calculated upfront)
+        uint256 accruedMakerFees;                   // State: Fees actually earned from fulfilled intents
     }
 
     struct Currency {
@@ -72,7 +75,13 @@ interface IEscrow {
 
     event FundsLocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount, uint256 expiryTime);
     event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
-    event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, address to);
+    event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, uint256 accruedFees, address to);
+    
+    event MakerProtocolFeeSet(uint256 makerProtocolFee);
+    event MakerFeeRecipientUpdated(address indexed makerFeeRecipient);
+    event MakerFeesCollected(uint256 indexed depositId, uint256 collectedFees, address indexed makerFeeRecipient);
+    event DustCollected(uint256 indexed depositId, uint256 dustAmount, address indexed makerFeeRecipient);
+    event DustThresholdSet(uint256 dustThreshold);
 
     /* ============ Standardized Custom Errors ============ */
     

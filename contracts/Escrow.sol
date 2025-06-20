@@ -22,6 +22,10 @@ import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 pragma solidity ^0.8.18;
 
+/**
+ * @title Escrow
+ * @notice Escrows deposits and manages deposit lifecycle.
+ */
 contract Escrow is Ownable, Pausable, IEscrow {
 
     using AddressArrayUtils for address[];
@@ -33,6 +37,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
+    uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
+    uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     
     /* ============ State Variables ============ */
 
@@ -62,6 +68,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => mapping(bytes32 => Intent)) internal depositIntents; // Mapping of depositId to intentHash to intent
 
     uint256 public depositCounter;                                  // Counter for depositIds
+    
+    // Maker fee configuration
+    uint256 public makerProtocolFee;                                // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
+    address public makerFeeRecipient;                               // Address that receives maker protocol fees
+    uint256 public dustThreshold;                                   // Amount below which deposits are considered dust and can be closed
 
     /* ============ Modifiers ============ */
 
@@ -133,12 +144,15 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         if (_intentAmountRange.min == 0) revert ZeroMinValue();
         if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
-        if (_amount < _intentAmountRange.min) revert AmountBelowMin(_amount, _intentAmountRange.min);
 
+        // Calculate maker fees and net deposit amount
+        uint256 makerFees = (_amount * makerProtocolFee) / PRECISE_UNIT;
+        uint256 netDepositAmount = _amount - makerFees;
+        if (netDepositAmount < _intentAmountRange.min) revert AmountBelowMin(netDepositAmount, _intentAmountRange.min);
+        
+        // Create deposit
         uint256 depositId = depositCounter++;
-
         accountDeposits[msg.sender].push(depositId);
-
         deposits[depositId] = Deposit({
             depositor: msg.sender,
             delegate: _delegate,
@@ -146,8 +160,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _amount,
             intentAmountRange: _intentAmountRange,
             acceptingIntents: true,
-            remainingDeposits: _amount,
-            outstandingIntentAmount: 0
+            remainingDeposits: netDepositAmount,    // Net amount available for intents
+            outstandingIntentAmount: 0,
+            reservedMakerFees: makerFees,
+            accruedMakerFees: 0
         });
 
         emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange, _delegate);
@@ -172,8 +188,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         
+        // Calculate maker fees for the additional amount
+        uint256 additionalMakerFees = (_amount * makerProtocolFee) / PRECISE_UNIT;
+        uint256 netAdditionalAmount = _amount - additionalMakerFees;
+        
         deposit.amount += _amount;
-        deposit.remainingDeposits += _amount;
+        deposit.remainingDeposits += netAdditionalAmount;
+        deposit.reservedMakerFees += additionalMakerFees;
         
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
@@ -182,9 +203,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Removes funds from an existing deposit. Only the depositor can remove funds. If the amount to remove is greater
-     * than the remaining deposits, then expired intents will be pruned to reclaim liquidity. If the remaining deposits is less 
-     * than the min intent amount, then the deposit will be marked as not accepting intents (PAUSED). Does not close the deposit
-     * to prevent losing access to the deposit configuration.
+     * than the remaining deposits, then expired intents will be pruned to reclaim liquidity. If the remaining deposits is less than
+     * the min intent amount, then the deposit will be marked as not accepting intents. Reserved maker fees remain locked until full
+     * withdrawal via withdrawDeposit().
      *
      * @param _depositId    The deposit ID to remove funds from
      * @param _amount       The amount of tokens to remove
@@ -214,10 +235,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Depositor is returned all remaining deposits and any outstanding intents that are expired. Only the depositor can withdraw.
-     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds 
-     * locked due to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there 
-     * are no more outstanding intents.
+     * @notice Depositor is returned all remaining deposits, any outstanding intents that are expired, and unused maker fees.
+     * Only the depositor can withdraw. If an intent is not expired then those funds will not be returned. Deposit is marked
+     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this
+     * function again. Deposit will be deleted and accrued maker fees collected to protocol as long as there are no more
+     * outstanding intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
@@ -233,16 +255,22 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         _pruneIntents(_depositId, expiredIntents);
 
-        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
+        uint256 unusedFees = deposit.reservedMakerFees - deposit.accruedMakerFees;
+        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount + unusedFees;
         
         deposit.outstandingIntentAmount -= reclaimableAmount;
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
         
+        IERC20 token = deposit.token;
+        
+        _collectAccruedMakerFees(_depositId, deposit);
+
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
-        IERC20 token = deposit.token;
-        _closeDepositIfNecessary(_depositId, deposit);
+        if (deposit.outstandingIntentAmount == 0) {
+            _closeDeposit(_depositId, deposit);
+        }
         
         token.transfer(msg.sender, returnAmount);
     }
@@ -575,7 +603,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_transferAmount == 0) revert ZeroValue();
         if (_transferAmount > intent.amount) revert AmountExceedsAvailable(_transferAmount, intent.amount);
         
-        // Update deposit state
+        uint256 makerFeeForThisTransfer = (_transferAmount * makerProtocolFee) / PRECISE_UNIT;
+        deposit.accruedMakerFees += makerFeeForThisTransfer;
+
         deposit.outstandingIntentAmount -= intent.amount;
         if (_transferAmount < intent.amount) {
             // Return unused funds to remaining deposits (partial release)
@@ -589,7 +619,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         token.transfer(_to, _transferAmount);
 
-        emit FundsUnlockedAndTransferred(_depositId, _intentHash, intent.amount, _transferAmount, _to);
+        emit FundsUnlockedAndTransferred(_depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, _to);
     }
 
     /* ============ Governance Functions ============ */
@@ -616,6 +646,43 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Sets the maker protocol fee rate. This fee is charged to makers upon fulfillment of 
+     * intents.
+     *
+     * @param _makerProtocolFee The maker protocol fee in preciseUnits (1e16 = 1%)
+     */
+    function setMakerProtocolFee(uint256 _makerProtocolFee) external onlyOwner {
+        if (_makerProtocolFee > MAX_MAKER_FEE) revert AmountAboveMax(_makerProtocolFee, MAX_MAKER_FEE);
+        
+        makerProtocolFee = _makerProtocolFee;
+        emit MakerProtocolFeeSet(_makerProtocolFee);
+    }
+    
+    /**
+     * @notice GOVERNANCE ONLY: Sets the address that receives maker protocol fees.
+     *
+     * @param _makerFeeRecipient The address to receive maker fees
+     */
+    function setMakerFeeRecipient(address _makerFeeRecipient) external onlyOwner {
+        if (_makerFeeRecipient == address(0)) revert ZeroAddress();
+        
+        makerFeeRecipient = _makerFeeRecipient;
+        emit MakerFeeRecipientUpdated(_makerFeeRecipient);
+    }
+    
+    /**
+     * @notice GOVERNANCE ONLY: Sets the dust threshold below which deposits can be closed automatically.
+     *
+     * @param _dustThreshold The new dust threshold amount
+     */
+    function setDustThreshold(uint256 _dustThreshold) external onlyOwner {
+        if (_dustThreshold > MAX_DUST_THRESHOLD) revert AmountAboveMax(_dustThreshold, MAX_DUST_THRESHOLD);
+        
+        dustThreshold = _dustThreshold;
+        emit DustThresholdSet(_dustThreshold);
     }
 
     /**
@@ -751,18 +818,56 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Removes a deposit if no outstanding intents AND no remaining deposits. Deleting a deposit deletes it from the
-     * deposits mapping and removes tracking it in the user's accountDeposits mapping. Also deletes the verification data for the
-     * deposit.
+     * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, collects any 
+     * accrued maker fees to the protocol fee recipient and transfers any remaining dust to the protocol fee recipient.
      */
     function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
-        uint256 openDepositAmount = _deposit.outstandingIntentAmount + _deposit.remainingDeposits;
-        if (openDepositAmount == 0) {
-            accountDeposits[_deposit.depositor].removeStorage(_depositId);
-            _deleteDepositVerifierAndCurrencyData(_depositId);
-            emit DepositClosed(_depositId, _deposit.depositor);
-            delete deposits[_depositId];
+        // If no remaining deposits, delete the acceptingIntents flag
+        if (_deposit.remainingDeposits == 0) {
+            delete _deposit.acceptingIntents;
         }
+
+        // Close if no outstanding intents, no remaining deposits, and no reserved fees left
+        uint256 reservedFeesLeft = _deposit.reservedMakerFees - _deposit.accruedMakerFees;
+        uint256 totalRemaining = _deposit.remainingDeposits + reservedFeesLeft;
+
+        if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
+            
+            _collectAccruedMakerFees(_depositId, _deposit);
+            
+            if (totalRemaining > 0) {
+                _deposit.token.transfer(makerFeeRecipient, totalRemaining);
+                emit DustCollected(_depositId, totalRemaining, makerFeeRecipient);
+            }
+            
+            _closeDeposit(_depositId, _deposit);
+        }
+    }
+
+
+    /**
+     * @notice Collects any accrued maker fees to the protocol fee recipient.
+     */
+    function _collectAccruedMakerFees(uint256 _depositId, Deposit storage _deposit) internal {
+        if (_deposit.accruedMakerFees > 0) {
+            _deposit.token.transfer(makerFeeRecipient, _deposit.accruedMakerFees);
+            emit MakerFeesCollected(_depositId, _deposit.accruedMakerFees, makerFeeRecipient);
+        }
+    }
+
+    /**
+     * @notice Closes a deposit. Deleting a deposit deletes it from the deposits mapping and removes tracking
+     * it in the user's accountDeposits mapping. Also deletes the verification and currency data for the deposit.
+     */
+    function _closeDeposit(uint256 _depositId, Deposit storage _deposit) internal {
+        address depositor = _deposit.depositor;
+        accountDeposits[depositor].removeStorage(_depositId);
+        
+        _deleteDepositVerifierAndCurrencyData(_depositId);
+        
+        delete deposits[_depositId];
+        
+        emit DepositClosed(_depositId, depositor);
     }
 
     /**
