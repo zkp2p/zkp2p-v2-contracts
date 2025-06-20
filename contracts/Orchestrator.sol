@@ -22,7 +22,7 @@ import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.so
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 
-// Todo: Update how we calculate intent hash to allow multiple intents per account (for relayer accounts).
+// Todo: Can we further simplify intent hash calculation? Keep it just hash(address(this), intentCounter)?
 contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
     using AddressArrayUtils for address[];
@@ -56,6 +56,8 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
     bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
     uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
+
+    uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
 
     /* ============ Modifiers ============ */
 
@@ -131,6 +133,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         });
 
         accountIntents[msg.sender].push(intentHash);
+        intentCounter++;
 
         emit IntentSignaled(
             intentHash, 
@@ -471,7 +474,10 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
                     _escrow, 
                     _verifier, 
                     _depositId, 
-                    block.timestamp)
+                    block.timestamp,
+                    intentCounter,           // prevents collision of intent hashes for same account in the same block
+                    address(this)            // prevents collision of intent hashes when using multiple orchestrators
+                )
             ));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }

@@ -62,6 +62,7 @@ describe("ProtocolViewer", () => {
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
   let deployer: DeployHelper;
+  let currentIntentCounter: number = 0;
 
   beforeEach(async () => {
     [
@@ -441,7 +442,9 @@ describe("ProtocolViewer", () => {
         escrow.address,
         verifier.address,
         ZERO,
-        currentTimestamp
+        currentTimestamp,
+        currentIntentCounter,
+        orchestrator.address
       );
     });
 
@@ -520,7 +523,9 @@ describe("ProtocolViewer", () => {
         escrow.address,
         verifier.address,
         ZERO,
-        currentTimestamp
+        currentTimestamp,
+        currentIntentCounter,
+        orchestrator.address
       );
 
       subjectIntentHashes = [intentHash];

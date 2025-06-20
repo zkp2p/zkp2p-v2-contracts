@@ -53,6 +53,7 @@ describe("Escrow", () => {
   let gatingService: Account;
   let witness: Account;
   let chainId: BigNumber = ONE;
+  let currentIntentCounter: number = 0;
 
   let ramp: Escrow;
   let protocolViewer: ProtocolViewer;
@@ -70,6 +71,7 @@ describe("Escrow", () => {
   let deployer: DeployHelper;
 
   beforeEach(async () => {
+    currentIntentCounter = 0;  // Reset intent counter for each test
     [
       owner,
       offRamper,
@@ -917,8 +919,11 @@ describe("Escrow", () => {
           ramp.address,
           verifier.address,
           subjectDepositId,
-          currentTimestamp
+          currentTimestamp,
+          currentIntentCounter,
+          orchestrator.address
         );
+        currentIntentCounter++;  // Increment after signalIntent
 
         // Fast forward time to expire the intent
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
@@ -1010,170 +1015,6 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
-
-    // describe("when maker fees are enabled", async () => {
-    //   let makerFeeRate: BigNumber;
-    //   let grossDepositAmount: BigNumber;
-    //   let reservedFees: BigNumber;
-    //   let netDepositAmount: BigNumber;
-
-    //   beforeEach(async () => {
-    //     // Set maker fee to 1%
-    //     makerFeeRate = ether(0.01);
-    //     await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-    //     await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-
-    //     // Create deposit with fees
-    //     grossDepositAmount = usdc(100);
-    //     reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
-    //     netDepositAmount = grossDepositAmount.sub(reservedFees);
-
-    //     await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-    //     await ramp.connect(offRamper.wallet).createDeposit(
-    //       usdcToken.address,
-    //       grossDepositAmount,
-    //       { min: usdc(10), max: usdc(200) },
-    //       [verifier.address],
-    //       [{
-    //         intentGatingService: gatingService.address,
-    //         payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-    //         data: "0x"
-    //       }],
-    //       [
-    //         [{ code: Currency.USD, minConversionRate: ether(1.08) }]
-    //       ],
-    //       offRamperDelegate.address
-    //     );
-
-    //     subjectDepositId = BigNumber.from(1); // New deposit created
-    //     subjectAmount = usdc(30); // Partial withdrawal
-    //   });
-
-    //   it("should only allow withdrawal from net deposits", async () => {
-    //     const preDeposit = await ramp.getDeposit(subjectDepositId);
-    //     expect(preDeposit.remainingDeposits).to.eq(netDepositAmount);
-    //     expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
-
-    //     await subject();
-
-    //     const postDeposit = await ramp.getDeposit(subjectDepositId);
-    //     expect(postDeposit.remainingDeposits).to.eq(netDepositAmount.sub(subjectAmount));
-    //     expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Fees unchanged
-    //     expect(postDeposit.amount).to.eq(grossDepositAmount.sub(subjectAmount));
-    //   });
-
-    //   it("should transfer the correct amount to depositor", async () => {
-    //     const preBalance = await usdcToken.balanceOf(offRamper.address);
-
-    //     await subject();
-
-    //     const postBalance = await usdcToken.balanceOf(offRamper.address);
-    //     expect(postBalance).to.eq(preBalance.add(subjectAmount));
-    //   });
-
-    //   describe("when trying to withdraw more than net deposits", async () => {
-    //     beforeEach(async () => {
-    //       // Try to withdraw 100 USDC when only 99 is net deposits
-    //       subjectAmount = usdc(100);
-    //     });
-
-    //     it("should revert", async () => {
-    //       await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
-    //     });
-    //   });
-
-    //   describe("when withdrawing all net deposits", async () => {
-    //     beforeEach(async () => {
-    //       subjectAmount = netDepositAmount; // Withdraw all 99 USDC
-    //     });
-
-    //     it("should leave only reserved fees in deposit", async () => {
-    //       await subject();
-
-    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
-    //       expect(postDeposit.remainingDeposits).to.eq(ZERO);
-    //       expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // 1 USDC reserved
-    //       expect(postDeposit.amount).to.eq(reservedFees); // Only fees remain
-    //       expect(postDeposit.depositor).to.eq(offRamper.address); // Deposit not closed
-    //     });
-
-    //     it("should auto-disable accepting intents", async () => {
-    //       await subject();
-
-    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
-    //       expect(postDeposit.acceptingIntents).to.be.false;
-    //     });
-    //   });
-
-    //   describe("when fees have been partially accrued", async () => {
-    //     let intentHash: string;
-    //     let intentAmount: BigNumber;
-
-    //     beforeEach(async () => {
-    //       // Signal and fulfill an intent to accrue some fees
-    //       intentAmount = usdc(50);
-    //       const conversionRate = ether(1.1);
-
-    //       const signalIntentParams = await createSignalIntentParams(
-    //         ramp.address,
-    //         subjectDepositId,
-    //         intentAmount,
-    //         onRamper.address,
-    //         verifier.address,
-    //         Currency.USD,
-    //         conversionRate,
-    //         ADDRESS_ZERO,
-    //         ZERO,
-    //         gatingService,
-    //         chainId.toString(),
-    //         ADDRESS_ZERO,
-    //         "0x"
-    //       );
-
-    //       await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
-
-    //       const currentTimestamp = await blockchain.getCurrentTimestamp();
-    //       intentHash = calculateIntentHash(
-    //         onRamper.address,
-    //         ramp.address,
-    //         verifier.address,
-    //         subjectDepositId,
-    //         currentTimestamp
-    //       );
-
-    //       // Fulfill the intent - this will accrue fees
-    //       const paymentData = ethers.utils.defaultAbiCoder.encode(
-    //         ["bytes32", "string", "bytes"],
-    //         [intentHash, "", "0x00"]
-    //       );
-    //       const fulfillParams = {
-    //         paymentProof: paymentData,
-    //         intentHash: intentHash,
-    //         verificationData: "0x",
-    //         postIntentHookData: "0x"
-    //       };
-
-    //       await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
-
-    //       // After fulfillment, try to withdraw funds
-    //       subjectAmount = usdc(20);
-    //     });
-
-    //     it("should still only allow withdrawal from remaining deposits", async () => {
-    //       const preDeposit = await ramp.getDeposit(subjectDepositId);
-    //       const expectedAccruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
-
-    //       expect(preDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
-    //       expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
-
-    //       await subject();
-
-    //       const postDeposit = await ramp.getDeposit(subjectDepositId);
-    //       expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Reserved fees unchanged
-    //       expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees); // Accrued fees unchanged
-    //     });
-    //   });
-    // });
   });
 
   describe("#withdrawDeposit", async () => {
@@ -1321,8 +1162,11 @@ describe("Escrow", () => {
           ramp.address,
           verifier.address,
           ZERO,
-          currentTimestamp
+          currentTimestamp,
+          currentIntentCounter,
+          orchestrator.address
         );
+        currentIntentCounter++;  // Increment after signalIntent
       });
 
       it("should transfer the correct amount of usdc to the caller", async () => {
@@ -1548,8 +1392,11 @@ describe("Escrow", () => {
             ramp.address,
             verifier.address,
             subjectDepositId,
-            currentTimestamp
+            currentTimestamp,
+            currentIntentCounter,
+            orchestrator.address
           );
+          currentIntentCounter++;  // Increment after signalIntent
 
           // Fulfill the intent - this will accrue fees
           const paymentData = ethers.utils.defaultAbiCoder.encode(
@@ -1639,8 +1486,11 @@ describe("Escrow", () => {
             ramp.address,
             verifier.address,
             subjectDepositId,
-            currentTimestamp
+            currentTimestamp,
+            currentIntentCounter,
+            orchestrator.address
           );
+          currentIntentCounter++;  // Increment after signalIntent
 
           // Fulfill the intent
           const paymentData = ethers.utils.defaultAbiCoder.encode(
@@ -2975,8 +2825,11 @@ describe("Escrow", () => {
         ramp.address,
         verifier.address,
         subjectDepositId,
-        currentTimestamp
+        currentTimestamp,
+        currentIntentCounter,
+        orchestratorMock.address  // Using orchestratorMock address since we're testing with the mock
       );
+      currentIntentCounter++;  // Increment for consistency
 
       subjectAmount = usdc(30);
       subjectExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
@@ -3183,8 +3036,11 @@ describe("Escrow", () => {
         ramp.address,
         verifier.address,
         subjectDepositId,
-        currentTimestamp
+        currentTimestamp,
+        currentIntentCounter,
+        orchestratorMock.address  // Using orchestratorMock address since we're testing with the mock
       );
+      currentIntentCounter++;  // Increment for consistency
       intentAmount = usdc(30);
       intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
 
@@ -3317,8 +3173,11 @@ describe("Escrow", () => {
         ramp.address,
         verifier.address,
         subjectDepositId,
-        currentTimestamp
+        currentTimestamp,
+        currentIntentCounter,
+        orchestratorMock.address
       );
+      currentIntentCounter++;  // Increment after signalIntent
       intentAmount = usdc(30);
       intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
 
@@ -3531,10 +3390,13 @@ describe("Escrow", () => {
           ramp.address,
           verifier.address,
           subjectDepositId,
-          currentTimestamp
+          currentTimestamp,
+          currentIntentCounter,
+          orchestratorMock.address
         );
         intentAmount = usdc(30);
         intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
+        currentIntentCounter++;  // Increment after signalIntent
 
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,

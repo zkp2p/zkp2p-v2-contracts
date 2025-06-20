@@ -53,12 +53,14 @@ export const calculateIntentHash = (
   escrow: string,
   verifier: string,
   depositId: BigNumber,
-  timestamp: BigNumber | number
+  timestamp: BigNumber | number,
+  intentCounter: BigNumber | number,
+  orchestratorAddress: string
 ): string => {
 
   const intermediateHash = ethers.utils.solidityKeccak256(
-    ["address", "address", "address", "uint256", "uint256"],
-    [onRamper, escrow, verifier, depositId, timestamp]
+    ["address", "address", "address", "uint256", "uint256", "uint256", "address"],
+    [onRamper, escrow, verifier, depositId, timestamp, intentCounter, orchestratorAddress]
   );
 
   return ethers.utils.hexZeroPad(BigNumber.from(intermediateHash).mod(CIRCOM_FIELD).toHexString(), 32);
