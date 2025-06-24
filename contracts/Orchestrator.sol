@@ -434,6 +434,11 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
+            // Check if signature has expired
+            if (block.timestamp > _intent.signatureExpiration) {
+                revert SignatureExpired(_intent.signatureExpiration, block.timestamp);
+            }
+            
             if (!_isValidSignature(
                 abi.encodePacked(
                     _intent.escrow, 
@@ -443,6 +448,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
                     _intent.verifier, 
                     _intent.fiatCurrency, 
                     conversionRate, 
+                    _intent.signatureExpiration,
                     chainId
                 ),
                 _intent.gatingServiceSignature,

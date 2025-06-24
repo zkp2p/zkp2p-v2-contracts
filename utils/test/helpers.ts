@@ -12,11 +12,19 @@ export const generateGatingServiceSignature = async (
   verifier: Address,
   fiatCurrency: string,
   conversionRate: BigNumber,
-  chainId: string
+  chainId: string,
+  signatureExpiration?: BigNumber
 ) => {
+  // If no expiration provided, use current block timestamp + 1 day
+  if (!signatureExpiration) {
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const oneDayInSeconds = 86400; // 24 * 60 * 60
+    signatureExpiration = BigNumber.from(currentBlock.timestamp + oneDayInSeconds);
+  }
+
   const messageHash = ethers.utils.solidityKeccak256(
-    ["address", "uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256"],
-    [escrow, depositId, amount, to, verifier, fiatCurrency, conversionRate, chainId]
+    ["address", "uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256", "uint256"],
+    [escrow, depositId, amount, to, verifier, fiatCurrency, conversionRate, signatureExpiration, chainId]
   );
   return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
 }
@@ -34,8 +42,16 @@ export const createSignalIntentParams = async (
   gatingService: Account | null = null,
   chainId: string = "1",
   postIntentHook: Address = ethers.constants.AddressZero,
-  data: string = "0x"
+  data: string = "0x",
+  signatureExpiration?: BigNumber
 ) => {
+  // If no expiration provided, use current block timestamp + 1 day
+  if (!signatureExpiration) {
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const oneDayInSeconds = 86400; // 24 * 60 * 60
+    signatureExpiration = BigNumber.from(currentBlock.timestamp + oneDayInSeconds);
+  }
+
   let gatingServiceSignature = "0x";
 
   if (gatingService) {
@@ -48,7 +64,8 @@ export const createSignalIntentParams = async (
       verifier,
       fiatCurrency,
       conversionRate,
-      chainId
+      chainId,
+      signatureExpiration
     );
   }
 
@@ -63,6 +80,7 @@ export const createSignalIntentParams = async (
     referrer,
     referrerFee,
     gatingServiceSignature,
+    signatureExpiration,
     postIntentHook,
     data
   };

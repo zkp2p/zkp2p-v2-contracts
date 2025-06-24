@@ -2978,7 +2978,7 @@ describe("Escrow", () => {
     describe("when we have reached max number of intents per deposit", async function () {
       this.timeout(300000); // Increase timeout to 300 seconds for this test suite
 
-      const MAX_INTENTS_PER_DEPOSIT = 20; // Matches the contract constant
+      const MAX_INTENTS_PER_DEPOSIT = 100; // Matches the contract constant
       let intentHashes: string[] = [];
       let depositId: BigNumber;
 

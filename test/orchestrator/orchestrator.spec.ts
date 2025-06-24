@@ -186,6 +186,7 @@ describe("Orchestrator", () => {
     let subjectReferrerFee: BigNumber;
     let subjectGatingServiceSignature: string;
     let subjectPostIntentHook: Address;
+    let subjectSignatureExpiration: BigNumber;
     let subjectIntentData: string;
     let subjectCaller: Account;
 
@@ -221,6 +222,7 @@ describe("Orchestrator", () => {
       subjectConversionRate = ether(1.02);   // Slightly higher than depositConversionRate
       subjectReferrer = ADDRESS_ZERO;       // No referrer by default
       subjectReferrerFee = ZERO;             // No referrer fee by default
+      subjectSignatureExpiration = ONE_DAY_IN_SECONDS.add(1);
       subjectGatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
         escrow.address,
@@ -230,7 +232,8 @@ describe("Orchestrator", () => {
         subjectVerifier,
         subjectFiatCurrency,
         subjectConversionRate,
-        chainId.toString()
+        chainId.toString(),
+        subjectSignatureExpiration
       );
 
       subjectPostIntentHook = ADDRESS_ZERO;
@@ -253,7 +256,8 @@ describe("Orchestrator", () => {
         null, // gating service
         chainId.toString(),
         subjectPostIntentHook,
-        subjectIntentData
+        subjectIntentData,
+        subjectSignatureExpiration
       );
       params.gatingServiceSignature = subjectGatingServiceSignature;
 
@@ -374,7 +378,8 @@ describe("Orchestrator", () => {
           subjectVerifier,
           subjectFiatCurrency,
           subjectConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          ONE_DAY_IN_SECONDS.add(1)
         );
       });
 
@@ -556,7 +561,8 @@ describe("Orchestrator", () => {
             subjectVerifier,
             subjectFiatCurrency,
             subjectConversionRate,
-            chainId.toString()
+            chainId.toString(),
+            ONE_DAY_IN_SECONDS.add(1)
           );
         });
 
@@ -651,6 +657,18 @@ describe("Orchestrator", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidSignature");
+      });
+    });
+
+    describe.only("when the gating service signature is expired", async () => {
+      beforeEach(async () => {
+        subjectSignatureExpiration = ONE_DAY_IN_SECONDS.sub(1);
+
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "SignatureExpired");
       });
     });
 
@@ -1112,7 +1130,8 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          ONE_DAY_IN_SECONDS.add(1)
         );
 
         const params = await createSignalIntentParams(
@@ -1292,7 +1311,8 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          ONE_DAY_IN_SECONDS.add(1)
         );
 
         // First cancel the existing intent
@@ -1708,7 +1728,8 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          ONE_DAY_IN_SECONDS.add(1)
         );
 
         const params = await createSignalIntentParams(
@@ -1834,7 +1855,8 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          ONE_DAY_IN_SECONDS.add(1)
         );
 
         // First cancel the existing intent

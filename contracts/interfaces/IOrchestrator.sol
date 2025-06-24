@@ -37,6 +37,7 @@ interface IOrchestrator {
         address referrer;                           // Address of the referrer (address(0) if no referrer)
         uint256 referrerFee;                        // Fee to be paid to the referrer
         bytes gatingServiceSignature;               // Signature from the deposit's gating service
+        uint256 signatureExpiration;                // Timestamp when the gating service signature expires
         IPostIntentHook postIntentHook;             // Optional post-intent hook (address(0) for no hook)
         bytes data;                                 // Additional data for the intent
     }
@@ -119,7 +120,8 @@ interface IOrchestrator {
     error AccountHasActiveIntent(address account, bytes32 existingIntent);
     error InvalidReferrerFeeConfiguration();
     error InvalidSignature(address expectedSigner);
-    
+    error SignatureExpired(uint256 expiration, uint256 currentTime);
+
     // Verification errors
     error PaymentVerificationFailed();
     error HashMismatch(bytes32 expected, bytes32 actual);
@@ -127,7 +129,6 @@ interface IOrchestrator {
     // Transfer errors
     error TransferFailed(address recipient, uint256 amount);
     error EscrowLockFailed();
-
 
     /* ============ View Functions ============ */
 
