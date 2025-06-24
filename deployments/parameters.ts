@@ -10,7 +10,7 @@ export const INTENT_EXPIRATION_PERIOD: any = {
   "base_staging": THREE_MINUTES_IN_SECONDS,
 };
 
-export const PROTOCOL_FEE: any = {
+export const PROTOCOL_TAKER_FEE: any = {
   "localhost": ether(.001),
   "goerli": ether(.001),
   "sepolia": ether(.001),
@@ -18,12 +18,44 @@ export const PROTOCOL_FEE: any = {
   "base_staging": ZERO
 };
 
-export const PROTOCOL_FEE_RECIPIENT: any = {
+export const PROTOCOL_MAKER_FEE: any = {
+  "localhost": ether(.001),
+  "goerli": ether(.001),
+  "sepolia": ether(.001),
+  "base": ZERO,
+  "base_staging": ZERO
+}
+
+export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
   "localhost": "",
   "goerli": "",
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+};
+
+export const PROTOCOL_MAKER_FEE_RECIPIENT: any = {
+  "localhost": "",
+  "goerli": "",
+  "sepolia": "",
+  "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
+  "base_staging": "",
+};
+
+export const DUST_THRESHOLD: any = {
+  "localhost": usdc(0.1),
+  "goerli": usdc(0.1),
+  "sepolia": usdc(0.1),
+  "base": ZERO,
+  "base_staging": ZERO
+};
+
+export const MAX_INTENTS_PER_DEPOSIT: any = {
+  "localhost": 100,
+  "goerli": 100,
+  "sepolia": 100,
+  "base": 200,
+  "base_staging": 200
 };
 
 export const MULTI_SIG: any = {

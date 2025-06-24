@@ -36,9 +36,13 @@ import {
 
 import {
   INTENT_EXPIRATION_PERIOD,
-  PROTOCOL_FEE,
-  PROTOCOL_FEE_RECIPIENT,
+  PROTOCOL_TAKER_FEE,
+  PROTOCOL_TAKER_FEE_RECIPIENT,
   MULTI_SIG,
+  PROTOCOL_MAKER_FEE,
+  PROTOCOL_MAKER_FEE_RECIPIENT,
+  DUST_THRESHOLD,
+  MAX_INTENTS_PER_DEPOSIT,
 } from "../../deployments/parameters";
 
 const expect = getWaffleExpect();
@@ -126,6 +130,31 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       const isWhitelisted = await escrowRegistry.isWhitelistedEscrow(escrow.address);
       expect(isWhitelisted).to.eq(true);
     });
+
+    it("should have the correct maker protocol fee set", async () => {
+      const actualMakerProtocolFee = await escrow.makerProtocolFee();
+      expect(actualMakerProtocolFee).to.eq(PROTOCOL_MAKER_FEE[network]);
+    });
+
+    it("should have the correct maker fee recipient set", async () => {
+      const actualMakerFeeRecipient = await escrow.makerFeeRecipient();
+
+      const expectedMakerFeeRecipient = PROTOCOL_MAKER_FEE_RECIPIENT[network] != ""
+        ? PROTOCOL_MAKER_FEE_RECIPIENT[network]
+        : deployer.address;
+
+      expect(actualMakerFeeRecipient).to.eq(expectedMakerFeeRecipient);
+    });
+
+    it("should have the correct dust threshold set", async () => {
+      const actualDustThreshold = await escrow.dustThreshold();
+      expect(actualDustThreshold).to.eq(DUST_THRESHOLD[network]);
+    });
+
+    it("should have the correct max intents per deposit set", async () => {
+      const actualMaxIntentsPerDeposit = await escrow.maxIntentsPerDeposit();
+      expect(actualMaxIntentsPerDeposit).to.eq(MAX_INTENTS_PER_DEPOSIT[network]);
+    });
   });
 
   describe("Orchestrator", async () => {
@@ -135,11 +164,11 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       const actualOwner = await orchestrator.owner();
       const actualChainId = await orchestrator.chainId();
 
-      const expectedProtocolFeeRecipient = PROTOCOL_FEE_RECIPIENT[network] != ""
-        ? PROTOCOL_FEE_RECIPIENT[network]
+      const expectedProtocolFeeRecipient = PROTOCOL_TAKER_FEE_RECIPIENT[network] != ""
+        ? PROTOCOL_TAKER_FEE_RECIPIENT[network]
         : deployer.address;
 
-      expect(actualProtocolFee).to.eq(PROTOCOL_FEE[network]);
+      expect(actualProtocolFee).to.eq(PROTOCOL_TAKER_FEE[network]);
       expect(actualProtocolFeeRecipient).to.eq(expectedProtocolFeeRecipient);
       expect(actualOwner).to.eq(multiSig);
       expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);

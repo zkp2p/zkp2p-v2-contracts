@@ -9,11 +9,15 @@ const circom = require("circomlibjs");
 import {
   INTENT_EXPIRATION_PERIOD,
   MULTI_SIG,
-  PROTOCOL_FEE,
-  PROTOCOL_FEE_RECIPIENT,
+  PROTOCOL_TAKER_FEE,
+  PROTOCOL_TAKER_FEE_RECIPIENT,
+  PROTOCOL_MAKER_FEE,
+  PROTOCOL_MAKER_FEE_RECIPIENT,
   USDC,
   USDC_MINT_AMOUNT,
   USDC_RECIPIENT,
+  DUST_THRESHOLD,
+  MAX_INTENTS_PER_DEPOSIT,
 } from "../deployments/parameters";
 import { addEscrowToRegistry, getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
 
@@ -79,7 +83,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       deployer,
       chainId,
-      paymentVerifierRegistry.address
+      paymentVerifierRegistry.address,
+      PROTOCOL_MAKER_FEE[network],
+      PROTOCOL_MAKER_FEE_RECIPIENT[network] != ""
+        ? PROTOCOL_MAKER_FEE_RECIPIENT[network]
+        : deployer,
+      DUST_THRESHOLD[network],
+      MAX_INTENTS_PER_DEPOSIT[network]
     ],
   });
   console.log("Escrow deployed at", escrow.address);
@@ -100,9 +110,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
       relayerRegistry.address,
-      PROTOCOL_FEE[network],
-      PROTOCOL_FEE_RECIPIENT[network] != ""
-        ? PROTOCOL_FEE_RECIPIENT[network]
+      PROTOCOL_TAKER_FEE[network],
+      PROTOCOL_TAKER_FEE_RECIPIENT[network] != ""
+        ? PROTOCOL_TAKER_FEE_RECIPIENT[network]
         : deployer,
     ],
   });
