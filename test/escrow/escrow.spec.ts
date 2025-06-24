@@ -156,10 +156,18 @@ describe("Escrow", () => {
       const ownerAddress: Address = await ramp.owner();
       const chainId: BigNumber = await ramp.chainId();
       const paymentVerifierRegistryAddress: Address = await ramp.paymentVerifierRegistry();
+      const makerProtocolFee: BigNumber = await ramp.makerProtocolFee();
+      const makerFeeRecipientAddress: Address = await ramp.makerFeeRecipient();
+      const maxIntentsPerDeposit: BigNumber = await ramp.maxIntentsPerDeposit();
+      const dustThreshold: BigNumber = await ramp.dustThreshold();
 
       expect(ownerAddress).to.eq(owner.address);
       expect(chainId).to.eq(chainId);
       expect(paymentVerifierRegistryAddress).to.eq(paymentVerifierRegistry.address);
+      expect(makerProtocolFee).to.eq(ZERO);
+      expect(makerFeeRecipientAddress).to.eq(protocolFeeRecipient.address);
+      expect(maxIntentsPerDeposit).to.eq(BigNumber.from(3));
+      expect(dustThreshold).to.eq(ZERO);
     });
   });
 
@@ -3971,9 +3979,6 @@ describe("Escrow", () => {
     }
 
     it("should set the correct maker fee recipient", async () => {
-      const preRecipient = await ramp.makerFeeRecipient();
-      expect(preRecipient).to.eq(ADDRESS_ZERO);
-
       await subject();
 
       const postRecipient = await ramp.makerFeeRecipient();

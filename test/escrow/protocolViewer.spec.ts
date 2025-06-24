@@ -444,7 +444,7 @@ describe("ProtocolViewer", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
-        escrow.address,
+        orchestrator.address,
         currentIntentCounter
       );
     });
@@ -520,7 +520,7 @@ describe("ProtocolViewer", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
-        escrow.address,
+        orchestrator.address,
         currentIntentCounter
       );
 

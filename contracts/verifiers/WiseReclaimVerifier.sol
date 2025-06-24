@@ -250,7 +250,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         bytes32 _intentHash,
         bytes memory _currencyResolutionData,
         address _currencyResolutionService
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         
         // Decode resolution data
         CurrencyResolutionData memory resolution = abi.decode(_currencyResolutionData, (CurrencyResolutionData));

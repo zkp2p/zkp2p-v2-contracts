@@ -219,6 +219,8 @@ describe("Orchestrator", () => {
         offRamperDelegate.address
       );
 
+      const currentTimestamp = await blockchain.getCurrentTimestamp();
+
       subjectEscrow = escrow.address;
       subjectDepositId = ZERO;
       subjectAmount = usdc(50);
@@ -228,7 +230,7 @@ describe("Orchestrator", () => {
       subjectConversionRate = ether(1.02);   // Slightly higher than depositConversionRate
       subjectReferrer = ADDRESS_ZERO;       // No referrer by default
       subjectReferrerFee = ZERO;             // No referrer fee by default
-      subjectSignatureExpiration = ONE_DAY_IN_SECONDS.add(1);
+      subjectSignatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
       subjectGatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
         escrow.address,
@@ -375,6 +377,7 @@ describe("Orchestrator", () => {
 
         subjectAmount = usdc(60);
         subjectCaller = onRamperTwo;
+        subjectSignatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
         subjectGatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
           escrow.address,
@@ -385,7 +388,7 @@ describe("Orchestrator", () => {
           subjectFiatCurrency,
           subjectConversionRate,
           chainId.toString(),
-          ONE_DAY_IN_SECONDS.add(1)
+          subjectSignatureExpiration
         );
       });
 
@@ -557,6 +560,8 @@ describe("Orchestrator", () => {
       describe("when the conversion rate is equal to the min conversion rate", async () => {
         beforeEach(async () => {
           subjectConversionRate = ether(1.01); // Equal to min conversion rate
+          const currentTimestamp = await blockchain.getCurrentTimestamp();
+          subjectSignatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
 
           subjectGatingServiceSignature = await generateGatingServiceSignature(
             gatingService,
@@ -568,7 +573,7 @@ describe("Orchestrator", () => {
             subjectFiatCurrency,
             subjectConversionRate,
             chainId.toString(),
-            ONE_DAY_IN_SECONDS.add(1)
+            subjectSignatureExpiration
           );
         });
 
@@ -1136,8 +1141,7 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString(),
-          ONE_DAY_IN_SECONDS.add(1)
+          chainId.toString()
         );
 
         const params = await createSignalIntentParams(
@@ -1307,6 +1311,9 @@ describe("Orchestrator", () => {
         hookTargetAddress = receiver.address;
         const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetAddress]);
 
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        const signatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
+
         // Create a new intent with post intent hook action
         const gatingServiceSignatureForHook = await generateGatingServiceSignature(
           gatingService,
@@ -1318,7 +1325,7 @@ describe("Orchestrator", () => {
           Currency.USD,
           depositConversionRate,
           chainId.toString(),
-          ONE_DAY_IN_SECONDS.add(1)
+          signatureExpiration
         );
 
         // First cancel the existing intent
@@ -1338,12 +1345,13 @@ describe("Orchestrator", () => {
           null, // passing null since we already have the signature
           chainId.toString(),
           postIntentHookMock.address,
-          signalIntentDataForHook
+          signalIntentDataForHook,
+          signatureExpiration
         );
         // Override the signature since we generated it manually
         params.gatingServiceSignature = gatingServiceSignatureForHook;
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
-        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        const currentTimestamp2 = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
@@ -1353,7 +1361,7 @@ describe("Orchestrator", () => {
         // Prepare the proof and processor for the onRamp function
         subjectProof = ethers.utils.defaultAbiCoder.encode(
           ["uint256", "uint256", "string", "bytes32", "bytes32"],
-          [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
+          [usdc(50), currentTimestamp2, payeeDetails, Currency.USD, intentHash]
         );
         subjectIntentHash = intentHash;
         subjectCaller = onRamper;
@@ -1734,8 +1742,7 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString(),
-          ONE_DAY_IN_SECONDS.add(1)
+          chainId.toString()
         );
 
         const params = await createSignalIntentParams(
@@ -1861,8 +1868,7 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString(),
-          ONE_DAY_IN_SECONDS.add(1)
+          chainId.toString()
         );
 
         // First cancel the existing intent
