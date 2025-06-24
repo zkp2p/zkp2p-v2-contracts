@@ -77,11 +77,12 @@ interface IEscrow {
     event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
     event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, uint256 accruedFees, address to);
     
-    event MakerProtocolFeeSet(uint256 makerProtocolFee);
+    event MakerProtocolFeeUpdated(uint256 makerProtocolFee);
     event MakerFeeRecipientUpdated(address indexed makerFeeRecipient);
     event MakerFeesCollected(uint256 indexed depositId, uint256 collectedFees, address indexed makerFeeRecipient);
     event DustCollected(uint256 indexed depositId, uint256 dustAmount, address indexed makerFeeRecipient);
-    event DustThresholdSet(uint256 dustThreshold);
+    event DustThresholdUpdated(uint256 dustThreshold);
+    event MaxIntentsPerDepositUpdated(uint256 maxIntentsPerDeposit);
 
     /* ============ Standardized Custom Errors ============ */
     

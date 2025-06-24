@@ -65,6 +65,7 @@ describe("Escrow", () => {
   let relayerRegistry: RelayerRegistry;
   let postIntentHookMock: PostIntentHookMock;
   let orchestratorMock: OrchestratorMock;
+  let protocolFeeRecipient: Account;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -84,7 +85,8 @@ describe("Escrow", () => {
       offRamperNewAcct,
       feeRecipient,
       gatingService,
-      witness
+      witness,
+      protocolFeeRecipient
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -102,6 +104,10 @@ describe("Escrow", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
+      ZERO,
+      protocolFeeRecipient.address,
+      ZERO,
+      BigNumber.from(3)
     );
 
     await escrowRegistry.addEscrow(ramp.address);
@@ -2976,9 +2982,7 @@ describe("Escrow", () => {
     });
 
     describe("when we have reached max number of intents per deposit", async function () {
-      this.timeout(300000); // Increase timeout to 300 seconds for this test suite
-
-      const MAX_INTENTS_PER_DEPOSIT = 100; // Matches the contract constant
+      const MAX_INTENTS_PER_DEPOSIT = 3; // Matches the contract constant
       let intentHashes: string[] = [];
       let depositId: BigNumber;
 
@@ -3004,53 +3008,10 @@ describe("Escrow", () => {
         return tx;
       }
 
-      // Batch signal multiple intents for performance
-      async function signalMultipleIntents(count: number): Promise<void> {
-        console.log(`Creating ${count} intents in batches...`);
-        const batchSize = 10;
-        for (let i = 0; i < count; i += batchSize) {
-          const currentBatchSize = Math.min(batchSize, count - i);
-          const batchPromises = [];
-          // Create params for batch
-          for (let j = 0; j < currentBatchSize; j++) {
-            const params = await createSignalIntentParams(
-              ramp.address,
-              depositId,
-              usdc(1),
-              onRamper.address,
-              verifier.address,
-              Currency.USD,
-              ether(1),
-              ADDRESS_ZERO,
-              ZERO,
-              gatingService,
-              chainId.toString(),
-              ADDRESS_ZERO,
-              "0x"
-            );
-            batchPromises.push(
-              orchestrator.connect(onRamper.wallet).signalIntent(params)
-            );
-          }
-          // Execute batch and update counters
-          await Promise.all(batchPromises);
-          // Update counters and hashes after batch completes
-          for (let j = 0; j < currentBatchSize; j++) {
-            currentIntentCounter++;
-            const intentHash = calculateIntentHash(
-              orchestrator.address,
-              currentIntentCounter - 1
-            );
-            intentHashes.push(intentHash);
-          }
-
-          if ((i + currentBatchSize) % 20 === 0) {
-            console.log(`  Created ${i + currentBatchSize} intents...`);
-          }
-        }
-      }
-
       beforeEach(async () => {
+        // Set max intents per deposit to 3
+        await ramp.connect(owner.wallet).setMaxIntentsPerDeposit(MAX_INTENTS_PER_DEPOSIT);
+
         // Reset intentHashes array for each test
         intentHashes = [];
 
@@ -3085,31 +3046,56 @@ describe("Escrow", () => {
         await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
 
         // Signal MAX_INTENTS_PER_DEPOSIT - 1 intents using batching
-        await signalMultipleIntents(MAX_INTENTS_PER_DEPOSIT - 1);
+        for (let i = 0; i < MAX_INTENTS_PER_DEPOSIT - 1; i++) {
+          await signalIntent();
+          const intentHash = calculateIntentHash(
+            orchestrator.address,
+            currentIntentCounter
+          );
+          intentHashes.push(intentHash);
+          currentIntentCounter++;
+        }
       });
 
-      it("should revert when trying to create more than MAX_INTENTS_PER_DEPOSIT intents; and should allow new intents after cancelling old ones; and should allow new intents after expired intents are pruned automatically", async () => {
-        // Create MAX_INTENTS_PER_DEPOSIT intents
+      it("should allow creating MAX_INTENTS_PER_DEPOSIT intents", async () => {
+        await expect(signalIntent()).to.not.be.reverted;
+
+        const depositIntents = await ramp.getDepositIntentHashes(depositId);
+        expect(depositIntents.length).to.eq(MAX_INTENTS_PER_DEPOSIT);
+      });
+
+      it("should revert when trying to create more than MAX_INTENTS_PER_DEPOSIT intents", async () => {
         await signalIntent();
 
-        // Create one more - should fail
+        const depositIntents = await ramp.getDepositIntentHashes(depositId);
+        expect(depositIntents.length).to.eq(MAX_INTENTS_PER_DEPOSIT);
+
+        await expect(signalIntent()).to.be.revertedWithCustomError(ramp, "MaxIntentsExceeded");
+      });
+
+      it("should allow new intents after cancelling old ones", async () => {
+        await signalIntent();
+
         await expect(signalIntent()).to.be.revertedWithCustomError(ramp, "MaxIntentsExceeded");
 
-        // Cancel the first intent
         await orchestrator.connect(onRamper.wallet).cancelIntent(intentHashes[0]);
-
-        // Should now be able to create a new intent
         await expect(signalIntent()).to.not.be.reverted;
 
-        // Fast forward time to expire all intents
+        const depositIntents = await ramp.getDepositIntentHashes(depositId);
+        expect(depositIntents.length).to.eq(MAX_INTENTS_PER_DEPOSIT);
+      });
+
+      it("should allow new intents after expired intents are pruned automatically", async () => {
+        await signalIntent();
+
+        await expect(signalIntent()).to.be.revertedWithCustomError(ramp, "MaxIntentsExceeded");
+
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
 
-        // Try to create a new intent - this should trigger automatic pruning and succeed
         await expect(signalIntent()).to.not.be.reverted;
 
-        // Verify that we still have MAX_INTENTS_PER_DEPOSIT intents (old ones pruned, new one added)
-        const remainingIntentHashes = await ramp.getDepositIntentHashes(depositId);
-        expect(remainingIntentHashes.length).to.eq(1);
+        const depositIntents = await ramp.getDepositIntentHashes(depositId);
+        expect(depositIntents.length).to.eq(1);
       });
     });
   });
@@ -3930,8 +3916,8 @@ describe("Escrow", () => {
       expect(postFee).to.eq(subjectMakerProtocolFee);
     });
 
-    it("should emit a MakerProtocolFeeSet event", async () => {
-      await expect(subject()).to.emit(ramp, "MakerProtocolFeeSet").withArgs(subjectMakerProtocolFee);
+    it("should emit a MakerProtocolFeeUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "MakerProtocolFeeUpdated").withArgs(subjectMakerProtocolFee);
     });
 
     describe("when setting fee to zero", async () => {
@@ -4061,8 +4047,8 @@ describe("Escrow", () => {
       expect(postThreshold).to.eq(subjectDustThreshold);
     });
 
-    it("should emit a DustThresholdSet event", async () => {
-      await expect(subject()).to.emit(ramp, "DustThresholdSet").withArgs(subjectDustThreshold);
+    it("should emit a DustThresholdUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "DustThresholdUpdated").withArgs(subjectDustThreshold);
     });
 
     describe("when setting threshold to zero", async () => {
@@ -4088,6 +4074,51 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setMaxIntentsPerDeposit", async () => {
+    let subjectCaller: Account;
+    let subjectMaxIntentsPerDeposit: BigNumber;
+
+    beforeEach(async () => {
+      subjectCaller = owner;
+      subjectMaxIntentsPerDeposit = BigNumber.from(5);
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setMaxIntentsPerDeposit(subjectMaxIntentsPerDeposit);
+    }
+
+    it("should update the max intents per deposit", async () => {
+      await subject();
+
+      const postMaxIntents = await ramp.maxIntentsPerDeposit();
+      expect(postMaxIntents).to.eq(subjectMaxIntentsPerDeposit);
+    });
+
+    it("should emit a MaxIntentsPerDepositUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "MaxIntentsPerDepositUpdated").withArgs(subjectMaxIntentsPerDeposit);
+    });
+
+    describe("when setting max intents to zero", async () => {
+      beforeEach(async () => {
+        subjectMaxIntentsPerDeposit = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
       });
     });
 

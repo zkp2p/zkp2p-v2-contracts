@@ -54,6 +54,7 @@ describe("Orchestrator", () => {
   let gatingService: Account;
   let relayerAccount: Account;
   let witness: Account;
+  let protocolFeeRecipient: Account;
   let chainId: BigNumber = ONE;
   let currentIntentCounter: number = 0;
 
@@ -87,7 +88,8 @@ describe("Orchestrator", () => {
       feeRecipient,
       gatingService,
       witness,
-      relayerAccount
+      relayerAccount,
+      protocolFeeRecipient
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -109,7 +111,11 @@ describe("Orchestrator", () => {
     escrow = await deployer.deployEscrow(
       owner.address,
       chainId,
-      paymentVerifierRegistry.address
+      paymentVerifierRegistry.address,
+      ZERO,
+      protocolFeeRecipient.address,
+      ZERO,
+      BigNumber.from(10)
     );
 
     await escrowRegistry.addEscrow(escrow.address);

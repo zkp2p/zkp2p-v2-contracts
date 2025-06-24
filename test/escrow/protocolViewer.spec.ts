@@ -48,6 +48,7 @@ describe("ProtocolViewer", () => {
   let feeRecipient: Account;
   let gatingService: Account;
   let witness: Account;
+  let protocolFeeRecipient: Account;
   let chainId: BigNumber = ONE;
 
   let escrow: Escrow;
@@ -76,7 +77,8 @@ describe("ProtocolViewer", () => {
       offRamperNewAcct,
       feeRecipient,
       gatingService,
-      witness
+      witness,
+      protocolFeeRecipient
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -93,7 +95,11 @@ describe("ProtocolViewer", () => {
     escrow = await deployer.deployEscrow(
       owner.address,
       chainId,
-      paymentVerifierRegistry.address
+      paymentVerifierRegistry.address,
+      ZERO,
+      protocolFeeRecipient.address,
+      ZERO,
+      BigNumber.from(10)
     );
 
     await escrowRegistry.addEscrow(escrow.address);

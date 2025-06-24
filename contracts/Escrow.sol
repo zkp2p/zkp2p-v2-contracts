@@ -39,7 +39,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
-    uint256 internal constant MAX_INTENTS_PER_DEPOSIT = 100;        // Maximum active intents per deposit
     
     /* ============ State Variables ============ */
 
@@ -70,10 +69,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     uint256 public depositCounter;                                  // Counter for depositIds
     
-    // Maker fee configuration
     uint256 public makerProtocolFee;                                // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
     address public makerFeeRecipient;                               // Address that receives maker protocol fees
     uint256 public dustThreshold;                                   // Amount below which deposits are considered dust and can be closed
+    uint256 public maxIntentsPerDeposit;                            // Maximum active intents per deposit
 
     /* ============ Modifiers ============ */
 
@@ -104,12 +103,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
     constructor(
         address _owner,
         uint256 _chainId,
-        address _paymentVerifierRegistry
+        address _paymentVerifierRegistry,
+        uint256 _makerProtocolFee,
+        address _makerFeeRecipient,
+        uint256 _dustThreshold,
+        uint256 _maxIntentsPerDeposit
     )
         Ownable()
     {
         chainId = _chainId;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+        makerProtocolFee = _makerProtocolFee;
+        makerFeeRecipient = _makerFeeRecipient;
+        dustThreshold = _dustThreshold;
+        maxIntentsPerDeposit = _maxIntentsPerDeposit;
 
         transferOwnership(_owner);
     }
@@ -535,12 +542,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         // Check if we need to reclaim expired liquidity first
         uint256 currentIntentCount = depositIntentHashes[_depositId].length;
-        if (deposit.remainingDeposits < _amount || currentIntentCount >= MAX_INTENTS_PER_DEPOSIT) {
+        if (deposit.remainingDeposits < _amount || currentIntentCount >= maxIntentsPerDeposit) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
 
             currentIntentCount = depositIntentHashes[_depositId].length;
-            if (currentIntentCount >= MAX_INTENTS_PER_DEPOSIT) {
-                revert MaxIntentsExceeded(_depositId, currentIntentCount, MAX_INTENTS_PER_DEPOSIT);
+            if (currentIntentCount >= maxIntentsPerDeposit) {
+                revert MaxIntentsExceeded(_depositId, currentIntentCount, maxIntentsPerDeposit);
             }
         }
         
@@ -665,7 +672,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_makerProtocolFee > MAX_MAKER_FEE) revert AmountAboveMax(_makerProtocolFee, MAX_MAKER_FEE);
         
         makerProtocolFee = _makerProtocolFee;
-        emit MakerProtocolFeeSet(_makerProtocolFee);
+        emit MakerProtocolFeeUpdated(_makerProtocolFee);
     }
     
     /**
@@ -689,7 +696,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_dustThreshold > MAX_DUST_THRESHOLD) revert AmountAboveMax(_dustThreshold, MAX_DUST_THRESHOLD);
         
         dustThreshold = _dustThreshold;
-        emit DustThresholdSet(_dustThreshold);
+        emit DustThresholdUpdated(_dustThreshold);
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Sets the maximum number of active intents per deposit.
+     *
+     * @param _maxIntentsPerDeposit The new maximum number of active intents per deposit
+     */
+    function setMaxIntentsPerDeposit(uint256 _maxIntentsPerDeposit) external onlyOwner {
+        if (_maxIntentsPerDeposit == 0) revert ZeroValue();
+        
+        maxIntentsPerDeposit = _maxIntentsPerDeposit;
+        emit MaxIntentsPerDepositUpdated(_maxIntentsPerDeposit);
     }
 
     /**

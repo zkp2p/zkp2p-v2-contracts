@@ -75,12 +75,20 @@ export default class DeployHelper {
   public async deployEscrow(
     owner: Address,
     chainId: BigNumber,
-    paymentVerifierRegistry: Address
+    paymentVerifierRegistry: Address,
+    makerProtocolFee: BigNumber,
+    makerFeeRecipient: Address,
+    dustThreshold: BigNumber,
+    maxIntentsPerDeposit: BigNumber
   ): Promise<Escrow> {
     return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
       chainId.toString(),
-      paymentVerifierRegistry
+      paymentVerifierRegistry,
+      makerProtocolFee,
+      makerFeeRecipient,
+      dustThreshold,
+      maxIntentsPerDeposit
     );
   }
 

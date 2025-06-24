@@ -83,11 +83,10 @@ interface IOrchestrator {
     event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
     event PostIntentHookRegistryUpdated(address indexed postIntentHookRegistry);
     event RelayerRegistryUpdated(address indexed relayerRegistry);
-    
+    event EscrowRegistryUpdated(address indexed escrowRegistry);
+
     event ProtocolFeeUpdated(uint256 protocolFee);
     event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
-
-    event EscrowRegistryUpdated(address indexed escrowRegistry);
 
     /* ============ Standardized Custom Errors ============ */
     
