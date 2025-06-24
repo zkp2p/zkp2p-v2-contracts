@@ -438,13 +438,8 @@ describe("ProtocolViewer", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
     });
 
@@ -519,13 +514,8 @@ describe("ProtocolViewer", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
 
       subjectIntentHashes = [intentHash];

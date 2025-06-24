@@ -454,7 +454,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     }
 
     /**
-     * @notice Calculates a unique hash for an intent using the intent params.
+     * @notice Calculates a unique hash for an intent using just the escrow address and counter.
      */
     function _calculateIntentHash(
         address _intentOwner,
@@ -466,17 +466,13 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         view
         returns (bytes32 intentHash)
     {
+        // Simplified: Just use escrow address + counter for uniqueness
         // Mod with circom prime field to make sure it fits in a 254-bit field
         uint256 intermediateHash = uint256(
             keccak256(
                 abi.encodePacked(
-                    _intentOwner, 
-                    _escrow, 
-                    _verifier, 
-                    _depositId, 
-                    block.timestamp,
-                    intentCounter,           // prevents collision of intent hashes for same account in the same block
-                    address(this)            // prevents collision of intent hashes when using multiple orchestrators
+                    _escrow,          // escrow address for uniqueness
+                    intentCounter     // globally unique counter within this orchestrator
                 )
             ));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);

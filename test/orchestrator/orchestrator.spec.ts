@@ -263,13 +263,8 @@ describe("Orchestrator", () => {
     it("should create the correct entry in the intents mapping", async () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
 
       await subject();
@@ -292,13 +287,8 @@ describe("Orchestrator", () => {
     it("should lock funds in the escrow contract", async () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       const intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
 
       const preDeposit = await escrow.getDeposit(subjectDepositId);
@@ -320,13 +310,8 @@ describe("Orchestrator", () => {
       // Get the block timestamp from the transaction receipt
       const block = await ethers.provider.getBlock(receipt.blockNumber);
       const intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        block.timestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
 
       const accountIntents = await orchestrator.getAccountIntents(onRamper.address);
@@ -340,13 +325,8 @@ describe("Orchestrator", () => {
       // Get the block timestamp from the transaction receipt
       const block = await ethers.provider.getBlock(receipt.blockNumber);
       const intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        block.timestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
 
       expect(tx).to.emit(orchestrator, "IntentSignaled").withArgs(
@@ -377,13 +357,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         oldIntentHash = calculateIntentHash(
-          subjectCaller.address,
           escrow.address,
-          subjectVerifier,
-          subjectDepositId,
-          currentTimestamp,
-          currentIntentCounter - 1,  // Use the counter value when the intent was created
-          orchestrator.address
+          currentIntentCounter - 1  // Use the counter value when the intent was created
         );
 
         await blockchain.increaseTimeAsync(timeJump);
@@ -409,13 +384,8 @@ describe("Orchestrator", () => {
         await subject();
 
         const newIntentHash = calculateIntentHash(
-          subjectCaller.address,
           escrow.address,
-          subjectVerifier,
-          subjectDepositId,
-          await blockchain.getCurrentTimestamp(),
-          currentIntentCounter,  // Current counter value for the new intent
-          orchestrator.address
+          currentIntentCounter  // Current counter value for the new intent
         );
         currentIntentCounter++;  // Increment after creating new intent
 
@@ -471,13 +441,8 @@ describe("Orchestrator", () => {
         beforeEach(async () => {
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           const oldIntentHash = calculateIntentHash(
-            subjectCaller.address,
             escrow.address,
-            subjectVerifier,
-            subjectDepositId,
-            currentTimestamp,
-            currentIntentCounter - 1,  // Use the counter value when the intent was created
-            orchestrator.address
+            currentIntentCounter - 1  // Use the counter value when the intent was created
           );
           await orchestrator.connect(onRamper.wallet).cancelIntent(oldIntentHash);
         });
@@ -520,13 +485,8 @@ describe("Orchestrator", () => {
         await subject();
 
         const intent = await orchestrator.getIntent(calculateIntentHash(
-          subjectCaller.address,
           escrow.address,
-          subjectVerifier,
-          subjectDepositId,
-          await blockchain.getCurrentTimestamp(),
-          currentIntentCounter,  // Current counter for this intent
-          orchestrator.address
+          currentIntentCounter  // Current counter for this intent
         ));
         currentIntentCounter++;  // Increment after creating intent
         expect(intent.postIntentHook).to.eq(postIntentHookMock.address);
@@ -737,13 +697,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash = calculateIntentHash(
-          subjectCaller.address,
           escrow.address,
-          subjectVerifier,
-          subjectDepositId,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after creating intent
 
@@ -797,16 +752,11 @@ describe("Orchestrator", () => {
       );
 
       await orchestrator.connect(onRamper.wallet).signalIntent(params);
-      
+
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectIntentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment after signalIntent
       subjectCaller = onRamper;
@@ -933,13 +883,8 @@ describe("Orchestrator", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment after signalIntent
 
@@ -1077,13 +1022,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp2 = await blockchain.getCurrentTimestamp();
         subjectIntentHash = calculateIntentHash(
-          onRamper.address,
           escrow.address,
-          verifier.address,
-          ZERO,
-          currentTimestamp2,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
         subjectProof = ethers.utils.defaultAbiCoder.encode(
@@ -1194,7 +1134,7 @@ describe("Orchestrator", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp, currentIntentCounter, orchestrator.address);
+        intentHash = calculateIntentHash(escrow.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
         // Update the subject variables
@@ -1378,7 +1318,7 @@ describe("Orchestrator", () => {
         params.gatingServiceSignature = gatingServiceSignatureForHook;
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp, currentIntentCounter, orchestrator.address);
+        intentHash = calculateIntentHash(escrow.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
         // Set the verifier to verify payment
@@ -1591,13 +1531,8 @@ describe("Orchestrator", () => {
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = calculateIntentHash(
-        onRamper.address,
         escrow.address,
-        verifier.address,
-        ZERO,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestrator.address
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment after signalIntent
 
@@ -1686,13 +1621,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash2 = calculateIntentHash(
-          onRamper.address,
           escrow.address,
-          verifier.address,
-          ZERO,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
 
@@ -1800,7 +1730,7 @@ describe("Orchestrator", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp, currentIntentCounter, orchestrator.address);
+        intentHash = calculateIntentHash(escrow.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
         // Update the subject variables
@@ -1930,7 +1860,7 @@ describe("Orchestrator", () => {
         params.gatingServiceSignature = gatingServiceSignatureForHook;
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(onRamper.address, escrow.address, verifier.address, ZERO, currentTimestamp, currentIntentCounter, orchestrator.address);
+        intentHash = calculateIntentHash(escrow.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
         subjectIntentHash = intentHash;
@@ -2065,13 +1995,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const intentHash = calculateIntentHash(
-          onRamper.address,
           escrow.address,
-          verifier.address,
-          depositId,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
         intentHashes.push(intentHash);
@@ -2213,13 +2138,8 @@ describe("Orchestrator", () => {
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         onRamperTwoIntentHash = calculateIntentHash(
-          onRamperTwo.address,
           escrow.address,
-          verifier.address,
-          depositId,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
 

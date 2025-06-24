@@ -49,18 +49,13 @@ export const getCurrencyCodeFromHash = (hash: string): string => {
 }
 
 export const calculateIntentHash = (
-  onRamper: string,
   escrow: string,
-  verifier: string,
-  depositId: BigNumber,
-  timestamp: BigNumber | number,
   intentCounter: BigNumber | number,
-  orchestratorAddress: string
 ): string => {
 
   const intermediateHash = ethers.utils.solidityKeccak256(
-    ["address", "address", "address", "uint256", "uint256", "uint256", "address"],
-    [onRamper, escrow, verifier, depositId, timestamp, intentCounter, orchestratorAddress]
+    ["address", "uint256"],
+    [escrow, intentCounter]
   );
 
   return ethers.utils.hexZeroPad(BigNumber.from(intermediateHash).mod(CIRCOM_FIELD).toHexString(), 32);

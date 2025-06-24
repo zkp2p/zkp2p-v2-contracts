@@ -915,13 +915,8 @@ describe("Escrow", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
-          onRamper.address,
           ramp.address,
-          verifier.address,
-          subjectDepositId,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
 
@@ -1158,13 +1153,8 @@ describe("Escrow", () => {
         // Calculate the intent hash
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
-          onRamper.address,
           ramp.address,
-          verifier.address,
-          ZERO,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestrator.address
+          currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
       });
@@ -1388,13 +1378,8 @@ describe("Escrow", () => {
 
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           intentHash = calculateIntentHash(
-            onRamper.address,
             ramp.address,
-            verifier.address,
-            subjectDepositId,
-            currentTimestamp,
-            currentIntentCounter,
-            orchestrator.address
+            currentIntentCounter
           );
           currentIntentCounter++;  // Increment after signalIntent
 
@@ -1482,13 +1467,8 @@ describe("Escrow", () => {
 
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           const intentHash = calculateIntentHash(
-            onRamper.address,
             ramp.address,
-            verifier.address,
-            subjectDepositId,
-            currentTimestamp,
-            currentIntentCounter,
-            orchestrator.address
+            currentIntentCounter
           );
           currentIntentCounter++;  // Increment after signalIntent
 
@@ -2821,13 +2801,8 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        onRamper.address,
         ramp.address,
-        verifier.address,
-        subjectDepositId,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestratorMock.address  // Using orchestratorMock address since we're testing with the mock
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment for consistency
 
@@ -3032,13 +3007,8 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        onRamper.address,
         ramp.address,
-        verifier.address,
-        subjectDepositId,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestratorMock.address  // Using orchestratorMock address since we're testing with the mock
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment for consistency
       intentAmount = usdc(30);
@@ -3386,13 +3356,8 @@ describe("Escrow", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         subjectDepositId = BigNumber.from(1); // New deposit
         subjectIntentHash = calculateIntentHash(
-          onRamper.address,
           ramp.address,
-          verifier.address,
-          subjectDepositId,
-          currentTimestamp,
-          currentIntentCounter,
-          orchestratorMock.address
+          currentIntentCounter
         );
         intentAmount = usdc(30);
         intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
