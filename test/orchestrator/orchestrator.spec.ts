@@ -660,7 +660,7 @@ describe("Orchestrator", () => {
       });
     });
 
-    describe.only("when the gating service signature is expired", async () => {
+    describe("when the gating service signature is expired", async () => {
       beforeEach(async () => {
         subjectSignatureExpiration = ONE_DAY_IN_SECONDS.sub(1);
 
