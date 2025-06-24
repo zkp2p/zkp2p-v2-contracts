@@ -110,7 +110,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     {
         _validateSignalIntent(_params);
 
-        bytes32 intentHash = _calculateIntentHash(msg.sender, _params.escrow, _params.verifier, _params.depositId);
+        bytes32 intentHash = _calculateIntentHash();
 
         // Lock liquidity in escrow with expiry time
         uint256 expiryTime = block.timestamp + intentExpirationPeriod;
@@ -454,25 +454,17 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     }
 
     /**
-     * @notice Calculates a unique hash for an intent using just the escrow address and counter.
+     * @notice Calculates a unique hash for an intent using the orchestrator address and counter.
      */
-    function _calculateIntentHash(
-        address _intentOwner,
-        address _escrow,
-        address _verifier,
-        uint256 _depositId
-    )
-        internal
-        view
-        returns (bytes32 intentHash)
-    {
-        // Simplified: Just use escrow address + counter for uniqueness
+    function _calculateIntentHash() internal view returns (bytes32 intentHash) {
+        // Use orchestrator address + counter for global uniqueness
         // Mod with circom prime field to make sure it fits in a 254-bit field
         uint256 intermediateHash = uint256(
             keccak256(
                 abi.encodePacked(
-                    _escrow,          // escrow address for uniqueness
-                    intentCounter     // globally unique counter within this orchestrator
+                    address(this),    // Include orchestrator address for avoiding collisions when migrating to a new orchestrator
+                    // or when multiple orchestrators are deployed
+                    intentCounter     // unique counter within this orchestrator
                 )
             ));
         intentHash = bytes32(intermediateHash % CIRCOM_PRIME_FIELD);

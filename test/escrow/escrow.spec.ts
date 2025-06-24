@@ -915,7 +915,7 @@ describe("Escrow", () => {
         await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
-          ramp.address,
+          orchestrator.address,
           currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
@@ -1153,7 +1153,7 @@ describe("Escrow", () => {
         // Calculate the intent hash
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(
-          ramp.address,
+          orchestrator.address,
           currentIntentCounter
         );
         currentIntentCounter++;  // Increment after signalIntent
@@ -1378,7 +1378,7 @@ describe("Escrow", () => {
 
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           intentHash = calculateIntentHash(
-            ramp.address,
+            orchestrator.address,
             currentIntentCounter
           );
           currentIntentCounter++;  // Increment after signalIntent
@@ -1467,7 +1467,7 @@ describe("Escrow", () => {
 
           const currentTimestamp = await blockchain.getCurrentTimestamp();
           const intentHash = calculateIntentHash(
-            ramp.address,
+            orchestrator.address,
             currentIntentCounter
           );
           currentIntentCounter++;  // Increment after signalIntent
@@ -2801,7 +2801,7 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        ramp.address,
+        orchestrator.address,
         currentIntentCounter
       );
       currentIntentCounter++;  // Increment for consistency
@@ -2975,8 +2975,10 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when we have reached max number of intents per deposit", async () => {
-      const MAX_INTENTS_PER_DEPOSIT = 100;
+    describe("when we have reached max number of intents per deposit", async function () {
+      this.timeout(300000); // Increase timeout to 300 seconds for this test suite
+
+      const MAX_INTENTS_PER_DEPOSIT = 20; // Matches the contract constant
       let intentHashes: string[] = [];
       let depositId: BigNumber;
 
@@ -3035,9 +3037,10 @@ describe("Escrow", () => {
           // Update counters and hashes after batch completes
           for (let j = 0; j < currentBatchSize; j++) {
             currentIntentCounter++;
-            const intentHash = calculateIntentHash(ramp.address,
-              currentIntentCounter
-              - 1);
+            const intentHash = calculateIntentHash(
+              orchestrator.address,
+              currentIntentCounter - 1
+            );
             intentHashes.push(intentHash);
           }
 
@@ -3142,7 +3145,7 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        ramp.address,
+        orchestrator.address,
         currentIntentCounter
       );
       currentIntentCounter++;  // Increment for consistency
@@ -3274,7 +3277,7 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        ramp.address,
+        orchestrator.address,
         currentIntentCounter
       );
       currentIntentCounter++;  // Increment after signalIntent
@@ -3486,7 +3489,7 @@ describe("Escrow", () => {
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         subjectDepositId = BigNumber.from(1); // New deposit
         subjectIntentHash = calculateIntentHash(
-          ramp.address,
+          orchestrator.address,
           currentIntentCounter
         );
         intentAmount = usdc(30);
