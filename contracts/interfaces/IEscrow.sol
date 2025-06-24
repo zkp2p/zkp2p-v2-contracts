@@ -116,6 +116,7 @@ interface IEscrow {
     error DepositNotAcceptingIntents(uint256 depositId);
     error DepositAlreadyInState(uint256 depositId, bool currentState);
     error InsufficientDepositLiquidity(uint256 depositId, uint256 available, uint256 required);
+    error MaxIntentsExceeded(uint256 depositId, uint256 current, uint256 max);
 
     // Validation errors
     error EmptyPayeeDetails();

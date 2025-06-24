@@ -39,6 +39,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
+    uint256 internal constant MAX_INTENTS_PER_DEPOSIT = 100;        // Maximum active intents per deposit
     
     /* ============ State Variables ============ */
 
@@ -533,8 +534,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
         
         // Check if we need to reclaim expired liquidity first
-        if (deposit.remainingDeposits < _amount) {
+        uint256 currentIntentCount = depositIntentHashes[_depositId].length;
+        if (deposit.remainingDeposits < _amount || currentIntentCount >= MAX_INTENTS_PER_DEPOSIT) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
+
+            currentIntentCount = depositIntentHashes[_depositId].length;
+            if (currentIntentCount >= MAX_INTENTS_PER_DEPOSIT) {
+                revert MaxIntentsExceeded(_depositId, currentIntentCount, MAX_INTENTS_PER_DEPOSIT);
+            }
         }
         
         // Update deposit state

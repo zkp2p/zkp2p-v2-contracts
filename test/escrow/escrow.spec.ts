@@ -1,6 +1,6 @@
 import "module-alias/register";
 
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { Signer } from "ethers";
 
 import {
@@ -2974,6 +2974,141 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
       });
     });
+
+    describe("when we have reached max number of intents per deposit", async () => {
+      const MAX_INTENTS_PER_DEPOSIT = 100;
+      let intentHashes: string[] = [];
+      let depositId: BigNumber;
+
+      async function signalIntent(): Promise<any> {
+        const params = await createSignalIntentParams(
+          ramp.address,
+          depositId,
+          usdc(1),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          ether(1),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+
+        const tx = await orchestrator.connect(onRamper.wallet).signalIntent(params);
+        currentIntentCounter++;
+        return tx;
+      }
+
+      // Batch signal multiple intents for performance
+      async function signalMultipleIntents(count: number): Promise<void> {
+        console.log(`Creating ${count} intents in batches...`);
+        const batchSize = 10;
+        for (let i = 0; i < count; i += batchSize) {
+          const currentBatchSize = Math.min(batchSize, count - i);
+          const batchPromises = [];
+          // Create params for batch
+          for (let j = 0; j < currentBatchSize; j++) {
+            const params = await createSignalIntentParams(
+              ramp.address,
+              depositId,
+              usdc(1),
+              onRamper.address,
+              verifier.address,
+              Currency.USD,
+              ether(1),
+              ADDRESS_ZERO,
+              ZERO,
+              gatingService,
+              chainId.toString(),
+              ADDRESS_ZERO,
+              "0x"
+            );
+            batchPromises.push(
+              orchestrator.connect(onRamper.wallet).signalIntent(params)
+            );
+          }
+          // Execute batch and update counters
+          await Promise.all(batchPromises);
+          // Update counters and hashes after batch completes
+          for (let j = 0; j < currentBatchSize; j++) {
+            currentIntentCounter++;
+            const intentHash = calculateIntentHash(ramp.address,
+              currentIntentCounter
+              - 1);
+            intentHashes.push(intentHash);
+          }
+
+          if ((i + currentBatchSize) % 20 === 0) {
+            console.log(`  Created ${i + currentBatchSize} intents...`);
+          }
+        }
+      }
+
+      beforeEach(async () => {
+        // Reset intentHashes array for each test
+        intentHashes = [];
+
+        // First time setup - create deposit and 99 intents
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(1000));
+
+        const payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
+        const depositData = ethers.utils.defaultAbiCoder.encode(
+          ["address"],
+          [witness.address]
+        );
+
+        await ramp.connect(offRamper.wallet).createDeposit(
+          usdcToken.address,
+          usdc(1000),
+          { min: usdc(1), max: usdc(100) },
+          [verifier.address],
+          [{
+            intentGatingService: gatingService.address,
+            payeeDetails: payeeDetails,
+            data: depositData
+          }],
+          [[{ code: Currency.USD, minConversionRate: ether(1) }]],
+          ADDRESS_ZERO
+        );
+
+        const depositCounter = await ramp.depositCounter();
+        depositId = depositCounter.sub(1);
+
+        // Enable multiple intents so we can create many
+        await orchestrator.connect(owner.wallet).setAllowMultipleIntents(true);
+        await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
+
+        // Signal MAX_INTENTS_PER_DEPOSIT - 1 intents using batching
+        await signalMultipleIntents(MAX_INTENTS_PER_DEPOSIT - 1);
+      });
+
+      it("should revert when trying to create more than MAX_INTENTS_PER_DEPOSIT intents; and should allow new intents after cancelling old ones; and should allow new intents after expired intents are pruned automatically", async () => {
+        // Create MAX_INTENTS_PER_DEPOSIT intents
+        await signalIntent();
+
+        // Create one more - should fail
+        await expect(signalIntent()).to.be.revertedWithCustomError(ramp, "MaxIntentsExceeded");
+
+        // Cancel the first intent
+        await orchestrator.connect(onRamper.wallet).cancelIntent(intentHashes[0]);
+
+        // Should now be able to create a new intent
+        await expect(signalIntent()).to.not.be.reverted;
+
+        // Fast forward time to expire all intents
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        // Try to create a new intent - this should trigger automatic pruning and succeed
+        await expect(signalIntent()).to.not.be.reverted;
+
+        // Verify that we still have MAX_INTENTS_PER_DEPOSIT intents (old ones pruned, new one added)
+        const remainingIntentHashes = await ramp.getDepositIntentHashes(depositId);
+        expect(remainingIntentHashes.length).to.eq(1);
+      });
+    });
   });
 
   describe("#unlockFunds", async () => {
@@ -3139,13 +3274,8 @@ describe("Escrow", () => {
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
       subjectIntentHash = calculateIntentHash(
-        onRamper.address,
         ramp.address,
-        verifier.address,
-        subjectDepositId,
-        currentTimestamp,
-        currentIntentCounter,
-        orchestratorMock.address
+        currentIntentCounter
       );
       currentIntentCounter++;  // Increment after signalIntent
       intentAmount = usdc(30);
