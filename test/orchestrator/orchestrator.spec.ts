@@ -1859,6 +1859,10 @@ describe("Orchestrator", () => {
         const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetAddress]);
 
         // Create a new intent with post intent hook action
+        // Get expiration timestamp for signature
+        const currentBlock = await ethers.provider.getBlock("latest");
+        const signatureExpiration = BigNumber.from(currentBlock.timestamp + 86400); // 1 day from now
+
         const gatingServiceSignatureForHook = await generateGatingServiceSignature(
           gatingService,
           escrow.address,
@@ -1868,7 +1872,8 @@ describe("Orchestrator", () => {
           verifier.address,
           Currency.USD,
           depositConversionRate,
-          chainId.toString()
+          chainId.toString(),
+          signatureExpiration
         );
 
         // First cancel the existing intent
@@ -1888,7 +1893,8 @@ describe("Orchestrator", () => {
           null, // passing null since we already have the signature
           chainId.toString(),
           postIntentHookMock.address,
-          signalIntentDataForHook
+          signalIntentDataForHook,
+          signatureExpiration
         );
         // Override the signature since we generated it manually
         params.gatingServiceSignature = gatingServiceSignatureForHook;
