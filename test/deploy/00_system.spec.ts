@@ -155,6 +155,11 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       const actualMaxIntentsPerDeposit = await escrow.maxIntentsPerDeposit();
       expect(actualMaxIntentsPerDeposit).to.eq(MAX_INTENTS_PER_DEPOSIT[network]);
     });
+
+    it("should have the correct intent expiration period set", async () => {
+      const actualIntentExpirationPeriod = await escrow.intentExpirationPeriod();
+      expect(actualIntentExpirationPeriod).to.eq(INTENT_EXPIRATION_PERIOD[network]);
+    });
   });
 
   describe("Orchestrator", async () => {
@@ -172,11 +177,6 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       expect(actualProtocolFeeRecipient).to.eq(expectedProtocolFeeRecipient);
       expect(actualOwner).to.eq(multiSig);
       expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
-    });
-
-    it("should have the correct intent expiration period set", async () => {
-      const actualIntentExpirationPeriod = await orchestrator.intentExpirationPeriod();
-      expect(actualIntentExpirationPeriod).to.eq(INTENT_EXPIRATION_PERIOD[network]);
     });
 
     it("should have the correct post intent hook registry set", async () => {

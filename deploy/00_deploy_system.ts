@@ -89,7 +89,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         ? PROTOCOL_MAKER_FEE_RECIPIENT[network]
         : deployer,
       DUST_THRESHOLD[network],
-      MAX_INTENTS_PER_DEPOSIT[network]
+      MAX_INTENTS_PER_DEPOSIT[network],
+      INTENT_EXPIRATION_PERIOD[network],
     ],
   });
   console.log("Escrow deployed at", escrow.address);
@@ -105,7 +106,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [
       deployer,
       chainId,
-      INTENT_EXPIRATION_PERIOD[network],
       escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
