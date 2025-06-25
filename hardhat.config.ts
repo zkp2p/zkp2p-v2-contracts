@@ -11,14 +11,6 @@ import 'hardhat-gas-reporter';
 import { HardhatUserConfig } from "hardhat/config";
 
 
-import "./tasks/accountIntent";
-import "./tasks/blockNumber";
-import "./tasks/createDeposit";
-import "./tasks/signalIntent";
-import "./tasks/tokenBalance";
-import "./tasks/chainId";
-import "./tasks/logCurrencies";
-
 dotenv.config();
 
 const config: HardhatUserConfig = {
