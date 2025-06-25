@@ -215,7 +215,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO  // intentGuardian
+        intentGuardian: ADDRESS_ZERO,  // intentGuardian
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -760,7 +762,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO  // intentGuardian
+        intentGuardian: ADDRESS_ZERO,  // intentGuardian
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Signal an intent
@@ -888,7 +892,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Signal an intent
@@ -1543,7 +1549,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       intentAmount = usdc(50);
@@ -2008,7 +2016,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Enable multiple intents
@@ -2608,7 +2618,9 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
     });
 
