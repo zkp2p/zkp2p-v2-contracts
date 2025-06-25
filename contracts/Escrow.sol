@@ -39,6 +39,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
+    uint256 internal constant MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD = 86400 * 3; // 3 days
     
     /* ============ State Variables ============ */
 
@@ -73,6 +74,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     address public makerFeeRecipient;                               // Address that receives maker protocol fees
     uint256 public dustThreshold;                                   // Amount below which deposits are considered dust and can be closed
     uint256 public maxIntentsPerDeposit;                            // Maximum active intents per deposit
+    uint256 public intentExpirationPeriod;                          // Time period after which an intent expires
 
     /* ============ Modifiers ============ */
 
@@ -107,7 +109,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 _makerProtocolFee,
         address _makerFeeRecipient,
         uint256 _dustThreshold,
-        uint256 _maxIntentsPerDeposit
+        uint256 _maxIntentsPerDeposit,
+        uint256 _intentExpirationPeriod
     )
         Ownable()
     {
@@ -117,6 +120,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         makerFeeRecipient = _makerFeeRecipient;
         dustThreshold = _dustThreshold;
         maxIntentsPerDeposit = _maxIntentsPerDeposit;
+        intentExpirationPeriod = _intentExpirationPeriod;
 
         transferOwnership(_owner);
     }
@@ -129,56 +133,50 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * of deposit token. Every deposit specifies the payment services it supports by specifying their corresponding verifier addresses and 
      * verification data, supported currencies and their min conversion rates for each payment service.
      * Note that the order of the verifiers, verification data, and currency data must match.
-     *
-     * @param _token                     The token to be deposited
-     * @param _amount                    The amount of token to deposit
-     * @param _intentAmountRange         The max and min take amount for each intent
-     * @param _verifiers                 The payment verifiers that deposit supports
-     * @param _verifierData              The payment verification data for each verifier that deposit supports
-     * @param _currencies                The currencies for each verifier that deposit supports
-     * @param _delegate                  Optional delegate address that can manage this deposit (address(0) for no delegate)
      */
-    function createDeposit(
-        IERC20 _token,
-        uint256 _amount,
-        Range calldata _intentAmountRange,
-        address[] calldata _verifiers,
-        DepositVerifierData[] calldata _verifierData,
-        Currency[][] calldata _currencies,
-        address _delegate
-    )
-        external
-        whenNotPaused
-    {
-        if (_intentAmountRange.min == 0) revert ZeroMinValue();
-        if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
+    function createDeposit(CreateDepositParams calldata _params) external whenNotPaused {
+        if (_params.intentAmountRange.min == 0) revert ZeroMinValue();
+        if (_params.intentAmountRange.min > _params.intentAmountRange.max) { 
+            revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
+        }
 
         // Calculate maker fees and net deposit amount
-        uint256 makerFees = (_amount * makerProtocolFee) / PRECISE_UNIT;
-        uint256 netDepositAmount = _amount - makerFees;
-        if (netDepositAmount < _intentAmountRange.min) revert AmountBelowMin(netDepositAmount, _intentAmountRange.min);
+        uint256 makerFees = (_params.amount * makerProtocolFee) / PRECISE_UNIT;
+        uint256 netDepositAmount = _params.amount - makerFees;
+        if (netDepositAmount < _params.intentAmountRange.min) {
+            revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
+        }
         
         // Create deposit
         uint256 depositId = depositCounter++;
         accountDeposits[msg.sender].push(depositId);
         deposits[depositId] = Deposit({
             depositor: msg.sender,
-            delegate: _delegate,
-            token: _token,
-            amount: _amount,
-            intentAmountRange: _intentAmountRange,
+            delegate: _params.delegate,
+            token: _params.token,
+            amount: _params.amount,
+            intentAmountRange: _params.intentAmountRange,
             acceptingIntents: true,
             remainingDeposits: netDepositAmount,    // Net amount available for intents
             outstandingIntentAmount: 0,
             reservedMakerFees: makerFees,
-            accruedMakerFees: 0
+            accruedMakerFees: 0,
+            intentGuardian: _params.intentGuardian
         });
 
-        emit DepositReceived(depositId, msg.sender, _token, _amount, _intentAmountRange, _delegate);
+        emit DepositReceived(
+            depositId, 
+            msg.sender, 
+            _params.token, 
+            _params.amount, 
+            _params.intentAmountRange, 
+            _params.delegate, 
+            _params.intentGuardian
+        );
 
-        _addVerifiersToDeposit(depositId, _verifiers, _verifierData, _currencies);
+        _addVerifiersToDeposit(depositId, _params.verifiers, _params.verifierData, _params.currencies);
 
-        _token.transferFrom(msg.sender, address(this), _amount);
+        _params.token.transferFrom(msg.sender, address(this), _params.amount);
     }
 
     /**
@@ -521,14 +519,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId The deposit ID to lock funds from
      * @param _amount The amount to lock
-     * @param _expiryTime When this intent expires (block.timestamp + intentExpirationPeriod)
      * @param _intentHash The intent hash this intent corresponds to
      */
     function lockFunds(
         uint256 _depositId, 
         bytes32 _intentHash,
-        uint256 _amount, 
-        uint256 _expiryTime
+        uint256 _amount
     ) 
         external 
         onlyOrchestrator 
@@ -556,13 +552,15 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.outstandingIntentAmount += _amount;
         
         depositIntentHashes[_depositId].push(_intentHash);
+        uint256 expiryTime = block.timestamp + intentExpirationPeriod;
         depositIntents[_depositId][_intentHash] = Intent({
             intentHash: _intentHash,
             amount: _amount,
-            expiryTime: _expiryTime
+            timestamp: block.timestamp,
+            expiryTime: expiryTime
         });
 
-        emit FundsLocked(_depositId, _intentHash, _amount, _expiryTime);
+        emit FundsLocked(_depositId, _intentHash, _amount, expiryTime);
     }
 
     /**
@@ -634,6 +632,36 @@ contract Escrow is Ownable, Pausable, IEscrow {
         token.transfer(_to, _transferAmount);
 
         emit FundsUnlockedAndTransferred(_depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, _to);
+    }
+
+    /**
+     * @notice INTENT GUARDIAN ONLY: Extends the expiry time of an existing intent. Only callable by intent guardian.
+     * 
+     * @param _depositId The deposit ID containing the intent
+     * @param _intentHash The intent hash to extend expiry for
+     * @param _additionalTime The additional time to extend the expiry by
+     */
+    function extendIntentExpiry(
+        uint256 _depositId, 
+        bytes32 _intentHash,
+        uint256 _additionalTime
+    ) 
+        external 
+    {
+        Deposit storage deposit = deposits[_depositId];
+        Intent storage intent = depositIntents[_depositId][_intentHash];
+        
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
+        if (intent.intentHash == bytes32(0)) revert IntentNotFound(_intentHash);
+        if (deposit.intentGuardian != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.intentGuardian);
+        if (_additionalTime == 0) revert ZeroValue();
+        if (_additionalTime > MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD) {
+            revert AmountAboveMax(_additionalTime, MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD);
+        }
+        
+        intent.expiryTime += _additionalTime;
+        
+        emit IntentExpiryExtended(_depositId, _intentHash, intent.expiryTime);
     }
 
     /* ============ Governance Functions ============ */
@@ -709,6 +737,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         maxIntentsPerDeposit = _maxIntentsPerDeposit;
         emit MaxIntentsPerDepositUpdated(_maxIntentsPerDeposit);
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Sets the intent expiration period.
+     *
+     * @param _intentExpirationPeriod The new intent expiration period in seconds
+     */
+    function setIntentExpirationPeriod(uint256 _intentExpirationPeriod) external onlyOwner {
+        if (_intentExpirationPeriod == 0) revert ZeroValue();
+        
+        intentExpirationPeriod = _intentExpirationPeriod;
+        emit IntentExpirationPeriodUpdated(_intentExpirationPeriod);
     }
 
     /**

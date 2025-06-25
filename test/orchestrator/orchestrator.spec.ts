@@ -115,7 +115,8 @@ describe("Orchestrator", () => {
       ZERO,
       protocolFeeRecipient.address,
       ZERO,
-      BigNumber.from(10)
+      BigNumber.from(10),
+      ONE_DAY_IN_SECONDS  // intentExpirationPeriod
     );
 
     await escrowRegistry.addEscrow(escrow.address);
@@ -123,7 +124,6 @@ describe("Orchestrator", () => {
     orchestrator = await deployer.deployOrchestrator(
       owner.address,
       chainId,
-      ONE_DAY_IN_SECONDS,                // intent expiration period
       escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
@@ -167,7 +167,6 @@ describe("Orchestrator", () => {
       const actualRelayerRegistry = await orchestrator.relayerRegistry();
       const actualProtocolFee = await orchestrator.protocolFee();
       const actualProtocolFeeRecipient = await orchestrator.protocolFeeRecipient();
-      const actualIntentExpirationPeriod = await orchestrator.intentExpirationPeriod();
 
       expect(actualChainId).to.eq(chainId);
       expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
@@ -176,7 +175,6 @@ describe("Orchestrator", () => {
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
       expect(actualProtocolFee).to.eq(ZERO);
       expect(actualProtocolFeeRecipient).to.eq(feeRecipient.address);
-      expect(actualIntentExpirationPeriod).to.eq(ONE_DAY_IN_SECONDS);
     });
   });
 
@@ -203,21 +201,22 @@ describe("Orchestrator", () => {
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.01);
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO  // intentGuardian
+      });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
 
@@ -747,21 +746,22 @@ describe("Orchestrator", () => {
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       const depositConversionRate = ether(1.01);
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO  // intentGuardian
+      });
 
       // Signal an intent
       const params = await createSignalIntentParams(
@@ -874,21 +874,22 @@ describe("Orchestrator", () => {
         [witness.address]
       );
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: payeeDetails,
           data: depositData
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       // Signal an intent
       intentAmount = usdc(50);
@@ -1528,19 +1529,22 @@ describe("Orchestrator", () => {
       depositConversionRate = ether(1.08);
 
       payeeDetails = "12345678@revolut.me";
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           payeeDetails: payeeDetails,
           intentGatingService: gatingService.address,
           data: "0x"
         }],
-        [[{ code: Currency.USD, minConversionRate: depositConversionRate }]],
-        offRamperDelegate.address
-      );
+        currencies: [
+          [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+        ],
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       intentAmount = usdc(50);
 
@@ -1990,21 +1994,22 @@ describe("Orchestrator", () => {
     beforeEach(async () => {
       // Create a deposit
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(300),
-        { min: usdc(10), max: usdc(100) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(300),
+        intentAmountRange: { min: usdc(10), max: usdc(100) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       // Enable multiple intents
       await orchestrator.connect(owner.wallet).setAllowMultipleIntents(true);
@@ -2371,58 +2376,6 @@ describe("Orchestrator", () => {
     });
   });
 
-  describe("#setIntentExpirationPeriod", async () => {
-    let subjectIntentExpirationPeriod: BigNumber;
-    let subjectCaller: Account;
-
-    beforeEach(async () => {
-      subjectIntentExpirationPeriod = ONE_DAY_IN_SECONDS.mul(2);
-      subjectCaller = owner;
-    });
-
-    async function subject(): Promise<any> {
-      return orchestrator.connect(subjectCaller.wallet).setIntentExpirationPeriod(subjectIntentExpirationPeriod);
-    }
-
-    it("should set the correct expiration time period", async () => {
-      const preOnRampAmount = await orchestrator.intentExpirationPeriod();
-
-      expect(preOnRampAmount).to.eq(ONE_DAY_IN_SECONDS);
-
-      await subject();
-
-      const postOnRampAmount = await orchestrator.intentExpirationPeriod();
-
-      expect(postOnRampAmount).to.eq(subjectIntentExpirationPeriod);
-    });
-
-    it("should emit a IntentExpirationPeriodSet event", async () => {
-      const tx = await subject();
-
-      expect(tx).to.emit(orchestrator, "IntentExpirationPeriodSet").withArgs(subjectIntentExpirationPeriod);
-    });
-
-    describe("when the intent expiration period is 0", async () => {
-      beforeEach(async () => {
-        subjectIntentExpirationPeriod = ZERO;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "ZeroValue");
-      });
-    });
-
-    describe("when the caller is not the owner", async () => {
-      beforeEach(async () => {
-        subjectCaller = onRamper;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-  });
-
   describe("#setPostIntentHookRegistry", async () => {
     let subjectPostIntentHookRegistry: Address;
     let subjectCaller: Account;
@@ -2641,21 +2594,22 @@ describe("Orchestrator", () => {
 
       // Create a deposit
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(1000),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(1000),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
     });
 
     it("should return empty array for account with no intents", async () => {

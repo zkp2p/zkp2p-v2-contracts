@@ -12,6 +12,7 @@ interface IEscrow {
     struct Intent {
         bytes32 intentHash;                        // Unique identifier for the intent
         uint256 amount;                            // Amount locked
+        uint256 timestamp;                         // When this intent was created
         uint256 expiryTime;                        // When this intent expires
     }
 
@@ -33,6 +34,8 @@ interface IEscrow {
         // Fee tracking
         uint256 reservedMakerFees;                  // State: Total fees reserved from maker (calculated upfront)
         uint256 accruedMakerFees;                   // State: Fees actually earned from fulfilled intents
+        // Intent guardian
+        address intentGuardian;                     // Address that can extend intent expiry times (address(0) if no guardian)
     }
 
     struct Currency {
@@ -47,9 +50,20 @@ interface IEscrow {
                                                     // in case of TLS proofs, domain key hash in case of zkEmail proofs, currency code etc.
     }
 
+    struct CreateDepositParams {
+        IERC20 token;                             // The token to be deposited
+        uint256 amount;                           // The amount of token to deposit
+        Range intentAmountRange;                  // The max and min take amount for each intent
+        address[] verifiers;                      // The payment verifiers that deposit supports
+        DepositVerifierData[] verifierData;       // The payment verification data for each verifier that deposit supports
+        Currency[][] currencies;                  // The currencies for each verifier that deposit supports
+        address delegate;                         // Optional delegate address that can manage this deposit (address(0) for no delegate)
+        address intentGuardian;                   // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
+    }
+
     /* ============ Events ============ */
 
-    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate);
+    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
 
     event DepositVerifierAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed payeeDetailsHash, address intentGatingService);
     event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
@@ -76,13 +90,15 @@ interface IEscrow {
     event FundsLocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount, uint256 expiryTime);
     event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
     event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, uint256 accruedFees, address to);
-    
+    event IntentExpiryExtended(uint256 indexed depositId, bytes32 indexed intentHash, uint256 newExpiryTime);
+
     event MakerProtocolFeeUpdated(uint256 makerProtocolFee);
     event MakerFeeRecipientUpdated(address indexed makerFeeRecipient);
     event MakerFeesCollected(uint256 indexed depositId, uint256 collectedFees, address indexed makerFeeRecipient);
     event DustCollected(uint256 indexed depositId, uint256 dustAmount, address indexed makerFeeRecipient);
     event DustThresholdUpdated(uint256 dustThreshold);
     event MaxIntentsPerDepositUpdated(uint256 maxIntentsPerDeposit);
+    event IntentExpirationPeriodUpdated(uint256 intentExpirationPeriod);
 
     /* ============ Standardized Custom Errors ============ */
     
@@ -130,13 +146,15 @@ interface IEscrow {
     
     /* ============ External Functions for Orchestrator ============ */
 
-    function lockFunds(uint256 _depositId, bytes32 _intentHash, uint256 _amount, uint256 _expiryTime) external;
+    function lockFunds(uint256 _depositId, bytes32 _intentHash, uint256 _amount) external;
     function unlockFunds(uint256 _depositId, bytes32 _intentHash) external;
     function unlockAndTransferFunds(uint256 _depositId, bytes32 _intentHash, uint256 _transferAmount, address _to) external;
+    function extendIntentExpiry(uint256 _depositId, bytes32 _intentHash, uint256 _newExpiryTime) external;
 
     /* ============ View Functions ============ */
 
     function getDeposit(uint256 _depositId) external view returns (Deposit memory);
+    function getDepositIntent(uint256 _depositId, bytes32 _intentHash) external view returns (Intent memory);
     function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
     function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory);
     function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);

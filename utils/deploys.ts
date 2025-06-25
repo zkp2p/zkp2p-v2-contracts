@@ -79,7 +79,8 @@ export default class DeployHelper {
     makerProtocolFee: BigNumber,
     makerFeeRecipient: Address,
     dustThreshold: BigNumber,
-    maxIntentsPerDeposit: BigNumber
+    maxIntentsPerDeposit: BigNumber,
+    intentExpirationPeriod: BigNumber
   ): Promise<Escrow> {
     return await new Escrow__factory(this._deployerSigner).deploy(
       owner,
@@ -88,14 +89,14 @@ export default class DeployHelper {
       makerProtocolFee,
       makerFeeRecipient,
       dustThreshold,
-      maxIntentsPerDeposit
+      maxIntentsPerDeposit,
+      intentExpirationPeriod
     );
   }
 
   public async deployOrchestrator(
     owner: Address,
     chainId: BigNumber,
-    intentExpirationPeriod: BigNumber,
     escrowRegistry: Address,
     paymentVerifierRegistry: Address,
     postIntentHookRegistry: Address,
@@ -106,7 +107,6 @@ export default class DeployHelper {
     return await new Orchestrator__factory(this._deployerSigner).deploy(
       owner,
       chainId.toString(),
-      intentExpirationPeriod,
       escrowRegistry,
       paymentVerifierRegistry,
       postIntentHookRegistry,

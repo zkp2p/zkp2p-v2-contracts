@@ -22,7 +22,6 @@ import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.so
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 
-// Todo: Can we further simplify intent hash calculation? Keep it just hash(address(this), intentCounter)?
 contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
     using AddressArrayUtils for address[];
@@ -55,7 +54,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     address public protocolFeeRecipient;                            // Address that receives protocol fees
 
     bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
-    uint256 public intentExpirationPeriod;                          // Time period after which an intent can be pruned from the system
 
     uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
 
@@ -72,7 +70,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
     constructor(
         address _owner,
         uint256 _chainId,
-        uint256 _intentExpirationPeriod,
         address _escrowRegistry,
         address _paymentVerifierRegistry,
         address _postIntentHookRegistry,
@@ -83,7 +80,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         Ownable()
     {
         chainId = _chainId;
-        intentExpirationPeriod = _intentExpirationPeriod;
         escrowRegistry = IEscrowRegistry(_escrowRegistry);
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
         postIntentHookRegistry = IPostIntentHookRegistry(_postIntentHookRegistry);
@@ -112,9 +108,7 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
 
         bytes32 intentHash = _calculateIntentHash();
 
-        // Lock liquidity in escrow with expiry time
-        uint256 expiryTime = block.timestamp + intentExpirationPeriod;
-        IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount, expiryTime);
+        IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount);
 
         intents[intentHash] = Intent({
             owner: msg.sender,
@@ -329,20 +323,6 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         
         emit AllowMultipleIntentsUpdated(_allowMultiple);
     }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the intent expiration period, after this period elapses an intent can be pruned to prevent
-     * locking up a depositor's funds.
-     *
-     * @param _intentExpirationPeriod   New intent expiration period
-     */
-    function setIntentExpirationPeriod(uint256 _intentExpirationPeriod) external onlyOwner {
-        if (_intentExpirationPeriod == 0) revert ZeroValue();
-
-        intentExpirationPeriod = _intentExpirationPeriod;
-        emit IntentExpirationPeriodSet(_intentExpirationPeriod);
-    }
-
 
     /**
      * @notice GOVERNANCE ONLY: Updates the post intent hook registry address.

@@ -52,6 +52,7 @@ describe("Escrow", () => {
   let feeRecipient: Account;
   let gatingService: Account;
   let witness: Account;
+  let intentGuardian: Account;
   let chainId: BigNumber = ONE;
   let currentIntentCounter: number = 0;
 
@@ -86,7 +87,8 @@ describe("Escrow", () => {
       feeRecipient,
       gatingService,
       witness,
-      protocolFeeRecipient
+      protocolFeeRecipient,
+      intentGuardian
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -107,7 +109,8 @@ describe("Escrow", () => {
       ZERO,
       protocolFeeRecipient.address,
       ZERO,
-      BigNumber.from(3)
+      BigNumber.from(3),
+      ONE_DAY_IN_SECONDS  // intentExpirationPeriod
     );
 
     await escrowRegistry.addEscrow(ramp.address);
@@ -115,7 +118,6 @@ describe("Escrow", () => {
     orchestrator = await deployer.deployOrchestrator(
       owner.address,
       chainId,
-      ONE_DAY_IN_SECONDS,
       escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
@@ -160,6 +162,7 @@ describe("Escrow", () => {
       const makerFeeRecipientAddress: Address = await ramp.makerFeeRecipient();
       const maxIntentsPerDeposit: BigNumber = await ramp.maxIntentsPerDeposit();
       const dustThreshold: BigNumber = await ramp.dustThreshold();
+      const intentExpirationPeriod: BigNumber = await ramp.intentExpirationPeriod();
 
       expect(ownerAddress).to.eq(owner.address);
       expect(chainId).to.eq(chainId);
@@ -168,6 +171,7 @@ describe("Escrow", () => {
       expect(makerFeeRecipientAddress).to.eq(protocolFeeRecipient.address);
       expect(maxIntentsPerDeposit).to.eq(BigNumber.from(3));
       expect(dustThreshold).to.eq(ZERO);
+      expect(intentExpirationPeriod).to.eq(ONE_DAY_IN_SECONDS);
     });
   });
 
@@ -179,6 +183,7 @@ describe("Escrow", () => {
     let subjectVerificationData: IEscrow.DepositVerifierDataStruct[];
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
     let subjectDelegate: Address;
+    let subjectIntentGuardian: Address;
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -199,20 +204,21 @@ describe("Escrow", () => {
         ]
       ];
       subjectDelegate = offRamperDelegate.address;
-
+      subjectIntentGuardian = ADDRESS_ZERO;
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(offRamper.wallet).createDeposit(
-        subjectToken,
-        subjectAmount,
-        subjectIntentAmountRange,
-        subjectVerifiers,
-        subjectVerificationData,
-        subjectCurrencies,
-        subjectDelegate
-      );
+      return ramp.connect(offRamper.wallet).createDeposit({
+        token: subjectToken,
+        amount: subjectAmount,
+        intentAmountRange: subjectIntentAmountRange,
+        verifiers: subjectVerifiers,
+        verifierData: subjectVerificationData,
+        currencies: subjectCurrencies,
+        delegate: subjectDelegate,
+        intentGuardian: subjectIntentGuardian
+      });
     }
 
     it("should transfer the tokens to the Ramp contract", async () => {
@@ -247,6 +253,7 @@ describe("Escrow", () => {
       expect(depositView.verifiers[0].currencies[0].minConversionRate).to.eq(subjectCurrencies[0][0].minConversionRate);
       expect(depositView.verifiers[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
       expect(depositView.verifiers[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
+      expect(depositView.deposit.intentGuardian).to.eq(subjectIntentGuardian);
     });
 
     it("should add the deposit to the accountDeposits mapping", async () => {
@@ -293,7 +300,8 @@ describe("Escrow", () => {
         subjectToken,
         subjectAmount,
         subjectIntentAmountRange,
-        subjectDelegate
+        subjectDelegate,
+        subjectIntentGuardian
       );
     });
 
@@ -616,21 +624,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit to test adding funds
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectAmount = usdc(50);
@@ -784,21 +793,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit to test removing funds
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectAmount = usdc(30);
@@ -1036,21 +1046,22 @@ describe("Escrow", () => {
       // Create deposit to test withdrawal
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectCaller = offRamper;
@@ -1317,21 +1328,22 @@ describe("Escrow", () => {
         netDepositAmount = grossDepositAmount.sub(reservedFees);
 
         await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit(
-          usdcToken.address,
-          grossDepositAmount,
-          { min: usdc(10), max: usdc(200) },
-          [verifier.address],
-          [{
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: grossDepositAmount,
+          intentAmountRange: { min: usdc(10), max: usdc(200) },
+          verifiers: [verifier.address],
+          verifierData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
           }],
-          [
+          currencies: [
             [{ code: Currency.USD, minConversionRate: ether(1.08) }]
           ],
-          offRamperDelegate.address
-        );
+          delegate: offRamperDelegate.address,
+          intentGuardian: ADDRESS_ZERO
+        });
 
         subjectDepositId = BigNumber.from(1); // New deposit created
       });
@@ -1553,21 +1565,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectVerifier = verifier.address;
@@ -1666,21 +1679,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectIntentAmountRange = { min: usdc(5), max: usdc(150) };
@@ -1770,21 +1784,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first with only one verifier
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       // Add otherVerifier to whitelist
       await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
@@ -1915,12 +1930,12 @@ describe("Escrow", () => {
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
       await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
 
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address, otherVerifier.address],
-        [
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address, otherVerifier.address],
+        verifierData: [
           {
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
@@ -1932,12 +1947,13 @@ describe("Escrow", () => {
             data: "0x"
           }
         ],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }],
           [{ code: Currency.USD, minConversionRate: ether(1.02) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectVerifier = otherVerifier.address;
@@ -2041,21 +2057,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectVerifier = verifier.address;
@@ -2176,24 +2193,25 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit with multiple currencies
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [
             { code: Currency.USD, minConversionRate: ether(1.01) },
             { code: Currency.EUR, minConversionRate: ether(0.95) }
           ]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectVerifier = verifier.address;
@@ -2286,21 +2304,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        ADDRESS_ZERO
-      );
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectDelegate = offRamperDelegate.address;
@@ -2391,21 +2410,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit with delegate
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address  // Set delegate on creation
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectCaller = offRamper;
@@ -2469,21 +2489,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
       subjectAcceptingIntents = false; // Default to setting to false
@@ -2596,8 +2617,7 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           intentHash,
-          usdc(10),
-          currentTimestamp.add(ONE_DAY_IN_SECONDS)
+          usdc(10)
         );
 
         // Remove all remaining deposits from deposit
@@ -2622,8 +2642,7 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           intentHash,
-          usdc(40),
-          currentTimestamp.add(ONE_DAY_IN_SECONDS)
+          usdc(40)
         );
       });
 
@@ -2672,21 +2691,22 @@ describe("Escrow", () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
@@ -2696,8 +2716,7 @@ describe("Escrow", () => {
       await orchestratorMock.connect(owner.wallet).lockFunds(
         ZERO,
         intentHash,
-        usdc(40),
-        currentTimestamp.add(ONE_DAY_IN_SECONDS)
+        usdc(40)
       );
 
       subjectCaller = onRamper;
@@ -2760,17 +2779,13 @@ describe("Escrow", () => {
 
     describe("when there are multiple intents; few are expired", async () => {
       beforeEach(async () => {
-        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
         intentHash2 = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
-
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           intentHash2,
-          usdc(50),
-          currentTimestamp.add(ONE_DAY_IN_SECONDS.add(ONE_DAY_IN_SECONDS))
+          usdc(50)
         );
-
-        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
       });
 
       it("should prune only expired intents", async () => {
@@ -2790,27 +2805,27 @@ describe("Escrow", () => {
     let subjectDepositId: BigNumber;
     let subjectIntentHash: string;
     let subjectAmount: BigNumber;
-    let subjectExpiryTime: BigNumber;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       // Create deposit first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(60) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(60) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       subjectDepositId = ZERO;
@@ -2821,7 +2836,6 @@ describe("Escrow", () => {
       currentIntentCounter++;  // Increment for consistency
 
       subjectAmount = usdc(30);
-      subjectExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
       subjectCaller = owner;
 
       // Set the orchestrator mock as the orchestrator
@@ -2832,8 +2846,7 @@ describe("Escrow", () => {
       return orchestratorMock.connect(subjectCaller.wallet).lockFunds(
         subjectDepositId,
         subjectIntentHash,
-        subjectAmount,
-        subjectExpiryTime
+        subjectAmount
       );
     }
 
@@ -2850,12 +2863,13 @@ describe("Escrow", () => {
     });
 
     it("should create the intent correctly", async () => {
+      const currentTimestamp = await blockchain.getCurrentTimestamp();
       await subject();
 
       const intent = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
       expect(intent.intentHash).to.eq(subjectIntentHash);
       expect(intent.amount).to.eq(subjectAmount);
-      expect(intent.expiryTime).to.eq(subjectExpiryTime);
+      expect(intent.expiryTime).to.eq(currentTimestamp.add(ONE_DAY_IN_SECONDS));
     });
 
     it("should add intent hash to deposit intent hashes", async () => {
@@ -2866,11 +2880,12 @@ describe("Escrow", () => {
     });
 
     it("should emit the correct event", async () => {
+      const currentTimestamp = await blockchain.getCurrentTimestamp();
       await expect(subject()).to.emit(ramp, "FundsLocked").withArgs(
         subjectDepositId,
         subjectIntentHash,
         subjectAmount,
-        subjectExpiryTime
+        currentTimestamp.add(ONE_DAY_IN_SECONDS)
       );
     });
 
@@ -2901,8 +2916,7 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           subjectIntentHash,
-          usdc(30),
-          (await blockchain.getCurrentTimestamp()).add(ONE_DAY_IN_SECONDS)
+          usdc(30)
         );
 
         // withdraw deposit
@@ -2941,8 +2955,7 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           firstIntentHash,
-          usdc(50),
-          (await blockchain.getCurrentTimestamp()).add(ONE_DAY_IN_SECONDS)
+          usdc(50)
         );
 
         // Time travel to expire the first intent
@@ -2968,16 +2981,14 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           firstIntentHash,
-          usdc(50),
-          (await blockchain.getCurrentTimestamp()).add(ONE_DAY_IN_SECONDS)
+          usdc(50)
         );
 
         const secondIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           secondIntentHash,
-          usdc(50),
-          (await blockchain.getCurrentTimestamp()).add(ONE_DAY_IN_SECONDS)
+          usdc(50)
         );
 
         // Try to lock more
@@ -3032,19 +3043,20 @@ describe("Escrow", () => {
           [witness.address]
         );
 
-        await ramp.connect(offRamper.wallet).createDeposit(
-          usdcToken.address,
-          usdc(1000),
-          { min: usdc(1), max: usdc(100) },
-          [verifier.address],
-          [{
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(1000),
+          intentAmountRange: { min: usdc(1), max: usdc(100) },
+          verifiers: [verifier.address],
+          verifierData: [{
             intentGatingService: gatingService.address,
             payeeDetails: payeeDetails,
             data: depositData
           }],
-          [[{ code: Currency.USD, minConversionRate: ether(1) }]],
-          ADDRESS_ZERO
-        );
+          currencies: [[{ code: Currency.USD, minConversionRate: ether(1) }]],
+          delegate: ADDRESS_ZERO,
+          intentGuardian: ADDRESS_ZERO
+        });
 
         const depositCounter = await ramp.depositCounter();
         depositId = depositCounter.sub(1);
@@ -3119,21 +3131,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(50) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(50) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       // Lock funds first
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3152,8 +3165,7 @@ describe("Escrow", () => {
       await orchestratorMock.connect(owner.wallet).lockFunds(
         subjectDepositId,
         subjectIntentHash,
-        intentAmount,
-        intentExpiryTime
+        intentAmount
       );
 
       subjectCaller = owner;
@@ -3251,21 +3263,22 @@ describe("Escrow", () => {
     beforeEach(async () => {
       // Create deposit
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(50) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(50) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       // Lock funds first
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3284,8 +3297,7 @@ describe("Escrow", () => {
       await orchestratorMock.connect(owner.wallet).lockFunds(
         subjectDepositId,
         subjectIntentHash,
-        intentAmount,
-        intentExpiryTime
+        intentAmount
       );
 
       subjectTransferAmount = intentAmount; // Full amount by default
@@ -3463,21 +3475,22 @@ describe("Escrow", () => {
         netDepositAmount = grossDepositAmount.sub(reservedFees);
 
         await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit(
-          usdcToken.address,
-          grossDepositAmount,
-          { min: usdc(10), max: usdc(100) },
-          [verifier.address],
-          [{
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: grossDepositAmount,
+          intentAmountRange: { min: usdc(10), max: usdc(100) },
+          verifiers: [verifier.address],
+          verifierData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
           }],
-          [
+          currencies: [
             [{ code: Currency.USD, minConversionRate: ether(1.01) }]
           ],
-          offRamperDelegate.address
-        );
+          delegate: offRamperDelegate.address,
+          intentGuardian: ADDRESS_ZERO
+        });
 
         // Lock funds
         const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3493,8 +3506,7 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           subjectIntentHash,
-          intentAmount,
-          intentExpiryTime
+          intentAmount
         );
 
         subjectTransferAmount = intentAmount; // Full amount by default
@@ -3622,8 +3634,7 @@ describe("Escrow", () => {
           await orchestratorMock.connect(owner.wallet).lockFunds(
             subjectDepositId,
             subjectIntentHash,
-            intentAmount,
-            currentTimestamp.add(ONE_DAY_IN_SECONDS)
+            intentAmount
           );
 
           subjectTransferAmount = intentAmount;
@@ -3681,8 +3692,7 @@ describe("Escrow", () => {
           await orchestratorMock.connect(owner.wallet).lockFunds(
             subjectDepositId,
             secondIntentHash,
-            secondIntentAmount,
-            currentTimestamp.add(ONE_DAY_IN_SECONDS)
+            secondIntentAmount
           );
 
           // Update subject params for second intent
@@ -3703,6 +3713,195 @@ describe("Escrow", () => {
     });
   });
 
+  describe("#extendIntentExpiry", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectIntentHash: string;
+    let subjectAdditionalTime: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create a deposit with an intent guardian
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(100) },
+        verifiers: [verifier.address],
+        verifierData: [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        currencies: [
+          [{ code: Currency.USD, minConversionRate: ether(1) }]
+        ],
+        delegate: ADDRESS_ZERO,  // delegate
+        intentGuardian: intentGuardian.address  // intentGuardian
+      });
+
+      subjectDepositId = ZERO;
+
+      // Signal an intent
+      const params = await createSignalIntentParams(
+        ramp.address,
+        subjectDepositId,
+        usdc(50),
+        onRamper.address,
+        verifier.address,
+        Currency.USD,
+        ether(1),
+        ADDRESS_ZERO,
+        ZERO,
+        gatingService,
+        chainId.toString(),
+        ADDRESS_ZERO,
+        "0x"
+      );
+
+      await orchestrator.connect(onRamper.wallet).signalIntent(params);
+
+      subjectIntentHash = calculateIntentHash(
+        orchestrator.address,
+        currentIntentCounter
+      );
+      currentIntentCounter++;
+
+      subjectAdditionalTime = BigNumber.from(3600); // 1 hour
+      subjectCaller = intentGuardian;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).extendIntentExpiry(
+        subjectDepositId,
+        subjectIntentHash,
+        subjectAdditionalTime
+      );
+    }
+
+    it("should extend the intent expiry time", async () => {
+      const intentBefore = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+      const oldExpiryTime = intentBefore.expiryTime;
+
+      await subject();
+
+      const intentAfter = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+      const newExpiryTime = intentAfter.expiryTime;
+
+      expect(newExpiryTime).to.eq(oldExpiryTime.add(subjectAdditionalTime));
+    });
+
+    it("should emit IntentExpiryExtended event", async () => {
+      const intentBefore = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+      const oldExpiryTime = intentBefore.expiryTime;
+      const newExpiryTime = oldExpiryTime.add(subjectAdditionalTime);
+
+      await expect(subject()).to.emit(ramp, "IntentExpiryExtended").withArgs(
+        subjectDepositId,
+        subjectIntentHash,
+        newExpiryTime
+      );
+    });
+
+    describe("when called by non-intent guardian", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "UnauthorizedCaller");
+      });
+    });
+
+    describe("when intent does not exist", async () => {
+      beforeEach(async () => {
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentNotFound");
+      });
+    });
+
+    describe("when deposit has no intent guardian", async () => {
+      beforeEach(async () => {
+        // Cancel the intent
+        await orchestrator.connect(onRamper.wallet).cancelIntent(subjectIntentHash);
+
+        // Create a deposit without intent guardian
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(100),
+          intentAmountRange: { min: usdc(10), max: usdc(100) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1) }]
+          ],
+          delegate: ADDRESS_ZERO,  // delegate
+          intentGuardian: ADDRESS_ZERO   // no intentGuardian
+        });
+
+        const newDepositId = ONE;
+
+        // Signal an intent for the new deposit
+        const params = await createSignalIntentParams(
+          ramp.address,
+          newDepositId,
+          usdc(50),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          ether(1),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
+
+        const intentCounter = await orchestrator.intentCounter();
+
+        subjectDepositId = ONE;
+        subjectIntentHash = calculateIntentHash(
+          orchestrator.address,
+          intentCounter.sub(1)
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "UnauthorizedCaller");
+      });
+    });
+
+    describe("when extending multiple times", async () => {
+      it("should allow multiple extensions", async () => {
+        const initialIntent = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+        const initialExpiry = initialIntent.expiryTime;
+
+        // First extension
+        await subject();
+
+        const afterFirst = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+        expect(afterFirst.expiryTime).to.eq(initialExpiry.add(subjectAdditionalTime));
+
+        // Second extension
+        await subject();
+
+        const afterSecond = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
+        expect(afterSecond.expiryTime).to.eq(initialExpiry.add(subjectAdditionalTime.mul(2)));
+      });
+    });
+  });
+
+
   // GOVERNANCE FUNCTIONS
 
   describe("#setOrchestrator", async () => {
@@ -3713,7 +3912,6 @@ describe("Escrow", () => {
       const newOrchestrator = await deployer.deployOrchestrator(
         owner.address,
         chainId,
-        ONE_DAY_IN_SECONDS,
         ramp.address,
         paymentVerifierRegistry.address,
         postIntentHookRegistry.address,
@@ -4093,6 +4291,58 @@ describe("Escrow", () => {
     });
   });
 
+  describe("#setIntentExpirationPeriod", async () => {
+    let subjectIntentExpirationPeriod: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectIntentExpirationPeriod = ONE_DAY_IN_SECONDS.mul(2);
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setIntentExpirationPeriod(subjectIntentExpirationPeriod);
+    }
+
+    it("should set the correct expiration time period", async () => {
+      const preOnRampAmount = await ramp.intentExpirationPeriod();
+
+      expect(preOnRampAmount).to.eq(ONE_DAY_IN_SECONDS);
+
+      await subject();
+
+      const postOnRampAmount = await ramp.intentExpirationPeriod();
+
+      expect(postOnRampAmount).to.eq(subjectIntentExpirationPeriod);
+    });
+
+    it("should emit a IntentExpirationPeriodUpdated event", async () => {
+      const tx = await subject();
+
+      expect(tx).to.emit(ramp, "IntentExpirationPeriodUpdated").withArgs(subjectIntentExpirationPeriod);
+    });
+
+    describe("when the intent expiration period is 0", async () => {
+      beforeEach(async () => {
+        subjectIntentExpirationPeriod = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
+      });
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
   describe("#setMaxIntentsPerDeposit", async () => {
     let subjectCaller: Account;
     let subjectMaxIntentsPerDeposit: BigNumber;
@@ -4151,21 +4401,22 @@ describe("Escrow", () => {
       // Create deposit and signal intent first
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await ramp.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        offRamperDelegate.address
-      );
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
       intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
@@ -4175,8 +4426,7 @@ describe("Escrow", () => {
       await orchestratorMock.connect(owner.wallet).lockFunds(
         ZERO,
         intentHash,
-        usdc(50),
-        currentTimestamp.add(ONE_DAY_IN_SECONDS)
+        usdc(50)
       );
 
       subjectCaller = onRamper;

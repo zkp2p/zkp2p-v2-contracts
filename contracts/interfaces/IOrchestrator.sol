@@ -78,7 +78,6 @@ interface IOrchestrator {
     );
 
     event AllowMultipleIntentsUpdated(bool allowMultiple);
-    event IntentExpirationPeriodSet(uint256 intentExpirationPeriod);
 
     event PaymentVerifierRegistryUpdated(address indexed paymentVerifierRegistry);
     event PostIntentHookRegistryUpdated(address indexed postIntentHookRegistry);

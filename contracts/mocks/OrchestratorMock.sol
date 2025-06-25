@@ -34,10 +34,9 @@ contract OrchestratorMock {
     function lockFunds(
         uint256 _depositId,
         bytes32 _intentHash,
-        uint256 _amount,
-        uint256 _expiryTime
+        uint256 _amount
     ) external {
-        escrow.lockFunds(_depositId, _intentHash, _amount, _expiryTime);
+        escrow.lockFunds(_depositId, _intentHash, _amount);
     }
     
     function unlockFunds(uint256 _depositId, bytes32 _intentHash) external {
