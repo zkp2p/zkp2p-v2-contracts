@@ -3881,22 +3881,47 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when extending by more than the max total intent expiration period", async () => {
+      beforeEach(async () => {
+        subjectAdditionalTime = BigNumber.from(86400 * 6); // 6 days
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
+      });
+    });
+
     describe("when extending multiple times", async () => {
       it("should allow multiple extensions", async () => {
         const initialIntent = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
         const initialExpiry = initialIntent.expiryTime;
 
         // First extension
-        await subject();
+        await ramp.connect(subjectCaller.wallet).extendIntentExpiry(
+          subjectDepositId,
+          subjectIntentHash,
+          ONE_DAY_IN_SECONDS
+        );
 
         const afterFirst = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
-        expect(afterFirst.expiryTime).to.eq(initialExpiry.add(subjectAdditionalTime));
+        expect(afterFirst.expiryTime).to.eq(initialExpiry.add(ONE_DAY_IN_SECONDS));
 
         // Second extension
-        await subject();
+        await ramp.connect(subjectCaller.wallet).extendIntentExpiry(
+          subjectDepositId,
+          subjectIntentHash,
+          ONE_DAY_IN_SECONDS
+        );
 
         const afterSecond = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
-        expect(afterSecond.expiryTime).to.eq(initialExpiry.add(subjectAdditionalTime.mul(2)));
+        expect(afterSecond.expiryTime).to.eq(initialExpiry.add(ONE_DAY_IN_SECONDS.mul(2)));
+
+        // Third extension goes over the max total intent expiration period
+        await expect(ramp.connect(subjectCaller.wallet).extendIntentExpiry(
+          subjectDepositId,
+          subjectIntentHash,
+          ONE_DAY_IN_SECONDS.mul(2).add(1)
+        )).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
       });
     });
   });

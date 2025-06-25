@@ -39,7 +39,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
-    uint256 internal constant MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD = 86400 * 3; // 3 days
+    uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
     
     /* ============ State Variables ============ */
 
@@ -655,8 +655,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (intent.intentHash == bytes32(0)) revert IntentNotFound(_intentHash);
         if (deposit.intentGuardian != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.intentGuardian);
         if (_additionalTime == 0) revert ZeroValue();
-        if (_additionalTime > MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD) {
-            revert AmountAboveMax(_additionalTime, MAX_ADDITIONAL_INTENT_EXPIRATION_PERIOD);
+        if (intent.expiryTime + _additionalTime > intent.timestamp + MAX_TOTAL_INTENT_EXPIRATION_PERIOD) {
+            revert AmountAboveMax(_additionalTime, MAX_TOTAL_INTENT_EXPIRATION_PERIOD);
         }
         
         intent.expiryTime += _additionalTime;
