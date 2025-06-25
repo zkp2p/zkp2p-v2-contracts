@@ -16,36 +16,36 @@ task("create-deposit", "Creates a deposit")
   )
   .addParam("currencies", "ambersent-separated list of currencies and conversion rates", `${Currency.USD}:0.9,${Currency.EUR}:1.1,${Currency.GBP}:1.3,${Currency.SGD}:1.4,${Currency.AUD}:1.5,${Currency.NZD}:1.6,${Currency.CAD}:1.7`)
   .setAction(async (taskArgs, hre) => {
-    const { ethers } = hre;
-    const [owner] = await ethers.getSigners();
+    // const { ethers } = hre;
+    // const [owner] = await ethers.getSigners();
 
-    const Escrow = await ethers.getContractFactory("Escrow");
-    const escrow = await Escrow.attach("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
+    // const Escrow = await ethers.getContractFactory("Escrow");
+    // const escrow = await Escrow.attach("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
 
-    const token = await ethers.getContractAt("USDCMock", taskArgs.token);
-    const amount = ethers.utils.parseUnits(taskArgs.amount, await token.decimals());
-    const minAmount = ethers.utils.parseUnits(taskArgs.minamount, await token.decimals());
-    const maxAmount = ethers.utils.parseUnits(taskArgs.maxamount, await token.decimals());
+    // const token = await ethers.getContractAt("USDCMock", taskArgs.token);
+    // const amount = ethers.utils.parseUnits(taskArgs.amount, await token.decimals());
+    // const minAmount = ethers.utils.parseUnits(taskArgs.minamount, await token.decimals());
+    // const maxAmount = ethers.utils.parseUnits(taskArgs.maxamount, await token.decimals());
 
-    const verifiers = taskArgs.verifiers.split(":");
-    const verifierData = taskArgs.verifierdata.split(".").map((data: string) => JSON.parse(data));
-    const currencies = taskArgs.currencies.split("&").map((currencyGroup: string) => {
-      return currencyGroup.split(",").map((currency: string) => {
-        const [code, rate] = currency.split(":");
-        return { code, conversionRate: ethers.utils.parseUnits(rate, 18) };
-      });
-    });
+    // const verifiers = taskArgs.verifiers.split(":");
+    // const verifierData = taskArgs.verifierdata.split(".").map((data: string) => JSON.parse(data));
+    // const currencies = taskArgs.currencies.split("&").map((currencyGroup: string) => {
+    //   return currencyGroup.split(",").map((currency: string) => {
+    //     const [code, rate] = currency.split(":");
+    //     return { code, conversionRate: ethers.utils.parseUnits(rate, 18) };
+    //   });
+    // });
 
-    // Allow USDC to be transferred to the escrow
-    await token.connect(owner).approve(escrow.address, amount);
+    // // Allow USDC to be transferred to the escrow
+    // await token.connect(owner).approve(escrow.address, amount);
 
-    // Call the createDeposit function
-    const tx = await escrow.createDeposit(token.address, amount, { min: minAmount, max: maxAmount }, verifiers, verifierData, currencies, ethers.constants.AddressZero);
-    const receipt = await tx.wait();
+    // // Call the createDeposit function
+    // const tx = await escrow.createDeposit(token.address, amount, { min: minAmount, max: maxAmount }, verifiers, verifierData, currencies, ethers.constants.AddressZero);
+    // const receipt = await tx.wait();
 
-    // Get the deposit ID from the DepositReceived event
-    const depositReceivedEvent = receipt.events?.find(e => e.event === "DepositReceived");
-    const depositId = depositReceivedEvent?.args?.depositId;
+    // // Get the deposit ID from the DepositReceived event
+    // const depositReceivedEvent = receipt.events?.find(e => e.event === "DepositReceived");
+    // const depositId = depositReceivedEvent?.args?.depositId;
 
     // Get the deposit view
     // const depositView = await escrow.getDepositFromIds([depositId]);

@@ -99,7 +99,8 @@ describe("ProtocolViewer", () => {
       ZERO,
       protocolFeeRecipient.address,
       ZERO,
-      BigNumber.from(10)
+      BigNumber.from(10),
+      ONE_DAY_IN_SECONDS
     );
 
     await escrowRegistry.addEscrow(escrow.address);
@@ -107,7 +108,6 @@ describe("ProtocolViewer", () => {
     orchestrator = await deployer.deployOrchestrator(
       owner.address,
       chainId,
-      ONE_DAY_IN_SECONDS,                // intent expiration period
       escrowRegistry.address,
       paymentVerifierRegistry.address,
       postIntentHookRegistry.address,
@@ -156,21 +156,22 @@ describe("ProtocolViewer", () => {
         [witness.address]
       );
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: payeeDetails,
-          data: depositData
+          data: depositData,
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositId = ZERO;
     });
@@ -263,37 +264,39 @@ describe("ProtocolViewer", () => {
       // Create a few deposits for the test account
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(200),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(200),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectAccount = offRamper.address;
     });
@@ -328,37 +331,39 @@ describe("ProtocolViewer", () => {
     beforeEach(async () => {
       // Create two deposits
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(200),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(200),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       subjectDepositIds = [ZERO, ONE];
     });
@@ -396,21 +401,22 @@ describe("ProtocolViewer", () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
@@ -472,21 +478,22 @@ describe("ProtocolViewer", () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
@@ -552,21 +559,22 @@ describe("ProtocolViewer", () => {
       // Create deposit and signal intent
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
-      await escrow.connect(offRamper.wallet).createDeposit(
-        usdcToken.address,
-        usdc(100),
-        { min: usdc(10), max: usdc(200) },
-        [verifier.address],
-        [{
+      await escrow.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        verifiers: [verifier.address],
+        verifierData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
         }],
-        [
+        currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        ethers.constants.AddressZero
-      );
+        delegate: ethers.constants.AddressZero,
+        intentGuardian: ADDRESS_ZERO
+      });
 
       const params = await createSignalIntentParams(
         escrow.address,
