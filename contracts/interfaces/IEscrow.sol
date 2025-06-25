@@ -34,8 +34,12 @@ interface IEscrow {
         // Fee tracking
         uint256 reservedMakerFees;                  // State: Total fees reserved from maker (calculated upfront)
         uint256 accruedMakerFees;                   // State: Fees actually earned from fulfilled intents
+        uint256 accruedReferrerFees;               // State: Referrer fees actually earned from fulfilled intents
         // Intent guardian
         address intentGuardian;                     // Address that can extend intent expiry times (address(0) if no guardian)
+        // Referrer
+        address referrer;                           // Address of the referrer who brought this deposit (address(0) if no referrer)
+        uint256 referrerFee;                        // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
     }
 
     struct Currency {
@@ -59,6 +63,8 @@ interface IEscrow {
         Currency[][] currencies;                  // The currencies for each verifier that deposit supports
         address delegate;                         // Optional delegate address that can manage this deposit (address(0) for no delegate)
         address intentGuardian;                   // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
+        address referrer;                         // Address of the referrer who brought this deposit (address(0) if no referrer)
+        uint256 referrerFee;                      // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
     }
 
     /* ============ Events ============ */
@@ -89,12 +95,21 @@ interface IEscrow {
 
     event FundsLocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount, uint256 expiryTime);
     event FundsUnlocked(uint256 indexed depositId, bytes32 indexed intentHash, uint256 amount);
-    event FundsUnlockedAndTransferred(uint256 indexed depositId, bytes32 indexed intentHash, uint256 unlockedAmount, uint256 transferredAmount, uint256 accruedFees, address to);
+    event FundsUnlockedAndTransferred(
+        uint256 indexed depositId, 
+        bytes32 indexed intentHash, 
+        uint256 unlockedAmount, 
+        uint256 transferredAmount, 
+        uint256 makerFees, 
+        uint256 referrerFees, 
+        address to
+    );
     event IntentExpiryExtended(uint256 indexed depositId, bytes32 indexed intentHash, uint256 newExpiryTime);
 
     event MakerProtocolFeeUpdated(uint256 makerProtocolFee);
     event MakerFeeRecipientUpdated(address indexed makerFeeRecipient);
     event MakerFeesCollected(uint256 indexed depositId, uint256 collectedFees, address indexed makerFeeRecipient);
+    event ReferrerFeesCollected(uint256 indexed depositId, uint256 collectedFees, address indexed referrer);
     event DustCollected(uint256 indexed depositId, uint256 dustAmount, address indexed makerFeeRecipient);
     event DustThresholdUpdated(uint256 dustThreshold);
     event MaxIntentsPerDepositUpdated(uint256 maxIntentsPerDeposit);
@@ -117,6 +132,7 @@ interface IEscrow {
     error AmountBelowMin(uint256 amount, uint256 min);
     error AmountAboveMax(uint256 amount, uint256 max);
     error AmountExceedsAvailable(uint256 requested, uint256 available);
+    error FeeExceedsMaximum(uint256 fee, uint256 maximum);
 
     // Not found errors
     error DepositNotFound(uint256 depositId);
@@ -138,6 +154,7 @@ interface IEscrow {
     // Validation errors
     error EmptyPayeeDetails();
     error ArrayLengthMismatch(uint256 length1, uint256 length2);
+    error InvalidReferrerFeeConfiguration();
 
     // Verifier errors
     error VerifierNotWhitelisted(address verifier);

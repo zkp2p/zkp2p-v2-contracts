@@ -22,6 +22,8 @@ import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 pragma solidity ^0.8.18;
 
+// todo: handle when maker fee is enabled after deposit is created.
+
 /**
  * @title Escrow
  * @notice Escrows deposits and manages deposit lifecycle.
@@ -38,6 +40,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
+    uint256 internal constant MAX_REFERRER_FEE = 5e16;             // 5% max referrer fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
     
@@ -140,9 +143,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
         }
 
+        // Validate referrer fee configuration
+        if (_params.referrerFee > MAX_REFERRER_FEE) revert FeeExceedsMaximum(_params.referrerFee, MAX_REFERRER_FEE);
+        if (_params.referrer == address(0) && _params.referrerFee != 0) revert InvalidReferrerFeeConfiguration();
+
         // Calculate maker fees and net deposit amount
-        uint256 makerFees = (_params.amount * makerProtocolFee) / PRECISE_UNIT;
-        uint256 netDepositAmount = _params.amount - makerFees;
+        uint256 totalFees = 0;
+        if (makerProtocolFee > 0) {
+            totalFees += (_params.amount * makerProtocolFee) / PRECISE_UNIT;
+        }
+        if (_params.referrerFee > 0) {
+            totalFees += (_params.amount * _params.referrerFee) / PRECISE_UNIT;
+        }
+        uint256 netDepositAmount = _params.amount - totalFees;
         if (netDepositAmount < _params.intentAmountRange.min) {
             revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
         }
@@ -159,9 +172,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
             acceptingIntents: true,
             remainingDeposits: netDepositAmount,    // Net amount available for intents
             outstandingIntentAmount: 0,
-            reservedMakerFees: makerFees,
+            reservedMakerFees: totalFees,
             accruedMakerFees: 0,
-            intentGuardian: _params.intentGuardian
+            accruedReferrerFees: 0,
+            intentGuardian: _params.intentGuardian,
+            referrer: _params.referrer,
+            referrerFee: _params.referrerFee
         });
 
         emit DepositReceived(
@@ -271,6 +287,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 token = deposit.token;
         
         _collectAccruedMakerFees(_depositId, deposit);
+        _collectAccruedReferrerFees(_depositId, deposit);
 
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
@@ -615,8 +632,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_transferAmount == 0) revert ZeroValue();
         if (_transferAmount > intent.amount) revert AmountExceedsAvailable(_transferAmount, intent.amount);
         
-        uint256 makerFeeForThisTransfer = (_transferAmount * makerProtocolFee) / PRECISE_UNIT;
-        deposit.accruedMakerFees += makerFeeForThisTransfer;
+        uint256 makerFeeForThisTransfer = 0;
+        uint256 referrerFeeForThisTransfer = 0;
+
+        if (makerProtocolFee > 0) {
+            makerFeeForThisTransfer = (_transferAmount * makerProtocolFee) / PRECISE_UNIT;
+            deposit.accruedMakerFees += makerFeeForThisTransfer;
+        }
+        if (deposit.referrerFee > 0) {
+            referrerFeeForThisTransfer = (_transferAmount * deposit.referrerFee) / PRECISE_UNIT;
+            deposit.accruedReferrerFees += referrerFeeForThisTransfer;
+        }
 
         deposit.outstandingIntentAmount -= intent.amount;
         if (_transferAmount < intent.amount) {
@@ -631,7 +657,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         token.transfer(_to, _transferAmount);
 
-        emit FundsUnlockedAndTransferred(_depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, _to);
+        emit FundsUnlockedAndTransferred(
+            _depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, referrerFeeForThisTransfer, _to
+        );
     }
 
     /**
@@ -894,12 +922,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         // Close if no outstanding intents, no remaining deposits, and no reserved fees left
-        uint256 reservedFeesLeft = _deposit.reservedMakerFees - _deposit.accruedMakerFees;
+        uint256 reservedFeesLeft = _deposit.reservedMakerFees - _deposit.accruedMakerFees - _deposit.accruedReferrerFees;
         uint256 totalRemaining = _deposit.remainingDeposits + reservedFeesLeft;
 
         if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
             
             _collectAccruedMakerFees(_depositId, _deposit);
+            _collectAccruedReferrerFees(_depositId, _deposit);
             
             if (totalRemaining > 0) {
                 _deposit.token.transfer(makerFeeRecipient, totalRemaining);
@@ -918,6 +947,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_deposit.accruedMakerFees > 0) {
             _deposit.token.transfer(makerFeeRecipient, _deposit.accruedMakerFees);
             emit MakerFeesCollected(_depositId, _deposit.accruedMakerFees, makerFeeRecipient);
+        }
+    }
+
+    /**
+     * @notice Collects any accrued referrer fees to the referrer.
+     */
+    function _collectAccruedReferrerFees(uint256 _depositId, Deposit storage _deposit) internal {
+        if (_deposit.accruedReferrerFees > 0) {
+            _deposit.token.transfer(_deposit.referrer, _deposit.accruedReferrerFees);
+            emit ReferrerFeesCollected(_depositId, _deposit.accruedReferrerFees, _deposit.referrer);
         }
     }
 

@@ -53,6 +53,7 @@ describe("Escrow", () => {
   let gatingService: Account;
   let witness: Account;
   let intentGuardian: Account;
+  let referrer: Account;
   let chainId: BigNumber = ONE;
   let currentIntentCounter: number = 0;
 
@@ -88,7 +89,8 @@ describe("Escrow", () => {
       gatingService,
       witness,
       protocolFeeRecipient,
-      intentGuardian
+      intentGuardian,
+      referrer
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -184,6 +186,8 @@ describe("Escrow", () => {
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
     let subjectDelegate: Address;
     let subjectIntentGuardian: Address;
+    let subjectReferrer: Address;
+    let subjectReferrerFee: BigNumber;
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -205,6 +209,8 @@ describe("Escrow", () => {
       ];
       subjectDelegate = offRamperDelegate.address;
       subjectIntentGuardian = ADDRESS_ZERO;
+      subjectReferrer = ADDRESS_ZERO;
+      subjectReferrerFee = ZERO;
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
     });
 
@@ -217,7 +223,9 @@ describe("Escrow", () => {
         verifierData: subjectVerificationData,
         currencies: subjectCurrencies,
         delegate: subjectDelegate,
-        intentGuardian: subjectIntentGuardian
+        intentGuardian: subjectIntentGuardian,
+        referrer: subjectReferrer,
+        referrerFee: subjectReferrerFee
       });
     }
 
@@ -242,6 +250,8 @@ describe("Escrow", () => {
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
       expect(depositView.deposit.delegate).to.eq(subjectDelegate);
+      expect(depositView.deposit.referrer).to.eq(subjectReferrer);
+      expect(depositView.deposit.referrerFee).to.eq(subjectReferrerFee);
 
       expect(depositView.verifiers.length).to.eq(1);
       expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
@@ -387,6 +397,108 @@ describe("Escrow", () => {
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
       });
     });
+
+    describe("when there is a referrer", async () => {
+      let subjectDepositParams: IEscrow.CreateDepositParamsStruct;
+      let subjectCaller: Account;
+
+      beforeEach(async () => {
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+        subjectDepositParams = {
+          token: usdcToken.address,
+          amount: usdc(1000),
+          intentAmountRange: { min: usdc(10), max: usdc(100) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1) }]
+          ],
+          delegate: ADDRESS_ZERO,
+          intentGuardian: ADDRESS_ZERO,
+          referrer: referrer.address,
+          referrerFee: ether(0.02)  // 2% referrer fee
+        };
+
+        subjectCaller = offRamper;
+      });
+
+      async function subject(): Promise<any> {
+        return ramp.connect(subjectCaller.wallet).createDeposit(subjectDepositParams);
+      }
+
+      it("should create deposit with referrer", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(ZERO);
+        expect(deposit.referrer).to.eq(referrer.address);
+        expect(deposit.referrerFee).to.eq(ether(0.02));
+      });
+
+      it("should transfer the tokens to the Escrow contract", async () => {
+        await subject();
+
+        const escrowBalance = await usdcToken.balanceOf(ramp.address);
+        const offRamperBalance = await usdcToken.balanceOf(offRamper.address);
+        expect(escrowBalance).to.eq(usdc(1000));
+        expect(offRamperBalance).to.eq(usdc(9000));
+      });
+
+      describe("when referrer fee exceeds maximum", async () => {
+        beforeEach(async () => {
+          subjectDepositParams.referrerFee = ether(0.06); // 6% fee (exceeds 5% max)
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "FeeExceedsMaximum");
+        });
+      });
+
+      describe("when referrer is not set but fee is set", async () => {
+        beforeEach(async () => {
+          subjectDepositParams.referrer = ADDRESS_ZERO;
+          subjectDepositParams.referrerFee = ether(0.01); // 1% fee without referrer
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "InvalidReferrerFeeConfiguration");
+        });
+      });
+
+      describe("when referrer is set but fee is zero", async () => {
+        beforeEach(async () => {
+          subjectDepositParams.referrerFee = ZERO;
+        });
+
+        it("should create deposit with zero referrer fee", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(ZERO);
+          expect(deposit.referrer).to.eq(referrer.address);
+          expect(deposit.referrerFee).to.eq(ZERO);
+        });
+      });
+
+      describe("when no referrer is set", async () => {
+        beforeEach(async () => {
+          subjectDepositParams.referrer = ADDRESS_ZERO;
+          subjectDepositParams.referrerFee = ZERO;
+        });
+
+        it("should create deposit without referrer", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(ZERO);
+          expect(deposit.referrer).to.eq(ADDRESS_ZERO);
+          expect(deposit.referrerFee).to.eq(ZERO);
+        });
+      });
+    });
+
 
     describe("when the intent amount range min is zero", async () => {
       beforeEach(async () => {
@@ -638,7 +750,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -807,7 +921,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1060,7 +1176,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1342,7 +1460,9 @@ describe("Escrow", () => {
             [{ code: Currency.USD, minConversionRate: ether(1.08) }]
           ],
           delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO
+          intentGuardian: ADDRESS_ZERO,
+          referrer: ADDRESS_ZERO,
+          referrerFee: ZERO
         });
 
         subjectDepositId = BigNumber.from(1); // New deposit created
@@ -1553,6 +1673,119 @@ describe("Escrow", () => {
         });
       });
     });
+
+    describe("when deposit has referrer fees", async () => {
+      let referrerFee: BigNumber;
+      let intentHash: string;
+      let intentAmount: BigNumber;
+      let paymentAmount: BigNumber;
+
+      beforeEach(async () => {
+        // Create a deposit with referrer
+        referrerFee = ether(0.02); // 2% referrer fee
+        intentAmount = usdc(100);
+        paymentAmount = intentAmount.mul(ether(1.1));
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(1000),
+          intentAmountRange: { min: usdc(10), max: usdc(1000) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1) }]
+          ],
+          delegate: ADDRESS_ZERO,
+          intentGuardian: ADDRESS_ZERO,
+          referrer: referrer.address,
+          referrerFee: referrerFee
+        });
+
+        subjectDepositId = BigNumber.from(1); // New deposit created
+
+        // Signal and fulfill an intent to accrue some fees
+        const params = await createSignalIntentParams(
+          ramp.address,
+          subjectDepositId,
+          usdc(100),
+          onRamper.address,
+          verifier.address,
+          Currency.USD,
+          ether(1),
+          ADDRESS_ZERO,
+          ZERO,
+          gatingService,
+          chainId.toString(),
+          ADDRESS_ZERO,
+          "0x"
+        );
+
+        await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
+
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
+
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        intentHash = calculateIntentHash(
+          orchestrator.address,
+          currentIntentCounter
+        );
+        currentIntentCounter++;  // Increment after signalIntent
+
+        // Fulfill the intent - this will accrue fees
+        const paymentData = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
+        );
+        const fulfillParams = {
+          paymentProof: paymentData,
+          intentHash: intentHash,
+          verificationData: "0x",
+          postIntentHookData: "0x"
+        };
+
+        await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
+      });
+
+      it("should pay referrer fees on withdrawal", async () => {
+        const referrerBalanceBefore = await usdcToken.balanceOf(referrer.address);
+
+        await subject();
+
+        const referrerBalanceAfter = await usdcToken.balanceOf(referrer.address);
+        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
+
+        expect(referrerBalanceAfter.sub(referrerBalanceBefore)).to.eq(expectedReferrerFee);
+      });
+
+      it("should emit ReferrerFeesCollected event", async () => {
+        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
+
+        await expect(subject())
+          .to.emit(ramp, "ReferrerFeesCollected")
+          .withArgs(subjectDepositId, expectedReferrerFee, referrer.address);
+      });
+
+      it("should return correct amount to depositor", async () => {
+        const depositorBalanceBefore = await usdcToken.balanceOf(offRamper.address);
+
+        await subject();
+
+        const depositorBalanceAfter = await usdcToken.balanceOf(offRamper.address);
+
+        // Initial deposit: 1000 USDC
+        // Intent amount: 100 USDC (fulfilled)
+        // Remaining: 1000 - 100 = 900 USDC
+        const expectedReturn = usdc(900);
+
+        expect(depositorBalanceAfter.sub(depositorBalanceBefore)).to.eq(expectedReturn);
+      });
+    });
   });
 
   describe("#updateDepositMinConversionRate", async () => {
@@ -1579,7 +1812,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1693,7 +1928,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1798,7 +2035,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Add otherVerifier to whitelist
@@ -1952,7 +2191,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.02) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2071,7 +2312,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2210,7 +2453,9 @@ describe("Escrow", () => {
           ]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2318,7 +2563,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: ADDRESS_ZERO,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2424,7 +2671,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2503,7 +2752,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2705,7 +2956,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -2824,7 +3077,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3055,7 +3310,9 @@ describe("Escrow", () => {
           }],
           currencies: [[{ code: Currency.USD, minConversionRate: ether(1) }]],
           delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO
+          intentGuardian: ADDRESS_ZERO,
+          referrer: ADDRESS_ZERO,
+          referrerFee: ZERO
         });
 
         const depositCounter = await ramp.depositCounter();
@@ -3145,7 +3402,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Lock funds first
@@ -3277,7 +3536,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       // Lock funds first
@@ -3349,6 +3610,7 @@ describe("Escrow", () => {
         intentAmount,
         subjectTransferAmount,
         ZERO,     // maker fee
+        ZERO,     // referrer fee
         subjectTo
       );
     });
@@ -3489,7 +3751,9 @@ describe("Escrow", () => {
             [{ code: Currency.USD, minConversionRate: ether(1.01) }]
           ],
           delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO
+          intentGuardian: ADDRESS_ZERO,
+          referrer: ADDRESS_ZERO,
+          referrerFee: ZERO
         });
 
         // Lock funds
@@ -3541,6 +3805,7 @@ describe("Escrow", () => {
           intentAmount,
           subjectTransferAmount,
           expectedAccruedFees,
+          ZERO,
           subjectTo
         );
       });
@@ -3710,6 +3975,276 @@ describe("Escrow", () => {
           expect(postDeposit.accruedMakerFees).to.eq(firstIntentFees.add(secondIntentFees));
         });
       });
+
+      it("should not accrue referrer fees when no referrer is set", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.accruedReferrerFees).to.eq(ZERO);
+      });
+
+      describe("when referrer fee is set", async () => {
+        let referrerFee: BigNumber;
+        let depositId: BigNumber;
+        let intentHash: string;
+        let intentAmount: BigNumber;
+
+        beforeEach(async () => {
+          referrerFee = ether(0.02); // 2% referrer fee
+
+          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+          await ramp.connect(offRamper.wallet).createDeposit({
+            token: usdcToken.address,
+            amount: usdc(1000),
+            intentAmountRange: { min: usdc(10), max: usdc(1000) },
+            verifiers: [verifier.address],
+            verifierData: [{
+              intentGatingService: gatingService.address,
+              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+              data: "0x"
+            }],
+            currencies: [
+              [{ code: Currency.USD, minConversionRate: ether(1) }]
+            ],
+            delegate: ADDRESS_ZERO,
+            intentGuardian: ADDRESS_ZERO,
+            referrer: referrer.address,
+            referrerFee: referrerFee
+          });
+
+          depositId = BigNumber.from(2);
+          intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
+          intentAmount = usdc(100);
+
+          await orchestratorMock.connect(onRamper.wallet).lockFunds(
+            depositId,
+            intentHash,
+            intentAmount
+          );
+          subjectDepositId = depositId;
+          subjectIntentHash = intentHash;
+          subjectTransferAmount = intentAmount;
+
+          currentIntentCounter++;
+        });
+
+        it("should accrue both referrer and maker fees", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(depositId);
+          const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
+          const expectedMakerFee = intentAmount.mul(makerFeeRate).div(ether(1));
+          expect(deposit.accruedReferrerFees).to.eq(expectedReferrerFee);
+          expect(deposit.accruedMakerFees).to.eq(expectedMakerFee);
+        });
+
+        it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
+          const expectedMakerFee = intentAmount.mul(makerFeeRate).div(ether(1));
+          const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
+          await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
+            subjectDepositId,
+            subjectIntentHash,
+            intentAmount,
+            subjectTransferAmount,
+            expectedMakerFee,
+            expectedReferrerFee,
+            subjectTo
+          );
+        });
+      });
+    });
+
+    describe("when referrer fees are enabled", async () => {
+      let depositId: BigNumber;
+      let intentHash: string;
+      let referrerFee: BigNumber;
+
+      beforeEach(async () => {
+        // Create a deposit with referrer
+        referrerFee = ether(0.02); // 2% referrer fee
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(1000),
+          intentAmountRange: { min: usdc(10), max: usdc(1000) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1) }]
+          ],
+          delegate: ADDRESS_ZERO,
+          intentGuardian: ADDRESS_ZERO,
+          referrer: referrer.address,
+          referrerFee: referrerFee
+        });
+
+        depositId = ONE;
+        intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
+        intentAmount = usdc(100);
+
+        await orchestratorMock.connect(onRamper.wallet).lockFunds(
+          depositId,
+          intentHash,
+          intentAmount
+        );
+        subjectDepositId = depositId;
+        subjectIntentHash = intentHash;
+        subjectTransferAmount = intentAmount;
+
+        currentIntentCounter++;
+      });
+
+      it("should accrue referrer fees on fulfillment", async () => {
+        const depositBefore = await ramp.getDeposit(depositId);
+        expect(depositBefore.accruedReferrerFees).to.eq(ZERO);
+
+        await subject();
+
+        const depositAfter = await ramp.getDeposit(depositId);
+        const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
+        expect(depositAfter.accruedReferrerFees).to.eq(expectedReferrerFee);
+      });
+
+      it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
+        const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
+        await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
+          subjectDepositId,
+          subjectIntentHash,
+          intentAmount,
+          subjectTransferAmount,
+          ZERO,   // maker fee
+          expectedReferrerFee,
+          subjectTo
+        );
+      });
+
+      describe("when partial fulfillment", async () => {
+        beforeEach(async () => {
+          subjectTransferAmount = usdc(50);
+        });
+
+        it("should accrue proportional referrer fees", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(depositId);
+
+          // Referrer fee: 50 USDC * 2% = 1 USDC
+          const expectedReferrerFee = usdc(50).mul(referrerFee).div(ether(1));
+          expect(deposit.accruedReferrerFees).to.eq(expectedReferrerFee);
+        });
+      });
+
+      describe("when closing deposit due to dust with referrer fees", async () => {
+        beforeEach(async () => {
+
+          // At 2% fee, we will reserve 1 USDC for fees;
+          // we will take away 45 for first intent and 4 for second intent
+          // and we will take 45 * 2% + 4 * 2% = 0.98 USDC for fees
+          // so remaining dust is 0.02 USDC
+          await ramp.connect(owner.wallet).setDustThreshold(usdc(0.1));
+
+          referrerFee = ether(0.02); // 2% referrer fee
+          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+
+          await ramp.connect(offRamper.wallet).createDeposit({
+            token: usdcToken.address,
+            amount: usdc(50),
+            intentAmountRange: { min: usdc(1), max: usdc(50) },
+            verifiers: [verifier.address],
+            verifierData: [{
+              intentGatingService: gatingService.address,
+              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+              data: "0x"
+            }],
+            currencies: [
+              [{ code: Currency.USD, minConversionRate: ether(1) }]
+            ],
+            delegate: ADDRESS_ZERO,
+            intentGuardian: ADDRESS_ZERO,
+            referrer: referrer.address,
+            referrerFee: referrerFee
+          });
+
+          depositId = BigNumber.from(2);
+          intentAmount = usdc(45);
+
+          const params = await createSignalIntentParams(
+            ramp.address,
+            depositId,
+            intentAmount,
+            onRamper.address,
+            verifier.address,
+            Currency.USD,
+            ether(1),
+            ADDRESS_ZERO,
+            ZERO,
+            gatingService,
+            chainId.toString(),
+            ADDRESS_ZERO,
+            "0x"
+          );
+
+          intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
+
+          await orchestratorMock.connect(onRamper.wallet).lockFunds(
+            depositId,
+            intentHash,
+            intentAmount
+          );
+
+          await orchestratorMock.connect(onRamper.wallet).unlockAndTransferFunds(
+            depositId,
+            intentHash,
+            intentAmount,
+            orchestratorMock.address
+          );
+
+          const intentHash2 = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
+          intentAmount = usdc(4);
+          await orchestratorMock.connect(onRamper.wallet).lockFunds(
+            depositId,
+            intentHash2,
+            intentAmount
+          );
+
+          subjectDepositId = depositId;
+          subjectIntentHash = intentHash2;
+          subjectTransferAmount = intentAmount;
+        });
+
+        it("should pay referrer fees when closing deposit due to dust", async () => {
+          const referrerBalanceBefore = await usdcToken.balanceOf(referrer.address);
+
+          await subject();
+
+          const referrerBalanceAfter = await usdcToken.balanceOf(referrer.address);
+          const totalReferrerFee = usdc(45).mul(referrerFee).div(ether(1)).add(usdc(4).mul(referrerFee).div(ether(1))); // 2% of 50 + 2% of 4
+
+          expect(referrerBalanceAfter.sub(referrerBalanceBefore)).to.eq(totalReferrerFee);
+        });
+
+        it("should emit ReferrerFeesCollected event", async () => {
+          const totalReferrerFee = usdc(45).mul(referrerFee).div(ether(1)).add(usdc(4).mul(referrerFee).div(ether(1))); // 2% of 50 + 2% of 4
+
+          await expect(subject())
+            .to.emit(ramp, "ReferrerFeesCollected")
+            .withArgs(depositId, totalReferrerFee, referrer.address);
+        });
+
+        it("should close the deposit", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(depositId);
+          expect(deposit.depositor).to.eq(ADDRESS_ZERO);
+        });
+      });
     });
   });
 
@@ -3737,7 +4272,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1) }]
         ],
         delegate: ADDRESS_ZERO,  // delegate
-        intentGuardian: intentGuardian.address  // intentGuardian
+        intentGuardian: intentGuardian.address,  // intentGuardian
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       subjectDepositId = ZERO;
@@ -3843,7 +4380,9 @@ describe("Escrow", () => {
             [{ code: Currency.USD, minConversionRate: ether(1) }]
           ],
           delegate: ADDRESS_ZERO,  // delegate
-          intentGuardian: ADDRESS_ZERO   // no intentGuardian
+          intentGuardian: ADDRESS_ZERO,   // no intentGuardian,
+          referrer: ADDRESS_ZERO,
+          referrerFee: ZERO
         });
 
         const newDepositId = ONE;
@@ -4440,7 +4979,9 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
