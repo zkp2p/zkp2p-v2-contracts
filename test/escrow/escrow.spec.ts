@@ -816,7 +816,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe.only("#addFundsToDeposit", async () => {
+  describe("#addFundsToDeposit", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
