@@ -59,8 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWhitelistedPaymentVerifier(
     hre,
     paymentVerifierRegistryContract,
-    cashappVerifier.address,
-    CASHAPP_RECLAIM_FEE_SHARE[network]
+    cashappVerifier.address
   );
 
   console.log("CashappReclaimVerifier added to whitelisted payment verifiers...");

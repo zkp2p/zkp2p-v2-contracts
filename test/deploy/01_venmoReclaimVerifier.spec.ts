@@ -32,8 +32,7 @@ import {
 import {
   getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_TIMESTAMP_BUFFER,
-  VENMO_RECLAIM_CURRENCIES,
-  VENMO_RECLAIM_FEE_SHARE,
+  VENMO_RECLAIM_CURRENCIES
 } from "../../deployments/verifiers/venmo_reclaim";
 
 const expect = getWaffleExpect();
