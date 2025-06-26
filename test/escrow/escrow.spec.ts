@@ -831,7 +831,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -1139,7 +1139,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -1419,6 +1419,16 @@ describe("Escrow", () => {
         it("should still revert", async () => {
           await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
         });
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
 
@@ -1795,6 +1805,8 @@ describe("Escrow", () => {
     });
   });
 
+  // DELEGATE FUNCTIONS
+
   describe("#updateDepositMinConversionRate", async () => {
     let subjectDepositId: BigNumber;
     let subjectVerifier: Address;
@@ -1881,6 +1893,17 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
 
     describe("when the currency or verifier is not supported", async () => {
       beforeEach(async () => {
@@ -1980,6 +2003,16 @@ describe("Escrow", () => {
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
       });
 
       it("should revert", async () => {
@@ -2139,6 +2172,16 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
     describe("when the verifier is not whitelisted", async () => {
       beforeEach(async () => {
         const newVerifier = await deployer.deployPaymentVerifierMock(
@@ -2269,6 +2312,16 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
     describe("when the verifier is not found for the deposit", async () => {
       beforeEach(async () => {
         const newVerifier = await deployer.deployPaymentVerifierMock(
@@ -2372,6 +2425,16 @@ describe("Escrow", () => {
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
         subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
       });
 
       it("should revert", async () => {
@@ -2517,6 +2580,17 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
+
     describe("when the verifier is not found for the deposit", async () => {
       beforeEach(async () => {
         subjectVerifier = otherVerifier.address;
@@ -2655,6 +2729,16 @@ describe("Escrow", () => {
         );
       });
     });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      });
+    });
   });
 
   describe("#removeDepositDelegate", async () => {
@@ -2733,6 +2817,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "DelegateNotFound");
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
   });
@@ -2842,7 +2936,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
       });
     });
 
@@ -2913,16 +3007,6 @@ describe("Escrow", () => {
 
         const postDeposit = await ramp.getDeposit(subjectDepositId);
         expect(postDeposit.acceptingIntents).to.eq(subjectAcceptingIntents);
-      });
-    });
-
-    describe("when the deposit does not exist", async () => {
-      beforeEach(async () => {
-        subjectDepositId = BigNumber.from(999);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -4472,6 +4556,26 @@ describe("Escrow", () => {
           subjectIntentHash,
           ONE_DAY_IN_SECONDS.mul(2).add(1)
         )).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
+      });
+    });
+
+    describe("when additional time is zero", async () => {
+      beforeEach(async () => {
+        subjectAdditionalTime = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
       });
     });
   });

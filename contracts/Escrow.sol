@@ -87,8 +87,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     modifier onlyDepositorOrDelegate(uint256 _depositId) {
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
-        
         if (!(deposit.depositor == msg.sender || 
             (deposit.delegate != address(0) && deposit.delegate == msg.sender))) {
             revert UnauthorizedCallerOrDelegate(msg.sender, deposit.depositor, deposit.delegate);
@@ -128,7 +126,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         transferOwnership(_owner);
     }
 
-    /* ============ External Functions ============ */
+    /* ============ Deposit Owner Only (External Functions) ============ */
 
     /**
      * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
@@ -211,7 +209,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         // Checks
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_amount == 0) revert ZeroValue();
         
@@ -244,7 +241,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         // Checks
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_amount == 0) revert ZeroValue();
         
@@ -278,7 +274,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function withdrawDeposit(uint256 _depositId) external {
         // Checks
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
         // Effects
@@ -303,7 +298,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         delete deposit.accruedReferrerFees;
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
-        
+
         if (deposit.outstandingIntentAmount == 0) {
             _closeDeposit(_depositId, deposit);
         }
@@ -311,6 +306,40 @@ contract Escrow is Ownable, Pausable, IEscrow {
         // Interactions
         token.transfer(msg.sender, returnAmount);
     }
+
+    /**
+     * @notice Allows depositor to set a delegate address that can manage a specific deposit
+     *
+     * @param _depositId    The deposit ID
+     * @param _delegate     The address to set as delegate (address(0) to remove delegate)
+     */
+    
+    function setDepositDelegate(uint256 _depositId, address _delegate) external {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (_delegate == address(0)) revert ZeroAddress();
+        
+        deposit.delegate = _delegate;
+        
+        emit DepositDelegateSet(_depositId, msg.sender, _delegate);
+    }
+
+    /**
+     * @notice Allows depositor to remove the delegate for a specific deposit
+     *
+     * @param _depositId    The deposit ID
+     */
+    function removeDepositDelegate(uint256 _depositId) external {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
+        
+        delete deposit.delegate;
+        
+        emit DepositDelegateRemoved(_depositId, msg.sender);
+    }
+
+    /* ============ Deposit Owner OR Delegate Only (External Functions) ============ */
 
     /**
      * @notice Only callable by the depositor for a deposit. Allows depositor to update the min conversion rate for a currency for a 
@@ -500,38 +529,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
     }
 
-    /**
-     * @notice Allows depositor to set a delegate address that can manage a specific deposit
-     *
-     * @param _depositId    The deposit ID
-     * @param _delegate     The address to set as delegate (address(0) to remove delegate)
-     */
-    function setDepositDelegate(uint256 _depositId, address _delegate) external {
-        Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
-        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
-        if (_delegate == address(0)) revert ZeroAddress();
-        
-        deposit.delegate = _delegate;
-        
-        emit DepositDelegateSet(_depositId, msg.sender, _delegate);
-    }
-
-    /**
-     * @notice Allows depositor to remove the delegate for a specific deposit
-     *
-     * @param _depositId    The deposit ID
-     */
-    function removeDepositDelegate(uint256 _depositId) external {
-        Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
-        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
-        if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
-        
-        delete deposit.delegate;
-        
-        emit DepositDelegateRemoved(_depositId, msg.sender);
-    }
+    /* ============ Anyone callable (External Functions) ============ */
 
     /**
      * @notice ANYONE: Can be called by anyone to clean up expired intents.
@@ -680,6 +678,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         // Interactions
         token.transfer(_to, _transferAmount);
     }
+
+    /* ============ Intent Guardian Only (External Functions) ============ */
 
     /**
      * @notice INTENT GUARDIAN ONLY: Extends the expiry time of an existing intent. Only callable by intent guardian.

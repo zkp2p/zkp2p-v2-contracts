@@ -675,6 +675,35 @@ describe("Orchestrator", () => {
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "InvalidSignature");
       });
+
+      describe("when the deposit doesn't has intent gating service", async () => {
+        beforeEach(async () => {
+          await escrow.connect(offRamper.wallet).createDeposit({
+            token: usdcToken.address,
+            amount: usdc(100),
+            intentAmountRange: { min: usdc(10), max: usdc(200) },
+            verifiers: [verifier.address],
+            verifierData: [{
+              intentGatingService: ADDRESS_ZERO,
+              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+              data: "0x"
+            }],
+            currencies: [
+              [{ code: Currency.USD, minConversionRate: depositConversionRate }]
+            ],
+            delegate: offRamperDelegate.address,
+            intentGuardian: ADDRESS_ZERO,  // intentGuardian
+            referrer: ADDRESS_ZERO,
+            referrerFee: ZERO
+          });
+
+          subjectDepositId = ONE;
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
     });
 
     describe("when the gating service signature is expired", async () => {
