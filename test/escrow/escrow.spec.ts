@@ -1794,11 +1794,8 @@ describe("Escrow", () => {
         await subject();
 
         const depositorBalanceAfter = await usdcToken.balanceOf(offRamper.address);
-
-        // Initial deposit: 1000 USDC
-        // Intent amount: 100 USDC (fulfilled)
-        // Remaining: 1000 - 100 = 900 USDC
-        const expectedReturn = usdc(900);
+        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
+        const expectedReturn = usdc(1000).sub(usdc(100)).sub(expectedReferrerFee);
 
         expect(depositorBalanceAfter.sub(depositorBalanceBefore)).to.eq(expectedReturn);
       });
