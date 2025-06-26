@@ -3471,8 +3471,10 @@ describe("Escrow", () => {
     });
 
     it("should emit the correct event", async () => {
+      const tx = await subject();
+
       const currentTimestamp = await blockchain.getCurrentTimestamp();
-      await expect(subject()).to.emit(ramp, "FundsLocked").withArgs(
+      await expect(tx).to.emit(ramp, "FundsLocked").withArgs(
         subjectDepositId,
         subjectIntentHash,
         subjectAmount,
