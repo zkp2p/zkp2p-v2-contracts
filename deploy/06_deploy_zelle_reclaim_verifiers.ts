@@ -16,8 +16,6 @@ import {
 import {
   ZELLE_RECLAIM_CURRENCIES,
   ZELLE_RECLAIM_TIMESTAMP_BUFFER,
-  ZELLE_RECLAIM_FEE_SHARE,
-  ZELLE_APPCLIP_PROVIDER_HASHES,
   getZelleCitiReclaimProviderHashes,
   getZelleBoAReclaimProviderHashes,
   getZelleChaseReclaimProviderHashes,
@@ -50,25 +48,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Get the provider hashes for each bank's verifier
   // Citi Verifier
-  const citiExtensionProviderHashes = await getZelleCitiReclaimProviderHashes(20);
-  console.log("citi extension provider hashes", citiExtensionProviderHashes);
-  const citiAppclipProviderHashes = ZELLE_APPCLIP_PROVIDER_HASHES;
-  console.log("citi appclip provider hashes", citiAppclipProviderHashes);
-  const citiProviderHashes = [...citiExtensionProviderHashes, ...citiAppclipProviderHashes];
+  const citiProviderHashes = await getZelleCitiReclaimProviderHashes(20);
+  console.log("citi extension provider hashes", citiProviderHashes);
 
   // BoA Verifier
-  const boaExtensionProviderHashes = await getZelleBoAReclaimProviderHashes(10);
-  console.log("boa extension provider hashes", boaExtensionProviderHashes);
-  const boaAppclipProviderHashes = ZELLE_APPCLIP_PROVIDER_HASHES;
-  console.log("boa appclip provider hashes", boaAppclipProviderHashes);
-  const boaProviderHashes = [...boaExtensionProviderHashes, ...boaAppclipProviderHashes];
+  const boaProviderHashes = await getZelleBoAReclaimProviderHashes(10);
+  console.log("boa extension provider hashes", boaProviderHashes);
 
   // Chase Verifier
-  const chaseExtensionProviderHashes = await getZelleChaseReclaimProviderHashes(10);
-  console.log("chase extension provider hashes", chaseExtensionProviderHashes);
-  const chaseAppclipProviderHashes = ZELLE_APPCLIP_PROVIDER_HASHES;
-  console.log("chase appclip provider hashes", chaseAppclipProviderHashes);
-  const chaseProviderHashes = [...chaseExtensionProviderHashes, ...chaseAppclipProviderHashes];
+  const chaseProviderHashes = await getZelleChaseReclaimProviderHashes(10);
+  console.log("chase extension provider hashes", chaseProviderHashes);
 
   // Deploy individual verifiers that connect to ZelleBaseVerifier
   // Citi
@@ -145,8 +134,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWhitelistedPaymentVerifier(
     hre,
     paymentVerifierRegistryContract,
-    zelleBaseVerifier.address,
-    ZELLE_RECLAIM_FEE_SHARE[network]
+    zelleBaseVerifier.address
   );
   console.log("ZelleBaseVerifier added to whitelisted payment verifiers...");
 

@@ -18,8 +18,6 @@ import {
   getMercadoReclaimProviderHashes,
   MERCADO_RECLAIM_CURRENCIES,
   MERCADO_RECLAIM_TIMESTAMP_BUFFER,
-  MERCADO_RECLAIM_FEE_SHARE,
-  MERCADO_APPCLIP_PROVIDER_HASHES,
 } from "../deployments/verifiers/mercado_pago_reclaim";
 
 // Deployment Scripts
@@ -35,12 +33,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   // Mercado only returns 1 transaction at a time
-  const extensionProviderHashes = await getMercadoReclaimProviderHashes(1);
-  console.log("mercado extension provider hashes", extensionProviderHashes);
+  const providerHashes = await getMercadoReclaimProviderHashes(1);
+  console.log("mercado extension provider hashes", providerHashes);
 
-  const appclipProviderHashes = MERCADO_APPCLIP_PROVIDER_HASHES;
-  console.log("mercado appclip provider hashes", appclipProviderHashes);
-  const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const mercadoVerifier = await deploy("MercadoPagoReclaimVerifier", {
     from: deployer,
     args: [
@@ -65,8 +60,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWhitelistedPaymentVerifier(
     hre,
     paymentVerifierRegistryContract,
-    mercadoVerifier.address,
-    MERCADO_RECLAIM_FEE_SHARE[network]
+    mercadoVerifier.address
   );
 
   console.log("MercadoPagoReclaimVerifier added to whitelisted payment verifiers...");

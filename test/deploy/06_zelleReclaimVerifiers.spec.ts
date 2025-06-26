@@ -35,8 +35,6 @@ import {
   getZelleBoAReclaimProviderHashes,
   ZELLE_RECLAIM_TIMESTAMP_BUFFER,
   ZELLE_RECLAIM_CURRENCIES,
-  ZELLE_RECLAIM_FEE_SHARE,
-  ZELLE_APPCLIP_PROVIDER_HASHES,
 } from "../../deployments/verifiers/zelle_reclaim";
 import { ZERO } from "@utils/constants";
 
@@ -171,13 +169,11 @@ describe("Zelle Reclaim Verifier Deployments", () => {
         if (name.includes("Citi")) n = 20;
 
         const extensionHashes = await getProviderHashes(n);
-        const appclipHashes = ZELLE_APPCLIP_PROVIDER_HASHES;
-        const allHashes = [...extensionHashes, ...appclipHashes];
 
         expect(actualOwner).to.eq(multiSig);
         expect(actualBaseVerifier).to.eq(zelleBaseVerifier.address);
         expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-        expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+        expect([...actualProviderHashes].sort()).to.deep.eq([...extensionHashes].sort());
         expect(actualTimestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER[id as keyof typeof ZELLE_RECLAIM_TIMESTAMP_BUFFER]);
       });
     });

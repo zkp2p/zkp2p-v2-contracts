@@ -33,8 +33,6 @@ import {
   getRevolutReclaimProviderHashes,
   REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
   REVOLUT_RECLAIM_CURRENCIES,
-  REVOLUT_RECLAIM_FEE_SHARE,
-  REVOLUT_APPCLIP_PROVIDER_HASHES
 } from "../../deployments/verifiers/revolut_reclaim";
 
 const expect = getWaffleExpect();
@@ -85,13 +83,11 @@ describe("RevolutReclaimVerifier Deployment", () => {
       const actualTimestampBuffer = await revolutReclaimVerifier.timestampBuffer();
       const actualCurrencies = await revolutReclaimVerifier.getCurrencies();
       const hashes = await getRevolutReclaimProviderHashes(20);
-      const appclipHashes = REVOLUT_APPCLIP_PROVIDER_HASHES;
-      const allHashes = [...hashes, ...appclipHashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+      expect([...actualProviderHashes].sort()).to.deep.eq([...hashes].sort());
       expect([...actualCurrencies].sort()).to.deep.eq([...REVOLUT_RECLAIM_CURRENCIES].sort());
       expect(actualTimestampBuffer).to.eq(REVOLUT_RECLAIM_TIMESTAMP_BUFFER);
     });

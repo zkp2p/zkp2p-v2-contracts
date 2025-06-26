@@ -33,8 +33,6 @@ import {
   getMercadoReclaimProviderHashes,
   MERCADO_RECLAIM_TIMESTAMP_BUFFER,
   MERCADO_RECLAIM_CURRENCIES,
-  MERCADO_RECLAIM_FEE_SHARE,
-  MERCADO_APPCLIP_PROVIDER_HASHES
 } from "../../deployments/verifiers/mercado_pago_reclaim";
 
 const expect = getWaffleExpect();
@@ -85,13 +83,11 @@ describe("MercadoPagoReclaimVerifier Deployment", () => {
       const actualTimestampBuffer = await mercadoPagoReclaimVerifier.timestampBuffer();
       const actualCurrencies = await mercadoPagoReclaimVerifier.getCurrencies();
       const hashes = await getMercadoReclaimProviderHashes(1);
-      const appclipHashes = MERCADO_APPCLIP_PROVIDER_HASHES;
-      const allHashes = [...hashes, ...appclipHashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+      expect([...actualProviderHashes].sort()).to.deep.eq([...hashes].sort());
       expect([...actualCurrencies].sort()).to.deep.eq([...MERCADO_RECLAIM_CURRENCIES].sort());
       expect(actualTimestampBuffer).to.eq(MERCADO_RECLAIM_TIMESTAMP_BUFFER);
     });

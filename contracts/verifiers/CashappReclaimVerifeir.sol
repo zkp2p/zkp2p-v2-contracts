@@ -5,8 +5,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { DateParsing } from "../lib/DateParsing.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
-
 import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
@@ -16,7 +14,6 @@ pragma solidity ^0.8.18;
 contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
-    using Bytes32ConversionUtils for bytes32;
 
     /* ============ Structs ============ */
 
@@ -75,15 +72,14 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        (
-            PaymentDetails memory paymentDetails,
-            bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(
+            _verifyPaymentData.paymentProof, 
+            _verifyPaymentData.depositData
+        );
                 
         uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
-            _verifyPaymentData,
-            isAppclipProof
+            _verifyPaymentData
         );
 
         uint256 releaseAmount = _calculateReleaseAmount(
@@ -117,7 +113,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
+        returns (PaymentDetails memory paymentDetails) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
@@ -131,8 +127,6 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
-
-        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
@@ -143,8 +137,7 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        VerifyPaymentData memory _verifyPaymentData,
-        bool _isAppclipProof
+        VerifyPaymentData memory _verifyPaymentData
     ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
@@ -153,18 +146,10 @@ contract CashappReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier 
         require(paymentAmount > 0, "Payment amount must be greater than zero");
         
         // Validate recipient
-        if (_isAppclipProof) {
-            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
-            require(
-                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        } else {
-            require(
-                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        }
+        require(
+            paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
+            "Incorrect payment recipient"
+        );
         
         // Validate timestamp; Divide by 1000 to convert to seconds and add in buffer to build flexibility
         // for L2 timestamps

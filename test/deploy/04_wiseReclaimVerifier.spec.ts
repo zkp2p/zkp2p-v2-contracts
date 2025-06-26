@@ -33,8 +33,6 @@ import {
   getWiseReclaimProviderHashes,
   WISE_RECLAIM_TIMESTAMP_BUFFER,
   WISE_RECLAIM_CURRENCIES,
-  WISE_RECLAIM_FEE_SHARE,
-  WISE_APPCLIP_PROVIDER_HASHES
 } from "../../deployments/verifiers/wise_reclaim";
 
 const expect = getWaffleExpect();
@@ -85,13 +83,11 @@ describe("WiseReclaimVerifier Deployment", () => {
       const actualTimestampBuffer = await wiseReclaimVerifier.timestampBuffer();
       const actualCurrencies = await wiseReclaimVerifier.getCurrencies();
       const hashes = await getWiseReclaimProviderHashes(10);
-      const appclipHashes = WISE_APPCLIP_PROVIDER_HASHES;
-      const allHashes = [...hashes, ...appclipHashes];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect([...actualProviderHashes].sort()).to.deep.eq([...allHashes].sort());
+      expect([...actualProviderHashes].sort()).to.deep.eq([...hashes].sort());
       expect([...actualCurrencies].sort()).to.deep.eq([...WISE_RECLAIM_CURRENCIES].sort());
       expect(actualTimestampBuffer).to.eq(WISE_RECLAIM_TIMESTAMP_BUFFER);
     });

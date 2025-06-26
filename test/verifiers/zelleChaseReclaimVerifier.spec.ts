@@ -828,7 +828,7 @@ describe("ZelleChaseReclaimVerifier", () => {
         zeroAmountDetailProof.signedClaim.signatures = [await witness.signMessage(detailDigest)];
 
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ['tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim, bool isAppclipProof)', 'tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim, bool isAppclipProof)'],
+          ['tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim)', 'tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim)'],
           [zeroAmountListProof, zeroAmountDetailProof]
         );
 

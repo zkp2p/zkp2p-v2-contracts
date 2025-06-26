@@ -18,9 +18,7 @@ import { PaymentService } from "../utils/types";
 import {
   getRevolutReclaimProviderHashes,
   REVOLUT_RECLAIM_CURRENCIES,
-  REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
-  REVOLUT_RECLAIM_FEE_SHARE,
-  REVOLUT_APPCLIP_PROVIDER_HASHES,
+  REVOLUT_RECLAIM_TIMESTAMP_BUFFER
 } from "../deployments/verifiers/revolut_reclaim";
 
 // Deployment Scripts
@@ -39,9 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Revolut returns 20 transactions at a time
   const extensionProviderHashes = await getRevolutReclaimProviderHashes(20);
   console.log("revolut extension provider hashes", extensionProviderHashes);
-  const appclipProviderHashes = REVOLUT_APPCLIP_PROVIDER_HASHES;
-  console.log("revolut appclip provider hashes", appclipProviderHashes);
-  const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
+  const providerHashes = extensionProviderHashes;
   const revolutVerifier = await deploy("RevolutReclaimVerifier", {
     from: deployer,
     args: [
@@ -66,8 +62,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWhitelistedPaymentVerifier(
     hre,
     paymentVerifierRegistryContract,
-    revolutVerifier.address,
-    REVOLUT_RECLAIM_FEE_SHARE[network]
+    revolutVerifier.address
   );
 
   console.log("RevolutReclaimVerifier added to whitelisted payment verifiers...");

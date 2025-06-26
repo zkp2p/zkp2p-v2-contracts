@@ -17,8 +17,6 @@ import {
   getCashappReclaimProviderHashes,
   CASHAPP_RECLAIM_CURRENCIES,
   CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
-  CASHAPP_RECLAIM_FEE_SHARE,
-  CASHAPP_APPCLIP_PROVIDER_HASHES,
 } from "../deployments/verifiers/cashapp_reclaim";
 
 // Deployment Scripts
@@ -34,11 +32,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
 
   // Cashapp page size is 15
-  const extensionProviderHashes = await getCashappReclaimProviderHashes(15);
-  console.log("cashapp extension provider hashes", extensionProviderHashes);
-  const appclipProviderHashes = CASHAPP_APPCLIP_PROVIDER_HASHES;
-  console.log("cashapp appclip provider hashes", appclipProviderHashes);
-  const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
+  const providerHashes = await getCashappReclaimProviderHashes(15);
+  console.log("cashapp extension provider hashes", providerHashes);
+
   const cashappVerifier = await deploy("CashappReclaimVerifier", {
     from: deployer,
     args: [

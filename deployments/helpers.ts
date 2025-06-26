@@ -103,8 +103,7 @@ export async function addWritePermission(
 export async function addWhitelistedPaymentVerifier(
   hre: HardhatRuntimeEnvironment,
   contract: any,
-  newWhitelistedAddress: Address,
-  feeShare: BigNumber
+  newWhitelistedAddress: Address
 ): Promise<void> {
   const currentOwner = await contract.owner();
   if (!(await contract.isWhitelistedVerifier(newWhitelistedAddress))) {

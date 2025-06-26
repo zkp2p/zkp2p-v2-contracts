@@ -8,7 +8,7 @@ import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, parseAppclipProof, parseExtensionProof, encodeProof } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, parseExtensionProof, encodeProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -34,29 +34,6 @@ const revolutExtensionProof = {
     "claimSignature": { "0": 243, "1": 131, "2": 21, "3": 127, "4": 82, "5": 15, "6": 164, "7": 81, "8": 198, "9": 173, "10": 13, "11": 42, "12": 216, "13": 85, "14": 255, "15": 5, "16": 242, "17": 59, "18": 168, "19": 129, "20": 192, "21": 222, "22": 117, "23": 64, "24": 5, "25": 7, "26": 244, "27": 33, "28": 54, "29": 80, "30": 100, "31": 131, "32": 12, "33": 182, "34": 225, "35": 141, "36": 41, "37": 183, "38": 7, "39": 201, "40": 167, "41": 151, "42": 37, "43": 132, "44": 92, "45": 42, "46": 153, "47": 135, "48": 34, "49": 112, "50": 133, "51": 15, "52": 246, "53": 255, "54": 77, "55": 14, "56": 81, "57": 72, "58": 207, "59": 25, "60": 46, "61": 171, "62": 164, "63": 215, "64": 28 },
     "resultSignature": { "0": 226, "1": 0, "2": 231, "3": 229, "4": 255, "5": 87, "6": 176, "7": 81, "8": 104, "9": 41, "10": 174, "11": 172, "12": 137, "13": 110, "14": 171, "15": 77, "16": 72, "17": 56, "18": 113, "19": 40, "20": 137, "21": 176, "22": 100, "23": 220, "24": 134, "25": 228, "26": 194, "27": 227, "28": 128, "29": 104, "30": 26, "31": 137, "32": 89, "33": 130, "34": 168, "35": 202, "36": 15, "37": 201, "38": 252, "39": 96, "40": 128, "41": 62, "42": 11, "43": 90, "44": 67, "45": 224, "46": 67, "47": 43, "48": 180, "49": 249, "50": 250, "51": 35, "52": 65, "53": 148, "54": 23, "55": 19, "56": 213, "57": 219, "58": 199, "59": 11, "60": 227, "61": 144, "62": 164, "63": 76, "64": 27 }
   }
-}
-
-const revolutAppclipProof = {
-  "identifier": "0xb3d799daf7eaca4b4cb1c117c96b56d7c43a84d475ce43f655585da869932c3c",
-  "claimData": {
-    "provider": "http",
-    "parameters": "{\"additionalClientOptions\":{},\"body\":\"\",\"geoLocation\":\"\",\"headers\":{\"Referer\":\"https://app.revolut.com/home?code=Y2JmMjBhZmQtY2QyMS00YzJhLTlmY2QtMDU1Zjc4ZTQyN2Q1OjI1Mjk3MDgxOlMyNTY&state=AryE4alx1ELqBdjl\",\"Sec-Fetch-Mode\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1\",\"accept\":\"application/json, text/plain, */*\"},\"method\":\"GET\",\"paramValues\":{\"amount\":\"-100\",\"completedDate\":\"1736193670335\",\"currency\":\"USD\",\"id\":\"677c3686-4589-a4d3-b190-fc8380389c49\",\"state\":\"COMPLETED\",\"username\":\"alexgx7gy\"},\"responseMatches\":[{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"amount\\\":{{amount}}\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"currency\\\":\\\"{{currency}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"completedDate\\\":{{completedDate}}\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"username\\\":\\\"{{username}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"id\\\":\\\"{{id}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"state\\\":\\\"{{state}}\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$[0].amount\",\"regex\":\"\\\"amount\\\":(.*)\",\"xPath\":\"\"},{\"jsonPath\":\"$[0].currency\",\"regex\":\"\\\"currency\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$[0].completedDate\",\"regex\":\"\\\"completedDate\\\":(.*)\",\"xPath\":\"\"},{\"jsonPath\":\"$[0].recipient.username\",\"regex\":\"\\\"username\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$[0].id\",\"regex\":\"\\\"id\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$[0].state\",\"regex\":\"\\\"state\\\":\\\"(.*)\\\"\",\"xPath\":\"\"}],\"url\":\"https://app.revolut.com/api/retail/user/current/transactions/last?count=20\"}",
-    "owner": "0xa4f239ae872b61a640b232f2066f21862caef5c1",
-    "timestampS": 1736264732,
-    "context": "{\"contextAddress\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"contextMessage\":\"21138964711553769010780423915557687380568289483182695160148231659899695028258\",\"extractedParameters\":{\"amount\":\"-100\",\"completedDate\":\"1736193670335\",\"currency\":\"USD\",\"id\":\"677c3686-4589-a4d3-b190-fc8380389c49\",\"state\":\"COMPLETED\",\"username\":\"alexgx7gy\"},\"providerHash\":\"0x1aab313df15d1b43710e53ed95b1b6118305aa9312f28b747c6c16cf574fb616\"}",
-    "identifier": "0xb3d799daf7eaca4b4cb1c117c96b56d7c43a84d475ce43f655585da869932c3c",
-    "epoch": 1
-  },
-  "signatures": [
-    "0x18f6b64f0d5767eb5a29c8520baf1746df4a5248eb4bc52c292e44e1b13eb01031cf5320a885b2e4ca2f96cc56f08dbee65e9a11b42075e001e709f53eb2c4ca1c"
-  ],
-  "witnesses": [
-    {
-      "id": "0x244897572368eadf65bfbc5aec98d8e5443a9072",
-      "url": "wss://witness.reclaimprotocol.org/ws"
-    }
-  ],
-  "publicData": {}
 }
 
 
@@ -195,28 +172,6 @@ describe("RevolutReclaimVerifier", () => {
       expect(isNullified).to.be.true;
     });
 
-    describe("when the proof is an appclip proof", async () => {
-      beforeEach(async () => {
-        proof = parseAppclipProof(revolutAppclipProof);
-        subjectProof = encodeProof(proof);
-
-        subjectFiatCurrency = Currency.USD;
-        subjectPayeeDetailsHash = ethers.utils.keccak256(
-          ethers.utils.solidityPack(['string'], ['alexgx7gy'])
-        );
-      });
-
-      it("should verify the proof", async () => {
-        const result = await subjectCallStatic();
-
-        expect(result.success).to.be.true;
-        expect(result.intentHash).to.eq(BigNumber.from('21138964711553769010780423915557687380568289483182695160148231659899695028258').toHexString());
-        expect(result.releaseAmount).to.eq(usdc(1));
-        expect(result.paymentCurrency).to.eq(Currency.USD);
-        expect(result.paymentId).to.eq('677c3686-4589-a4d3-b190-fc8380389c49');
-      });
-    });
-
     describe("when the proof is invalid", async () => {
       beforeEach(async () => {
         proof.signedClaim.claim.identifier = ZERO_BYTES32;
@@ -298,17 +253,6 @@ describe("RevolutReclaimVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
-      });
-
-      describe("when the proof is an appclip proof", async () => {
-        beforeEach(async () => {
-          proof = parseAppclipProof(revolutAppclipProof);
-          subjectProof = encodeProof(proof);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
-        });
       });
     });
 

@@ -17,9 +17,7 @@ import { PaymentService } from "../utils/types";
 import {
   getWiseReclaimProviderHashes,
   WISE_RECLAIM_CURRENCIES,
-  WISE_RECLAIM_TIMESTAMP_BUFFER,
-  WISE_RECLAIM_FEE_SHARE,
-  WISE_APPCLIP_PROVIDER_HASHES,
+  WISE_RECLAIM_TIMESTAMP_BUFFER
 } from "../deployments/verifiers/wise_reclaim";
 
 // Deployment Scripts
@@ -35,12 +33,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
 
   // Wise only returns 1 transaction at a time
-  const extensionProviderHashes = await getWiseReclaimProviderHashes(1);
-  console.log("wise extension provider hashes", extensionProviderHashes);
+  const providerHashes = await getWiseReclaimProviderHashes(1);
+  console.log("wise extension provider hashes", providerHashes);
 
-  const appclipProviderHashes = WISE_APPCLIP_PROVIDER_HASHES;
-  console.log("wise appclip provider hashes", appclipProviderHashes);
-  const providerHashes = [...extensionProviderHashes, ...appclipProviderHashes];
   const wiseVerifier = await deploy("WiseReclaimVerifier", {
     from: deployer,
     args: [
@@ -66,7 +61,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     paymentVerifierRegistryContract,
     wiseVerifier.address,
-    WISE_RECLAIM_FEE_SHARE[network]
   );
 
   console.log("WiseReclaimVerifier added to whitelisted payment verifiers...");

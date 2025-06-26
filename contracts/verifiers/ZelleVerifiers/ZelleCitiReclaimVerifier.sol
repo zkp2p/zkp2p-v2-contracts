@@ -5,7 +5,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { DateParsing } from "../../lib/DateParsing.sol";
 import { ClaimVerifier } from "../../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../../lib/Bytes32ConversionUtils.sol";
 
 import { IBasePaymentVerifier } from "../interfaces/IBasePaymentVerifier.sol";
 import { INullifierRegistry } from "../../interfaces/INullifierRegistry.sol";
@@ -18,7 +17,6 @@ pragma solidity ^0.8.18;
 contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
     using StringConversionUtils for string;
-    using Bytes32ConversionUtils for bytes32;
     
     /* ============ Structs ============ */
 
@@ -84,15 +82,11 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     {
         require(msg.sender == baseVerifier, "Only base verifier can call");
 
-        (
-            PaymentDetails memory paymentDetails, 
-            bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
                 
         uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
-            _verifyPaymentData,
-            isAppclipProof
+            _verifyPaymentData
         );
 
         uint256 releaseAmount = _calculateReleaseAmount(
@@ -118,7 +112,7 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
+        returns (PaymentDetails memory paymentDetails) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
@@ -133,14 +127,11 @@ contract ZelleCitiReclaimVerifier is IPaymentVerifier, BaseReclaimVerifier {
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
-
-        isAppclipProof = proof.isAppclipProof;
     }
 
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        VerifyPaymentData memory _verifyPaymentData,
-        bool /* _isAppclipProof */
+        VerifyPaymentData memory _verifyPaymentData
     ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 

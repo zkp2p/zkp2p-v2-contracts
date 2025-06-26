@@ -8,7 +8,7 @@ import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof, parseAppclipProof } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -35,8 +35,6 @@ const wiseExtensionProof = {
     "resultSignature": { "0": 6, "1": 39, "2": 146, "3": 240, "4": 60, "5": 116, "6": 211, "7": 181, "8": 93, "9": 6, "10": 206, "11": 76, "12": 144, "13": 236, "14": 6, "15": 8, "16": 3, "17": 29, "18": 255, "19": 152, "20": 151, "21": 105, "22": 95, "23": 188, "24": 242, "25": 91, "26": 164, "27": 79, "28": 130, "29": 250, "30": 186, "31": 193, "32": 110, "33": 126, "34": 123, "35": 181, "36": 220, "37": 203, "38": 221, "39": 57, "40": 190, "41": 251, "42": 61, "43": 6, "44": 208, "45": 165, "46": 255, "47": 66, "48": 226, "49": 156, "50": 171, "51": 100, "52": 244, "53": 112, "54": 75, "55": 103, "56": 236, "57": 72, "58": 148, "59": 63, "60": 206, "61": 9, "62": 59, "63": 58, "64": 28 }
   }
 }
-
-const wiseAppclipProof = {}
 
 describe("WiseReclaimVerifier", () => {
   let owner: Account;
@@ -178,27 +176,6 @@ describe("WiseReclaimVerifier", () => {
       expect(isNullified).to.be.true;
     });
 
-    // describe.skip("when the proof is an appclip proof", async () => {
-    //   beforeEach(async () => {
-    //     proof = parseAppclipProof(wiseAppclipProof);
-    //     subjectProof = encodeProof(proof);
-
-    //     subjectPayeeDetailsHash = ethers.utils.keccak256(
-    //       ethers.utils.solidityPack(['string'], ['645716473020416186'])
-    //     );
-    //   });
-
-    //   it("should verify the proof", async () => {
-    //     const [
-    //       verified,
-    //       intentHash
-    //     ] = await subjectCallStatic();
-
-    //     expect(verified).to.be.true;
-    //     expect(intentHash).to.eq(BigNumber.from('19647628387338148605484475718635527316117450420056269639082394264683709644449').toHexString());
-    //   });
-    // });
-
     describe("when the proof is invalid", async () => {
       beforeEach(async () => {
         proof.signedClaim.claim.identifier = ZERO_BYTES32;
@@ -281,16 +258,6 @@ describe("WiseReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
       });
 
-      describe.skip("when the proof is an appclip proof", async () => {
-        beforeEach(async () => {
-          proof = parseAppclipProof(wiseAppclipProof);
-          subjectProof = encodeProof(proof);
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
-        });
-      });
     });
 
     describe("when the proof has already been verified", async () => {
