@@ -796,14 +796,14 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the payment amount is zero", async () => {
+    describe("when the payment amount is zero", async () => {
       beforeEach(async () => {
         // Create proofs with zero payment amount
         const zeroAmountListProof = {
           ...proofList,
           claimInfo: {
             ...proofList.claimInfo,
-            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14094145470806117529027618012628089089092464953336648754893088763502265967734\",\"extractedParameters\":{\"amount\":\"0\",\"date\":\"20240617\",\"id\":\"chase-payment-id\",\"status\":\"COMPLETED\"},\"providerHash\":\"0xchase-list-provider-hash\"}"
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"amount\":\"0\",\"date\":\"20250428\",\"id\":\"24569221649\",\"verboseStatus\":\"COMPLETED\"},\"providerHash\":\"0xd7615f705f999e8db7b0c9c2a16849559b88f3b95d6bdeed8a8c106bee870046\"}"
           }
         };
 
@@ -811,7 +811,7 @@ describe("ZelleChaseReclaimVerifier", () => {
           ...proofDetail,
           claimInfo: {
             ...proofDetail.claimInfo,
-            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14094145470806117529027618012628089089092464953336648754893088763502265967734\",\"extractedParameters\":{\"PAYMENT_ID\":\"chase-payment-id\",\"recipientEmail\":\"alice@chase.test\"},\"providerHash\":\"0xchase-detail-provider-hash\"}"
+            context: "{\"contextAddress\":\"0x0\",\"contextMessage\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"extractedParameters\":{\"PAYMENT_ID\":\"24569221649\",\"recipientEmail\":\"0x829bf7a59c5884cda204d6932e01e010a0b609e16dcef6da89b571a30b8b7cbb\"},\"providerHash\":\"0x21eb240c8a3131b258efceb330081cc0f8ca3e6e9e715e95fa0841ffe6a88dbe\"}"
           }
         };
 
@@ -827,12 +827,8 @@ describe("ZelleChaseReclaimVerifier", () => {
         zeroAmountListProof.signedClaim.signatures = [await witness.signMessage(listDigest)];
         zeroAmountDetailProof.signedClaim.signatures = [await witness.signMessage(detailDigest)];
 
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ['tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim)', 'tuple(tuple(string,string,string,string) claimInfo, tuple(tuple(string,address,uint32,uint32,string) claim, bytes[] signatures) signedClaim)'],
-          [zeroAmountListProof, zeroAmountDetailProof]
-        );
-
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectProof = encodeTwoProofs(zeroAmountListProof, zeroAmountDetailProof);
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

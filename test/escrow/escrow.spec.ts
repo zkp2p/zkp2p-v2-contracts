@@ -835,6 +835,16 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the amount is zero", async () => {
+      beforeEach(async () => {
+        subjectAmount = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
+      });
+    });
+
     describe("when the escrow is paused", async () => {
       beforeEach(async () => {
         await ramp.connect(owner.wallet).pauseEscrow();
@@ -1140,6 +1150,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      });
+    });
+
+    describe("when the amount is zero", async () => {
+      beforeEach(async () => {
+        subjectAmount = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
       });
     });
 

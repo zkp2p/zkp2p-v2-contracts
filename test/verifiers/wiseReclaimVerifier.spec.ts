@@ -495,6 +495,37 @@ describe("WiseReclaimVerifier", () => {
           });
         });
 
+        describe("when resolution intent hash is incorrect", async () => {
+          beforeEach(async () => {
+            // Create resolution data with wrong currency (GBP instead of USD)
+            const resolutionData = {
+              intentHash: BigNumber.from('3255272855445122854259407670991079284015086279635495324568586132056928581130').toHexString(),
+              paymentCurrency: wrongCurrency,
+              conversionRate: subjectConversionRate,
+              penaltyBps: penaltyBps
+            };
+
+            const messageHash = ethers.utils.keccak256(
+              ethers.utils.defaultAbiCoder.encode(
+                ['bytes32', 'bytes32', 'uint256', 'uint256'],
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
+              )
+            );
+
+            signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
+
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
+              [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+          });
+
+          it("should revert", async () => {
+            await expect(subject()).to.be.revertedWith("Resolution intent doesn't match intent");
+          });
+        });
+
+
         describe("when signature is invalid", async () => {
           beforeEach(async () => {
             // Use a different signer for the signature
