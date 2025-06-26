@@ -816,7 +816,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#addFundsToDeposit", async () => {
+  describe.only("#addFundsToDeposit", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
@@ -952,6 +952,31 @@ describe("Escrow", () => {
         makerFeeRate = ether(0.01);
         await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
         await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+        // Create deposit to test adding funds
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(100),
+          intentAmountRange: { min: usdc(10), max: usdc(200) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
+          ],
+          delegate: offRamperDelegate.address,
+          intentGuardian: ADDRESS_ZERO,
+          referrer: ADDRESS_ZERO,
+          referrerFee: ZERO
+        });
+
+        subjectDepositId = BigNumber.from(1);
+        subjectAmount = usdc(50);
+        subjectCaller = offRamper;
 
         // Get initial deposit state
         initialDeposit = await ramp.getDeposit(subjectDepositId);
