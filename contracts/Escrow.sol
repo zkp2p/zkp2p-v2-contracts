@@ -46,7 +46,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     
     /* ============ State Variables ============ */
 
-    address public orchestrator;                                     // Address of the orchestrator contract
+    IOrchestrator public orchestrator;                               // Address of the orchestrator contract
     IPaymentVerifierRegistry public paymentVerifierRegistry;         // Address of the payment verifier registry contract
     uint256 immutable public chainId;                                // chainId of the chain the escrow is deployed on
 
@@ -100,7 +100,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Modifier to restrict access to orchestrator-only functions
      */
     modifier onlyOrchestrator() {
-        if (msg.sender != orchestrator) revert UnauthorizedCaller(msg.sender, orchestrator);
+        if (msg.sender != address(orchestrator)) revert UnauthorizedCaller(msg.sender, address(orchestrator));
         _;
     }
 
@@ -134,10 +134,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
      * not add to previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
      * of deposit token. Every deposit specifies the payment services it supports by specifying their corresponding verifier addresses and 
-     * verification data, supported currencies and their min conversion rates for each payment service.
+     * verification data, supported currencies and their min conversion rates for each payment service. Optionally, a referrer and a referrer 
+     * fee can be specified.
      * Note that the order of the verifiers, verification data, and currency data must match.
      */
     function createDeposit(CreateDepositParams calldata _params) external whenNotPaused {
+        // Checks
         if (_params.intentAmountRange.min == 0) revert ZeroMinValue();
         if (_params.intentAmountRange.min > _params.intentAmountRange.max) { 
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
@@ -160,7 +162,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
         }
         
-        // Create deposit
+        // Effects
         uint256 depositId = depositCounter++;
         accountDeposits[msg.sender].push(depositId);
         deposits[depositId] = Deposit({
@@ -192,6 +194,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         _addVerifiersToDeposit(depositId, _params.verifiers, _params.verifierData, _params.currencies);
 
+        // Interactions
         _params.token.transferFrom(msg.sender, address(this), _params.amount);
     }
 
@@ -206,11 +209,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (_amount == 0) revert ZeroValue();
         
-        // Calculate maker fees for the additional amount
+        // Effects
         uint256 additionalMakerFees = (_amount * makerProtocolFee) / PRECISE_UNIT;
         uint256 netAdditionalAmount = _amount - additionalMakerFees;
         
@@ -220,6 +225,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
+        // Interactions
         deposit.token.transferFrom(msg.sender, address(this), _amount);
     }
 
@@ -236,10 +242,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external
         whenNotPaused
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (_amount == 0) revert ZeroValue();
         
+        // Effects
         if (deposit.remainingDeposits < _amount) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
         }
@@ -253,6 +262,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
         
+        // Interactions
         deposit.token.transfer(msg.sender, _amount);
     }
 
@@ -266,10 +276,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
     function withdrawDeposit(uint256 _depositId) external {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
+        // Effects
         (
             bytes32[] memory expiredIntents,
             uint256 reclaimableAmount
@@ -277,24 +289,25 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         _pruneIntents(_depositId, expiredIntents);
 
-        uint256 unusedFees = deposit.reservedMakerFees - deposit.accruedMakerFees;
+        uint256 unusedFees = deposit.reservedMakerFees - deposit.accruedMakerFees - deposit.accruedReferrerFees;
         uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount + unusedFees;
-        
-        deposit.outstandingIntentAmount -= reclaimableAmount;
-
-        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
-        
-        IERC20 token = deposit.token;
         
         _collectAccruedMakerFees(_depositId, deposit);
         _collectAccruedReferrerFees(_depositId, deposit);
 
+        IERC20 token = deposit.token;
+        deposit.outstandingIntentAmount -= reclaimableAmount;
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
+        delete deposit.accruedMakerFees;
+        delete deposit.accruedReferrerFees;
         if (deposit.outstandingIntentAmount == 0) {
             _closeDeposit(_depositId, deposit);
         }
+
+        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
         
+        // Interactions
         token.transfer(msg.sender, returnAmount);
     }
 
@@ -546,13 +559,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external 
         onlyOrchestrator 
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
-        
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents(_depositId);
         if (_amount < deposit.intentAmountRange.min) revert AmountBelowMin(_amount, deposit.intentAmountRange.min);
         if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
         
+        // Effects
         // Check if we need to reclaim expired liquidity first
         uint256 currentIntentCount = depositIntentHashes[_depositId].length;
         if (deposit.remainingDeposits < _amount || currentIntentCount >= maxIntentsPerDeposit) {
@@ -591,13 +605,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external 
         onlyOrchestrator 
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         Intent memory intent = depositIntents[_depositId][_intentHash];
 
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (intent.intentHash == bytes32(0)) revert IntentNotFound(_intentHash);
 
-        // Update deposit state
+        // Effects
         deposit.remainingDeposits += intent.amount;
         deposit.outstandingIntentAmount -= intent.amount;
 
@@ -624,6 +639,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         external 
         onlyOrchestrator 
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         Intent memory intent = depositIntents[_depositId][_intentHash];
         
@@ -632,6 +648,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_transferAmount == 0) revert ZeroValue();
         if (_transferAmount > intent.amount) revert AmountExceedsAvailable(_transferAmount, intent.amount);
         
+        // Effects
         uint256 makerFeeForThisTransfer = 0;
         uint256 referrerFeeForThisTransfer = 0;
 
@@ -655,11 +672,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
         IERC20 token = deposit.token;
         _closeDepositIfNecessary(_depositId, deposit);
         
-        token.transfer(_to, _transferAmount);
-
         emit FundsUnlockedAndTransferred(
             _depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, referrerFeeForThisTransfer, _to
         );
+
+        // Interactions
+        token.transfer(_to, _transferAmount);
     }
 
     /**
@@ -702,7 +720,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function setOrchestrator(address _orchestrator) external onlyOwner {
         if (_orchestrator == address(0)) revert ZeroAddress();
         
-        orchestrator = _orchestrator;
+        orchestrator = IOrchestrator(_orchestrator);
         emit OrchestratorUpdated(_orchestrator);
     }
 
@@ -891,7 +909,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
         // Call orchestrator to clean up intents first
-        IOrchestrator(orchestrator).pruneIntents(_intents);
+        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
 
         for (uint256 i = 0; i < _intents.length; i++) {
             Intent memory intent = depositIntents[_depositId][_intents[i]];
