@@ -264,6 +264,7 @@ describe("Escrow", () => {
       expect(depositView.verifiers[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
       expect(depositView.verifiers[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
       expect(depositView.deposit.intentGuardian).to.eq(subjectIntentGuardian);
+      expect(depositView.deposit.makerProtocolFee).to.eq(ZERO);
     });
 
     it("should add the deposit to the accountDeposits mapping", async () => {
@@ -499,7 +500,6 @@ describe("Escrow", () => {
       });
     });
 
-
     describe("when the intent amount range min is zero", async () => {
       beforeEach(async () => {
         subjectIntentAmountRange.min = ZERO;
@@ -692,6 +692,13 @@ describe("Escrow", () => {
         await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
       });
 
+      it("should store the current makerProtocolFee in the deposit", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(0);
+        expect(deposit.makerProtocolFee).to.eq(makerFeeRate);
+      });
+
       it("should calculate and reserve maker fees correctly", async () => {
         await subject();
 
@@ -723,6 +730,87 @@ describe("Escrow", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
+        });
+      });
+
+      describe("when global maker fee changes after deposit creation", async () => {
+        let newGlobalFeeRate: BigNumber;
+        let depositId: BigNumber;
+
+        beforeEach(async () => {
+          // Create deposit with 1% fee
+          await subject();
+          depositId = ZERO;
+
+          // Change global fee to 2%
+          newGlobalFeeRate = ether(0.02);
+          await ramp.connect(owner.wallet).setMakerProtocolFee(newGlobalFeeRate);
+        });
+
+        it("should keep using the original fee rate for existing deposit", async () => {
+          const deposit = await ramp.getDeposit(depositId);
+          expect(deposit.makerProtocolFee).to.eq(makerFeeRate); // Still 1%
+          expect(deposit.makerProtocolFee).to.not.eq(newGlobalFeeRate); // Not 2%
+        });
+
+        it("should use new global fee rate for new deposits", async () => {
+          // Create another deposit after fee change
+          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+          await ramp.connect(offRamper.wallet).createDeposit({
+            token: usdcToken.address,
+            amount: usdc(200),
+            intentAmountRange: { min: usdc(10), max: usdc(200) },
+            verifiers: [verifier.address],
+            verifierData: [{
+              intentGatingService: gatingService.address,
+              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
+              data: "0x"
+            }],
+            currencies: [
+              [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+            ],
+            delegate: offRamperDelegate.address,
+            intentGuardian: ADDRESS_ZERO,
+            referrer: ADDRESS_ZERO,
+            referrerFee: ZERO
+          });
+
+          const newDeposit = await ramp.getDeposit(1);
+          expect(newDeposit.makerProtocolFee).to.eq(newGlobalFeeRate); // Uses new 2% rate
+        });
+
+        it("should calculate fees correctly for both deposits", async () => {
+          // Create another deposit with new fee rate
+          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+          await ramp.connect(offRamper.wallet).createDeposit({
+            token: usdcToken.address,
+            amount: usdc(200),
+            intentAmountRange: { min: usdc(10), max: usdc(200) },
+            verifiers: [verifier.address],
+            verifierData: [{
+              intentGatingService: gatingService.address,
+              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
+              data: "0x"
+            }],
+            currencies: [
+              [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+            ],
+            delegate: offRamperDelegate.address,
+            intentGuardian: ADDRESS_ZERO,
+            referrer: ADDRESS_ZERO,
+            referrerFee: ZERO
+          });
+
+          const oldDeposit = await ramp.getDeposit(0);
+          const newDeposit = await ramp.getDeposit(1);
+
+          // Old deposit: 100 USDC * 1% = 1 USDC fees, 99 USDC remaining
+          expect(oldDeposit.reservedMakerFees).to.eq(usdc(1));
+          expect(oldDeposit.remainingDeposits).to.eq(usdc(99));
+
+          // New deposit: 200 USDC * 2% = 4 USDC fees, 196 USDC remaining
+          expect(newDeposit.reservedMakerFees).to.eq(usdc(4));
+          expect(newDeposit.remainingDeposits).to.eq(usdc(196));
         });
       });
     });
@@ -904,6 +992,146 @@ describe("Escrow", () => {
 
           expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedAdditionalFees));
           expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
+        });
+      });
+    });
+
+    describe("when deposit has referrer fees", async () => {
+      let referrerFee: BigNumber;
+      let depositWithReferrerParams: any;
+
+      beforeEach(async () => {
+        referrerFee = ether(0.02); // 2% referrer fee
+
+        // Create a deposit with referrer fee
+        depositWithReferrerParams = {
+          token: usdcToken.address,
+          amount: usdc(100),
+          intentAmountRange: { min: usdc(10), max: usdc(200) },
+          verifiers: [verifier.address],
+          verifierData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsWithReferrer")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
+          ],
+          delegate: offRamperDelegate.address,
+          intentGuardian: ADDRESS_ZERO,
+          referrer: referrer.address,
+          referrerFee: referrerFee
+        };
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+        await ramp.connect(offRamper.wallet).createDeposit(depositWithReferrerParams);
+
+        subjectDepositId = BigNumber.from(1); // New deposit created
+        subjectAmount = usdc(50);
+        subjectCaller = offRamper;
+
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      });
+
+      it("should calculate and reserve referrer fees for additional amount", async () => {
+        const initialDeposit = await ramp.getDeposit(subjectDepositId);
+
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
+        const expectedNetAdditional = subjectAmount.sub(expectedReferrerFees); // 50 - 1 = 49 USDC
+
+        expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedReferrerFees));
+        expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
+        expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
+      });
+
+      it("should transfer the full additional amount from depositor", async () => {
+        const rampPreBalance = await usdcToken.balanceOf(ramp.address);
+
+        await subject();
+
+        const rampPostBalance = await usdcToken.balanceOf(ramp.address);
+        expect(rampPostBalance.sub(rampPreBalance)).to.eq(subjectAmount);
+      });
+
+      describe("when both maker and referrer fees are enabled", async () => {
+        let makerFeeRate: BigNumber;
+
+        beforeEach(async () => {
+          // Enable maker fees globally
+          makerFeeRate = ether(0.01); // 1% maker fee
+          await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
+          await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+
+          // Create new deposit with both fees
+          depositWithReferrerParams.amount = usdc(200); // Use different amount to distinguish
+          depositWithReferrerParams.verifierData[0].payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsBothFees"));
+
+          await ramp.connect(offRamper.wallet).createDeposit(depositWithReferrerParams);
+
+          subjectDepositId = BigNumber.from(2); // Newest deposit
+        });
+
+        it("should calculate both maker and referrer fees correctly", async () => {
+          const initialDeposit = await ramp.getDeposit(subjectDepositId);
+
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
+          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
+          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
+          const expectedNetAdditional = subjectAmount.sub(totalFees); // 50 - 1.5 = 48.5 USDC
+
+          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(totalFees));
+          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
+          expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
+        });
+
+        it("should use deposit's stored fee rates, not global rates", async () => {
+          // Change global maker fee after deposit creation
+          const newGlobalMakerFee = ether(0.05); // 5%
+          await ramp.connect(owner.wallet).setMakerProtocolFee(newGlobalMakerFee);
+
+          const initialDeposit = await ramp.getDeposit(subjectDepositId);
+
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+
+          // Should use original 1% maker fee and 2% referrer fee, not new 5% maker fee
+          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
+          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
+          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
+
+          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(totalFees));
+
+          // Verify it didn't use the new 5% maker fee
+          const wouldBeWithNewRate = subjectAmount.mul(newGlobalMakerFee).div(ether(1));
+          const wouldBeTotalWithNewRate = wouldBeWithNewRate.add(expectedReferrerFees);
+          expect(deposit.reservedMakerFees).to.not.eq(initialDeposit.reservedMakerFees.add(wouldBeTotalWithNewRate));
+        });
+      });
+
+      describe("when deposit has no referrer", async () => {
+        beforeEach(async () => {
+          // Use the original deposit which has no referrer
+          subjectDepositId = ZERO; // Original deposit with no referrer
+        });
+
+        it("should not charge any referrer fees", async () => {
+          const initialDeposit = await ramp.getDeposit(subjectDepositId);
+
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+
+          // No referrer fees should be charged
+          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees);
+          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(subjectAmount));
+          expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
         });
       });
     });

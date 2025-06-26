@@ -22,8 +22,6 @@ import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
 pragma solidity ^0.8.18;
 
-// todo: handle when maker fee is enabled after deposit is created.
-
 /**
  * @title Escrow
  * @notice Escrows deposits and manages deposit lifecycle.
@@ -172,6 +170,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             acceptingIntents: true,
             remainingDeposits: netDepositAmount,    // Net amount available for intents
             outstandingIntentAmount: 0,
+            makerProtocolFee: makerProtocolFee,
             reservedMakerFees: totalFees,
             accruedMakerFees: 0,
             accruedReferrerFees: 0,
@@ -213,12 +212,22 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
-        uint256 additionalMakerFees = (_amount * makerProtocolFee) / PRECISE_UNIT;
-        uint256 netAdditionalAmount = _amount - additionalMakerFees;
+        uint256 additionalMakerFees = 0;
+        uint256 additionalReferrerFees = 0;
+
+        if (deposit.makerProtocolFee > 0) {
+            additionalMakerFees = (_amount * deposit.makerProtocolFee) / PRECISE_UNIT;
+        }
+        if (deposit.referrerFee > 0) {
+            additionalReferrerFees = (_amount * deposit.referrerFee) / PRECISE_UNIT;
+        }
+
+        uint256 totalFees = additionalMakerFees + additionalReferrerFees;
+        uint256 netAdditionalAmount = _amount - totalFees;
         
         deposit.amount += _amount;
         deposit.remainingDeposits += netAdditionalAmount;
-        deposit.reservedMakerFees += additionalMakerFees;
+        deposit.reservedMakerFees += totalFees;
         
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
@@ -651,8 +660,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 makerFeeForThisTransfer = 0;
         uint256 referrerFeeForThisTransfer = 0;
 
-        if (makerProtocolFee > 0) {
-            makerFeeForThisTransfer = (_transferAmount * makerProtocolFee) / PRECISE_UNIT;
+        if (deposit.makerProtocolFee > 0) {
+            makerFeeForThisTransfer = (_transferAmount * deposit.makerProtocolFee) / PRECISE_UNIT;
             deposit.accruedMakerFees += makerFeeForThisTransfer;
         }
         if (deposit.referrerFee > 0) {

@@ -32,6 +32,7 @@ interface IEscrow {
         uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity (net of reserved fees)
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
         // Fee tracking
+        uint256 makerProtocolFee;                   // State: Maker protocol fee at the time of deposit creation in preciseUnits  (1e16 = 1%)
         uint256 reservedMakerFees;                  // State: Total fees reserved from maker (calculated upfront)
         uint256 accruedMakerFees;                   // State: Fees actually earned from fulfilled intents
         uint256 accruedReferrerFees;               // State: Referrer fees actually earned from fulfilled intents
