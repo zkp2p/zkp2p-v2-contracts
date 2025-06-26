@@ -301,11 +301,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
         delete deposit.acceptingIntents;
         delete deposit.accruedMakerFees;
         delete deposit.accruedReferrerFees;
+
+        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
+        
         if (deposit.outstandingIntentAmount == 0) {
             _closeDeposit(_depositId, deposit);
         }
-
-        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
         
         // Interactions
         token.transfer(msg.sender, returnAmount);

@@ -1037,6 +1037,7 @@ describe("Escrow", () => {
         const conversionRate = ether(1.1);
 
         const signalIntentParams = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           subjectDepositId,
           intentAmount,
@@ -1095,6 +1096,7 @@ describe("Escrow", () => {
         const intentAmount = usdc(60);
         const conversionRate = ether(1.1);
         const signalIntentParams = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           subjectDepositId,
           intentAmount,
@@ -1265,6 +1267,7 @@ describe("Escrow", () => {
       beforeEach(async () => {
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           ramp.address,
           subjectDepositId,
           usdc(50),
@@ -1276,6 +1279,7 @@ describe("Escrow", () => {
         );
 
         const params = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           subjectDepositId,
           usdc(50),
@@ -1505,6 +1509,7 @@ describe("Escrow", () => {
           const conversionRate = ether(1.1);
 
           const signalIntentParams = await createSignalIntentParams(
+            orchestrator.address,
             ramp.address,
             subjectDepositId,
             intentAmount,
@@ -1594,6 +1599,7 @@ describe("Escrow", () => {
           const conversionRate = ether(1.1);
 
           const signalIntentParams = await createSignalIntentParams(
+            orchestrator.address,
             ramp.address,
             subjectDepositId,
             intentAmount,
@@ -1711,6 +1717,7 @@ describe("Escrow", () => {
 
         // Signal and fulfill an intent to accrue some fees
         const params = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           subjectDepositId,
           usdc(100),
@@ -3262,6 +3269,7 @@ describe("Escrow", () => {
 
       async function signalIntent(): Promise<any> {
         const params = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           depositId,
           usdc(1),
@@ -4176,6 +4184,7 @@ describe("Escrow", () => {
           intentAmount = usdc(45);
 
           const params = await createSignalIntentParams(
+            orchestrator.address,
             ramp.address,
             depositId,
             intentAmount,
@@ -4281,6 +4290,7 @@ describe("Escrow", () => {
 
       // Signal an intent
       const params = await createSignalIntentParams(
+        orchestrator.address,
         ramp.address,
         subjectDepositId,
         usdc(50),
@@ -4389,6 +4399,7 @@ describe("Escrow", () => {
 
         // Signal an intent for the new deposit
         const params = await createSignalIntentParams(
+          orchestrator.address,
           ramp.address,
           newDepositId,
           usdc(50),

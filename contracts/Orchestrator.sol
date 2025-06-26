@@ -406,15 +406,16 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             revert EscrowNotWhitelisted(_intent.escrow);
         }
 
-        uint256 depositId = _intent.depositId;
-        IEscrow escrow = IEscrow(_intent.escrow);
-        IEscrow.DepositVerifierData memory verifierData = escrow.getDepositVerifierData(depositId, _intent.verifier);
-        if (bytes(verifierData.payeeDetails).length == 0) revert VerifierNotSupported(depositId, _intent.verifier);
+        IEscrow.DepositVerifierData memory verifierData = IEscrow(_intent.escrow).getDepositVerifierData(
+            _intent.depositId, _intent.verifier
+        );
+        if (bytes(verifierData.payeeDetails).length == 0) revert VerifierNotSupported(_intent.depositId, _intent.verifier);
         
-        uint256 minConversionRate = escrow.getDepositCurrencyMinRate(depositId, _intent.verifier, _intent.fiatCurrency);
-        uint256 conversionRate = _intent.conversionRate;
+        uint256 minConversionRate = IEscrow(_intent.escrow).getDepositCurrencyMinRate(
+            _intent.depositId, _intent.verifier, _intent.fiatCurrency
+        );
         if (minConversionRate == 0) revert CurrencyNotSupported(_intent.verifier, _intent.fiatCurrency);
-        if (conversionRate < minConversionRate) revert RateBelowMinimum(conversionRate, minConversionRate);
+        if (_intent.conversionRate < minConversionRate) revert RateBelowMinimum(_intent.conversionRate, minConversionRate);
 
         address intentGatingService = verifierData.intentGatingService;
         if (intentGatingService != address(0)) {
@@ -422,23 +423,9 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             if (block.timestamp > _intent.signatureExpiration) {
                 revert SignatureExpired(_intent.signatureExpiration, block.timestamp);
             }
-            
-            if (!_isValidSignature(
-                abi.encodePacked(
-                    _intent.escrow, 
-                    depositId, 
-                    _intent.amount, 
-                    _intent.to, 
-                    _intent.verifier, 
-                    _intent.fiatCurrency, 
-                    conversionRate, 
-                    _intent.signatureExpiration,
-                    chainId
-                ),
-                _intent.gatingServiceSignature,
-                intentGatingService
-            )) {
-                revert InvalidSignature(intentGatingService);
+
+            if (!_isValidIntentGatingSignature(_intent, intentGatingService)) {
+                revert InvalidSignature();
             }
         }
     }
@@ -503,12 +490,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {
-            if (!_token.transfer(protocolFeeRecipient, protocolFeeAmount)) revert TransferFailed(protocolFeeRecipient, protocolFeeAmount);
+            _token.transfer(protocolFeeRecipient, protocolFeeAmount);
         }
         
         // Transfer referrer fee
         if (referrerFeeAmount > 0) {
-            if (!_token.transfer(_intent.referrer, referrerFeeAmount)) revert TransferFailed(_intent.referrer, referrerFeeAmount);
+            _token.transfer(_intent.referrer, referrerFeeAmount);
         }
 
         // If there's a post-intent hook, handle it; skip if manual release
@@ -520,7 +507,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
             // Otherwise transfer directly to the intent recipient
-            if (!_token.transfer(_intent.to, netAmount)) revert TransferFailed(_intent.to, netAmount);
+            _token.transfer(_intent.to, netAmount);
         }
 
         emit IntentFulfilled(
@@ -535,19 +522,30 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
 
     /**
-     * @notice Checks if a signature is valid.
+     * @notice Checks if a intent gating service signature is valid.
      */
-    function _isValidSignature(
-        bytes memory _message,
-        bytes memory _signature,
-        address _signer
-    )
-        internal
-        view
-        returns(bool)
+    function _isValidIntentGatingSignature(
+        SignalIntentParams memory _intent, 
+        address _intentGatingService
+    ) 
+        internal 
+        view 
+        returns(bool) 
     {
-        bytes32 verifierPayload = keccak256(_message).toEthSignedMessageHash();
+        bytes memory message = abi.encodePacked(
+            address(this),
+            _intent.escrow, 
+            _intent.depositId, 
+            _intent.amount, 
+            _intent.to, 
+            _intent.verifier, 
+            _intent.fiatCurrency, 
+            _intent.conversionRate, 
+            _intent.signatureExpiration,
+            chainId
+        );
 
-        return _signer.isValidSignatureNow(verifierPayload, _signature);
+        bytes32 verifierPayload = keccak256(message).toEthSignedMessageHash();
+        return _intentGatingService.isValidSignatureNow(verifierPayload, _intent.gatingServiceSignature);
     }
 }

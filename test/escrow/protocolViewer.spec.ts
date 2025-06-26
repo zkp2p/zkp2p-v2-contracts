@@ -217,6 +217,7 @@ describe("ProtocolViewer", () => {
       beforeEach(async () => {
         // Create and signal an intent
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           subjectDepositId,
           usdc(50),
@@ -432,6 +433,7 @@ describe("ProtocolViewer", () => {
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -443,6 +445,7 @@ describe("ProtocolViewer", () => {
       );
 
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -511,6 +514,7 @@ describe("ProtocolViewer", () => {
 
       const gatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -522,6 +526,7 @@ describe("ProtocolViewer", () => {
       );
 
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -593,6 +598,7 @@ describe("ProtocolViewer", () => {
       });
 
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -639,6 +645,7 @@ describe("ProtocolViewer", () => {
       beforeEach(async () => {
         // Signal a second intent
         const params2 = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(30),

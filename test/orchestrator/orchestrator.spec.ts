@@ -234,6 +234,7 @@ describe("Orchestrator", () => {
       subjectSignatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
       subjectGatingServiceSignature = await generateGatingServiceSignature(
         gatingService,
+        orchestrator.address,
         escrow.address,
         subjectDepositId,
         subjectAmount,
@@ -253,6 +254,7 @@ describe("Orchestrator", () => {
 
     async function subject(): Promise<any> {
       const params = await createSignalIntentParams(
+        orchestrator.address,
         subjectEscrow,
         subjectDepositId,
         subjectAmount,
@@ -381,6 +383,7 @@ describe("Orchestrator", () => {
         subjectSignatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
         subjectGatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           escrow.address,
           subjectDepositId,
           subjectAmount,
@@ -566,6 +569,7 @@ describe("Orchestrator", () => {
 
           subjectGatingServiceSignature = await generateGatingServiceSignature(
             gatingService,
+            orchestrator.address,
             escrow.address,
             subjectDepositId,
             subjectAmount,
@@ -608,6 +612,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         // Create and signal an intent first to lock some liquidity
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           subjectDepositId,
           usdc(50),
@@ -769,6 +774,7 @@ describe("Orchestrator", () => {
 
       // Signal an intent
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -900,6 +906,7 @@ describe("Orchestrator", () => {
       // Signal an intent
       intentAmount = usdc(50);
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         intentAmount,
@@ -1039,6 +1046,7 @@ describe("Orchestrator", () => {
 
         // Signal a new intent for $50
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO,
           intentAmount,
@@ -1141,6 +1149,7 @@ describe("Orchestrator", () => {
         // Create a new intent with referrer
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -1152,6 +1161,7 @@ describe("Orchestrator", () => {
         );
 
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO, // depositId
           usdc(50),
@@ -1324,6 +1334,7 @@ describe("Orchestrator", () => {
         // Create a new intent with post intent hook action
         const gatingServiceSignatureForHook = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -1340,6 +1351,7 @@ describe("Orchestrator", () => {
 
         // Signal an intent that uses the postIntentHookMock
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -1558,6 +1570,7 @@ describe("Orchestrator", () => {
 
       // Signal an intent
       const params = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         intentAmount,
@@ -1648,6 +1661,7 @@ describe("Orchestrator", () => {
 
         // Signal a new intent for $50
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO,
           intentAmount,
@@ -1747,6 +1761,7 @@ describe("Orchestrator", () => {
         // Create a new intent with referrer
         const gatingServiceSignature = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -1758,6 +1773,7 @@ describe("Orchestrator", () => {
         );
 
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO, // depositId
           usdc(50),
@@ -1877,6 +1893,7 @@ describe("Orchestrator", () => {
 
         const gatingServiceSignatureForHook = await generateGatingServiceSignature(
           gatingService,
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -1893,6 +1910,7 @@ describe("Orchestrator", () => {
 
         // Signal an intent that uses the postIntentHookMock
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           ZERO,
           usdc(50),
@@ -2031,6 +2049,7 @@ describe("Orchestrator", () => {
       // Signal multiple intents
       for (let i = 0; i < 3; i++) {
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           depositId,
           intentAmounts[i],
@@ -2174,6 +2193,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         // Signal an intent from a different account
         const params = await createSignalIntentParams(
+          orchestrator.address,
           escrow.address,
           depositId,
           usdc(40),
@@ -2632,6 +2652,7 @@ describe("Orchestrator", () => {
     it("should return all intents for an account", async () => {
       // Signal two intents
       const params1 = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(50),
@@ -2652,6 +2673,7 @@ describe("Orchestrator", () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const params2 = await createSignalIntentParams(
+        orchestrator.address,
         escrow.address,
         ZERO,
         usdc(75),

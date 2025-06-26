@@ -117,7 +117,7 @@ interface IOrchestrator {
     // Validation errors
     error AccountHasActiveIntent(address account, bytes32 existingIntent);
     error InvalidReferrerFeeConfiguration();
-    error InvalidSignature(address expectedSigner);
+    error InvalidSignature();
     error SignatureExpired(uint256 expiration, uint256 currentTime);
 
     // Verification errors
