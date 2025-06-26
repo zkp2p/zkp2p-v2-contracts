@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
@@ -21,8 +22,12 @@ import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
 
-
-contract Orchestrator is Ownable, Pausable, IOrchestrator {
+/**
+ * @title Orchestrator
+ * @notice Orchestrator contract for the ZKP2P protocol. This contract is responsible for managing the intent (order) 
+ * lifecycle and orchestrating the P2P trading of fiat currency and onchain assets.
+ */
+contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
@@ -104,8 +109,10 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
         external
         whenNotPaused
     {
+        // Checks
         _validateSignalIntent(_params);
 
+        // Effects
         bytes32 intentHash = _calculateIntentHash();
 
         IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount);
@@ -164,15 +171,12 @@ contract Orchestrator is Ownable, Pausable, IOrchestrator {
      * @notice Anyone can submit a fulfill intent transaction, even if caller isn't the intent owner. Upon submission the
      * offchain payment proof is verified, payment details are validated, intent is removed, and escrow state is updated. 
      * Deposit token is transferred to the intent.to address.
+     * @dev This function adds a reentrancy guard as it's calling the post intent hook contract which itself might call 
+     * malicious contracts.
      *
      * @param _params               Struct containing all the fulfill intent parameters
      */
-    function fulfillIntent(
-        FulfillIntentParams calldata _params
-    )
-        external
-        whenNotPaused
-    {
+    function fulfillIntent(FulfillIntentParams calldata _params) external nonReentrant whenNotPaused {
         // Checks
         Intent memory intent = intents[_params.intentHash];
         if (intent.paymentVerifier == address(0)) revert IntentNotFound(_params.intentHash);
