@@ -176,7 +176,7 @@ describe("Orchestrator", () => {
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
       expect(actualProtocolFee).to.eq(ZERO);
       expect(actualProtocolFeeRecipient).to.eq(feeRecipient.address);
-      expect(actualPartialManualReleaseDelay).to.eq(ZERO);
+      expect(actualPartialManualReleaseDelay).to.eq(ONE_HOUR_IN_SECONDS);
     });
   });
 
