@@ -43,6 +43,7 @@ import {
   PROTOCOL_MAKER_FEE_RECIPIENT,
   DUST_THRESHOLD,
   MAX_INTENTS_PER_DEPOSIT,
+  PARTIAL_MANUAL_RELEASE_DELAY,
 } from "../../deployments/parameters";
 
 const expect = getWaffleExpect();
@@ -192,6 +193,11 @@ describe("Escrow and NullifierRegistry Deployment", () => {
     it("should have the correct escrow registry set", async () => {
       const actualEscrowRegistry = await orchestrator.escrowRegistry();
       expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
+    });
+
+    it("should have the correct partial manual release delay set", async () => {
+      const actualPartialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
+      expect(actualPartialManualReleaseDelay).to.eq(PARTIAL_MANUAL_RELEASE_DELAY[network]);
     });
   });
 

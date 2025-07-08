@@ -1,6 +1,14 @@
 import "module-alias/register";
-import { ONE_DAY_IN_SECONDS, THREE_MINUTES_IN_SECONDS, ZERO } from "../utils/constants";
+import { ONE_DAY_IN_SECONDS, THREE_MINUTES_IN_SECONDS, ZERO, ONE_HOUR_IN_SECONDS } from "../utils/constants";
 import { ether, usdc } from "../utils/common/units";
+
+export const PARTIAL_MANUAL_RELEASE_DELAY: any = {
+  "localhost": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+  "goerli": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+  "sepolia": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+  "base": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+  "base_staging": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+};
 
 export const INTENT_EXPIRATION_PERIOD: any = {
   "localhost": ONE_DAY_IN_SECONDS,

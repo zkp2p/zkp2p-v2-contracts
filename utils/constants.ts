@@ -5,4 +5,5 @@ export const ZERO = constants.Zero;
 export const ONE = constants.One;
 export const ONE_DAY_IN_SECONDS = BigNumber.from(86400);
 export const THREE_MINUTES_IN_SECONDS = BigNumber.from(180);
+export const ONE_HOUR_IN_SECONDS = BigNumber.from(3600);
 export const ZERO_BYTES32 = constants.HashZero;

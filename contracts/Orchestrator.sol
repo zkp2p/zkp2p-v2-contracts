@@ -40,6 +40,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 constant MAX_REFERRER_FEE = 5e16;      // 5% max referrer fee
     uint256 constant MAX_PROTOCOL_FEE = 5e16;      // 5% max protocol fee
+    uint256 constant MIN_PARTIAL_MANUAL_RELEASE_DELAY = 15 minutes;
 
     /* ============ State Variables ============ */
 
@@ -61,6 +62,8 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
 
     uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
+    
+    uint256 public partialManualReleaseDelay;                      // Time after intent creation before partial manual releases are allowed
 
     /* ============ Modifiers ============ */
 
@@ -80,7 +83,8 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         address _postIntentHookRegistry,
         address _relayerRegistry,
         uint256 _protocolFee,
-        address _protocolFeeRecipient
+        address _protocolFeeRecipient,
+        uint256 _partialManualReleaseDelay
     )
         Ownable()
     {
@@ -91,6 +95,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
         protocolFee = _protocolFee;
         protocolFeeRecipient = _protocolFeeRecipient;
+        partialManualReleaseDelay = _partialManualReleaseDelay;
 
         transferOwnership(_owner);
     }
@@ -240,6 +245,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
+        // Check if partial releases are allowed based on time elapsed
+        uint256 timeSinceIntent = block.timestamp - intent.timestamp;
+        if (timeSinceIntent < partialManualReleaseDelay && _releaseAmount < intent.amount) {
+            revert PartialReleaseNotAllowedYet(block.timestamp, intent.timestamp + partialManualReleaseDelay);
+        }
+
         // Effects
         _pruneIntent(_intentHash);
 
@@ -350,6 +361,20 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
         emit RelayerRegistryUpdated(_relayerRegistry);
+    }
+
+    /**
+     * @notice GOVERNANCE ONLY: Updates the partial manual release delay period.
+     *
+     * @param _partialManualReleaseDelay   New delay period in seconds before partial manual releases are allowed
+     */
+    function setPartialManualReleaseDelay(uint256 _partialManualReleaseDelay) external onlyOwner {
+        if (_partialManualReleaseDelay < MIN_PARTIAL_MANUAL_RELEASE_DELAY) {
+            revert AmountBelowMin(_partialManualReleaseDelay, MIN_PARTIAL_MANUAL_RELEASE_DELAY);
+        }
+
+        partialManualReleaseDelay = _partialManualReleaseDelay;
+        emit PartialManualReleaseDelayUpdated(_partialManualReleaseDelay);
     }
 
     /**

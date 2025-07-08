@@ -86,6 +86,7 @@ interface IOrchestrator {
 
     event ProtocolFeeUpdated(uint256 protocolFee);
     event ProtocolFeeRecipientUpdated(address indexed protocolFeeRecipient);
+    event PartialManualReleaseDelayUpdated(uint256 partialManualReleaseDelay);
 
     /* ============ Standardized Custom Errors ============ */
     
@@ -119,6 +120,7 @@ interface IOrchestrator {
     error InvalidReferrerFeeConfiguration();
     error InvalidSignature();
     error SignatureExpired(uint256 expiration, uint256 currentTime);
+    error PartialReleaseNotAllowedYet(uint256 currentTime, uint256 allowedTime);
 
     // Verification errors
     error PaymentVerificationFailed();
