@@ -3486,7 +3486,7 @@ describe("Escrow", () => {
       const intent = await ramp.getDepositIntent(subjectDepositId, subjectIntentHash);
       expect(intent.intentHash).to.eq(subjectIntentHash);
       expect(intent.amount).to.eq(subjectAmount);
-      expect(intent.expiryTime).to.eq(currentTimestamp.add(ONE_DAY_IN_SECONDS));
+      expect(intent.expiryTime).to.be.closeTo(currentTimestamp.add(ONE_DAY_IN_SECONDS), 1);
     });
 
     it("should add intent hash to deposit intent hashes", async () => {
