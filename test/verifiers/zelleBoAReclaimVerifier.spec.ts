@@ -125,6 +125,7 @@ describe("ZelleBoAReclaimVerifier", () => {
     let subjectConversionRate: BigNumber;
     let subjectPayeeDetailsHash: string;
     let subjectFiatCurrency: BytesLike;
+    let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
     let paymentTimestamp: number;
@@ -142,8 +143,9 @@ describe("ZelleBoAReclaimVerifier", () => {
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(0.99);   // 5 * 0.99 = 4.95 [intent amount * conversion rate = payment amount]
       subjectPayeeDetailsHash = "0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303";
-      subjectFiatCurrency = ZERO_BYTES32;
-      subjectData = ethers.utils.defaultAbiCoder.encode(
+      subjectFiatCurrency = Currency.USD;
+      subjectData = "0x";
+      subjectDepositData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
       );
@@ -158,11 +160,12 @@ describe("ZelleBoAReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
 
-    async function subjectCallStatic(): Promise<[boolean, string]> {
+    async function subjectCallStatic(): Promise<any> {
       return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
         paymentProof: subjectProof,
         depositToken: subjectDepositToken,
@@ -171,18 +174,21 @@ describe("ZelleBoAReclaimVerifier", () => {
         payeeDetails: subjectPayeeDetailsHash,
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
+        depositData: subjectDepositData,
         data: subjectData
       });
     }
 
     it("should verify the proof", async () => {
-      const [
-        verified,
-        intentHash
-      ] = await subjectCallStatic();
+      const result = await subjectCallStatic();
 
-      expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('8326399457664203853385587893474801619762725624996440086480664263627804731444').toHexString());
+      expect(result.success).to.be.true;
+      expect(result.intentHash).to.eq(BigNumber.from('8326399457664203853385587893474801619762725624996440086480664263627804731444').toHexString());
+      // Payment is $5, conversion rate is 0.99, intent amount is 5
+      // Release amount = 5 / 0.99 = 5.05050505... but capped at intent amount 5
+      expect(result.releaseAmount).to.eq(usdc(5));
+      expect(result.paymentCurrency).to.eq(Currency.USD);
+      expect(result.paymentId).to.eq('osmgnjz2u');
     });
 
     it("should nullify the payment id", async () => {
@@ -205,13 +211,45 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment amount is less than the intent amount", async () => {
+    describe("when the payment amount is less than the expected payment amount", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(5.1);  // 5.1 * 0.99 = 5.049 [5.049 < 5]
+        subjectIntentAmount = usdc(20); // Intent expects 20 * 0.9 = 18, but actual payment is 5
+        subjectConversionRate = ether(0.9);
+      });
+
+      it("should succeed with partial payment", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq(BigNumber.from("8326399457664203853385587893474801619762725624996440086480664263627804731444").toHexString());
+        // Payment is $5, conversion rate is 0.9, intent amount is 20
+        // Release amount = 5 / 0.9 = 5.55555555... USDC
+        expect(result.releaseAmount).to.eq(usdc(5.555555));  // limited to 6 decimal places and rounded down
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('osmgnjz2u');
+      });
+    });
+
+    describe("when the payment amount is zero", async () => {
+      beforeEach(async () => {
+        // Mock a proof with zero payment amount
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"8326399457664203853385587893474801619762725624996440086480664263627804731444\",\"extractedParameters\":{\"aliasToken\":\"0x3bcb39ffd57dd47e25c484c95ce7f7591305af0cfaaf7f18ab4ab548217fb303\",\"amount\":\"0.0\",\"confirmationNumber\":\"osmgnjz2u\",\"status\":\"COMPLETED\",\"transactionDate\":\"2025-05-15\"},\"providerHash\":\"0x05eecaa422b995a513376f7ae0b3a16fab2bdcb7fb1eff38891475b56869a1bd\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // Sign the updated claim with witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Incorrect payment amount");
+        await expect(subject()).to.be.revertedWith("Payment amount must be greater than zero");
       });
     });
 
@@ -258,7 +296,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );
@@ -279,7 +317,7 @@ describe("ZelleBoAReclaimVerifier", () => {
         proof.signedClaim.signatures = [await witness.signMessage(digest)];
 
         subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [[witness.address]]
         );

@@ -77,7 +77,7 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.NZD,
   Currency.AUD,
   Currency.CAD,
-  Currency.JPY,
+  // Currency.JPY,    // Does not has 2 decimal places parsing; hence removed
   Currency.HKD,
   Currency.MXN,
   Currency.SAR,
@@ -89,19 +89,5 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.ZAR
 ];
 
-export const REVOLUT_OLD_APPCLIP_PROVIDER_HASHES = [
-  "0x1aab313df15d1b43710e53ed95b1b6118305aa9312f28b747c6c16cf574fb616"
-]
-
-export const REVOLUT_APPCLIP_PROVIDER_HASHES = [
-  "0x532fa878704447443de809fdda796bc94b65a0dc14f5de4374de88420d928b5a"
-]
 
 export const REVOLUT_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
-
-export const REVOLUT_RECLAIM_FEE_SHARE: any = {
-  "base": BigNumber.from(0),  // 0% of sustainability fee
-  "base_staging": BigNumber.from(30),  // 30% of sustainability fee
-  "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
-  "localhost": BigNumber.from(0),  // 0% of sustainability fee
-}

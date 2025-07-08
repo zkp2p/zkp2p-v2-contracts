@@ -20,11 +20,9 @@ jobs:
         run: yarn chain &
         env:
           PORT: 8545
-      - name: Run smart contract tests...
-        run: yarn test:clean --network localhost
       - name: Check deploy
         run: yarn deploy:localhost
-      - name: Run coverage
+      - name: Run tests with coverage
         run: yarn coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

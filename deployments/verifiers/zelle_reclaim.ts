@@ -175,23 +175,12 @@ export const getZelleBoAReclaimProviderHashes = async (length: number) => {
   return hashes;
 }
 
-export const ZELLE_APPCLIP_PROVIDER_HASHES = []
-
 export const ZELLE_RECLAIM_CURRENCIES: any = [
   Currency.USD
 ];
-
-
 
 export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = {
   'citi': ONE_DAY_IN_SECONDS,
   'chase': ONE_DAY_IN_SECONDS,
   'bofa': ONE_DAY_IN_SECONDS,
-}
-
-export const ZELLE_RECLAIM_FEE_SHARE: any = {
-  "base": BigNumber.from(0),  // 0% of sustainability fee
-  "base_staging": BigNumber.from(0),  // 0% of sustainability fee
-  "sepolia": BigNumber.from(0),  // 0% of sustainability fee 
-  "localhost": BigNumber.from(0),  // 0% of sustainability fee
 }

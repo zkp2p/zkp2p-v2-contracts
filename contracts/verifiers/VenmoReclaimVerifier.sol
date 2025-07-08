@@ -5,10 +5,8 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { DateParsing } from "../lib/DateParsing.sol";
 import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
-import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
-
 import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
@@ -16,7 +14,6 @@ pragma solidity ^0.8.18;
 contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
-    using Bytes32ConversionUtils for bytes32;
     
     /* ============ Structs ============ */
 
@@ -61,25 +58,28 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * _fiatCurrency needs to be checked against the fiat currency in the proof.
      *
      * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external 
         override
-        returns (bool, bytes32)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
-        (
-            PaymentDetails memory paymentDetails, 
-            bool isAppclipProof
-        ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
+        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.depositData);
                 
-        _verifyPaymentDetails(
+        uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
-            _verifyPaymentData,
-            isAppclipProof
+            _verifyPaymentData
+        );
+
+        uint256 releaseAmount = _calculateReleaseAmount(
+            paymentAmount, 
+            _verifyPaymentData.conversionRate, 
+            _verifyPaymentData.intentAmount
         );
 
         // Nullify the payment
@@ -88,7 +88,13 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
         bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
         
-        return (true, intentHash);
+        return IPaymentVerifier.PaymentVerificationResult({
+            success: true,
+            intentHash: intentHash,
+            releaseAmount: releaseAmount,
+            paymentCurrency: _verifyPaymentData.fiatCurrency, // Venmo only supports USD
+            paymentId: paymentDetails.paymentId
+        });
     }
 
     /* ============ Internal Functions ============ */
@@ -102,7 +108,7 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     function _verifyProofAndExtractValues(bytes calldata _proof, bytes calldata _depositData) 
         internal
         view
-        returns (PaymentDetails memory paymentDetails, bool isAppclipProof) 
+        returns (PaymentDetails memory paymentDetails) 
     {
         // Decode proof
         ReclaimProof memory proof = abi.decode(_proof, (ReclaimProof));
@@ -117,43 +123,34 @@ contract VenmoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
         // Check provider hash (Required for Reclaim proofs)
         require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
-
-        isAppclipProof = proof.isAppclipProof;
     }
 
     /**
      * Verifies the right _intentAmount * _conversionRate is paid to _payeeDetailsHash after 
      * _intentTimestamp + timestampBuffer on Venmo. Reverts if any of the conditions are not met.
+     * Returns the actual payment amount.
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        VerifyPaymentData memory _verifyPaymentData,
-        bool _isAppclipProof
-    ) internal view {
-        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        VerifyPaymentData memory _verifyPaymentData
+    ) internal view returns (uint256) {
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
 
-        // Validate amount
+        // Validate amount - Allow partial payments but ensure payment amount > 0
         uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
-        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
+        require(paymentAmount > 0, "Payment amount must be greater than zero");
         
         // Validate recipient
-        if (_isAppclipProof) {
-            bytes32 hashedRecipientId = keccak256(abi.encodePacked(paymentDetails.recipientId));
-            require(
-                hashedRecipientId.toHexString().stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        } else {
-            require(
-                paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
-                "Incorrect payment recipient"
-            );
-        }
+        require(
+            paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails), 
+            "Incorrect payment recipient"
+        );
 
         // Validate timestamp; add in buffer to build flexibility for L2 timestamps
         uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.dateString) + timestampBuffer;
         require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
+        
+        return paymentAmount;
     }
 
     /**

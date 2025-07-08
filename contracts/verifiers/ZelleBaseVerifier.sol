@@ -8,7 +8,7 @@ import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BasePaymentVerifier } from "./BaseVerifiers/BasePaymentVerifier.sol";
-import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
+import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IReclaimVerifier } from "./interfaces/IReclaimVerifier.sol";
 
@@ -55,13 +55,14 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
      * computation is cheaper on L2 than calldata.
      *
      * @param _verifyPaymentData Payment proof, intent details, and payment method required for verification
+     * @return result The payment verification result containing success status, intent hash, release amount, payment currency and payment ID
      */
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
     )
         external
         override
-        returns (bool, bytes32)
+        returns (IPaymentVerifier.PaymentVerificationResult memory)
     {
         require(msg.sender == escrow, "Only escrow can call");
 
@@ -87,7 +88,8 @@ contract ZelleBaseVerifier is IPaymentVerifier, BasePaymentVerifier {
                 payeeDetails: _verifyPaymentData.payeeDetails,
                 fiatCurrency: _verifyPaymentData.fiatCurrency,
                 conversionRate: _verifyPaymentData.conversionRate,
-                data: _verifyPaymentData.data
+                depositData: _verifyPaymentData.depositData,
+                data: bytes("")
             })
         );
     }
