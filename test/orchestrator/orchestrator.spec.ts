@@ -29,9 +29,8 @@ import {
 } from "@utils/test/index";
 import { Blockchain, ether, usdc } from "@utils/common";
 import { BigNumber } from "ethers";
-import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
+import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE, ONE_DAY_IN_SECONDS, ONE_HOUR_IN_SECONDS } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
-import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
 import { generateGatingServiceSignature, createSignalIntentParams } from "@utils/test/helpers";
 
@@ -129,7 +128,8 @@ describe("Orchestrator", () => {
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
-      feeRecipient.address               // protocol fee recipient
+      feeRecipient.address,              // protocol fee recipient
+      ONE_HOUR_IN_SECONDS                // partialManualReleaseDelay (1 hour)
     );
 
     protocolViewer = await deployer.deployProtocolViewer(escrow.address, orchestrator.address);
@@ -167,6 +167,7 @@ describe("Orchestrator", () => {
       const actualRelayerRegistry = await orchestrator.relayerRegistry();
       const actualProtocolFee = await orchestrator.protocolFee();
       const actualProtocolFeeRecipient = await orchestrator.protocolFeeRecipient();
+      const actualPartialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
 
       expect(actualChainId).to.eq(chainId);
       expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
@@ -175,6 +176,7 @@ describe("Orchestrator", () => {
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
       expect(actualProtocolFee).to.eq(ZERO);
       expect(actualProtocolFeeRecipient).to.eq(feeRecipient.address);
+      expect(actualPartialManualReleaseDelay).to.eq(ZERO);
     });
   });
 
@@ -1628,6 +1630,9 @@ describe("Orchestrator", () => {
       subjectReleaseAmount = usdc(40);  // Partial release
       subjectReleaseData = "0x";
       subjectCaller = offRamper; // Depositor
+
+      // Increase time to 1 hour + 1 second
+      await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
     });
 
     async function subject(): Promise<any> {
@@ -1824,6 +1829,9 @@ describe("Orchestrator", () => {
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
+        // Increase time to 1 hour + 1 second
+        await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
+
         // Update the subject variables
         subjectIntentHash = intentHash;
       });
@@ -1962,6 +1970,9 @@ describe("Orchestrator", () => {
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
+        // Increase time to 1 hour + 1 second
+        await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
+
         subjectIntentHash = intentHash;
       });
 
@@ -2032,6 +2043,38 @@ describe("Orchestrator", () => {
 
       it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountExceedsLimit");
+      });
+    });
+
+    describe("when partialManualReleaseDelay has not passed", async () => {
+      beforeEach(async () => {
+        // Set partial manual release delay to 1 day
+        await orchestrator.connect(owner.wallet).setPartialManualReleaseDelay(ONE_DAY_IN_SECONDS.toNumber());
+      });
+
+      describe("when trying to release partial amount before delay", async () => {
+        beforeEach(async () => {
+          subjectReleaseAmount = usdc(30); // Partial release
+        });
+
+        it("should revert with PartialReleaseNotAllowedYet", async () => {
+          await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PartialReleaseNotAllowedYet");
+        });
+      });
+
+      describe("when trying to release full amount before delay", async () => {
+        beforeEach(async () => {
+          subjectReleaseAmount = intentAmount; // Full release
+        });
+
+        it("should allow full release even before delay", async () => {
+          const preBalance = await usdcToken.balanceOf(onRamper.address);
+
+          await subject();
+
+          const postBalance = await usdcToken.balanceOf(onRamper.address);
+          expect(postBalance.sub(preBalance)).to.eq(subjectReleaseAmount);
+        });
       });
     });
   });
@@ -2431,6 +2474,51 @@ describe("Orchestrator", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setPartialManualReleaseDelay", async () => {
+    let subjectPartialManualReleaseDelay: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      subjectPartialManualReleaseDelay = BigNumber.from(7200); // 2 hours
+      subjectCaller = owner;
+    });
+
+    async function subject(): Promise<any> {
+      return orchestrator.connect(subjectCaller.wallet).setPartialManualReleaseDelay(subjectPartialManualReleaseDelay);
+    }
+
+    it("should set the partial manual release delay", async () => {
+      await subject();
+
+      const partialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
+      expect(partialManualReleaseDelay).to.eq(subjectPartialManualReleaseDelay);
+    });
+
+    it("should emit PartialManualReleaseDelayUpdated event", async () => {
+      await expect(subject()).to.emit(orchestrator, "PartialManualReleaseDelayUpdated").withArgs(subjectPartialManualReleaseDelay);
+    });
+
+    describe("when the caller is not the owner", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+
+    describe("when setting it to below 15 minutes", async () => {
+      beforeEach(async () => {
+        subjectPartialManualReleaseDelay = ONE;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountBelowMin");
       });
     });
   });

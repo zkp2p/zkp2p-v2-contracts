@@ -18,6 +18,7 @@ import {
   USDC_RECIPIENT,
   DUST_THRESHOLD,
   MAX_INTENTS_PER_DEPOSIT,
+  PARTIAL_MANUAL_RELEASE_DELAY,
 } from "../deployments/parameters";
 import { addEscrowToRegistry, getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
 
@@ -114,6 +115,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       PROTOCOL_TAKER_FEE_RECIPIENT[network] != ""
         ? PROTOCOL_TAKER_FEE_RECIPIENT[network]
         : deployer,
+      PARTIAL_MANUAL_RELEASE_DELAY[network],
     ],
   });
   console.log("Orchestrator deployed at", orchestrator.address);

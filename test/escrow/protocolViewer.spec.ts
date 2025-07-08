@@ -26,7 +26,7 @@ import {
 } from "@utils/test/index";
 import { Blockchain, ether, usdc } from "@utils/common";
 import { BigNumber } from "ethers";
-import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE } from "@utils/constants";
+import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE, ONE_HOUR_IN_SECONDS } from "@utils/constants";
 import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 import { Currency } from "@utils/protocolUtils";
@@ -113,7 +113,8 @@ describe("ProtocolViewer", () => {
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
-      feeRecipient.address               // protocol fee recipient
+      feeRecipient.address,              // protocol fee recipient
+      ONE_HOUR_IN_SECONDS                // partialManualReleaseDelay (1 hour)
     );
 
     await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);
