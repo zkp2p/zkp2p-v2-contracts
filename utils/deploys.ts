@@ -16,6 +16,7 @@ import {
   BasePaymentVerifier,
   StringConversionUtilsMock,
   ClaimVerifierMock,
+  AttestationParserMock,
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
@@ -38,6 +39,7 @@ import {
   USDCMock__factory,
   PaymentVerifierMock__factory,
   ClaimVerifierMock__factory,
+  AttestationParserMock__factory,
   PostIntentHookMock__factory,
   OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
@@ -334,6 +336,11 @@ export default class DeployHelper {
   public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
     return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
   }
+
+  public async deployAttestationParserMock(): Promise<AttestationParserMock> {
+    return await new AttestationParserMock__factory(this._deployerSigner).deploy();
+  }
+
 
   public async deployPostIntentHookMock(
     usdc: Address,
