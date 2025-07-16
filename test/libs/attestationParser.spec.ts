@@ -13,7 +13,7 @@ import { AttestationParserMock } from "@utils/contracts";
 
 const expect = getWaffleExpect();
 
-describe.only("AttestationParser", () => {
+describe("AttestationParser", () => {
   let owner: Account;
 
   let deployer: DeployHelper;
