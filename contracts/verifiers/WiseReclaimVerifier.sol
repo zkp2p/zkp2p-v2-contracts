@@ -5,18 +5,25 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { DateParsing } from "../lib/DateParsing.sol";
 import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
+import { AttestationParser } from "../lib/AttestationParser.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
-
-import "hardhat/console.sol";
+import { PrimusZKTLS } from "./BaseVerifiers/PrimusZKTLS.sol";
+import { Attestation } from "../external/IPrimusZKTLS.sol";
 
 pragma solidity ^0.8.18;
 
 contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
 
     using StringConversionUtils for string;
+    
+    /* ============ Enums ============ */
+    enum ProofType {
+        RECLAIM,
+        PRIMUS
+    }
     
     /* ============ Structs ============ */
 
@@ -40,14 +47,24 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         bytes signature;                 // Signature from currency resolution service approving this dispute
     }
 
+    struct VerificationData {
+        ProofType proofType;             // Type of proof (Reclaim or Primus)
+        bytes currencyResolutionData;    // Optional currency resolution data
+    }
+
     /* ============ Constants ============ */
     
-    uint8 internal constant MAX_EXTRACT_VALUES = 11; 
+    uint8 internal constant MAX_RECLAIM_EXTRACT_VALUES = 11; 
+    uint8 internal constant MAX_PRIMUS_DATA_EXTRACT_VALUES = 6;
+    uint8 internal constant MAX_PRIMUS_ADD_PARAMS_EXTRACT_VALUES = 2;
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
     bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("OUTGOING_PAYMENT_SENT"));
     
     uint256 internal constant MAX_PENALTY_BPS = 0.2e18; // 20% max penalty
     uint256 internal constant PRECISION_UNIT = 1e18; // 100% in basis points
+
+    /* ============ State Variables ============ */
+    PrimusZKTLS public immutable primusVerifier;
 
     /* ============ Constructor ============ */
     constructor(
@@ -64,9 +81,19 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             _currencies,
             _providerHashes
         )
-    { }
+    { 
+        // Deploy a new PrimusZKTLS instance
+        primusVerifier = new PrimusZKTLS();
+    }
 
     /* ============ External Functions ============ */
+
+    /**
+     * Setup default attestor for Primus verification
+     */
+    function setupDefaultAttestor(address defaultAddr) external onlyOwner {
+        primusVerifier.setupDefaultAttestor(defaultAddr);
+    }
 
     /**
      * ONLY ESCROW: Verifies a reclaim proof of an offchain Wise payment. Ensures the right amount
@@ -98,11 +125,25 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             address currencyResolutionService
         ) = abi.decode(_verifyPaymentData.depositData, (address[], address));
 
+        // Decode verification data to get proof type
+        VerificationData memory verificationData;
+        if (_verifyPaymentData.data.length > 0) {
+            verificationData = abi.decode(_verifyPaymentData.data, (VerificationData));
+        } else {
+            verificationData.proofType = ProofType.RECLAIM; // Default to Reclaim
+        }
 
-        PaymentDetails memory paymentDetails = _verifyProofAndExtractValues(
-            _verifyPaymentData.paymentProof, 
-            witnesses
-        );
+        PaymentDetails memory paymentDetails;
+        if (verificationData.proofType == ProofType.PRIMUS) {
+            paymentDetails = _verifyPrimusProofAndExtractValues(
+                _verifyPaymentData.paymentProof
+            );
+        } else {
+            paymentDetails = _verifyProofAndExtractValues(
+                _verifyPaymentData.paymentProof, 
+                witnesses
+            );
+        }
                 
         uint256 paymentAmount = _verifyPaymentDetails(
             paymentDetails, 
@@ -118,7 +159,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             // Handle currency mismatch
             require(currencyResolutionService != address(0), "Incorrect payment currency");
             
-            bytes memory currencyResolutionData = _verifyPaymentData.data;
+            bytes memory currencyResolutionData = verificationData.currencyResolutionData;
             require(currencyResolutionData.length > 0, "Currency mismatch without resolution data");
             
             releaseAmount = _handleCurrencyMismatch(
@@ -272,6 +313,31 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     }
 
     /**
+     * Verifies the Primus proof and extracts the public values from the attestation.
+     *
+     * @param _proof The proof to verify.
+     */
+    function _verifyPrimusProofAndExtractValues(
+        bytes calldata _proof
+    ) 
+        internal
+        view
+        returns (PaymentDetails memory paymentDetails) 
+    {
+        // Decode Primus attestation
+        Attestation memory attestation = abi.decode(_proof, (Attestation));
+        
+        // Verify the attestation using PrimusZKTLS
+        primusVerifier.verifyAttestation(attestation);
+        
+        // Extract payment details from attestation data
+        paymentDetails = _extractPrimusValues(attestation);
+        
+        // Check provider hash (Required for payment proofs)
+        // require(_validateProviderHash(paymentDetails.providerHash), "No valid providerHash");
+    }
+
+    /**
      * Extracts all values from the proof context.
      *
      * @param _proof The proof containing the context to extract values from.
@@ -279,7 +345,7 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
-            MAX_EXTRACT_VALUES, 
+            MAX_RECLAIM_EXTRACT_VALUES, 
             true
         );
 
@@ -295,6 +361,48 @@ contract WiseReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             recipientId: values[8],
             timestampString: values[9],
             providerHash: values[10]
+        });
+    }
+
+    /**
+     * Extracts payment details from Primus attestation data.
+     *
+     * @param _attestation The Primus attestation containing the payment data.
+     */
+    function _extractPrimusValues(Attestation memory _attestation) internal pure returns (PaymentDetails memory paymentDetails) {
+        
+        // Extract values from attestation.data using AttestationParser
+        string[] memory dataValues = AttestationParser.extractAllValues(
+            _attestation.data, 
+            MAX_PRIMUS_DATA_EXTRACT_VALUES
+        );
+        
+        // Extract additional params to get intentHash
+        string[] memory additionalParams = AttestationParser.extractAllValues(
+            _attestation.additionParams, 
+            MAX_PRIMUS_ADD_PARAMS_EXTRACT_VALUES
+        );
+
+        // todo: get the provider hash from the attestation.request.url's base URL
+
+        // todo: should we validate that prooftype is either proxytls or mpctls?
+
+        // Values are extracted in order they appear in JSON:
+        // dataValues[0] = date (timestamp)
+        // dataValues[1] = recvId (recipient ID)
+        // dataValues[2] = amt (amount)
+        // dataValues[3] = id (payment ID)
+        // dataValues[4] = curr (currency)
+        // dataValues[5] = status (payment status)
+        return PaymentDetails({
+            intentHash: additionalParams[1],        // intentHash from additionalParams
+            paymentId: dataValues[3],               // id
+            paymentStatus: dataValues[5],           // status  
+            amountString: dataValues[2],            // amt
+            currencyCode: dataValues[4],            // curr
+            recipientId: dataValues[1],             // recvId
+            timestampString: dataValues[0],         // date
+            providerHash: ""
         });
     }
 

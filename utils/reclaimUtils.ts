@@ -102,3 +102,10 @@ export const encodeTwoProofs = (proof1: ReclaimProof, proof2: ReclaimProof) => {
 export const encodeProofWithPaymentMethod = (proof: BytesLike, paymentMethod: number) => {
 	return ethers.utils.solidityPack(['uint8', 'bytes'], [paymentMethod, proof]);
 };
+
+export const encodePrimusProof = (proof: any) => {
+	return ethers.utils.defaultAbiCoder.encode(
+		['tuple(address recipient, tuple(string url, string header, string method, string body) request, tuple(string keyName, string parseType, string parsePath)[] reponseResolve, string data, string attConditions, uint64 timestamp, string additionParams, tuple(address attestorAddr, string url)[] attestors, bytes[] signatures)'],
+		[proof]
+	);
+};

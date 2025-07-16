@@ -6,9 +6,10 @@ import { BigNumber, BytesLike, Wallet } from "ethers";
 import { NullifierRegistry, WiseReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
+import { IPrimusZKTLS } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
-import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof } from "@utils/reclaimUtils";
+import { getIdentifierFromClaimInfo, createSignDataForClaim, convertSignatureToHex, encodeProof, parseExtensionProof, encodePrimusProof } from "@utils/reclaimUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
 import { ZERO_BYTES32, ADDRESS_ZERO, ONE_DAY_IN_SECONDS } from "@utils/constants";
 
@@ -34,6 +35,61 @@ const wiseExtensionProof = {
     "claimSignature": { "0": 190, "1": 92, "2": 174, "3": 41, "4": 66, "5": 221, "6": 222, "7": 130, "8": 218, "9": 56, "10": 29, "11": 55, "12": 179, "13": 111, "14": 174, "15": 98, "16": 219, "17": 61, "18": 204, "19": 184, "20": 78, "21": 64, "22": 249, "23": 33, "24": 117, "25": 66, "26": 176, "27": 107, "28": 103, "29": 225, "30": 21, "31": 44, "32": 100, "33": 80, "34": 116, "35": 239, "36": 13, "37": 162, "38": 59, "39": 157, "40": 101, "41": 78, "42": 111, "43": 183, "44": 116, "45": 228, "46": 240, "47": 132, "48": 94, "49": 219, "50": 200, "51": 41, "52": 146, "53": 2, "54": 208, "55": 145, "56": 168, "57": 87, "58": 184, "59": 28, "60": 131, "61": 68, "62": 210, "63": 22, "64": 27 },
     "resultSignature": { "0": 6, "1": 39, "2": 146, "3": 240, "4": 60, "5": 116, "6": 211, "7": 181, "8": 93, "9": 6, "10": 206, "11": 76, "12": 144, "13": 236, "14": 6, "15": 8, "16": 3, "17": 29, "18": 255, "19": 152, "20": 151, "21": 105, "22": 95, "23": 188, "24": 242, "25": 91, "26": 164, "27": 79, "28": 130, "29": 250, "30": 186, "31": 193, "32": 110, "33": 126, "34": 123, "35": 181, "36": 220, "37": 203, "38": 221, "39": 57, "40": 190, "41": 251, "42": 61, "43": 6, "44": 208, "45": 165, "46": 255, "47": 66, "48": 226, "49": 156, "50": 171, "51": 100, "52": 244, "53": 112, "54": 75, "55": 103, "56": 236, "57": 72, "58": 148, "59": 63, "60": 206, "61": 9, "62": 59, "63": 58, "64": 28 }
   }
+}
+
+const primusExtensionProof = {
+  "recipient": "0x0000000000000000000000000000000000000000",
+  "request": {
+    "url": "https://wise.com/gateway/v3/profiles/41246868/transfers/1626956148",
+    "header": "",
+    "method": "GET",
+    "body": ""
+  },
+  "reponseResolve": [
+    {
+      "keyName": "id",
+      "parseType": "",
+      "parsePath": "$.id"
+    },
+    {
+      "keyName": "status",
+      "parseType": "",
+      "parsePath": "$.state"
+    },
+    {
+      "keyName": "date",
+      "parseType": "",
+      "parsePath": "$.stateHistory[4].date"
+    },
+    {
+      "keyName": "amt",
+      "parseType": "",
+      "parsePath": "$.targetAmount"
+    },
+    {
+      "keyName": "curr",
+      "parseType": "",
+      "parsePath": "$.targetCurrency"
+    },
+    {
+      "keyName": "recvId",
+      "parseType": "",
+      "parsePath": "$.targetRecipientId"
+    }
+  ],
+  "data": "{\"date\":\"1752481340000\",\"recvId\":\"869365669\",\"amt\":\"10.0\",\"id\":\"1626956148\",\"curr\":\"USD\",\"status\":\"OUTGOING_PAYMENT_SENT\"}",
+  "attConditions": "[{\"op\":\"REVEAL_STRING\",\"field\":\"$.id\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.state\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.stateHistory[4].date\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.targetAmount\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.targetCurrency\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.targetRecipientId\"}]",
+  "timestamp": 1752580791516,
+  "additionParams": "{\"algorithmType\":\"proxytls\",\"intentHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}",
+  "attestors": [
+    {
+      "attestorAddr": "0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6",
+      "url": "https://primuslabs.xyz"
+    }
+  ],
+  "signatures": [
+    "0x3455b784ec899d4234cc8db40d3a7ce4d9be1d3d3fab9f5b10132e5d623009ae4248165ce9bb2bad7c2d2e3deff23c5b6f9bb1db30cf80e5c277301b1a1a87d71b"
+  ]
 }
 
 describe("WiseReclaimVerifier", () => {
@@ -346,7 +402,7 @@ describe("WiseReclaimVerifier", () => {
 
         // Setup currency resolution service
         currencyResolutionService = ethers.Wallet.createRandom();
-        penaltyBps = ether(0.01); // 1 basis points = 0.01% penalty
+        penaltyBps = ether(0.01); // 1% penalty (0.01 * 1e18)
 
         // Add currency resolution service to deposit data
         subjectDepositData = ethers.utils.defaultAbiCoder.encode(
@@ -369,16 +425,20 @@ describe("WiseReclaimVerifier", () => {
           const messageHash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
               ['bytes32', 'bytes32', 'uint256', 'uint256'],
-              [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps.toString()]
+              [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
             )
           );
 
           signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
           // Add resolution data to subject data
-          subjectData = ethers.utils.defaultAbiCoder.encode(
+          const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
             ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
             [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+          );
+          subjectData = ethers.utils.defaultAbiCoder.encode(
+            ['tuple(uint8,bytes)'],
+            [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
           );
         });
 
@@ -408,16 +468,20 @@ describe("WiseReclaimVerifier", () => {
             const messageHash = ethers.utils.keccak256(
               ethers.utils.defaultAbiCoder.encode(
                 ['bytes32', 'bytes32', 'uint256', 'uint256'],
-                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps.toString()]
+                [resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps]
               )
             );
 
             signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
             // Add resolution data to subject data
-            subjectData = ethers.utils.defaultAbiCoder.encode(
+            const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
               ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
               [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(uint8,bytes)'],
+              [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
             );
           });
 
@@ -454,9 +518,13 @@ describe("WiseReclaimVerifier", () => {
 
             signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
-            subjectData = ethers.utils.defaultAbiCoder.encode(
+            const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
               ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
               [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(uint8,bytes)'],
+              [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
             );
           });
 
@@ -484,9 +552,13 @@ describe("WiseReclaimVerifier", () => {
 
             signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
-            subjectData = ethers.utils.defaultAbiCoder.encode(
+            const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
               ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
               [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(uint8,bytes)'],
+              [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
             );
           });
 
@@ -514,9 +586,13 @@ describe("WiseReclaimVerifier", () => {
 
             signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
-            subjectData = ethers.utils.defaultAbiCoder.encode(
+            const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
               ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
               [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(uint8,bytes)'],
+              [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
             );
           });
 
@@ -546,9 +622,13 @@ describe("WiseReclaimVerifier", () => {
 
             signature = await wrongSigner.signMessage(ethers.utils.arrayify(messageHash));
 
-            subjectData = ethers.utils.defaultAbiCoder.encode(
+            const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
               ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
               [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+            );
+            subjectData = ethers.utils.defaultAbiCoder.encode(
+              ['tuple(uint8,bytes)'],
+              [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
             );
           });
 
@@ -594,15 +674,62 @@ describe("WiseReclaimVerifier", () => {
 
           signature = await currencyResolutionService.signMessage(ethers.utils.arrayify(messageHash));
 
-          subjectData = ethers.utils.defaultAbiCoder.encode(
+          const resolutionDataEncoded = ethers.utils.defaultAbiCoder.encode(
             ['tuple(bytes32,bytes32,uint256,uint256,bytes)'],
             [[resolutionData.intentHash, resolutionData.paymentCurrency, resolutionData.conversionRate, resolutionData.penaltyBps, signature]]
+          );
+          subjectData = ethers.utils.defaultAbiCoder.encode(
+            ['tuple(uint8,bytes)'],
+            [[0, resolutionDataEncoded]]  // Reclaim proof type is 0
           );
         });
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Incorrect payment currency");
         });
+      });
+    });
+
+    describe("when using Primus proof", async () => {
+      beforeEach(async () => {
+        // Setup Primus verifier with attestor
+        await verifier.connect(owner.wallet).setupDefaultAttestor('0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6');
+
+        subjectCaller = escrow;
+        subjectDepositToken = usdcToken.address;
+        subjectIntentAmount = usdc(0.1);
+        subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
+        subjectConversionRate = ether(1.1);   // 0.1 * 1.1 = 0.11 [intent amount * conversion rate = payment amount]
+        subjectPayeeDetailsHash = '869365669'
+        subjectFiatCurrency = Currency.USD;
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [witnesses]
+        );
+        subjectProof = encodePrimusProof(primusExtensionProof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['tuple(uint8,bytes)'],
+          [[1, "0x"]] // ProofType.PRIMUS = 1
+        );
+      });
+
+      it("should verify the Primus proof", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.intentHash).to.eq('0x0000000000000000000000000000000000000000000000000000000000000000');
+        expect(result.releaseAmount).to.eq(usdc(0.1));
+        expect(result.paymentCurrency).to.eq(Currency.USD);
+        expect(result.paymentId).to.eq('1626956148');
+      });
+
+      it("should nullify the payment id", async () => {
+        await subject();
+
+        const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['1626956148']));
+        const isNullified = await nullifierRegistry.isNullified(nullifier);
+
+        expect(isNullified).to.be.true;
       });
     });
   });
