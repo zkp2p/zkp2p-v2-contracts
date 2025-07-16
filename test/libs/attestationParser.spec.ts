@@ -1,7 +1,6 @@
 import "module-alias/register";
 
 import { BigNumber } from "ethers";
-import { ethers } from "ethers";
 
 import { Account } from "@utils/test/types";
 import {
