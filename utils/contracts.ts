@@ -16,6 +16,7 @@ export {
   WiseReclaimVerifier,
   MercadoPagoReclaimVerifier,
   PaypalReclaimVerifier,
+  MonzoReclaimVerifier,
   ZelleBaseVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
