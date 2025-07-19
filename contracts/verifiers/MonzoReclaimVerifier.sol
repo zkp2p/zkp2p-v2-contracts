@@ -11,8 +11,6 @@ import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVe
 import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 
-import "hardhat/console.sol";
-
 pragma solidity ^0.8.18;
 
 contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
@@ -28,7 +26,7 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         string dateString;
         string currencyCode;
         string paymentId;
-        // string paymentStatus;
+        // string paymentStatus;  // Monzo payment status is verified in the provider
         string recipientId;
         string intentHash;
         string providerHash;
@@ -38,7 +36,6 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     
     uint8 internal constant MAX_EXTRACT_VALUES = 8; 
     uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
-    // bytes32 public constant COMPLETE_PAYMENT_STATUS = keccak256(abi.encodePacked("COMPLETED"));
 
     /* ============ Constructor ============ */
     constructor(
@@ -80,30 +77,18 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             PaymentDetails memory paymentDetails, 
             bool isAppclipProof
         ) = _verifyProofAndExtractValues(_verifyPaymentData.paymentProof, _verifyPaymentData.data);
-                
-        console.log("Payment ID:", paymentDetails.paymentId);
-        console.log("Amount string:", paymentDetails.amountString);
-        console.log("Intent hash:", paymentDetails.intentHash);
-        
+
         _verifyPaymentDetails(
             paymentDetails, 
             _verifyPaymentData,
             isAppclipProof
         );
 
-        console.log("After _verifyPaymentDetails");
-
         // Nullify the payment
         bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
         _validateAndAddNullifier(nullifier);
 
-
-        console.log("After nullifier");
-        console.log("Intent hash string:", paymentDetails.intentHash);
-
         bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
-        
-        console.log("Converted intent hash");
         
         return (true, intentHash);
     }
@@ -147,9 +132,6 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
         VerifyPaymentData memory _verifyPaymentData,
         bool /*_isAppclipProof*/
     ) internal view {
-        console.log("Starting _verifyPaymentDetails");
-        console.log("Amount string:", paymentDetails.amountString);
-        
         uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
         
         uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
@@ -173,12 +155,6 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             keccak256(abi.encodePacked(paymentDetails.currencyCode)) == _verifyPaymentData.fiatCurrency,
             "Incorrect payment currency"
         );
-
-        // Validate status
-        // require(
-        //     keccak256(abi.encodePacked(paymentDetails.paymentStatus)) == COMPLETE_PAYMENT_STATUS,
-        //     "Invalid payment status"
-        // );
     }
 
     /**
@@ -196,19 +172,13 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      *
      * @param _proof The proof containing the context to extract values from.
      */
-    function _extractValues(ReclaimProof memory _proof) internal view returns (PaymentDetails memory paymentDetails) {
+    function _extractValues(ReclaimProof memory _proof) internal pure returns (PaymentDetails memory paymentDetails) {
         string[] memory values = ClaimVerifier.extractAllFromContext(
             _proof.claimInfo.context, 
             MAX_EXTRACT_VALUES, 
             true
         );
         
-        console.log("Extracted values count:", values.length);
-        for (uint i = 0; i < values.length; i++) {
-            console.log("Value", i);
-            console.log(values[i]);
-        }
-
         return PaymentDetails({
             // values[0] is ContextAddress
             intentHash: values[1],
@@ -228,10 +198,7 @@ contract MonzoReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
      * @param _amount The amount to parse.
      * @param _decimals The decimals of the token.
      */
-    function _parseAmount(string memory _amount, uint8 _decimals) internal view returns(uint256) {
-        console.log("_parseAmount called with:", _amount);
-        console.log("Decimals:", _decimals);
-        
+    function _parseAmount(string memory _amount, uint8 _decimals) internal pure returns(uint256) {
         // For send transactions, the amount is prefixed with a '-' character, if the character doesn't exist then
         // it would be a receive transaction
         require(bytes(_amount)[0] == 0x2D, "Not a send transaction");   
