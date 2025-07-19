@@ -323,6 +323,28 @@ describe("MonzoReclaimVerifier", () => {
       });
     });
 
+    describe("when the payment amount is positive (receive transaction)", async () => {
+      beforeEach(async () => {
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"TX_ID\":\"tx_0000AwGAsaQ0IKs6p4LlEi\",\"amount\":\"100\",\"completedDate\":\"2025-07-18T14:01:56.31Z\",\"currency\":\"GBP\",\"userId\":\"0xf7d34e75095ea8fe491ba34938522c9066a9a01fb9daf722b819d69927149981\"},\"providerHash\":\"0x84ddc30f67565667fb6a68855d19905e30624601b9d584736c6befaf2217077b\"}";
+        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
+
+        // sign the updated claim with a witness
+        const digest = createSignDataForClaim(proof.signedClaim.claim);
+        const witness = ethers.Wallet.createRandom();
+        proof.signedClaim.signatures = [await witness.signMessage(digest)];
+
+        subjectProof = encodeProof(proof);
+        subjectData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [[witness.address]]
+        );
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Not a send transaction");
+      });
+    });
+
     describe("when the payment was made before the intent", async () => {
       beforeEach(async () => {
         subjectIntentTimestamp = BigNumber.from(paymentTimestamp).add(1).add(BigNumber.from(30));  // payment timestamp + 1 + 30 seconds (buffer)
