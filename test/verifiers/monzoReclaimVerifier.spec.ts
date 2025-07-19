@@ -168,7 +168,7 @@ const monzoExtensionProof = {
   }
 }
 
-describe.only("MonzoReclaimVerifier", () => {
+describe("MonzoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
