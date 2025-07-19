@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { NullifierRegistry, PaypalReclaimVerifier, USDCMock } from "@utils/contracts";
+import { NullifierRegistry, MonzoReclaimVerifier, USDCMock } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address, ReclaimProof } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -19,156 +19,156 @@ import {
 
 const expect = getWaffleExpect();
 
-const paypalExtensionProof = {
+const monzoExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"headers\":{\"Accept\":\"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\",\"Accept-Language\":\"en-US,en;q=0.9\",\"Sec-Fetch-Dest\":\"document\",\"Sec-Fetch-Mode\":\"navigate\",\"Sec-Fetch-Site\":\"none\",\"Upgrade-Insecure-Requests\":\"1\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\",\"sec-ch-ua\":\"\\\"Not)A;Brand\\\";v=\\\"8\\\", \\\"Chromium\\\";v=\\\"138\\\", \\\"Google Chrome\\\";v=\\\"138\\\"\",\"sec-ch-ua-arch\":\"\\\"arm\\\"\",\"sec-ch-ua-bitness\":\"\\\"64\\\"\",\"sec-ch-ua-full-version\":\"\\\"138.0.7204.93\\\"\",\"sec-ch-ua-full-version-list\":\"\\\"Not)A;Brand\\\";v=\\\"8.0.0.0\\\", \\\"Chromium\\\";v=\\\"138.0.7204.93\\\", \\\"Google Chrome\\\";v=\\\"138.0.7204.93\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-model\":\"\\\"\\\"\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"sec-ch-ua-platform-version\":\"\\\"15.5.0\\\"\",\"sec-ch-ua-wow64\":\"?0\"},\"method\":\"GET\",\"paramValues\":{\"PAYMENT_ID\":\"8E565397UR371635Y\"},\"responseMatches\":[{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"email\\\":\\\"(?<email>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"isPersonal\\\":true\"},{\"type\":\"regex\",\"value\":\"\\\"value\\\":\\\"(?<value>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"currencyCode\\\":\\\"(?<currencyCode>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"primitiveTimeCreated\\\":\\\"(?<primitiveTimeCreated>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.email\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.isPersonal\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.value\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.currencyCode\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.status\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.primitiveTimeCreated\",\"xPath\":\"\"}],\"url\":\"https://www.paypal.com/myaccount/activities/details/inline/{{PAYMENT_ID}}\"}",
+    "parameters": "{\"body\":\"\",\"headers\":{\"User-Agent\":\"reclaim/0.0.1\"},\"method\":\"GET\",\"paramValues\":{\"TX_ID\":\"tx_0000AwGAsaQ0IKs6p4LlEi\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>[0-9\\\\-]+)\"},{\"type\":\"regex\",\"value\":\"\\\"settled\\\":\\\"(?<completedDate>[^\\\"]+)\\\"\"},{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"user_id\\\":\\\"(?<userId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"scheme\\\":\\\"p2p_payment\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"currency\\\":\\\"(?<currency>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.transaction.amount\",\"xPath\":\"\"},{\"jsonPath\":\"$.transaction.settled\",\"xPath\":\"\"},{\"jsonPath\":\"$.transaction.counterparty.user_id\",\"xPath\":\"\"},{\"jsonPath\":\"$.transaction.scheme\",\"xPath\":\"\"},{\"jsonPath\":\"$.transaction.currency\",\"xPath\":\"\"}],\"url\":\"https://api.monzo.com/transactions/{{TX_ID}}\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1752859972,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"PAYMENT_ID\":\"8E565397UR371635Y\",\"currencyCode\":\"USD\",\"email\":\"0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84\",\"primitiveTimeCreated\":\"2025-07-18T16:09:39Z\",\"status\":\"COMPLETED\",\"value\":\"0.1\"},\"providerHash\":\"0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500\"}",
-    "identifier": "0xd3398c0a51c5812c2eff85ec8b5ddeed28cdf43d8a51641c58f66e1c0b804e1f",
+    "timestampS": 1752916554,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"115792089237316195423570985008687907853269984665640564039457584007913129639936\",\"extractedParameters\":{\"TX_ID\":\"tx_0000AwGAsaQ0IKs6p4LlEi\",\"amount\":\"-100\",\"completedDate\":\"2025-07-18T14:01:56.31Z\",\"currency\":\"GBP\",\"userId\":\"0xf7d34e75095ea8fe491ba34938522c9066a9a01fb9daf722b819d69927149981\"},\"providerHash\":\"0x6517cd2ca8d1608fa4f9306f729e581cfdb78a4ff76d71df74582dd9f7478f4e\"}",
+    "identifier": "0x8aebc697a53202aa1e09ac7a38b2a1887e7d906ffd7e53d31a3262a6fb8d6321",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
     "claimSignature": {
-      "0": 126,
-      "1": 129,
-      "2": 227,
-      "3": 116,
-      "4": 184,
-      "5": 147,
-      "6": 59,
-      "7": 245,
-      "8": 52,
-      "9": 150,
-      "10": 93,
-      "11": 51,
-      "12": 131,
-      "13": 36,
-      "14": 170,
-      "15": 141,
-      "16": 108,
-      "17": 21,
-      "18": 153,
-      "19": 94,
-      "20": 95,
-      "21": 69,
-      "22": 42,
-      "23": 129,
-      "24": 204,
-      "25": 77,
-      "26": 109,
-      "27": 158,
-      "28": 141,
-      "29": 251,
-      "30": 110,
-      "31": 2,
-      "32": 23,
-      "33": 197,
-      "34": 95,
-      "35": 84,
-      "36": 224,
-      "37": 99,
-      "38": 19,
-      "39": 34,
-      "40": 39,
-      "41": 139,
-      "42": 215,
-      "43": 156,
-      "44": 83,
-      "45": 210,
-      "46": 14,
-      "47": 172,
-      "48": 95,
-      "49": 174,
-      "50": 182,
-      "51": 130,
-      "52": 199,
-      "53": 120,
-      "54": 221,
-      "55": 42,
-      "56": 237,
-      "57": 176,
-      "58": 155,
-      "59": 237,
-      "60": 66,
-      "61": 82,
-      "62": 213,
-      "63": 206,
+      "0": 60,
+      "1": 5,
+      "2": 98,
+      "3": 160,
+      "4": 193,
+      "5": 202,
+      "6": 150,
+      "7": 211,
+      "8": 194,
+      "9": 72,
+      "10": 177,
+      "11": 128,
+      "12": 155,
+      "13": 247,
+      "14": 196,
+      "15": 195,
+      "16": 127,
+      "17": 213,
+      "18": 190,
+      "19": 28,
+      "20": 34,
+      "21": 188,
+      "22": 116,
+      "23": 112,
+      "24": 149,
+      "25": 170,
+      "26": 107,
+      "27": 95,
+      "28": 112,
+      "29": 31,
+      "30": 88,
+      "31": 105,
+      "32": 77,
+      "33": 47,
+      "34": 4,
+      "35": 31,
+      "36": 32,
+      "37": 44,
+      "38": 189,
+      "39": 127,
+      "40": 250,
+      "41": 144,
+      "42": 60,
+      "43": 176,
+      "44": 2,
+      "45": 127,
+      "46": 246,
+      "47": 61,
+      "48": 85,
+      "49": 250,
+      "50": 101,
+      "51": 171,
+      "52": 9,
+      "53": 250,
+      "54": 115,
+      "55": 137,
+      "56": 5,
+      "57": 119,
+      "58": 81,
+      "59": 96,
+      "60": 36,
+      "61": 124,
+      "62": 203,
+      "63": 138,
       "64": 28
     },
     "resultSignature": {
-      "0": 216,
-      "1": 130,
-      "2": 208,
-      "3": 161,
-      "4": 134,
-      "5": 99,
-      "6": 69,
-      "7": 45,
-      "8": 170,
-      "9": 178,
-      "10": 86,
-      "11": 160,
-      "12": 190,
-      "13": 83,
-      "14": 164,
-      "15": 187,
-      "16": 33,
-      "17": 235,
-      "18": 209,
-      "19": 8,
-      "20": 27,
-      "21": 124,
-      "22": 9,
-      "23": 193,
-      "24": 46,
-      "25": 96,
-      "26": 216,
-      "27": 17,
-      "28": 4,
-      "29": 27,
-      "30": 123,
-      "31": 228,
-      "32": 44,
-      "33": 15,
-      "34": 99,
-      "35": 113,
-      "36": 227,
-      "37": 249,
-      "38": 250,
-      "39": 134,
-      "40": 37,
-      "41": 33,
-      "42": 95,
-      "43": 144,
-      "44": 18,
-      "45": 85,
-      "46": 11,
-      "47": 194,
-      "48": 212,
-      "49": 200,
-      "50": 118,
-      "51": 254,
-      "52": 188,
-      "53": 62,
-      "54": 61,
-      "55": 118,
-      "56": 203,
-      "57": 167,
-      "58": 58,
-      "59": 161,
-      "60": 153,
-      "61": 25,
-      "62": 96,
-      "63": 84,
+      "0": 185,
+      "1": 226,
+      "2": 33,
+      "3": 136,
+      "4": 131,
+      "5": 248,
+      "6": 139,
+      "7": 192,
+      "8": 36,
+      "9": 205,
+      "10": 167,
+      "11": 68,
+      "12": 176,
+      "13": 94,
+      "14": 146,
+      "15": 69,
+      "16": 240,
+      "17": 23,
+      "18": 215,
+      "19": 104,
+      "20": 0,
+      "21": 211,
+      "22": 124,
+      "23": 81,
+      "24": 14,
+      "25": 32,
+      "26": 126,
+      "27": 8,
+      "28": 117,
+      "29": 170,
+      "30": 173,
+      "31": 108,
+      "32": 29,
+      "33": 232,
+      "34": 187,
+      "35": 105,
+      "36": 90,
+      "37": 190,
+      "38": 64,
+      "39": 241,
+      "40": 86,
+      "41": 132,
+      "42": 150,
+      "43": 21,
+      "44": 53,
+      "45": 128,
+      "46": 216,
+      "47": 3,
+      "48": 153,
+      "49": 227,
+      "50": 133,
+      "51": 87,
+      "52": 185,
+      "53": 19,
+      "54": 188,
+      "55": 146,
+      "56": 34,
+      "57": 2,
+      "58": 142,
+      "59": 201,
+      "60": 89,
+      "61": 199,
+      "62": 11,
+      "63": 116,
       "64": 28
     }
   }
 }
 
-describe("PaypalReclaimVerifier", () => {
+describe.only("MonzoReclaimVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -176,7 +176,7 @@ describe("PaypalReclaimVerifier", () => {
   let witnesses: Address[];
 
   let nullifierRegistry: NullifierRegistry;
-  let verifier: PaypalReclaimVerifier;
+  let verifier: MonzoReclaimVerifier;
   let usdcToken: USDCMock;
 
   let deployer: DeployHelper;
@@ -192,15 +192,15 @@ describe("PaypalReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0x0636c417755e3ae25c6c166d181c0607f4c572a3"];
-    providerHashes = ["0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500"];
+    providerHashes = ["0x6517cd2ca8d1608fa4f9306f729e581cfdb78a4ff76d71df74582dd9f7478f4e"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    verifier = await deployer.deployPaypalReclaimVerifier(
+    verifier = await deployer.deployMonzoReclaimVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(30),
-      [Currency.USD],
+      [Currency.GBP],
       providerHashes
     );
 
@@ -237,20 +237,20 @@ describe("PaypalReclaimVerifier", () => {
     let paymentTimestamp: number;
 
     beforeEach(async () => {
-      proof = parseExtensionProof(paypalExtensionProof);
+      proof = parseExtensionProof(monzoExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-07-18T16:09:39Z';
+      const paymentTimeString = '2025-07-18T14:01:56.31Z';
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(0.11);
+      subjectIntentAmount = usdc(1.1);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
-      subjectConversionRate = ether(0.909);   // 0.11 * 0.909 = 0.09999 < 0.1 [intent amount * conversion rate = payment amount]
-      subjectPayeeDetailsHash = "0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84";
-      subjectFiatCurrency = Currency.USD;
+      subjectConversionRate = ether(0.909);   // 1.1 * 0.909 = 0.9999 < 1 [intent amount * conversion rate = payment amount]
+      subjectPayeeDetailsHash = "0xf7d34e75095ea8fe491ba34938522c9066a9a01fb9daf722b819d69927149981";
+      subjectFiatCurrency = Currency.GBP;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
         [witnesses]
@@ -290,13 +290,13 @@ describe("PaypalReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('18114168264614898234767045087100892814911930784849242636571146569793237988689').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('115792089237316195423570985008687907853269984665640564039457584007913129639936').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['8E565397UR371635Y']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['tx_0000AwGAsaQ0IKs6p4LlEi']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -315,7 +315,7 @@ describe("PaypalReclaimVerifier", () => {
 
     describe("when the payment amount is less than the intent amount * conversion rate", async () => {
       beforeEach(async () => {
-        subjectIntentAmount = usdc(0.12);  // 0.12 * 0.909 = 0.10908 > 0.1
+        subjectIntentAmount = usdc(1.2);  // 1.2 * 0.909 = 1.0908 > 1.0
       });
 
       it("should revert", async () => {
@@ -365,7 +365,7 @@ describe("PaypalReclaimVerifier", () => {
 
     describe("when the currency is not supported", async () => {
       beforeEach(async () => {
-        subjectFiatCurrency = Currency.EUR;
+        subjectFiatCurrency = Currency.USD;
       });
 
       it("should revert", async () => {
@@ -375,7 +375,7 @@ describe("PaypalReclaimVerifier", () => {
 
     describe("when the provider hash is invalid", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"PAYMENT_ID\":\"8E565397UR371635Y\",\"currencyCode\":\"USD\",\"email\":\"0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84\",\"primitiveTimeCreated\":\"2025-07-18T16:09:39Z\",\"status\":\"OUTGOING_PAYMENT_SENT\",\"value\":\"0.1\"},\"providerHash\":\"0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c501\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"115792089237316195423570985008687907853269984665640564039457584007913129639936\",\"extractedParameters\":{\"TX_ID\":\"tx_0000AwGAsaQ0IKs6p4LlEi\",\"amount\":\"-100\",\"completedDate\":\"2025-07-18T14:01:56.31Z\",\"currency\":\"GBP\",\"userId\":\"0xf7d34e75095ea8fe491ba34938522c9066a9a01fb9daf722b819d69927149981\"},\"providerHash\":\"0x6517cd2ca8d1608fa4f9306f729e581cfdb78a4ff76d71df74582dd9f7478f4f\"}"
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness
@@ -395,27 +395,6 @@ describe("PaypalReclaimVerifier", () => {
       });
     });
 
-    describe("when the payment status is not correct", async () => {
-      beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"PAYMENT_ID\":\"8E565397UR371635Y\",\"currencyCode\":\"USD\",\"email\":\"0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84\",\"primitiveTimeCreated\":\"2025-07-18T16:09:39Z\",\"status\":\"REVERTED\",\"value\":\"0.1\"},\"providerHash\":\"0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500\"}";
-        proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
-
-        // sign the updated claim with a witness
-        const digest = createSignDataForClaim(proof.signedClaim.claim);
-        const witness = ethers.Wallet.createRandom();
-        proof.signedClaim.signatures = [await witness.signMessage(digest)];
-
-        subjectProof = encodeProof(proof);
-        subjectData = ethers.utils.defaultAbiCoder.encode(
-          ['address[]'],
-          [[witness.address]]
-        );
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Invalid payment status");
-      });
-    });
 
     describe("when the caller is not the escrow", async () => {
       beforeEach(async () => {

@@ -20,6 +20,7 @@ import {
   CashappReclaimVerifier,
   WiseReclaimVerifier,
   PaypalReclaimVerifier,
+  MonzoReclaimVerifier,
   MercadoPagoReclaimVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
@@ -44,6 +45,7 @@ import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/v
 import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
 import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { PaypalReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { MonzoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
@@ -211,6 +213,22 @@ export default class DeployHelper {
     providerHashes: string[]
   ): Promise<PaypalReclaimVerifier> {
     return await new PaypalReclaimVerifier__factory(this._deployerSigner).deploy(
+      ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployMonzoReclaimVerifier(
+    ramp: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<MonzoReclaimVerifier> {
+    return await new MonzoReclaimVerifier__factory(this._deployerSigner).deploy(
       ramp,
       nullifierRegistry,
       timestampBuffer,
