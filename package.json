@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",
-    "@zkp2p/reclaim-witness-sdk": "^0.0.2-rc5",
+    "@zkp2p/reclaim-witness-sdk": "^4.0.1-reclaim",
     "canonicalize": "^2.0.0",
     "circomlibjs": "^0.1.7",
     "dotenv": "^16.3.1",
