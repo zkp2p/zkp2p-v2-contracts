@@ -71,11 +71,13 @@ const config: HardhatUserConfig = {
       },
     },
     base_sepolia: {
-      url: "https://base-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
+      url: "https://sepolia.base.org",
       // @ts-ignore
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
       ],
+      gasPrice: 5000000000, // 5 gwei
+      gas: 8000000, // 8 million gas limit
       verify: {
         etherscan: {
           apiKey: process.env.BASESCAN_API_KEY
