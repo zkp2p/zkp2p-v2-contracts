@@ -1,9 +1,73 @@
 import { BigNumber } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
+import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
-export const PAYPAL_RECLAIM_PROVIDER_HASHES = [
-  "0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500"
-];
+export const getPaypalReclaimProviderHashes = async (
+  /*length: number*/
+) => {
+  const hashed = hashProviderParams(
+    {
+      url: "https://www.paypal.com/myaccount/activities/details/inline/{{PAYMENT_ID}}",
+      method: "GET",
+      body: "",
+      responseMatches: [
+        {
+          "type": "regex",
+          "value": "\"email\":\"(?<email>[^\"]+)\"",
+          "hash": true
+        },
+        {
+          "type": "regex",
+          "value": "\"isPersonal\":true"
+        },
+        {
+          "type": "regex",
+          "value": "\"value\":\"(?<value>[^\"]+)\""
+        },
+        {
+          "type": "regex",
+          "value": "\"currencyCode\":\"(?<currencyCode>[^\"]+)\""
+        },
+        {
+          "type": "regex",
+          "value": "\"status\":\"(?<status>[^\"]+)\""
+        },
+        {
+          "type": "regex",
+          "value": "\"primitiveTimeCreated\":\"(?<primitiveTimeCreated>[^\"]+)\""
+        }
+      ],
+      responseRedactions: [
+        {
+          "jsonPath": "$.data.p2pRedirect.repeatTxn.email",
+          "xPath": ""
+        },
+        {
+          "jsonPath": "$.data.p2pRedirect.repeatTxn.isPersonal",
+          "xPath": ""
+        },
+        {
+          "jsonPath": "$.data.amount.rawAmounts.gross.value",
+          "xPath": ""
+        },
+        {
+          "jsonPath": "$.data.amount.rawAmounts.gross.currencyCode",
+          "xPath": ""
+        },
+        {
+          "jsonPath": "$.data.status",
+          "xPath": ""
+        },
+        {
+          "jsonPath": "$.data.primitiveTimeCreated",
+          "xPath": ""
+        }
+      ]
+    }
+  );
+
+  return [hashed];
+};
 
 export const PAYPAL_RECLAIM_CURRENCIES: any = [
   Currency.USD,
