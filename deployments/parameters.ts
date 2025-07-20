@@ -1,5 +1,5 @@
 import "module-alias/register";
-import { ONE_DAY_IN_SECONDS, THREE_MINUTES_IN_SECONDS, ZERO } from "../utils/constants";
+import { ONE_DAY_IN_SECONDS, ONE_HOUR_IN_SECONDS, THREE_MINUTES_IN_SECONDS, ZERO } from "../utils/constants";
 import { ether, usdc } from "../utils/common/units";
 
 export const INTENT_EXPIRATION_PERIOD: any = {
@@ -8,6 +8,7 @@ export const INTENT_EXPIRATION_PERIOD: any = {
   "sepolia": THREE_MINUTES_IN_SECONDS,
   "base": ONE_DAY_IN_SECONDS,
   "base_staging": THREE_MINUTES_IN_SECONDS,
+  "base_sepolia": ONE_HOUR_IN_SECONDS
 };
 
 export const SUSTAINABILITY_FEE: any = {
@@ -15,7 +16,8 @@ export const SUSTAINABILITY_FEE: any = {
   "goerli": ether(.001),
   "sepolia": ether(.001),
   "base": ZERO,
-  "base_staging": ZERO
+  "base_staging": ZERO,
+  "base_sepolia": ZERO
 };
 
 export const SUSTAINABILITY_FEE_RECIPIENT: any = {
@@ -24,6 +26,7 @@ export const SUSTAINABILITY_FEE_RECIPIENT: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+  "base_sepolia": ""
 };
 
 export const MULTI_SIG: any = {
@@ -32,6 +35,7 @@ export const MULTI_SIG: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+  "base_sepolia": ""
 };
 
 export const USDC: any = {
