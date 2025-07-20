@@ -18,6 +18,7 @@ import "./tasks/signalIntent";
 import "./tasks/tokenBalance";
 import "./tasks/chainId";
 import "./tasks/logCurrencies";
+import "./tasks/etherscanVerifyWithDelay";
 
 dotenv.config();
 
@@ -35,6 +36,31 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_KEY || "",
+      base: process.env.BASESCAN_API_KEY || "",
+      baseSepolia: process.env.BASESCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org"
+        }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      }
+    ]
+  },
   networks: {
     hardhat: {
       initialDate: "2024-01-20 01:15:15 PM",
@@ -49,12 +75,6 @@ const config: HardhatUserConfig = {
       accounts: [
         `0x${process.env.BASE_DEPLOY_PRIVATE_KEY}`,
       ],
-      verify: {
-        etherscan: {
-          apiUrl: "https://api.basescan.org/",
-          apiKey: process.env.BASESCAN_API_KEY
-        }
-      },
     },
     sepolia: {
       url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
@@ -64,11 +84,6 @@ const config: HardhatUserConfig = {
       ],
       gasPrice: 100000000000, // 300 gwei
       gas: 8000000, // 8 million gas limit
-      verify: {
-        etherscan: {
-          apiKey: process.env.ETHERSCAN_KEY
-        }
-      },
     },
     base_sepolia: {
       url: "https://sepolia.base.org",
@@ -78,11 +93,6 @@ const config: HardhatUserConfig = {
       ],
       gasPrice: 5000000000, // 5 gwei
       gas: 8000000, // 8 million gas limit
-      verify: {
-        etherscan: {
-          apiKey: process.env.BASESCAN_API_KEY
-        }
-      },
     },
     goerli: {
       url: "https://goerli.infura.io/v3/" + process.env.INFURA_TOKEN,
@@ -90,11 +100,6 @@ const config: HardhatUserConfig = {
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
       ],
-      verify: {
-        etherscan: {
-          apiKey: process.env.ETHERSCAN_KEY
-        }
-      },
     },
     base: {
       url: "https://base-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
@@ -102,12 +107,6 @@ const config: HardhatUserConfig = {
       accounts: [
         `0x${process.env.BASE_DEPLOY_PRIVATE_KEY}`,
       ],
-      verify: {
-        etherscan: {
-          apiUrl: "https://api.basescan.org/",
-          apiKey: process.env.BASESCAN_API_KEY
-        }
-      },
     },
   },
   // @ts-ignore
