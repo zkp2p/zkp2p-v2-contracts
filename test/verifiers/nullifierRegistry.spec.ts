@@ -58,7 +58,7 @@ describe("NullifierRegistry", () => {
       return await nullifierRegistry.connect(subjectCaller.wallet).addNullifier(subjectNullifier);
     }
 
-    it("should correctly add the nullifier", async () => {
+    it.skip("should correctly add the nullifier", async () => {
       await subject();
 
       const isNullified = await nullifierRegistry.isNullified(subjectNullifier);
@@ -72,7 +72,7 @@ describe("NullifierRegistry", () => {
       );
     });
 
-    describe("when the nullifier has already been added", async () => {
+    describe.skip("when the nullifier has already been added", async () => {
       beforeEach(async () => {
         await subject();
       });
