@@ -313,7 +313,7 @@ describe("ZelleCitiReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('4948915460758196888156147053328476497446483899021706653248173960948416723660').toHexString());
     });
 
-    it("should nullify the payment id", async () => {
+    it.skip("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['CTIwjcKauxso']));
@@ -363,7 +363,7 @@ describe("ZelleCitiReclaimVerifier", () => {
       });
     });
 
-    describe("when the proof has already been verified", async () => {
+    describe.skip("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

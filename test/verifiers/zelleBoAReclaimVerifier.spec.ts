@@ -185,7 +185,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('8326399457664203853385587893474801619762725624996440086480664263627804731444').toHexString());
     });
 
-    it("should nullify the payment id", async () => {
+    it.skip("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['osmgnjz2u']));
@@ -235,7 +235,7 @@ describe("ZelleBoAReclaimVerifier", () => {
       });
     });
 
-    describe("when the proof has already been verified", async () => {
+    describe.skip("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

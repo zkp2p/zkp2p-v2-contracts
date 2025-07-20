@@ -28,7 +28,7 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  PAYPAL_RECLAIM_PROVIDER_HASHES,
+  getPaypalReclaimProviderHashes,
   PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
   PAYPAL_RECLAIM_CURRENCIES,
   PAYPAL_RECLAIM_FEE_SHARE,
@@ -81,7 +81,8 @@ describe("PaypalReclaimVerifier Deployment", () => {
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(PAYPAL_RECLAIM_PROVIDER_HASHES);
+      const providerHashes = await getPaypalReclaimProviderHashes();
+      expect(actualProviderHashes).to.deep.eq(providerHashes);
       expect(actualTimestampBuffer).to.eq(PAYPAL_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(PAYPAL_RECLAIM_CURRENCIES);
     });

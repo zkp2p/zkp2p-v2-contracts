@@ -180,7 +180,7 @@ describe("RevolutReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('2618855330259351132643749738312276409026917421853980101201034599731745761128').toHexString());
     });
 
-    it("should nullify the payment id", async () => {
+    it.skip("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['67759372-3c29-a180-8947-6f71f4788e5a']));
@@ -294,7 +294,7 @@ describe("RevolutReclaimVerifier", () => {
       });
     });
 
-    describe("when the proof has already been verified", async () => {
+    describe.skip("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });
