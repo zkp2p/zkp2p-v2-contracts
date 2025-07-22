@@ -189,11 +189,11 @@ contract PaypalReclaimVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
             // values[0] is ContextAddress
             intentHash: values[1],
             paymentId: values[2],
-            currencyCode: values[3],
-            recipientId: values[4],
+            amountString: values[3],
+            currencyCode: values[4],
             dateString: values[5],
-            paymentStatus: values[6],
-            amountString: values[7],
+            recipientId: values[6],
+            paymentStatus: values[7],
             providerHash: values[8]
         });
     }

@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   const paypalProviderHashes = await getPaypalReclaimProviderHashes();
+  console.log("Paypal provider hashes:", paypalProviderHashes);
   const paypalVerifier = await deploy("PaypalReclaimVerifier", {
     from: deployer,
     args: [

@@ -13,7 +13,7 @@ export const getPaypalReclaimProviderHashes = async (
       responseMatches: [
         {
           "type": "regex",
-          "value": "\"email\":\"(?<email>[^\"]+)\"",
+          "value": "\"email\":\"(?<recvId>[^\"]+)\"",
           "hash": true
         },
         {
@@ -22,11 +22,11 @@ export const getPaypalReclaimProviderHashes = async (
         },
         {
           "type": "regex",
-          "value": "\"value\":\"(?<value>[^\"]+)\""
+          "value": "\"value\":\"(?<amt>[^\"]+)\""
         },
         {
           "type": "regex",
-          "value": "\"currencyCode\":\"(?<currencyCode>[^\"]+)\""
+          "value": "\"currencyCode\":\"(?<curr>[^\"]+)\""
         },
         {
           "type": "regex",
@@ -34,7 +34,7 @@ export const getPaypalReclaimProviderHashes = async (
         },
         {
           "type": "regex",
-          "value": "\"primitiveTimeCreated\":\"(?<primitiveTimeCreated>[^\"]+)\""
+          "value": "\"primitiveTimeCreated\":\"(?<date>[^\"]+)\""
         }
       ],
       responseRedactions: [

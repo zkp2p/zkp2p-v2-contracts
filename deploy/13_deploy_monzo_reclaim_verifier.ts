@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
   const monzoProviderHashes = await getMonzoReclaimProviderHashes();
+  console.log("Monzo provider hashes:", monzoProviderHashes);
   const monzoVerifier = await deploy("MonzoReclaimVerifier", {
     from: deployer,
     args: [
