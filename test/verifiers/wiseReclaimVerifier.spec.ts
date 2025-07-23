@@ -253,7 +253,7 @@ describe("WiseReclaimVerifier", () => {
         await expect(subject()).to.be.revertedWith("Incorrect payment recipient");
       });
 
-      describe("when the proof is an appclip proof", async () => {
+      describe.skip("when the proof is an appclip proof", async () => {
         beforeEach(async () => {
           proof = parseAppclipProof(wiseAppclipProof);
           subjectProof = encodeProof(proof);

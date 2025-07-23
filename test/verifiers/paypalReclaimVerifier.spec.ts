@@ -297,7 +297,7 @@ describe("PaypalReclaimVerifier", () => {
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['8E565397UR371635Y']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['25R77433N2369391C']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
