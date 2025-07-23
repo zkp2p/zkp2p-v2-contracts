@@ -76,8 +76,7 @@ export const PAYPAL_RECLAIM_CURRENCIES: any = [
   Currency.SGD,
   Currency.NZD,
   Currency.AUD,
-  Currency.CAD,
-  Currency.JPY
+  Currency.CAD
 ];
 
 export const PAYPAL_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
