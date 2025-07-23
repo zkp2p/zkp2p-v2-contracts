@@ -4098,7 +4098,7 @@ export default {
       ]
     },
     "PaypalReclaimVerifier": {
-      "address": "0x9eD28eBE190827fB8cfb2428C598f406d951Ac5e",
+      "address": "0xC8cd114C6274Ef1066840337E7678BC9731BEa68",
       "abi": [
         {
           "inputs": [
