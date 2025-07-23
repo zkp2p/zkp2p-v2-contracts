@@ -10,6 +10,7 @@ export const getZelleCitiReclaimProviderHashes = async (length: number) => {
       {
         url: "https://online.citi.com/gcgapi/prod/public/v1/p2ppayments/pastActivityTransactions?transactionCount=20&pageId=0&tab=All",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",
@@ -69,6 +70,7 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
       {
         url: "https://secure.chase.com/svc/rr/payments/secure/v1/quickpay/payment/activity/list",
         method: "POST",
+        body: "pageId=&sortBy=PROCESS_DATE&orderBy=DESC",
         responseMatches: [
           {
             "type": "regex",
@@ -123,6 +125,7 @@ export const getZelleBoAReclaimProviderHashes = async (length: number) => {
       {
         url: "https://secure.bankofamerica.com/ogateway/payment-activity/api/v4/activity",
         method: "POST",
+        body: "{\"filterV1\":{\"dateFilter\":{\"timeframeForHistory\":\"DEFAULTDAYS\"}},\"sortCriteriaV1\":{\"fieldName\":\"DATE\",\"order\":\"DESCENDING\"},\"pageInfo\":{\"pageNum\":1,\"pageSize\":\"\"}}",
         responseMatches: [
           {
             "type": "regex",
@@ -194,4 +197,5 @@ export const ZELLE_RECLAIM_FEE_SHARE: any = {
   "base_staging": BigNumber.from(0),  // 0% of sustainability fee
   "sepolia": BigNumber.from(0),  // 0% of sustainability fee 
   "localhost": BigNumber.from(0),  // 0% of sustainability fee
+  "base_sepolia": BigNumber.from(0),  // 0% of sustainability fee
 }

@@ -22,151 +22,152 @@ const expect = getWaffleExpect();
 const paypalExtensionProof = {
   "claim": {
     "provider": "http",
-    "parameters": "{\"body\":\"\",\"headers\":{\"Accept\":\"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\",\"Accept-Language\":\"en-US,en;q=0.9\",\"Sec-Fetch-Dest\":\"document\",\"Sec-Fetch-Mode\":\"navigate\",\"Sec-Fetch-Site\":\"none\",\"Upgrade-Insecure-Requests\":\"1\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\",\"sec-ch-ua\":\"\\\"Not)A;Brand\\\";v=\\\"8\\\", \\\"Chromium\\\";v=\\\"138\\\", \\\"Google Chrome\\\";v=\\\"138\\\"\",\"sec-ch-ua-arch\":\"\\\"arm\\\"\",\"sec-ch-ua-bitness\":\"\\\"64\\\"\",\"sec-ch-ua-full-version\":\"\\\"138.0.7204.93\\\"\",\"sec-ch-ua-full-version-list\":\"\\\"Not)A;Brand\\\";v=\\\"8.0.0.0\\\", \\\"Chromium\\\";v=\\\"138.0.7204.93\\\", \\\"Google Chrome\\\";v=\\\"138.0.7204.93\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-model\":\"\\\"\\\"\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"sec-ch-ua-platform-version\":\"\\\"15.5.0\\\"\",\"sec-ch-ua-wow64\":\"?0\"},\"method\":\"GET\",\"paramValues\":{\"PAYMENT_ID\":\"8E565397UR371635Y\"},\"responseMatches\":[{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"email\\\":\\\"(?<email>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"isPersonal\\\":true\"},{\"type\":\"regex\",\"value\":\"\\\"value\\\":\\\"(?<value>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"currencyCode\\\":\\\"(?<currencyCode>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"primitiveTimeCreated\\\":\\\"(?<primitiveTimeCreated>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.email\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.isPersonal\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.value\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.currencyCode\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.status\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.primitiveTimeCreated\",\"xPath\":\"\"}],\"url\":\"https://www.paypal.com/myaccount/activities/details/inline/{{PAYMENT_ID}}\"}",
+    "parameters": "{\"body\":\"\",\"headers\":{\"Accept\":\"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\",\"Accept-Language\":\"en-GB,en;q=0.9\",\"Sec-Fetch-Dest\":\"document\",\"Sec-Fetch-Mode\":\"navigate\",\"Sec-Fetch-Site\":\"none\",\"Sec-GPC\":\"1\",\"Upgrade-Insecure-Requests\":\"1\",\"User-Agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\",\"sec-ch-ua\":\"\\\"Not)A;Brand\\\";v=\\\"8\\\", \\\"Chromium\\\";v=\\\"138\\\", \\\"Brave\\\";v=\\\"138\\\"\",\"sec-ch-ua-arch\":\"\\\"arm\\\"\",\"sec-ch-ua-bitness\":\"\\\"64\\\"\",\"sec-ch-ua-full-version-list\":\"\\\"Not)A;Brand\\\";v=\\\"8.0.0.0\\\", \\\"Chromium\\\";v=\\\"138.0.0.0\\\", \\\"Brave\\\";v=\\\"138.0.0.0\\\"\",\"sec-ch-ua-mobile\":\"?0\",\"sec-ch-ua-model\":\"\\\"\\\"\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"sec-ch-ua-platform-version\":\"\\\"15.5.0\\\"\",\"sec-ch-ua-wow64\":\"?0\"},\"method\":\"GET\",\"paramValues\":{\"PAYMENT_ID\":\"25R77433N2369391C\"},\"responseMatches\":[{\"hash\":true,\"type\":\"regex\",\"value\":\"\\\"email\\\":\\\"(?<recvId>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"isPersonal\\\":true\"},{\"type\":\"regex\",\"value\":\"\\\"value\\\":\\\"(?<amt>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"currencyCode\\\":\\\"(?<curr>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"status\\\":\\\"(?<status>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"primitiveTimeCreated\\\":\\\"(?<date>[^\\\"]+)\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.email\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.p2pRedirect.repeatTxn.isPersonal\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.value\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.amount.rawAmounts.gross.currencyCode\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.status\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.primitiveTimeCreated\",\"xPath\":\"\"}],\"url\":\"https://www.paypal.com/myaccount/activities/details/inline/{{PAYMENT_ID}}\"}",
     "owner": "0xf9f25d1b846625674901ace47d6313d1ac795265",
-    "timestampS": 1752859972,
-    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"PAYMENT_ID\":\"8E565397UR371635Y\",\"currencyCode\":\"USD\",\"email\":\"0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84\",\"primitiveTimeCreated\":\"2025-07-18T16:09:39Z\",\"status\":\"COMPLETED\",\"value\":\"0.1\"},\"providerHash\":\"0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500\"}",
-    "identifier": "0xd3398c0a51c5812c2eff85ec8b5ddeed28cdf43d8a51641c58f66e1c0b804e1f",
+    "timestampS": 1753208266,
+    "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14823957640193322997538336481928070393462453653955747677674582946934891004821\",\"extractedParameters\":{\"PAYMENT_ID\":\"25R77433N2369391C\",\"amt\":\"0.1\",\"curr\":\"USD\",\"date\":\"2025-07-22T16:08:52Z\",\"recvId\":\"0x4daf24e93e0a232dddf1113775290ae56eb982c56e79246856d06fc2c7e4ffe9\",\"status\":\"COMPLETED\"},\"providerHash\":\"0xad3ca6816c2dd7c513c56fac139834813ed4a72d0202ca4f650a0da21987f07d\"}",
+    "identifier": "0x790516dce937ad7dc44e4a6664bc8a60c1fc97d36703e49e20b877c206fb33ee",
     "epoch": 1
   },
   "signatures": {
     "attestorAddress": "0x0636c417755e3ae25c6c166d181c0607f4c572a3",
     "claimSignature": {
-      "0": 126,
-      "1": 129,
-      "2": 227,
-      "3": 116,
-      "4": 184,
-      "5": 147,
-      "6": 59,
-      "7": 245,
-      "8": 52,
-      "9": 150,
-      "10": 93,
-      "11": 51,
-      "12": 131,
-      "13": 36,
-      "14": 170,
-      "15": 141,
-      "16": 108,
-      "17": 21,
-      "18": 153,
-      "19": 94,
-      "20": 95,
-      "21": 69,
-      "22": 42,
-      "23": 129,
-      "24": 204,
-      "25": 77,
-      "26": 109,
-      "27": 158,
-      "28": 141,
-      "29": 251,
-      "30": 110,
-      "31": 2,
-      "32": 23,
-      "33": 197,
-      "34": 95,
-      "35": 84,
-      "36": 224,
-      "37": 99,
-      "38": 19,
-      "39": 34,
-      "40": 39,
-      "41": 139,
-      "42": 215,
-      "43": 156,
-      "44": 83,
-      "45": 210,
-      "46": 14,
-      "47": 172,
-      "48": 95,
-      "49": 174,
-      "50": 182,
-      "51": 130,
-      "52": 199,
-      "53": 120,
-      "54": 221,
-      "55": 42,
-      "56": 237,
-      "57": 176,
-      "58": 155,
-      "59": 237,
-      "60": 66,
-      "61": 82,
-      "62": 213,
-      "63": 206,
-      "64": 28
+      "0": 43,
+      "1": 141,
+      "2": 135,
+      "3": 46,
+      "4": 75,
+      "5": 36,
+      "6": 161,
+      "7": 242,
+      "8": 155,
+      "9": 48,
+      "10": 175,
+      "11": 29,
+      "12": 172,
+      "13": 6,
+      "14": 222,
+      "15": 64,
+      "16": 97,
+      "17": 106,
+      "18": 199,
+      "19": 172,
+      "20": 113,
+      "21": 186,
+      "22": 248,
+      "23": 27,
+      "24": 228,
+      "25": 95,
+      "26": 207,
+      "27": 114,
+      "28": 201,
+      "29": 143,
+      "30": 109,
+      "31": 82,
+      "32": 46,
+      "33": 240,
+      "34": 218,
+      "35": 82,
+      "36": 32,
+      "37": 106,
+      "38": 113,
+      "39": 253,
+      "40": 234,
+      "41": 124,
+      "42": 201,
+      "43": 175,
+      "44": 241,
+      "45": 250,
+      "46": 69,
+      "47": 92,
+      "48": 136,
+      "49": 137,
+      "50": 75,
+      "51": 238,
+      "52": 51,
+      "53": 140,
+      "54": 213,
+      "55": 107,
+      "56": 176,
+      "57": 124,
+      "58": 171,
+      "59": 170,
+      "60": 235,
+      "61": 181,
+      "62": 44,
+      "63": 142,
+      "64": 27
     },
     "resultSignature": {
-      "0": 216,
-      "1": 130,
-      "2": 208,
-      "3": 161,
-      "4": 134,
-      "5": 99,
-      "6": 69,
-      "7": 45,
-      "8": 170,
-      "9": 178,
-      "10": 86,
-      "11": 160,
-      "12": 190,
-      "13": 83,
-      "14": 164,
-      "15": 187,
-      "16": 33,
-      "17": 235,
-      "18": 209,
-      "19": 8,
-      "20": 27,
-      "21": 124,
-      "22": 9,
-      "23": 193,
-      "24": 46,
-      "25": 96,
-      "26": 216,
-      "27": 17,
-      "28": 4,
-      "29": 27,
-      "30": 123,
-      "31": 228,
-      "32": 44,
-      "33": 15,
-      "34": 99,
-      "35": 113,
-      "36": 227,
-      "37": 249,
-      "38": 250,
-      "39": 134,
-      "40": 37,
-      "41": 33,
-      "42": 95,
-      "43": 144,
-      "44": 18,
-      "45": 85,
-      "46": 11,
-      "47": 194,
-      "48": 212,
-      "49": 200,
-      "50": 118,
-      "51": 254,
-      "52": 188,
-      "53": 62,
-      "54": 61,
-      "55": 118,
-      "56": 203,
-      "57": 167,
-      "58": 58,
-      "59": 161,
-      "60": 153,
-      "61": 25,
-      "62": 96,
-      "63": 84,
-      "64": 28
+      "0": 146,
+      "1": 224,
+      "2": 165,
+      "3": 129,
+      "4": 196,
+      "5": 127,
+      "6": 23,
+      "7": 159,
+      "8": 150,
+      "9": 234,
+      "10": 206,
+      "11": 77,
+      "12": 126,
+      "13": 135,
+      "14": 110,
+      "15": 16,
+      "16": 217,
+      "17": 45,
+      "18": 173,
+      "19": 149,
+      "20": 188,
+      "21": 221,
+      "22": 145,
+      "23": 205,
+      "24": 160,
+      "25": 238,
+      "26": 93,
+      "27": 85,
+      "28": 70,
+      "29": 8,
+      "30": 132,
+      "31": 55,
+      "32": 51,
+      "33": 255,
+      "34": 46,
+      "35": 16,
+      "36": 25,
+      "37": 109,
+      "38": 54,
+      "39": 232,
+      "40": 212,
+      "41": 48,
+      "42": 87,
+      "43": 57,
+      "44": 15,
+      "45": 243,
+      "46": 128,
+      "47": 25,
+      "48": 172,
+      "49": 158,
+      "50": 182,
+      "51": 179,
+      "52": 34,
+      "53": 216,
+      "54": 87,
+      "55": 24,
+      "56": 151,
+      "57": 232,
+      "58": 103,
+      "59": 211,
+      "60": 142,
+      "61": 15,
+      "62": 248,
+      "63": 65,
+      "64": 27
     }
   }
 }
+
 
 describe("PaypalReclaimVerifier", () => {
   let owner: Account;
@@ -192,7 +193,7 @@ describe("PaypalReclaimVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     witnesses = ["0x0636c417755e3ae25c6c166d181c0607f4c572a3"];
-    providerHashes = ["0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500"];
+    providerHashes = ["0xad3ca6816c2dd7c513c56fac139834813ed4a72d0202ca4f650a0da21987f07d"];
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
@@ -240,7 +241,7 @@ describe("PaypalReclaimVerifier", () => {
       proof = parseExtensionProof(paypalExtensionProof);
       subjectProof = encodeProof(proof);
 
-      const paymentTimeString = '2025-07-18T16:09:39Z';
+      const paymentTimeString = '2025-07-22T16:08:52Z';
       const paymentTime = new Date(paymentTimeString);
       paymentTimestamp = Math.ceil(paymentTime.getTime() / 1000);
 
@@ -249,7 +250,7 @@ describe("PaypalReclaimVerifier", () => {
       subjectIntentAmount = usdc(0.11);
       subjectIntentTimestamp = BigNumber.from(paymentTimestamp);
       subjectConversionRate = ether(0.909);   // 0.11 * 0.909 = 0.09999 < 0.1 [intent amount * conversion rate = payment amount]
-      subjectPayeeDetailsHash = "0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84";
+      subjectPayeeDetailsHash = "0x4daf24e93e0a232dddf1113775290ae56eb982c56e79246856d06fc2c7e4ffe9";
       subjectFiatCurrency = Currency.USD;
       subjectData = ethers.utils.defaultAbiCoder.encode(
         ['address[]'],
@@ -290,13 +291,13 @@ describe("PaypalReclaimVerifier", () => {
       ] = await subjectCallStatic();
 
       expect(verified).to.be.true;
-      expect(intentHash).to.eq(BigNumber.from('18114168264614898234767045087100892814911930784849242636571146569793237988689').toHexString());
+      expect(intentHash).to.eq(BigNumber.from('14823957640193322997538336481928070393462453653955747677674582946934891004821').toHexString());
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['8E565397UR371635Y']));
+      const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['25R77433N2369391C']));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -397,7 +398,7 @@ describe("PaypalReclaimVerifier", () => {
 
     describe("when the payment status is not correct", async () => {
       beforeEach(async () => {
-        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"18114168264614898234767045087100892814911930784849242636571146569793237988689\",\"extractedParameters\":{\"PAYMENT_ID\":\"8E565397UR371635Y\",\"currencyCode\":\"USD\",\"email\":\"0xa6ffcc4157012625a0ed3a0caf95f22244eeda1071b9cb5b87ddb40648388e84\",\"primitiveTimeCreated\":\"2025-07-18T16:09:39Z\",\"status\":\"REVERTED\",\"value\":\"0.1\"},\"providerHash\":\"0x14d1dc7bcbacd85b21c65a60eddeda012fd9697c84e00982c14c0d4dc592c500\"}";
+        proof.claimInfo.context = "{\"contextAddress\":\"0x0\",\"contextMessage\":\"14823957640193322997538336481928070393462453653955747677674582946934891004821\",\"extractedParameters\":{\"PAYMENT_ID\":\"25R77433N2369391C\",\"amt\":\"0.1\",\"curr\":\"USD\",\"date\":\"2025-07-22T16:08:52Z\",\"recvId\":\"0x4daf24e93e0a232dddf1113775290ae56eb982c56e79246856d06fc2c7e4ffe9\",\"status\":\"REVERTED\"},\"providerHash\":\"0xad3ca6816c2dd7c513c56fac139834813ed4a72d0202ca4f650a0da21987f07d\"}";
         proof.signedClaim.claim.identifier = getIdentifierFromClaimInfo(proof.claimInfo);
 
         // sign the updated claim with a witness

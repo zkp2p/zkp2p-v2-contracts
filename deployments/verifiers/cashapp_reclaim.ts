@@ -9,6 +9,7 @@ export const getCashappReclaimProviderHashes = async (length: number) => {
       {
         url: "https://cash.app/cash-app/activity/v1.0/page",
         method: "POST",
+        body: "{\"activity_token\":{\"activity_token_type\":\"CUSTOMER_TOKEN\",\"token\":\"{{SENDER_ID}}\"},\"activity_scope\":\"MY_ACTIVITY_WEB_V2\",\"page_size\":15,\"request_context\":{}}",
         responseMatches: [
           {
             "type": "regex",
@@ -82,4 +83,5 @@ export const CASHAPP_RECLAIM_FEE_SHARE: any = {
   "base_staging": BigNumber.from(30),  // 30% of sustainability fee
   "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
   "localhost": BigNumber.from(0),  // 0% of sustainability fee
+  "base_sepolia": BigNumber.from(0),  // 0% of sustainability fee
 }

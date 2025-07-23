@@ -9,6 +9,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
       {
         url: "https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",
@@ -96,4 +97,5 @@ export const VENMO_RECLAIM_FEE_SHARE: any = {
   "base_staging": BigNumber.from(30),  // 30% of sustainability fee
   "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
   "localhost": BigNumber.from(0),  // 0% of sustainability fee
+  "base_sepolia": BigNumber.from(0),  // 0% of sustainability fee
 }

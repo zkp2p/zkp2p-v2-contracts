@@ -14,10 +14,10 @@ import {
   setNewOwner
 } from "../deployments/helpers";
 import {
-  PAYPAL_RECLAIM_PROVIDER_HASHES,
   PAYPAL_RECLAIM_CURRENCIES,
   PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
   PAYPAL_RECLAIM_FEE_SHARE,
+  getPaypalReclaimProviderHashes,
 } from "../deployments/verifiers/paypal_reclaim";
 
 // Deployment Scripts
@@ -31,6 +31,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
+  const paypalProviderHashes = await getPaypalReclaimProviderHashes();
+  console.log("Paypal provider hashes:", paypalProviderHashes);
   const paypalVerifier = await deploy("PaypalReclaimVerifier", {
     from: deployer,
     args: [
@@ -38,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       nullifierRegistryAddress,
       PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
       PAYPAL_RECLAIM_CURRENCIES,
-      PAYPAL_RECLAIM_PROVIDER_HASHES,
+      paypalProviderHashes,
     ],
   });
   console.log("PaypalReclaimVerifier deployed at", paypalVerifier.address);

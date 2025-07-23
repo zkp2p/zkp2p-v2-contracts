@@ -172,7 +172,7 @@ describe("WiseReclaimVerifier", () => {
       expect(isNullified).to.be.true;
     });
 
-    // describe.skip("when the proof is an appclip proof", async () => {
+    // describe("when the proof is an appclip proof", async () => {
     //   beforeEach(async () => {
     //     proof = parseAppclipProof(wiseAppclipProof);
     //     subjectProof = encodeProof(proof);

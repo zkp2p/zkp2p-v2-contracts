@@ -28,7 +28,7 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  MONZO_RECLAIM_PROVIDER_HASHES,
+  getMonzoReclaimProviderHashes,
   MONZO_RECLAIM_TIMESTAMP_BUFFER,
   MONZO_RECLAIM_CURRENCIES,
   MONZO_RECLAIM_FEE_SHARE,
@@ -81,7 +81,8 @@ describe("MonzoReclaimVerifier Deployment", () => {
       expect(actualOwner).to.eq(multiSig);
       expect(actualEscrowAddress).to.eq(escrowAddress);
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(actualProviderHashes).to.deep.eq(MONZO_RECLAIM_PROVIDER_HASHES);
+      const providerHashes = await getMonzoReclaimProviderHashes();
+      expect(actualProviderHashes).to.deep.eq(providerHashes);
       expect(actualTimestampBuffer).to.eq(MONZO_RECLAIM_TIMESTAMP_BUFFER);
       expect(actualCurrencies).to.deep.eq(MONZO_RECLAIM_CURRENCIES);
     });

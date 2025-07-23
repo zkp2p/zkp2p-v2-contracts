@@ -9,6 +9,7 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
       {
         url: "https://app.revolut.com/api/retail/user/current/transactions/last?count=20",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",
@@ -104,4 +105,5 @@ export const REVOLUT_RECLAIM_FEE_SHARE: any = {
   "base_staging": BigNumber.from(30),  // 30% of sustainability fee
   "sepolia": BigNumber.from(30),  // 30% of sustainability fee 
   "localhost": BigNumber.from(0),  // 0% of sustainability fee
+  "base_sepolia": BigNumber.from(0),  // 0% of sustainability fee
 }

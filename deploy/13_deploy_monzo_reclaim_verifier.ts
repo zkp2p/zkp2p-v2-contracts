@@ -14,7 +14,7 @@ import {
   setNewOwner
 } from "../deployments/helpers";
 import {
-  MONZO_RECLAIM_PROVIDER_HASHES,
+  getMonzoReclaimProviderHashes,
   MONZO_RECLAIM_CURRENCIES,
   MONZO_RECLAIM_TIMESTAMP_BUFFER,
   MONZO_RECLAIM_FEE_SHARE,
@@ -31,6 +31,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const escrowAddress = getDeployedContractAddress(network, "Escrow");
   const nullifierRegistryAddress = getDeployedContractAddress(network, "NullifierRegistry");
 
+  const monzoProviderHashes = await getMonzoReclaimProviderHashes();
+  console.log("Monzo provider hashes:", monzoProviderHashes);
   const monzoVerifier = await deploy("MonzoReclaimVerifier", {
     from: deployer,
     args: [
@@ -38,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       nullifierRegistryAddress,
       MONZO_RECLAIM_TIMESTAMP_BUFFER,
       MONZO_RECLAIM_CURRENCIES,
-      MONZO_RECLAIM_PROVIDER_HASHES,
+      monzoProviderHashes,
     ],
   });
   console.log("MonzoReclaimVerifier deployed at", monzoVerifier.address);
