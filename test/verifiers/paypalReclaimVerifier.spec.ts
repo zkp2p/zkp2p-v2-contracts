@@ -294,7 +294,7 @@ describe("PaypalReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('14823957640193322997538336481928070393462453653955747677674582946934891004821').toHexString());
     });
 
-    it.skip("should nullify the payment id", async () => {
+    it("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['8E565397UR371635Y']));
@@ -354,7 +354,7 @@ describe("PaypalReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the proof has already been verified", async () => {
+    describe("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

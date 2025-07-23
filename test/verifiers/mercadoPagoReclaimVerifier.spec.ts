@@ -177,7 +177,7 @@ describe("MercadoPagoReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
     });
 
-    it.skip("should nullify the payment id", async () => {
+    it("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['105936159704']));
@@ -207,7 +207,7 @@ describe("MercadoPagoReclaimVerifier", () => {
         expect(intentHash).to.eq(BigNumber.from('4519540906848171844380991692694776058038564615875128315222420248570560176998').toHexString());
       });
 
-      it.skip("should nullify the payment id", async () => {
+      it("should nullify the payment id", async () => {
         await subject();
 
         const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['\\\"105505128951\\\"']));
@@ -289,7 +289,7 @@ describe("MercadoPagoReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the proof has already been verified", async () => {
+    describe("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

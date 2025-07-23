@@ -785,7 +785,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       expect(intentHash).to.eq("0x0000000000000000000000000000000000000000000000000000000000000000");
     });
 
-    it.skip("should nullify the payment id", async () => {
+    it("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['24569221649']));
@@ -824,7 +824,7 @@ describe("ZelleChaseReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the proof has already been verified", async () => {
+    describe("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

@@ -40,9 +40,7 @@ contract NullifierRegistry is Ownable, INullifierRegistry {
     function addNullifier(bytes32 _nullifier) external onlyWriter {
         require(!isNullified[_nullifier], "Nullifier already exists");
 
-        // WARNING: THIS IS A TEMPORARY UPDATE TO ALLOW EASIER TESTING ON BASE SEPOLIA.
-        // THIS SHOULD BE REMOVED ON PRODUCTION DEPLOYMENTS.
-        // isNullified[_nullifier] = true;
+        isNullified[_nullifier] = true;
 
         emit NullifierAdded(_nullifier, msg.sender);
     }

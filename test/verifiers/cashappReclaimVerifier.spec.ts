@@ -154,7 +154,7 @@ describe("CashappReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from("12014506636571874886965000811776567979685927375542718613570391557275994688735").toHexString());
     });
 
-    it.skip("should nullify the payment id", async () => {
+    it("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['7cwz2mgva']));
@@ -235,7 +235,7 @@ describe("CashappReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the proof has already been verified", async () => {
+    describe("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });

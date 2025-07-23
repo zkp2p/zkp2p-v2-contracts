@@ -183,7 +183,7 @@ describe("VenmoReclaimVerifier", () => {
       expect(intentHash).to.eq(BigNumber.from('1130949156358289030228004429378196774671616229922798947763187449647160396233').toHexString());
     });
 
-    it.skip("should nullify the payment id", async () => {
+    it("should nullify the payment id", async () => {
       await subject();
 
       const nullifier = ethers.utils.keccak256(ethers.utils.solidityPack(['string'], ['4282537099205562654']));
@@ -279,7 +279,7 @@ describe("VenmoReclaimVerifier", () => {
       });
     });
 
-    describe.skip("when the proof has already been verified", async () => {
+    describe("when the proof has already been verified", async () => {
       beforeEach(async () => {
         await subject();
       });
