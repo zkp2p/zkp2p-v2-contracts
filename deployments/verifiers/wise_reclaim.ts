@@ -69,6 +69,11 @@ export const getWiseReclaimProviderHashes = async (length: number) => {
 
 export const WISE_APPCLIP_PROVIDER_HASHES = []
 
+// Date: 24 July 2025
+export const WISE_OLD_EXTENSION_PROVIDER_HASHES = [
+  '0x14f029619c364094675f9b308d389a6edccde6f43c099e30c212a2ec219d9646'
+]
+
 export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.USD,
   Currency.CNY,
