@@ -73,105 +73,105 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   for (const providerHash of VENMO_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, venmoVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const venmoNewExtensionProviderHashes = await getVenmoReclaimProviderHashes(10);
   for (const providerHash of venmoNewExtensionProviderHashes) {
     await addProviderHash(hre, venmoVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of REVOLUT_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, revolutVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const revolutNewExtensionProviderHashes = await getRevolutReclaimProviderHashes(20);
   for (const providerHash of revolutNewExtensionProviderHashes) {
     await addProviderHash(hre, revolutVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of CASHAPP_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, cashappVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const cashappNewExtensionProviderHashes = await getCashappReclaimProviderHashes(15);
   for (const providerHash of cashappNewExtensionProviderHashes) {
     await addProviderHash(hre, cashappVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of WISE_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, wiseVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const wiseNewExtensionProviderHashes = await getWiseReclaimProviderHashes(1);
   for (const providerHash of wiseNewExtensionProviderHashes) {
     await addProviderHash(hre, wiseVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of MERCADO_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, mercadoVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const mercadoNewExtensionProviderHashes = await getMercadoReclaimProviderHashes(1);
   for (const providerHash of mercadoNewExtensionProviderHashes) {
     await addProviderHash(hre, mercadoVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of ZELLE_CITI_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, zelleCitiVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const zelleCitiNewExtensionProviderHashes = await getZelleCitiReclaimProviderHashes(20);
   for (const providerHash of zelleCitiNewExtensionProviderHashes) {
     await addProviderHash(hre, zelleCitiVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of ZELLE_BOA_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, zelleBoAVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const zelleBoANewExtensionProviderHashes = await getZelleBoAReclaimProviderHashes(10);
   for (const providerHash of zelleBoANewExtensionProviderHashes) {
     await addProviderHash(hre, zelleBoAVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   for (const providerHash of ZELLE_CHASE_OLD_EXTENSION_PROVIDER_HASHES) {
     await removeProviderHash(hre, zelleChaseVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   const zelleChaseNewExtensionProviderHashes = await getZelleChaseReclaimProviderHashes(10);
   for (const providerHash of zelleChaseNewExtensionProviderHashes) {
     await addProviderHash(hre, zelleChaseVerifier, providerHash);
     // add delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
 
   console.log("All provider hashes updated...");
