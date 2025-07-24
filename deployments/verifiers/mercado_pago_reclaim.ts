@@ -73,6 +73,12 @@ export const MERCADO_RECLAIM_CURRENCIES: any = [
   Currency.ARS
 ];
 
+// Date: 24 July 2025
+export const MERCADO_OLD_EXTENSION_PROVIDER_HASHES = [
+  '0x09ff1db71c6ed6f079954a9cd5539cacf65cd3cf3c76b3c3c33ebfc4e5c0f7ee'
+]
+
+
 export const MERCADO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
 export const MERCADO_RECLAIM_FEE_SHARE: any = {
