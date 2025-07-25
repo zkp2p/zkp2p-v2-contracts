@@ -140,9 +140,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
-  const network = hre.deployments.getNetworkName();
-  // Skip on all networks except base
-  return network !== 'base';
+  // const network = hre.deployments.getNetworkName();
+  // // Skip on all networks except base
+  // return network !== 'base';
+  return true;
 };
 
 func.tags = ['AddProviderHashesProd'];
