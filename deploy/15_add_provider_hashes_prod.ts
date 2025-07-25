@@ -9,47 +9,50 @@ import {
 } from "../deployments/parameters";
 import {
   getDeployedContractAddress,
-  removeProviderHash,
-  addProviderHash
+  batchProviderHashOperations,
+  ProviderHashOperation
 } from "../deployments/helpers";
 import {
   getVenmoReclaimProviderHashes,
-  VENMO_APPCLIP_PROVIDER_HASHES,
-  VENMO_OLD_EXTENSION_PROVIDER_HASHES
+  VENMO_APPCLIP_PROVIDER_HASHES
 } from "../deployments/verifiers/venmo_reclaim";
 import {
-  getRevolutReclaimProviderHashes,
-  REVOLUT_OLD_EXTENSION_PROVIDER_HASHES
+  getRevolutReclaimProviderHashes
 } from "../deployments/verifiers/revolut_reclaim";
 import {
-  getCashappReclaimProviderHashes,
-  CASHAPP_OLD_EXTENSION_PROVIDER_HASHES
+  getCashappReclaimProviderHashes
 } from "../deployments/verifiers/cashapp_reclaim";
 import {
-  getWiseReclaimProviderHashes,
-  WISE_OLD_EXTENSION_PROVIDER_HASHES
+  getWiseReclaimProviderHashes
 } from "../deployments/verifiers/wise_reclaim";
 import {
-  getMercadoReclaimProviderHashes,
-  MERCADO_OLD_EXTENSION_PROVIDER_HASHES
+  getMercadoReclaimProviderHashes
 } from "../deployments/verifiers/mercado_pago_reclaim";
 import {
   getZelleCitiReclaimProviderHashes,
   getZelleBoAReclaimProviderHashes,
-  getZelleChaseReclaimProviderHashes,
-  ZELLE_CHASE_OLD_EXTENSION_PROVIDER_HASHES,
-  ZELLE_CITI_OLD_EXTENSION_PROVIDER_HASHES,
-  ZELLE_BOA_OLD_EXTENSION_PROVIDER_HASHES,
+  getZelleChaseReclaimProviderHashes
 } from "../deployments/verifiers/zelle_reclaim";
 
-
-// Deployment Scripts
+/**
+ * Deployment script to add new provider hashes to verifiers on base network.
+ * This script only performs ADD operations for new provider hashes.
+ * For removing old provider hashes, use 16_remove_provider_hashes_prod.ts
+ */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = await hre.deployments
   const network = hre.deployments.getNetworkName();
 
+  // This script only runs on base network
+  if (network !== 'base') {
+    console.log(`Skipping deployment on ${network} - this script only runs on base network`);
+    return;
+  }
+
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
+
+  console.log(`[SAFE] Running provider hash additions on base network with multisig: ${multiSig}`);
 
   const venmoVerifierAddress = getDeployedContractAddress(network, "VenmoReclaimVerifier");
   const revolutVerifierAddress = getDeployedContractAddress(network, "RevolutReclaimVerifier");
@@ -69,116 +72,79 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const zelleBoAVerifier = await ethers.getContractAt("ZelleBoAReclaimVerifier", zelleBoAVerifierAddress);
   const zelleChaseVerifier = await ethers.getContractAt("ZelleChaseReclaimVerifier", zelleChaseVerifierAddress);
 
-  // Remove old extension provider hashes
-  for (const providerHash of VENMO_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, venmoVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
+  // Collect all ADD operations for batch processing
+  const operations: ProviderHashOperation[] = [];
 
+  // Venmo - Add new extension provider hashes
+  console.log("Collecting Venmo provider hash ADD operations...");
   const venmoNewExtensionProviderHashes = await getVenmoReclaimProviderHashes(10);
   for (const providerHash of venmoNewExtensionProviderHashes) {
-    await addProviderHash(hre, venmoVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: venmoVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of REVOLUT_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, revolutVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Revolut - Add new extension provider hashes
+  console.log("Collecting Revolut provider hash ADD operations...");
   const revolutNewExtensionProviderHashes = await getRevolutReclaimProviderHashes(20);
   for (const providerHash of revolutNewExtensionProviderHashes) {
-    await addProviderHash(hre, revolutVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: revolutVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of CASHAPP_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, cashappVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Cashapp - Add new extension provider hashes
+  console.log("Collecting Cashapp provider hash ADD operations...");
   const cashappNewExtensionProviderHashes = await getCashappReclaimProviderHashes(15);
   for (const providerHash of cashappNewExtensionProviderHashes) {
-    await addProviderHash(hre, cashappVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: cashappVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of WISE_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, wiseVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Wise - Add new extension provider hashes
+  console.log("Collecting Wise provider hash ADD operations...");
   const wiseNewExtensionProviderHashes = await getWiseReclaimProviderHashes(1);
   for (const providerHash of wiseNewExtensionProviderHashes) {
-    await addProviderHash(hre, wiseVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: wiseVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of MERCADO_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, mercadoVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Mercado Pago - Add new extension provider hashes
+  console.log("Collecting Mercado Pago provider hash ADD operations...");
   const mercadoNewExtensionProviderHashes = await getMercadoReclaimProviderHashes(1);
   for (const providerHash of mercadoNewExtensionProviderHashes) {
-    await addProviderHash(hre, mercadoVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: mercadoVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of ZELLE_CITI_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, zelleCitiVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Zelle Citi - Add new extension provider hashes
+  console.log("Collecting Zelle Citi provider hash ADD operations...");
   const zelleCitiNewExtensionProviderHashes = await getZelleCitiReclaimProviderHashes(20);
   for (const providerHash of zelleCitiNewExtensionProviderHashes) {
-    await addProviderHash(hre, zelleCitiVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: zelleCitiVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of ZELLE_BOA_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, zelleBoAVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Zelle BoA - Add new extension provider hashes
+  console.log("Collecting Zelle BoA provider hash ADD operations...");
   const zelleBoANewExtensionProviderHashes = await getZelleBoAReclaimProviderHashes(10);
   for (const providerHash of zelleBoANewExtensionProviderHashes) {
-    await addProviderHash(hre, zelleBoAVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: zelleBoAVerifier, providerHash, operation: 'add' });
   }
 
-  for (const providerHash of ZELLE_CHASE_OLD_EXTENSION_PROVIDER_HASHES) {
-    await removeProviderHash(hre, zelleChaseVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
-  }
-
+  // Zelle Chase - Add new extension provider hashes
+  console.log("Collecting Zelle Chase provider hash ADD operations...");
   const zelleChaseNewExtensionProviderHashes = await getZelleChaseReclaimProviderHashes(10);
   for (const providerHash of zelleChaseNewExtensionProviderHashes) {
-    await addProviderHash(hre, zelleChaseVerifier, providerHash);
-    // add delay
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    operations.push({ contract: zelleChaseVerifier, providerHash, operation: 'add' });
   }
 
-  console.log("All provider hashes updated...");
+  console.log(`Total ADD operations collected: ${operations.length}`);
+
+  // Execute batch operations
+  await batchProviderHashOperations(hre, operations);
+
+  console.log("Provider hash batch addition complete. Transaction proposed to Safe.");
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
-  return true;
+  const network = hre.deployments.getNetworkName();
+  // Skip on all networks except base
+  return network !== 'base';
 };
+
+func.tags = ['AddProviderHashesProd'];
 
 export default func;

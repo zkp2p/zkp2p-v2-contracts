@@ -17,6 +17,7 @@
     "deploy:base": "npx hardhat deploy --network base  && npx hardhat export --network base --export ./deployments/outputs/baseContracts.ts",
     "deploy:base_staging": "npx hardhat deploy --network base_staging && npx hardhat export --network base_staging --export ./deployments/outputs/baseStagingContracts.ts",
     "deploy:base_sepolia": "npx hardhat deploy --network base_sepolia && npx hardhat export --network base_sepolia --export ./deployments/outputs/baseSepoliaContracts.ts",
+    "deploy:provider-hashes-prod": "npx hardhat deploy --network base --tags AddProviderHashesProd",
     "etherscan:sepolia": "yarn hardhat --network sepolia etherscan-verify-with-delay --delay 600",
     "etherscan:base": "yarn hardhat --network base etherscan-verify-with-delay --delay 600",
     "etherscan:base_staging": "yarn hardhat --network base_staging etherscan-verify-with-delay --delay 600",
@@ -54,6 +55,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",
+    "@safe-global/types-kit": "^2.0.0",
     "@zkp2p/reclaim-witness-sdk": "^4.0.1-reclaim",
     "canonicalize": "^2.0.0",
     "circomlibjs": "^0.1.7",
