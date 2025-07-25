@@ -14,3 +14,6 @@ artifacts
 yarn-error.log
 
 .yarn/install-state.gz
+
+# Safe transaction exports
+safe-transactions/

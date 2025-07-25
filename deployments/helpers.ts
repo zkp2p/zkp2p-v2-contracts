@@ -1,6 +1,8 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Address } from "../utils/types";
 import { BigNumber } from "ethers";
+import { proposeSafeTransaction, SAFE_CONFIG } from './safeService';
+import { MetaTransactionData } from '@safe-global/types-kit';
 
 export function getDeployedContractAddress(network: string, contractName: string): string {
   return require(`./${network}/${contractName}.json`).address;
@@ -154,5 +156,70 @@ export async function addProviderHash(
     }
   } else {
     console.log("Provider hash", providerHash, "already exists in", contract.address);
+  }
+}
+
+export interface ProviderHashOperation {
+  contract: any;
+  providerHash: string;
+  operation: 'add' | 'remove';
+}
+
+export async function batchProviderHashOperations(
+  hre: HardhatRuntimeEnvironment,
+  operations: ProviderHashOperation[]
+): Promise<void> {
+  const network = hre.deployments.getNetworkName();
+
+  if (network !== 'base' || !SAFE_CONFIG[network]) {
+    throw new Error('Batch operations are only supported on base network');
+  }
+
+  const transactions: MetaTransactionData[] = [];
+  const descriptions: string[] = [];
+
+  for (const op of operations) {
+    const data = op.operation === 'add'
+      ? op.contract.interface.encodeFunctionData("addProviderHash", [op.providerHash])
+      : op.contract.interface.encodeFunctionData("removeProviderHash", [op.providerHash]);
+
+    // Validate operation
+    const exists = await op.contract.isProviderHash(op.providerHash);
+    if (op.operation === 'add' && exists) {
+      console.log(`Skipping add: Provider hash ${op.providerHash} already exists`);
+      continue;
+    }
+    if (op.operation === 'remove' && !exists) {
+      console.log(`Skipping remove: Provider hash ${op.providerHash} not found`);
+      continue;
+    }
+
+    transactions.push({
+      to: op.contract.address,
+      value: '0',
+      data: data,
+      operation: 0 // Call
+    });
+
+    descriptions.push(`${op.operation} ${op.providerHash} on ${op.contract.address}`);
+  }
+
+  if (transactions.length === 0) {
+    console.log('No valid operations to batch');
+    return;
+  }
+
+  console.log(`[SAFE] Preparing batch of ${transactions.length} operations:`);
+  descriptions.forEach((desc, i) => console.log(`  ${i + 1}. ${desc}`));
+
+  const [signer] = await hre.ethers.getSigners();
+
+  try {
+    const safeTxHash = await proposeSafeTransaction(signer, network, transactions);
+    console.log(`[SAFE] Batch transaction proposed successfully`);
+    console.log(`Safe transaction hash: ${safeTxHash}`);
+    console.log(`View on Safe: https://app.safe.global/base:${SAFE_CONFIG[network].safeAddress}/transactions/tx?id=${safeTxHash}`);
+  } catch (error) {
+    console.error(`[SAFE] Error proposing batch transaction:`, error);
   }
 }
