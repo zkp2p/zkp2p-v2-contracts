@@ -32,6 +32,8 @@ import {
   ZELLE_CITI_OLD_EXTENSION_PROVIDER_HASHES,
   ZELLE_BOA_OLD_EXTENSION_PROVIDER_HASHES,
 } from "../deployments/verifiers/zelle_reclaim";
+import { PAYPAL_OLD_EXTENSION_PROVIDER_HASHES } from "../deployments/verifiers/paypal_reclaim";
+import { MONZO_OLD_EXTENSION_PROVIDER_HASHES } from "../deployments/verifiers/monzo_reclaim";
 
 /**
  * Deployment script to remove old provider hashes from verifiers on base network.
@@ -69,6 +71,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const zelleCitiVerifierAddress = getDeployedContractAddress(network, "ZelleCitiReclaimVerifier");
   const zelleBoAVerifierAddress = getDeployedContractAddress(network, "ZelleBoAReclaimVerifier");
   const zelleChaseVerifierAddress = getDeployedContractAddress(network, "ZelleChaseReclaimVerifier");
+  const paypalVerifierAddress = getDeployedContractAddress(network, "PaypalReclaimVerifier");
+  const monzoVerifierAddress = getDeployedContractAddress(network, "MonzoReclaimVerifier");
 
   const venmoVerifier = await ethers.getContractAt("VenmoReclaimVerifier", venmoVerifierAddress);
   const revolutVerifier = await ethers.getContractAt("RevolutReclaimVerifier", revolutVerifierAddress);
@@ -78,6 +82,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const zelleCitiVerifier = await ethers.getContractAt("ZelleCitiReclaimVerifier", zelleCitiVerifierAddress);
   const zelleBoAVerifier = await ethers.getContractAt("ZelleBoAReclaimVerifier", zelleBoAVerifierAddress);
   const zelleChaseVerifier = await ethers.getContractAt("ZelleChaseReclaimVerifier", zelleChaseVerifierAddress);
+  const paypalVerifier = await ethers.getContractAt("PaypalReclaimVerifier", paypalVerifierAddress);
+  const monzoVerifier = await ethers.getContractAt("MonzoReclaimVerifier", monzoVerifierAddress);
 
   // Collect all REMOVE operations for batch processing
   const operations: ProviderHashOperation[] = [];
@@ -128,6 +134,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Collecting Zelle Chase provider hash REMOVE operations...");
   for (const providerHash of ZELLE_CHASE_OLD_EXTENSION_PROVIDER_HASHES) {
     operations.push({ contract: zelleChaseVerifier, providerHash, operation: 'remove' });
+  }
+
+  console.log(`Total REMOVE operations collected: ${operations.length}`);
+
+  // Paypal - Remove old extension provider hashes
+  console.log("Collecting Paypal provider hash REMOVE operations...");
+  for (const providerHash of PAYPAL_OLD_EXTENSION_PROVIDER_HASHES) {
+    operations.push({ contract: paypalVerifier, providerHash, operation: 'remove' });
+  }
+
+  // Monzo - Remove old extension provider hashes
+  console.log("Collecting Monzo provider hash REMOVE operations...");
+  for (const providerHash of MONZO_OLD_EXTENSION_PROVIDER_HASHES) {
+    operations.push({ contract: monzoVerifier, providerHash, operation: 'remove' });
   }
 
   console.log(`Total REMOVE operations collected: ${operations.length}`);
