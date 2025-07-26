@@ -79,6 +79,12 @@ export const PAYPAL_RECLAIM_CURRENCIES: any = [
   Currency.CAD
 ];
 
+// July 26 2025
+export const PAYPAL_OLD_EXTENSION_PROVIDER_HASHES = [
+  '0xa57a091019928a7e6d22e7851b12abcc26f12b1a21e3b5d98fea002cdd1061fd'
+];
+
+
 export const PAYPAL_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
 export const PAYPAL_RECLAIM_FEE_SHARE: any = {
