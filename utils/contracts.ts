@@ -10,6 +10,7 @@ export {
   Quoter,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
+  RevolutApiVerifier,
   ManagedKeyHashAdapterV2,
   BaseReclaimPaymentVerifier,
   CashappReclaimVerifier,
