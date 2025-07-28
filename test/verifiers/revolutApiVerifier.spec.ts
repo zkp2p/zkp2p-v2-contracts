@@ -18,17 +18,17 @@ import {
 
 const expect = getWaffleExpect();
 
-// Revolut Business API proof format from working test
+// Revolut Business API proof format from working test - updated with new transaction
 const revolutApiProof = {
   "claim": {
     "provider": "http",
-    "parameters": "...GET https://b2b.revolut.com/api/1.0/transactions...",
-    "context": "{\"extractedParameters\":{\"amount\":\"-0.1\",\"date\":\"2025-07-26T12:57:48.085855Z\",\"recipient\":\"Amazon\",\"state\":\"completed\",\"transaction_id\":\"6884d0cc-17c5-a974-90ca-a77d3980fcaf\"}}"
+    "parameters": "{\"method\":\"GET\",\"url\":\"https://b2b.revolut.com/api/1.0/transactions\",\"headers\":{\"Authorization\":\"Bearer YOUR_TOKEN\"},\"responseMatches\":[{\"type\":\"regex\",\"value\":\"\\\"id\\\":\\\"(?<transaction_id>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"state\\\":\\\"(?<state>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"amount\\\":(?<amount>-?[0-9\\.]+)\"},{\"type\":\"regex\",\"value\":\"\\\"created_at\\\":\\\"(?<date>[^\\\"]+)\\\"\"},{\"type\":\"regex\",\"value\":\"\\\"description\\\":\\\"To (?<recipient>[^\\\"]+)\\\"\"}]}",
+    "context": "{\"extractedParameters\":{\"amount\":\"-0.1\",\"date\":\"2025-07-28T11:23:17.309867Z\",\"recipient\":\"10ecf84e-0dc5-4371-ac99-593cfd427b1c\",\"state\":\"completed\",\"transaction_id\":\"68875da5-f2d9-ac4f-9063-51e33a1b8906\"},\"providerHash\":\"0x1234567890abcdef1234567890abcdef12345678\"}"
   },
   "signatures": {
     "attestorAddress": "0x244897572368eadf65bfbc5aec98d8e5443a9072",
     "claimSignature": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef01",
-    "resultSignature": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789001"
+    "resultSignature": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789001"
   }
 };
 
@@ -113,7 +113,7 @@ describe("RevolutApiVerifier", () => {
       
       const extractedParameters = ethers.utils.defaultAbiCoder.encode(
         ["string", "string", "string", "string", "string"],
-        ["6884d0cc-17c5-a974-90ca-a77d3980fcaf", "completed", "-0.1", "2025-07-26T12:57:48.085855Z", "Amazon"]
+        ["68875da5-f2d9-ac4f-9063-51e33a1b8906", "completed", "-0.1", "2025-07-28T11:23:17.309867Z", "10ecf84e-0dc5-4371-ac99-593cfd427b1c"]
       );
 
       subjectPaymentProof = ethers.utils.defaultAbiCoder.encode(
@@ -123,13 +123,13 @@ describe("RevolutApiVerifier", () => {
 
       subjectCaller = escrow;
       subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(1); // 1 USDC
+      subjectIntentAmount = usdc(0.1); // 0.1 USDC 
       // Use current block timestamp for intent timestamp since we're using block.timestamp in the contract
       const latestBlock = await ethers.provider.getBlock("latest");
       subjectIntentTimestamp = BigNumber.from(latestBlock.timestamp);
-      subjectPayeeDetails = "Amazon";
-      subjectFiatCurrency = Currency.USD;
-      subjectConversionRate = ether(0.1); // 1 USDC = 0.1 USD (so we need 0.1 USD payment)
+      subjectPayeeDetails = "10ecf84e-0dc5-4371-ac99-593cfd427b1c";
+      subjectFiatCurrency = Currency.GBP;
+      subjectConversionRate = ether(1.0); // 1 USDC = 1.0 GBP (so we need 0.1 GBP payment for 0.1 USDC)
       subjectData = ethers.utils.defaultAbiCoder.encode(["address"], [reclaimAttestor]);
     });
 
@@ -169,7 +169,7 @@ describe("RevolutApiVerifier", () => {
     it("should nullify the transaction ID", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("6884d0cc-17c5-a974-90ca-a77d3980fcaf"));
+      const nullifier = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("68875da5-f2d9-ac4f-9063-51e33a1b8906"));
       const isNullified = await nullifierRegistry.isNullified(nullifier);
 
       expect(isNullified).to.be.true;
@@ -181,15 +181,15 @@ describe("RevolutApiVerifier", () => {
       
       const event = receipt.events?.find((e: any) => e.event === "RevolutPaymentVerified");
       expect(event).to.not.be.undefined;
-      expect(event?.args?.transactionId).to.eq("6884d0cc-17c5-a974-90ca-a77d3980fcaf");
-      expect(event?.args?.recipient).to.eq("Amazon");
+      expect(event?.args?.transactionId).to.eq("68875da5-f2d9-ac4f-9063-51e33a1b8906");
+      expect(event?.args?.recipient).to.eq("10ecf84e-0dc5-4371-ac99-593cfd427b1c");
     });
 
     describe("when the amount doesn't match", async () => {
       beforeEach(async () => {
         // Keep conversion rate but increase intent amount
-        // 2 USDC * 0.1 = 0.2 USD required, but payment is only 0.1 USD  
-        subjectIntentAmount = usdc(2);
+        // 0.2 USDC * 1.0 = 0.2 GBP required, but payment is only 0.1 GBP  
+        subjectIntentAmount = usdc(0.2);
       });
 
       it("should revert", async () => {
@@ -222,7 +222,7 @@ describe("RevolutApiVerifier", () => {
         // Modify the extracted parameters to have "pending" state
         const extractedParameters = ethers.utils.defaultAbiCoder.encode(
           ["string", "string", "string", "string", "string"],
-          ["6884d0cc-17c5-a974-90ca-a77d3980fcaf", "pending", "-0.1", "2025-07-26T12:57:48.085855Z", "Amazon"]
+          ["68875da5-f2d9-ac4f-9063-51e33a1b8906", "pending", "-0.1", "2025-07-28T11:23:17.309867Z", "10ecf84e-0dc5-4371-ac99-593cfd427b1c"]
         );
 
         const claimData = ethers.utils.defaultAbiCoder.encode(
@@ -275,6 +275,127 @@ describe("RevolutApiVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("Invalid timestamp");
+      });
+    });
+
+
+    describe("when testing amount precision", async () => {
+      describe("when the payment amount equals intent amount exactly", async () => {
+        beforeEach(async () => {
+          // 0.1 USDC * 1.0 = 0.1 GBP (exact match with real transaction)
+          subjectConversionRate = ether(1.0);
+          subjectIntentAmount = usdc(0.1);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+
+      describe("when the payment amount is slightly more than required", async () => {
+        beforeEach(async () => {
+          // 0.099 USDC * 1.0 = 0.099 GBP, but payment is 0.1 GBP (acceptable overpayment)
+          subjectConversionRate = ether(1.0);
+          subjectIntentAmount = usdc(0.099);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+
+      describe("when testing decimal amounts with real transaction", async () => {
+        beforeEach(async () => {
+          // Use the actual -0.1 GBP from real transaction with matching conversion
+          subjectConversionRate = ether(1.0); // 1 USDC = 1.0 GBP equivalent  
+          subjectIntentAmount = usdc(0.1); // 0.1 USDC * 1.0 = 0.1 GBP payment required
+        });
+
+        it("should handle decimal amounts correctly with real transaction data", async () => {
+          const [verified, intentHash] = await subjectCallStatic();
+          expect(verified).to.be.true;
+          expect(intentHash).to.not.eq(ZERO_BYTES32);
+        });
+      });
+    });
+
+    describe("when testing timestamp validation edge cases", async () => {
+      describe("when payment is exactly at buffer limit (past)", async () => {
+        beforeEach(async () => {
+          const latestBlock = await ethers.provider.getBlock("latest");
+          // Set intent timestamp exactly 1 hour (3600 seconds) after current block timestamp
+          subjectIntentTimestamp = BigNumber.from(latestBlock.timestamp + 3600);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+
+      describe("when payment is exactly at buffer limit (future)", async () => {
+        beforeEach(async () => {
+          const latestBlock = await ethers.provider.getBlock("latest");
+          // Set intent timestamp exactly 1 hour (3600 seconds) before current block timestamp  
+          subjectIntentTimestamp = BigNumber.from(latestBlock.timestamp - 3600);
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+
+      describe("when payment is just beyond buffer limit", async () => {
+        beforeEach(async () => {
+          const latestBlock = await ethers.provider.getBlock("latest");
+          // Set intent timestamp just beyond 1 hour buffer
+          subjectIntentTimestamp = BigNumber.from(latestBlock.timestamp + 3601);
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("Invalid timestamp");
+        });
+      });
+    });
+
+    describe("when testing proof structure validation", async () => {
+      describe("when the proof data is malformed", async () => {
+        beforeEach(async () => {
+          // Invalid proof structure
+          subjectPaymentProof = "0x1234";
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.reverted;
+        });
+      });
+
+      describe("when extracted parameters are invalid", async () => {
+        beforeEach(async () => {
+          // Invalid extracted parameters (missing fields)
+          const extractedParameters = ethers.utils.defaultAbiCoder.encode(
+            ["string", "string"],
+            ["68875da5-f2d9-ac4f-9063-51e33a1b8906", "completed"]
+          );
+
+          const claimData = ethers.utils.defaultAbiCoder.encode(
+            ["string", "string", "string"],
+            [revolutApiProof.claim.provider, revolutApiProof.claim.parameters, revolutApiProof.claim.context]
+          );
+          
+          const signatures = ethers.utils.defaultAbiCoder.encode(
+            ["address", "bytes", "bytes"],
+            [revolutApiProof.signatures.attestorAddress, revolutApiProof.signatures.claimSignature, revolutApiProof.signatures.resultSignature]
+          );
+
+          subjectPaymentProof = ethers.utils.defaultAbiCoder.encode(
+            ["bytes", "bytes", "bytes"],
+            [claimData, signatures, extractedParameters]
+          );
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.reverted;
+        });
       });
     });
   });
