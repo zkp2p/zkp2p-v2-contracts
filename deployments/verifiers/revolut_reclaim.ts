@@ -89,6 +89,11 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.CHF,
   Currency.ZAR,
   Currency.NOK,
+  Currency.CZK,
+  Currency.DKK,
+  Currency.SEK,
+  Currency.RON,
+  Currency.HUF,
   Currency.CNY,
 ];
 

@@ -42,13 +42,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // New currencies to add to Revolut
   const newRevolutCurrencies = [
-    Currency.ZAR,
     Currency.NOK,
+    Currency.CZK,
+    Currency.DKK,
+    Currency.SEK,
+    Currency.RON,
+    Currency.HUF,
     Currency.CNY,
   ];
 
   // New currencies to add to Wise
   const newWiseCurrencies = [
+    Currency.NOK,
     Currency.CZK,
     Currency.DKK,
     Currency.SEK,
@@ -56,7 +61,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     Currency.HUF,
     Currency.PHP,
     Currency.INR,
-    Currency.NOK,
   ];
 
   console.log("Adding new currencies to Revolut verifier...");
