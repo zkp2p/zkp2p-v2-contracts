@@ -23,16 +23,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = await hre.deployments
   const network = hre.deployments.getNetworkName();
 
-  // This script only runs on base network
-  if (network !== 'base') {
-    console.log(`Skipping deployment on ${network} - this script only runs on base network`);
-    return;
-  }
-
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-
-  console.log(`[SAFE] Running currency additions on base network with multisig: ${multiSig}`);
 
   const revolutVerifierAddress = getDeployedContractAddress(network, "RevolutReclaimVerifier");
   const wiseVerifierAddress = getDeployedContractAddress(network, "WiseReclaimVerifier");
@@ -79,7 +71,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
-  return true;
+  return false;
 };
 
 func.tags = ['AddNewCurrencies'];
