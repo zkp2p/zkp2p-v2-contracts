@@ -20,6 +20,7 @@ export {
   ZelleBaseVerifier,
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
-  ZelleChaseReclaimVerifier
+  ZelleChaseReclaimVerifier,
+  OTPVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";

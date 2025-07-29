@@ -26,7 +26,8 @@ import {
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier,
   ZelleBaseVerifier,
-  BaseReclaimVerifier
+  BaseReclaimVerifier,
+  OTPVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -50,6 +51,7 @@ import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/cont
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
+import { OTPVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -295,6 +297,20 @@ export default class DeployHelper {
 
   public async deployNullifierRegistry(): Promise<NullifierRegistry> {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployOTPVerifier(
+    escrow: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[]
+  ): Promise<OTPVerifier> {
+    return await new OTPVerifier__factory(this._deployerSigner).deploy(
+      escrow,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies
+    );
   }
 
   public async deployManagedKeyHashAdapterV2(keyHashes: string[]): Promise<ManagedKeyHashAdapterV2> {
