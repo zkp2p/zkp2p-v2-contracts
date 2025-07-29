@@ -97,14 +97,15 @@ export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.MXN,
   Currency.THB,
   Currency.VND,
+  // 29 July 2025
   Currency.CZK,
   Currency.DKK,
-  Currency.SEK,
-  Currency.RON,
   Currency.HUF,
-  Currency.PHP,
   Currency.INR,
   Currency.NOK,
+  Currency.PHP,
+  Currency.RON,
+  Currency.SEK,
 ];
 
 export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

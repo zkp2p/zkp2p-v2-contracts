@@ -16,8 +16,8 @@ import { Currency } from "../utils/protocolUtils";
 /**
  * Deployment script to add new currencies to Revolut and Wise verifiers on base network.
  * This script adds:
- * - Revolut: ZAR, NOK, CNY
- * - Wise: CZK, DKK, SEK, RON, HUF, PHP, INR, NOK
+ * - Revolut: CNY, CZK, DKK, HUF, NOK, RON, SEK
+ * - Wise: CZK, DKK, HUF, INR, NOK, PHP, RON, SEK
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = await hre.deployments
@@ -42,25 +42,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // New currencies to add to Revolut
   const newRevolutCurrencies = [
-    Currency.NOK,
     Currency.CZK,
-    Currency.DKK,
-    Currency.SEK,
-    Currency.RON,
-    Currency.HUF,
     Currency.CNY,
+    Currency.DKK,
+    Currency.HUF,
+    Currency.NOK,
+    Currency.RON,
+    Currency.SEK,
   ];
 
   // New currencies to add to Wise
   const newWiseCurrencies = [
-    Currency.NOK,
     Currency.CZK,
     Currency.DKK,
-    Currency.SEK,
-    Currency.RON,
     Currency.HUF,
-    Currency.PHP,
     Currency.INR,
+    Currency.NOK,
+    Currency.PHP,
+    Currency.RON,
+    Currency.SEK,
   ];
 
   console.log("Adding new currencies to Revolut verifier...");

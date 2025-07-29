@@ -88,13 +88,14 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.PLN,
   Currency.CHF,
   Currency.ZAR,
-  Currency.NOK,
+  // 29 July 2025
   Currency.CZK,
-  Currency.DKK,
-  Currency.SEK,
-  Currency.RON,
-  Currency.HUF,
   Currency.CNY,
+  Currency.DKK,
+  Currency.HUF,
+  Currency.NOK,
+  Currency.RON,
+  Currency.SEK,
 ];
 
 export const REVOLUT_OLD_APPCLIP_PROVIDER_HASHES = [
