@@ -58,12 +58,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Adding new currencies to Revolut verifier...");
   for (const currency of newRevolutCurrencies) {
     await addCurrency(hre, revolutVerifier, currency);
+    // add delay
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
   console.log(`Added ${newRevolutCurrencies.length} currencies to Revolut`);
 
   console.log("Adding new currencies to Wise verifier...");
   for (const currency of newWiseCurrencies) {
     await addCurrency(hre, wiseVerifier, currency);
+    // add delay
+    await new Promise(resolve => setTimeout(resolve, 4000));
   }
   console.log(`Added ${newWiseCurrencies.length} currencies to Wise`);
 
