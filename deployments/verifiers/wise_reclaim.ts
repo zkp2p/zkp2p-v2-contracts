@@ -1,5 +1,5 @@
 import { BigNumber } from "ethers";
-import { Currency } from "../../utils/protocolUtils";
+import { Currency, getKeccak256Hash } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
 export const getWiseReclaimProviderHashes = async (length: number) => {
@@ -97,6 +97,14 @@ export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.MXN,
   Currency.THB,
   Currency.VND,
+  Currency.CZK,
+  Currency.DKK,
+  Currency.SEK,
+  Currency.RON,
+  Currency.HUF,
+  Currency.PHP,
+  Currency.INR,
+  Currency.NOK,
 ];
 
 export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

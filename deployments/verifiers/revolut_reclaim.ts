@@ -87,7 +87,9 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.TRY,
   Currency.PLN,
   Currency.CHF,
-  Currency.ZAR
+  Currency.ZAR,
+  Currency.NOK,
+  Currency.CNY,
 ];
 
 export const REVOLUT_OLD_APPCLIP_PROVIDER_HASHES = [
