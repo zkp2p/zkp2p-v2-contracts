@@ -1,311 +1,238 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
 
-import "./interfaces/IPaymentVerifier.sol";
-import "./BaseVerifiers/BasePaymentVerifier.sol";
-import "./nullifierRegistries/INullifierRegistry.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+import { DateParsing } from "../lib/DateParsing.sol";
+import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
+import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
+import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
+
+import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
+import { INullifierRegistry } from "./nullifierRegistries/INullifierRegistry.sol";
+import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+
+pragma solidity ^0.8.18;
 
 /**
  * @title RevolutApiVerifier
  * @notice Verifies Revolut Business API payment proofs using Reclaim Protocol attestations
- * @dev Extends BasePaymentVerifier to verify Revolut transaction proofs for zkp2p
+ * @dev Extends BaseReclaimPaymentVerifier to verify dual Revolut transaction proofs for zkp2p
  */
-contract RevolutApiVerifier is IPaymentVerifier, BasePaymentVerifier {
+contract RevolutApiVerifier is IPaymentVerifier, BaseReclaimPaymentVerifier {
     
-    // Revolut-specific constants
-    string public constant PROVIDER_NAME = "revolut-api";
-    string public constant API_ENDPOINT = "https://b2b.revolut.com/api/1.0/transactions";
-    uint256 internal constant PRECISE_UNIT = 1e18;
+    using StringConversionUtils for string;
+    using Bytes32ConversionUtils for bytes32;
     
-    // Reclaim Protocol attestor address
-    address public immutable RECLAIM_ATTESTOR;
+    /* ============ Structs ============ */
     
-    // Events
+    struct PaymentDetails {
+        string transactionId;
+        string amountString;
+        string state;
+        string counterpartyId;
+        string revtag;
+        string timestampString;
+        string intentHash;
+        string transactionProviderHash;
+        string counterpartyProviderHash;
+    }
+    
+    /* ============ Constants ============ */
+    
+    uint8 internal constant MAX_EXTRACT_VALUES_TRANSACTION = 8;
+    uint8 internal constant MAX_EXTRACT_VALUES_COUNTERPARTY = 6;
+    uint8 internal constant MIN_WITNESS_SIGNATURE_REQUIRED = 1;
+    bytes32 public constant COMPLETED_STATE = keccak256(abi.encodePacked("completed"));
+    
+    /* ============ Events ============ */
+    
     event RevolutPaymentVerified(
         bytes32 indexed intentHash,
         string transactionId,
         uint256 amount,
-        string recipient,
+        string counterpartyId,
+        string revtag,
         uint256 timestamp
     );
 
-    /**
-     * @notice Constructor
-     * @param _escrow Address of the escrow contract
-     * @param _nullifierRegistry Address of nullifier registry
-     * @param _reclaimAttestor Address of Reclaim Protocol attestor
-     */
+    /* ============ Constructor ============ */
+    
     constructor(
         address _escrow,
-        address _nullifierRegistry,
-        address _reclaimAttestor
-    ) BasePaymentVerifier(_escrow, INullifierRegistry(_nullifierRegistry), 3600, _getSupportedCurrencies()) {
-        RECLAIM_ATTESTOR = _reclaimAttestor;
-    }
+        INullifierRegistry _nullifierRegistry,
+        uint256 _timestampBuffer,
+        bytes32[] memory _currencies,
+        string[] memory _providerHashes
+    ) 
+        BaseReclaimPaymentVerifier(
+            _escrow,
+            _nullifierRegistry,
+            _timestampBuffer,
+            _currencies,
+            _providerHashes
+        )
+    { }
+
+    /* ============ External Functions ============ */
 
     /**
-     * @notice Get supported currencies
-     * @return Array of supported currency identifiers
-     */
-    function _getSupportedCurrencies() internal pure returns (bytes32[] memory) {
-        bytes32[] memory supportedCurrencies = new bytes32[](3);
-        supportedCurrencies[0] = keccak256(bytes("GBP"));
-        supportedCurrencies[1] = keccak256(bytes("EUR"));
-        supportedCurrencies[2] = keccak256(bytes("USD"));
-        return supportedCurrencies;
-    }
-
-    /**
-     * @notice Verifies a Revolut payment using Reclaim Protocol proof
-     * @param data Payment verification data containing Reclaim proof
-     * @return success Whether verification succeeded
+     * @notice ONLY ESCROW: Verifies dual Reclaim proofs for a Revolut Business API payment
+     * @param _verifyPaymentData Payment proof and intent details required for verification
+     * @return success Whether verification succeeded  
      * @return intentHash Hash of the payment intent
      */
-    function verifyPayment(VerifyPaymentData calldata data)
+    function verifyPayment(
+        IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
+    )
         external
         override
-        returns (bool success, bytes32 intentHash)
+        returns (bool, bytes32)
     {
         require(msg.sender == escrow, "Only escrow can call");
-        // Step 1: Decode the Reclaim proof from paymentProof
-        RevolutPaymentDetails memory paymentDetails = _decodeRevolutProof(data.paymentProof);
-
-        // Step 2: Validate payment details
-        require(_validatePaymentDetails(paymentDetails, data), "Invalid payment details");
-
-        // Step 3: Generate intent hash
-        intentHash = _generateIntentHash(paymentDetails, data);
-
-        // Step 4: Add nullifier to prevent replay
-        _addNullifier(paymentDetails.transactionId);
-
-        // Step 5: Emit verification event
+        
+        PaymentDetails memory paymentDetails = _verifyProofsAndExtractValues(
+            _verifyPaymentData.paymentProof,
+            _verifyPaymentData.data
+        );
+        
+        _verifyPaymentDetails(paymentDetails, _verifyPaymentData);
+        
+        // Nullify the payment using transaction ID
+        bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.transactionId));
+        _validateAndAddNullifier(nullifier);
+        
+        bytes32 intentHash = bytes32(paymentDetails.intentHash.stringToUint(0));
+        
+        // Emit verification event
+        uint256 amount = paymentDetails.amountString.stringToUint(18);
+        uint256 timestamp = DateParsing._dateStringToTimestamp(paymentDetails.timestampString);
+        
         emit RevolutPaymentVerified(
             intentHash,
             paymentDetails.transactionId,
-            paymentDetails.amount,
-            paymentDetails.recipient,
-            paymentDetails.timestamp
+            amount,
+            paymentDetails.counterpartyId,
+            paymentDetails.revtag,
+            timestamp
         );
-
+        
         return (true, intentHash);
     }
 
+    /* ============ Internal Functions ============ */
+    
     /**
-     * @notice Decodes Revolut proof data from Reclaim attestation
-     * @param paymentProof Encoded proof data
-     * @return paymentDetails Extracted payment details
+     * @notice Verifies dual Reclaim proofs and extracts payment values
+     * @param _proofs Encoded dual proof data
+     * @param _depositData Witness addresses for verification
+     * @return paymentDetails Extracted and validated payment details
      */
-    function _decodeRevolutProof(bytes calldata paymentProof)
+    function _verifyProofsAndExtractValues(
+        bytes calldata _proofs,
+        bytes calldata _depositData
+    )
         internal
         view
-        returns (RevolutPaymentDetails memory paymentDetails)
+        returns (PaymentDetails memory paymentDetails)
     {
-        // Decode the proof structure (claimData, signatures, extractedParameters)
-        (
-            ,  // claimData - unused for now
-            ,  // signatures - unused for now  
-            bytes memory extractedParameters
-        ) = abi.decode(paymentProof, (bytes, bytes, bytes));
-
-        // For now, we'll do basic validation and extract the parameters
-        // In a full implementation, you'd verify the Reclaim attestor signature
-
-        // Extract Revolut-specific payment details
-        paymentDetails = _parseRevolutParameters(extractedParameters);
-    }
-
-    /**
-     * @notice Parses extracted parameters into Revolut payment details
-     * @param extractedParameters Raw extracted data from Reclaim
-     * @return paymentDetails Structured payment information
-     */
-    function _parseRevolutParameters(bytes memory extractedParameters)
-        internal
-        view
-        returns (RevolutPaymentDetails memory paymentDetails)
-    {
-        // Decode extracted parameters (transaction_id, state, amount, date, recipient)
-        (
-            string memory transactionId,
-            string memory state,
-            string memory amountStr,
-            ,  // dateStr - unused for now
-            string memory recipient
-        ) = abi.decode(extractedParameters, (string, string, string, string, string));
-
-        // Convert amount string to uint256 (handle decimal places)
-        uint256 amount = _parseAmountString(amountStr);
+        // Decode dual proofs: (transactionProof, counterpartyProof)
+        (ReclaimProof memory transactionProof, ReclaimProof memory counterpartyProof) = 
+            abi.decode(_proofs, (ReclaimProof, ReclaimProof));
+            
+        address[] memory witnesses = _decodeDepositData(_depositData);
         
-        // Convert date string to timestamp (simplified for now)
-        uint256 timestamp = block.timestamp; // TODO: implement proper date parsing
-
-        paymentDetails = RevolutPaymentDetails({
-            transactionId: transactionId,
-            state: state,
-            amount: amount,
-            recipient: recipient,
-            timestamp: timestamp
+        // Verify both proof signatures
+        verifyProofSignatures(transactionProof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);
+        verifyProofSignatures(counterpartyProof, witnesses, MIN_WITNESS_SIGNATURE_REQUIRED);
+        
+        // Extract values from both proofs
+        string[] memory transactionValues = ClaimVerifier.extractAllFromContext(
+            transactionProof.claimInfo.context,
+            MAX_EXTRACT_VALUES_TRANSACTION,
+            true
+        );
+        
+        string[] memory counterpartyValues = ClaimVerifier.extractAllFromContext(
+            counterpartyProof.claimInfo.context,
+            MAX_EXTRACT_VALUES_COUNTERPARTY,
+            true
+        );
+        
+        // CRITICAL: Add bounds checking before array access to prevent out-of-bounds errors
+        require(transactionValues.length >= MAX_EXTRACT_VALUES_TRANSACTION, "Insufficient transaction values");
+        require(counterpartyValues.length >= MAX_EXTRACT_VALUES_COUNTERPARTY, "Insufficient counterparty values");
+        
+        // Validate provider hashes
+        require(_validateProviderHash(transactionValues[7]), "Invalid transaction provider hash");
+        require(_validateProviderHash(counterpartyValues[5]), "Invalid counterparty provider hash");
+        
+        // Validate counterparty ID linkage between proofs
+        require(
+            transactionValues[4].stringComparison(counterpartyValues[2]),
+            "Counterparty IDs do not match between proofs"
+        );
+        
+        paymentDetails = PaymentDetails({
+            // Transaction proof values: [0]=contextAddress, [1]=intentHash, [2]=transactionId, 
+            // [3]=amountString, [4]=counterpartyId, [5]=state, [6]=timestampString, [7]=providerHash
+            transactionId: transactionValues[2],
+            amountString: transactionValues[3],
+            state: transactionValues[5],
+            counterpartyId: transactionValues[4],
+            timestampString: transactionValues[6],
+            intentHash: transactionValues[1],
+            transactionProviderHash: transactionValues[7],
+            // Counterparty proof values: [0]=contextAddress, [1]=intentHash, [2]=counterpartyId,
+            // [3]=revtag, [4]=..., [5]=providerHash  
+            revtag: counterpartyValues[3],
+            counterpartyProviderHash: counterpartyValues[5]
         });
     }
 
     /**
      * @notice Validates payment details against verification requirements
      * @param paymentDetails Extracted payment information
-     * @param data Original verification request data
-     * @return valid Whether payment details are valid
+     * @param _verifyPaymentData Original verification request data
      */
-    function _validatePaymentDetails(
-        RevolutPaymentDetails memory paymentDetails,
-        VerifyPaymentData calldata data
-    ) internal view returns (bool valid) {
-        // Check payment state is completed
+    function _verifyPaymentDetails(
+        PaymentDetails memory paymentDetails,
+        VerifyPaymentData memory _verifyPaymentData
+    ) internal view {
+        uint256 expectedAmount = _verifyPaymentData.intentAmount * _verifyPaymentData.conversionRate / PRECISE_UNIT;
+        uint8 decimals = IERC20Metadata(_verifyPaymentData.depositToken).decimals();
+        
+        // Validate payment state is completed
         require(
-            keccak256(bytes(paymentDetails.state)) == keccak256(bytes("completed")),
+            keccak256(abi.encodePacked(paymentDetails.state)) == COMPLETED_STATE,
             "Payment not completed"
         );
-
-        // Calculate expected payment amount using conversion rate (same logic as other verifiers)
-        uint256 expectedPaymentAmount = (data.intentAmount * data.conversionRate) / PRECISE_UNIT;
         
-        // Parse payment amount to match token decimals (like other verifiers)
-        uint8 decimals = IERC20Metadata(data.depositToken).decimals();
-        uint256 paymentAmount = _parseAmountToTokenDecimals(paymentDetails.amount, decimals);
+        // Validate amount using standardized parsing
+        uint256 paymentAmount = paymentDetails.amountString.stringToUint(decimals);
+        require(paymentAmount >= expectedAmount, "Incorrect payment amount");
         
-        require(paymentAmount >= expectedPaymentAmount, "Amount mismatch");
-
-        // Validate recipient matches
+        // Validate revtag matches payeeDetails (critical security check)
         require(
-            keccak256(bytes(paymentDetails.recipient)) == keccak256(bytes(data.payeeDetails)),
-            "Recipient mismatch"
+            paymentDetails.revtag.stringComparison(_verifyPaymentData.payeeDetails),
+            "RevTag mismatch - payment not to intended recipient"
         );
-
-        // Validate timestamp is within acceptable range (simplified)
-        require(
-            _isTimestampValid(paymentDetails.timestamp, data.intentTimestamp),
-            "Invalid timestamp"
-        );
-
+        
+        // Validate timestamp using standardized parsing
+        uint256 paymentTimestamp = DateParsing._dateStringToTimestamp(paymentDetails.timestampString) + timestampBuffer;
+        require(paymentTimestamp >= _verifyPaymentData.intentTimestamp, "Incorrect payment timestamp");
+        
         // Validate currency is supported
-        require(isCurrency[data.fiatCurrency], "Unsupported currency");
-
-        return true;
+        require(isCurrency[_verifyPaymentData.fiatCurrency], "Unsupported currency");
     }
 
     /**
-     * @notice Generates intent hash for the payment
-     * @param paymentDetails Payment information
-     * @param data Verification request data
-     * @return intentHash Unique hash for this payment intent
+     * @notice Decodes witness addresses from deposit data
+     * @param _data Encoded witness addresses
+     * @return witnesses Array of witness addresses
      */
-    function _generateIntentHash(
-        RevolutPaymentDetails memory paymentDetails,
-        VerifyPaymentData calldata data
-    ) internal pure returns (bytes32 intentHash) {
-        return keccak256(abi.encodePacked(
-            paymentDetails.transactionId,
-            paymentDetails.amount,
-            paymentDetails.recipient,
-            paymentDetails.timestamp,
-            data.intentAmount,
-            data.depositToken
-        ));
+    function _decodeDepositData(bytes calldata _data) internal pure returns (address[] memory witnesses) {
+        witnesses = abi.decode(_data, (address[]));
     }
 
-    /**
-     * @notice Parses amount string to uint256 with proper decimal handling
-     * @param amountStr String representation of amount
-     * @return amount Amount as uint256 (scaled to 18 decimals)
-     */
-    function _parseAmountString(string memory amountStr)
-        internal
-        pure
-        returns (uint256 amount)
-    {
-        // Handle negative amounts (remove minus sign)
-        bytes memory amountBytes = bytes(amountStr);
-        uint256 startIndex = 0;
-        if (amountBytes.length > 0 && amountBytes[0] == '-') {
-            startIndex = 1;
-        }
-        
-        uint256 result = 0;
-        uint256 decimals = 0;
-        bool decimalFound = false;
-        
-        for (uint256 i = startIndex; i < amountBytes.length; i++) {
-            if (amountBytes[i] == '.') {
-                decimalFound = true;
-                continue;
-            }
-            
-            require(amountBytes[i] >= '0' && amountBytes[i] <= '9', "Invalid amount format");
-            
-            result = result * 10 + (uint8(amountBytes[i]) - 48);
-            
-            if (decimalFound) {
-                decimals++;
-            }
-        }
-        
-        // Scale to 18 decimals
-        require(decimals <= 18, "Too many decimal places");
-        return result * (10 ** (18 - decimals));
-    }
-
-    /**
-     * @notice Checks if timestamp is within valid range
-     * @param paymentTimestamp Timestamp from payment proof
-     * @param intentTimestamp Timestamp from intent
-     * @return valid Whether timestamp is acceptable
-     */
-    function _isTimestampValid(uint256 paymentTimestamp, uint256 intentTimestamp)
-        internal
-        pure
-        returns (bool valid)
-    {
-        // Allow 1 hour buffer before and after intent timestamp
-        uint256 buffer = 3600; // 1 hour in seconds
-        return paymentTimestamp >= intentTimestamp - buffer &&
-               paymentTimestamp <= intentTimestamp + buffer;
-    }
-
-    /**
-     * @notice Add a nullifier to prevent replay attacks
-     * @param nullifier The nullifier to add
-     */
-    function _addNullifier(string memory nullifier) internal {
-        bytes32 nullifierHash = keccak256(bytes(nullifier));
-        nullifierRegistry.addNullifier(nullifierHash);
-    }
-
-    /**
-     * @notice Parse amount from 18 decimals to token decimals (like other verifiers)
-     * @param amount Amount in 18 decimals 
-     * @param tokenDecimals Target token decimals
-     * @return Amount scaled to token decimals
-     */
-    function _parseAmountToTokenDecimals(uint256 amount, uint8 tokenDecimals) 
-        internal 
-        pure 
-        returns (uint256) 
-    {
-        if (tokenDecimals >= 18) {
-            return amount * (10 ** (tokenDecimals - 18));
-        } else {
-            return amount / (10 ** (18 - tokenDecimals));
-        }
-    }
 }
 
-/**
- * @notice Structure representing Revolut payment details
- */
-struct RevolutPaymentDetails {
-    string transactionId;
-    string state;
-    uint256 amount;
-    string recipient;
-    uint256 timestamp;
-}

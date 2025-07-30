@@ -157,14 +157,18 @@ export default class DeployHelper {
   public async deployRevolutApiVerifier(
     escrow: Address,
     nullifierRegistry: Address,
-    reclaimAttestor: Address
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
   ): Promise<RevolutApiVerifier> {
     return await new RevolutApiVerifier__factory(
       this._deployerSigner
     ).deploy(
       escrow,
       nullifierRegistry,
-      reclaimAttestor
+      timestampBuffer,
+      currencies,
+      providerHashes
     );
   }
 
