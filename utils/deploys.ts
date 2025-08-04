@@ -31,7 +31,9 @@ import {
   PostIntentHookRegistry,
   RelayerRegistry,
   OrchestratorMock,
-  EscrowRegistry
+  EscrowRegistry,
+  BaseGenericPaymentVerifier,
+  GenericVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -60,6 +62,8 @@ import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/cont
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
+import { BaseGenericPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
+import { GenericVerifier__factory } from "../typechain/factories/contracts/verifiers";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -362,5 +366,18 @@ export default class DeployHelper {
 
   public async deployEscrowRegistry(): Promise<EscrowRegistry> {
     return await new EscrowRegistry__factory(this._deployerSigner).deploy();
+  }
+
+
+  public async deployGenericVerifier(
+    escrow: Address,
+    nullifierRegistry: Address,
+    minWitnessSignatures: BigNumber
+  ): Promise<GenericVerifier> {
+    return await new GenericVerifier__factory(this._deployerSigner).deploy(
+      escrow,
+      nullifierRegistry,
+      minWitnessSignatures
+    );
   }
 }

@@ -310,82 +310,60 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
     }
     
     /**
-     * TODO: cleanup
      * Verifies that signatures meet the required threshold from accepted witnesses
+     * 
      * @param _messageHash The hash of the message that was signed
-     * @param _signatures Array of signatures to verify
+     * @param _signatures Array of signatures (must have at least minWitnessSignatures)
      * @param _witnesses Array of accepted witness addresses
-     * @param _requiredThreshold Minimum number of valid witness signatures required
-     * @return Whether the threshold is met
+     * @return bool Whether the threshold is met
      */
     function _verifyWitnessSignatures(
         bytes32 _messageHash,
         bytes[] memory _signatures,
-        address[] memory _witnesses,
-        uint256 _requiredThreshold
+        address[] memory _witnesses
     )
         internal
         view
         returns (bool)
     {
-        require(_requiredThreshold > 0, "BaseGenericPaymentVerifier: Required threshold must be greater than 0");
-        require(_requiredThreshold <= _witnesses.length, "BaseGenericPaymentVerifier: Required threshold must be less than or equal to number of witnesses");
-        require(_signatures.length > 0, "BaseGenericPaymentVerifier: No signatures");
+        require(_signatures.length >= minWitnessSignatures, "BaseGenericPaymentVerifier: Not enough signatures provided");
+        require(minWitnessSignatures <= _witnesses.length, "BaseGenericPaymentVerifier: Required threshold exceeds number of witnesses");
         
         // Convert to Ethereum signed message hash
         bytes32 ethSignedMessageHash = _messageHash.toEthSignedMessageHash();
         
-        // Recover signers from signatures
-        address[] memory signers = new address[](_signatures.length);
-        uint256 validSigners = 0;
-        
-        for (uint256 i = 0; i < _signatures.length; i++) {
-            address signer = ECDSA.recover(ethSignedMessageHash, _signatures[i]);
-            if (signer != address(0)) {
-                signers[validSigners] = signer;
-                validSigners++;
-            }
-        }
-        
-        require(validSigners >= _requiredThreshold, "BaseGenericPaymentVerifier: Fewer signatures than required threshold");
-        
         // Track unique signers using an array
-        address[] memory seenSigners = new address[](validSigners);
+        address[] memory seenSigners = new address[](_witnesses.length);
         uint256 validWitnessSignatures = 0;
         
-        // Count how many signers are accepted witnesses, skipping duplicates
-        for (uint256 i = 0; i < validSigners; i++) {
-            address currSigner = signers[i];
+        // Check each signature to find which witness signed it
+        for (uint256 i = 0; i < _signatures.length; i++) {
+            bool foundWitness = false;
             
-            // Skip if we've already seen this signer
-            if (seenSigners.contains(currSigner)) {
-                continue;
-            }
-            
-            // Check if signer is an accepted witness (supports both EOA and smart contract wallets)
-            bool isWitness = false;
-            if (_witnesses.contains(currSigner)) {
-                isWitness = true;
-            } else {
-                // Check smart contract signature validity for each witness
-                for (uint256 j = 0; j < _witnesses.length; j++) {
-                    if (_witnesses[j].isValidSignatureNow(ethSignedMessageHash, _signatures[i])) {
-                        currSigner = _witnesses[j]; // Use witness address for tracking
-                        isWitness = true;
+            // Check if any witness validates this signature
+            for (uint256 j = 0; j < _witnesses.length; j++) {
+                if (_witnesses[j].isValidSignatureNow(ethSignedMessageHash, _signatures[i])) {
+                    // Check if we've already counted this witness
+                    if (!seenSigners.contains(_witnesses[j])) {
+                        seenSigners[validWitnessSignatures] = _witnesses[j];
+                        validWitnessSignatures++;
+                        foundWitness = true;
+                        
+                        // Early exit if threshold is met
+                        if (validWitnessSignatures >= minWitnessSignatures) {
+                            return true;
+                        }
                         break;
                     }
                 }
             }
             
-            if (isWitness) {
-                seenSigners[validWitnessSignatures] = currSigner;
-                validWitnessSignatures++;
-            }
+            require(foundWitness, "BaseGenericPaymentVerifier: Invalid signature");
         }
         
         // Check threshold
         require(
-            validWitnessSignatures >= _requiredThreshold,
+            validWitnessSignatures >= minWitnessSignatures,
             "BaseGenericPaymentVerifier: Not enough valid witness signatures"
         );
         

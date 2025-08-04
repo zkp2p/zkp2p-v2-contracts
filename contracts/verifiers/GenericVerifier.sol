@@ -91,7 +91,7 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
         
         // Verify witness signatures meet threshold
         require(
-            _verifyWitnessSignatures(messageHash, paymentDetails.signatures, witnesses, minWitnessSignatures),
+            _verifyWitnessSignatures(messageHash, paymentDetails.signatures, witnesses),
             "GenericVerifier: Invalid witness signatures"
         );
         
