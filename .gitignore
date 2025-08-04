@@ -14,3 +14,5 @@ artifacts
 yarn-error.log
 
 .yarn/install-state.gz
+
+*CLAUDE.md
