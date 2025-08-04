@@ -123,32 +123,28 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
     /**
      * Adds a supported currency for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currency The currency code (e.g., "USD", "EUR")
+     * @param _currencyCode The currency code hash (e.g., keccak256("USD"), keccak256("EUR"))
      */
-    function addCurrency(bytes32 _paymentMethod, string memory _currency) public onlyOwner {
-        bytes32 currencyCode = keccak256(abi.encodePacked(_currency));
-        
+    function addCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) public onlyOwner {
         require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
-        require(!paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BaseGenericPaymentVerifier: Currency already supported");
+        require(!paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseGenericPaymentVerifier: Currency already supported");
         
-        paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = true;
-        paymentMethodConfig[_paymentMethod].currencies.push(currencyCode);
-        emit CurrencyAdded(_paymentMethod, currencyCode);
+        paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = true;
+        paymentMethodConfig[_paymentMethod].currencies.push(_currencyCode);
+        emit CurrencyAdded(_paymentMethod, _currencyCode);
     }
     
     /**
      * Removes a supported currency for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currency The currency code
+     * @param _currencyCode The currency code hash
      */
-    function removeCurrency(bytes32 _paymentMethod, string memory _currency) external onlyOwner {
-        bytes32 currencyCode = keccak256(abi.encodePacked(_currency));
+    function removeCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) external onlyOwner {
+        require(paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseGenericPaymentVerifier: Currency not supported");
         
-        require(paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BaseGenericPaymentVerifier: Currency not supported");
-        
-        paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = false;
-        paymentMethodConfig[_paymentMethod].currencies.removeStorage(currencyCode);
-        emit CurrencyRemoved(_paymentMethod, currencyCode);
+        paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = false;
+        paymentMethodConfig[_paymentMethod].currencies.removeStorage(_currencyCode);
+        emit CurrencyRemoved(_paymentMethod, _currencyCode);
     }
     
     /**
@@ -186,17 +182,17 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _paymentMethod The payment method hash
      * @param _timestampBuffer Payment method-specific timestamp buffer in seconds
      * @param _processorHashes Array of processor hashes to authorize
-     * @param _currencies Array of currency codes to support
+     * @param _currencyCodes Array of currency code hashes to support
      */
     function addPaymentMethod(
         bytes32 _paymentMethod,
         uint256 _timestampBuffer,
         bytes32[] calldata _processorHashes,
-        string[] calldata _currencies
+        bytes32[] calldata _currencyCodes
     ) external onlyOwner {
         require(!paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method already exists");
         require(_processorHashes.length > 0, "BaseGenericPaymentVerifier: Must provide at least one processor");
-        require(_currencies.length > 0, "BaseGenericPaymentVerifier: Must provide at least one currency");
+        require(_currencyCodes.length > 0, "BaseGenericPaymentVerifier: Must provide at least one currency");
         
         // Initialize payment method
         paymentMethodConfig[_paymentMethod].initialized = true;
@@ -209,8 +205,8 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
         }
         
         // Add currencies
-        for (uint256 i = 0; i < _currencies.length; i++) {
-            addCurrency(_paymentMethod, _currencies[i]);
+        for (uint256 i = 0; i < _currencyCodes.length; i++) {
+            addCurrency(_paymentMethod, _currencyCodes[i]);
         }
         
         emit PaymentMethodAdded(_paymentMethod, _timestampBuffer);
@@ -249,12 +245,11 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
     /**
      * Checks if a currency is supported for a payment method
      * @param _paymentMethod The payment method hash
-     * @param _currency The currency code to check
+     * @param _currencyCode The currency code hash to check
      * @return Whether the currency is supported
      */
-    function isCurrency(bytes32 _paymentMethod, string memory _currency) external view returns (bool) {
-        bytes32 currencyCode = keccak256(abi.encodePacked(_currency));
-        return paymentMethodConfig[_paymentMethod].currencyExists[currencyCode];
+    function isCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) external view returns (bool) {
+        return paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode];
     }
     
     /**
@@ -344,7 +339,14 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
             for (uint256 j = 0; j < _witnesses.length; j++) {
                 if (_witnesses[j].isValidSignatureNow(ethSignedMessageHash, _signatures[i])) {
                     // Check if we've already counted this witness
-                    if (!seenSigners.contains(_witnesses[j])) {
+                    bool alreadySeen = false;
+                    for (uint256 k = 0; k < validWitnessSignatures; k++) {
+                        if (seenSigners[k] == _witnesses[j]) {
+                            alreadySeen = true;
+                            break;
+                        }
+                    }
+                    if (!alreadySeen) {
                         seenSigners[validWitnessSignatures] = _witnesses[j];
                         validWitnessSignatures++;
                         foundWitness = true;

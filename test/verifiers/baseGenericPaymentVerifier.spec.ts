@@ -16,7 +16,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("BaseGenericPaymentVerifier", () => {
+describe("BaseGenericPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -29,6 +29,9 @@ describe.only("BaseGenericPaymentVerifier", () => {
   const venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
   const paypalPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("paypal"));
   const minWitnessSignatures = 2;
+  const usdCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USD"));
+  const eurCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("EUR"));
+  const gbpCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GBP"));
 
   beforeEach(async () => {
     [
@@ -177,7 +180,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
         "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8",
         "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"
       ];
-      subjectCurrencies = ["USD", "EUR"];
+      subjectCurrencies = [usdCurrencyHash, eurCurrencyHash];
       subjectCaller = owner;
     });
 
@@ -216,8 +219,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
       await subject();
       
       const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
-      const expectedCurrencyHashes = subjectCurrencies.map(curr => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(curr)));
-      expect(currencies).to.deep.eq(expectedCurrencyHashes);
+      expect(currencies).to.deep.eq(subjectCurrencies);
       
       for (const currency of subjectCurrencies) {
         const isSupported = await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, currency);
@@ -243,9 +245,8 @@ describe.only("BaseGenericPaymentVerifier", () => {
       const tx = await subject();
       
       for (const currency of subjectCurrencies) {
-        const currencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(currency));
         await expect(tx).to.emit(baseGenericPaymentVerifier, "CurrencyAdded")
-          .withArgs(subjectPaymentMethod, currencyHash);
+          .withArgs(subjectPaymentMethod, currency);
       }
     });
 
@@ -301,7 +302,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
-        ["USD"]
+        [usdCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
@@ -356,7 +357,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
-        ["USD"]
+        [usdCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
@@ -437,7 +438,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
         venmoPaymentMethodHash,
         BigNumber.from(30),
         [subjectProcessorHash],
-        ["USD"]
+        [usdCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
@@ -495,11 +496,11 @@ describe.only("BaseGenericPaymentVerifier", () => {
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
-        ["USD"]
+        [usdCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
-      subjectCurrency = "EUR";
+      subjectCurrency = eurCurrencyHash;
       subjectCaller = owner;
     });
 
@@ -514,14 +515,12 @@ describe.only("BaseGenericPaymentVerifier", () => {
       expect(isSupported).to.be.true;
       
       const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
-      const currencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(subjectCurrency));
-      expect(currencies).to.contain(currencyHash);
+      expect(currencies).to.contain(subjectCurrency);
     });
 
     it("should emit the CurrencyAdded event", async () => {
-      const currencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(subjectCurrency));
       await expect(subject()).to.emit(baseGenericPaymentVerifier, "CurrencyAdded")
-        .withArgs(subjectPaymentMethod, currencyHash);
+        .withArgs(subjectPaymentMethod, subjectCurrency);
     });
 
     describe("when payment method does not exist", async () => {
@@ -536,7 +535,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
 
     describe("when currency already exists", async () => {
       beforeEach(async () => {
-        subjectCurrency = "USD"; // Already added in setup
+        subjectCurrency = usdCurrencyHash; // Already added in setup
       });
 
       it("should revert", async () => {
@@ -561,7 +560,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectCurrency = "USD";
+      subjectCurrency = usdCurrencyHash;
       
       // Add a payment method with currency
       await baseGenericPaymentVerifier.addPaymentMethod(
@@ -586,19 +585,17 @@ describe.only("BaseGenericPaymentVerifier", () => {
       expect(isSupported).to.be.false;
       
       const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
-      const currencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(subjectCurrency));
-      expect(currencies).to.not.contain(currencyHash);
+      expect(currencies).to.not.contain(subjectCurrency);
     });
 
     it("should emit the CurrencyRemoved event", async () => {
-      const currencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(subjectCurrency));
       await expect(subject()).to.emit(baseGenericPaymentVerifier, "CurrencyRemoved")
-        .withArgs(subjectPaymentMethod, currencyHash);
+        .withArgs(subjectPaymentMethod, subjectCurrency);
     });
 
     describe("when currency is not supported", async () => {
       beforeEach(async () => {
-        subjectCurrency = "EUR";
+        subjectCurrency = eurCurrencyHash;
       });
 
       it("should revert", async () => {
@@ -630,7 +627,7 @@ describe.only("BaseGenericPaymentVerifier", () => {
           "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8",
           "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"
         ],
-        ["USD", "EUR"]
+        [usdCurrencyHash, eurCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
@@ -662,11 +659,11 @@ describe.only("BaseGenericPaymentVerifier", () => {
     });
 
     it("should remove all currencies", async () => {
-      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, "USD")).to.be.true;
+      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.true;
       
       await subject();
       
-      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, "USD")).to.be.false;
+      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.false;
     });
 
     it("should emit the PaymentMethodRemoved event", async () => {
@@ -702,14 +699,14 @@ describe.only("BaseGenericPaymentVerifier", () => {
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
-        ["USD"]
+        [usdCurrencyHash]
       );
       
       await baseGenericPaymentVerifier.addPaymentMethod(
         paypalPaymentMethodHash,
         BigNumber.from(60),
         ["0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"],
-        ["EUR"]
+        [eurCurrencyHash]
       );
     });
 
@@ -763,8 +760,8 @@ describe.only("BaseGenericPaymentVerifier", () => {
         const venmoCurrencies = await baseGenericPaymentVerifier.getCurrencies(venmoPaymentMethodHash);
         const paypalCurrencies = await baseGenericPaymentVerifier.getCurrencies(paypalPaymentMethodHash);
         
-        expect(venmoCurrencies).to.deep.eq([ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USD"))]);
-        expect(paypalCurrencies).to.deep.eq([ethers.utils.keccak256(ethers.utils.toUtf8Bytes("EUR"))]);
+        expect(venmoCurrencies).to.deep.eq([usdCurrencyHash]);
+        expect(paypalCurrencies).to.deep.eq([eurCurrencyHash]);
       });
 
       describe("when payment method does not exist", async () => {

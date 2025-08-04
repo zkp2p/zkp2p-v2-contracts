@@ -20,7 +20,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("GenericVerifier", () => {
+describe("GenericVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -37,6 +37,9 @@ describe.only("GenericVerifier", () => {
 
   const minWitnessSignatures = 1;
   const venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+  const usdCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USD"));
+  const eurCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("EUR"));
+  const gbpCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GBP"));
 
   // Sample payment data based on provided proof
   const samplePaymentDetails = {
@@ -80,7 +83,7 @@ describe.only("GenericVerifier", () => {
       venmoPaymentMethodHash,
       BigNumber.from(30000), // 30 second timestamp buffer (in milliseconds)
       [samplePaymentDetails.processorProviderHash],
-      ["USD"]
+      [usdCurrencyHash]
     );
   });
 
@@ -636,6 +639,295 @@ describe.only("GenericVerifier", () => {
       });
     });
 
+    describe("when minWitnessSignatures exceeds number of witnesses", async () => {
+      beforeEach(async () => {
+        // Set minWitnessSignatures to 3
+        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        
+        // But only provide 2 witnesses
+        const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+        witnesses = [hardhatWitness, witness1.address];
+        
+        // Need to recreate message with correct receiverId
+        const testPayeeDetails = "test_payee_id";
+        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+        
+        const paymentDetailsForTest = {
+          ...samplePaymentDetails,
+          receiverId: hashedPayeeDetails
+        };
+        
+        // Recreate message hash
+        const encoded = ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
+          [
+            paymentDetailsForTest.processorProviderHash,
+            paymentDetailsForTest.paymentMethod,
+            paymentDetailsForTest.intentHash,
+            paymentDetailsForTest.receiverId,
+            paymentDetailsForTest.amount,
+            paymentDetailsForTest.timestamp,
+            paymentDetailsForTest.paymentId,
+            paymentDetailsForTest.currency
+          ]
+        );
+        const newMessageHash = ethers.utils.keccak256(encoded);
+        
+        // Get 3 signatures (even though we only have 2 witnesses)
+        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        
+        const paymentDetailsWithSignatures = {
+          ...paymentDetailsForTest,
+          signatures: [signature1, signature2, signature3]
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string)"],
+          [[
+            paymentDetailsWithSignatures.processorProviderHash,
+            paymentDetailsWithSignatures.signatures,
+            paymentDetailsWithSignatures.paymentMethod,
+            paymentDetailsWithSignatures.intentHash,
+            paymentDetailsWithSignatures.receiverId,
+            paymentDetailsWithSignatures.amount,
+            paymentDetailsWithSignatures.timestamp,
+            paymentDetailsWithSignatures.paymentId,
+            paymentDetailsWithSignatures.currency
+          ]]
+        );
+
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [witnesses]
+        );
+        
+        subjectPayeeDetails = testPayeeDetails;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not enough witnesses");
+      });
+    });
+
+
+    describe("when same witness signs multiple times", async () => {
+      beforeEach(async () => {
+        // Use the hardhat witness for multiple signatures
+        const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+        witnesses = [hardhatWitness, witness1.address, witness2.address];
+        
+        // Set minWitnessSignatures to 3
+        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        
+        // Need to recreate message with correct receiverId
+        const testPayeeDetails = "test_payee_id";
+        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+        
+        const paymentDetailsForTest = {
+          ...samplePaymentDetails,
+          receiverId: hashedPayeeDetails
+        };
+        
+        // Recreate message hash
+        const encoded = ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
+          [
+            paymentDetailsForTest.processorProviderHash,
+            paymentDetailsForTest.paymentMethod,
+            paymentDetailsForTest.intentHash,
+            paymentDetailsForTest.receiverId,
+            paymentDetailsForTest.amount,
+            paymentDetailsForTest.timestamp,
+            paymentDetailsForTest.paymentId,
+            paymentDetailsForTest.currency
+          ]
+        );
+        const newMessageHash = ethers.utils.keccak256(encoded);
+        
+        // Get signatures from all witnesses
+        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        
+        // Include duplicate signature from first witness (4 signatures total but only 3 unique)
+        const paymentDetailsWithSignatures = {
+          ...paymentDetailsForTest,
+          signatures: [signature1, signature2, signature1, signature3] // First signature duplicated
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string)"],
+          [[
+            paymentDetailsWithSignatures.processorProviderHash,
+            paymentDetailsWithSignatures.signatures,
+            paymentDetailsWithSignatures.paymentMethod,
+            paymentDetailsWithSignatures.intentHash,
+            paymentDetailsWithSignatures.receiverId,
+            paymentDetailsWithSignatures.amount,
+            paymentDetailsWithSignatures.timestamp,
+            paymentDetailsWithSignatures.paymentId,
+            paymentDetailsWithSignatures.currency
+          ]]
+        );
+
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [witnesses]
+        );
+        
+        subjectPayeeDetails = testPayeeDetails;
+      });
+
+      it("should revert when duplicate signatures are provided", async () => {
+        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid signature");
+      });
+    });
+
+    describe("when valid signatures don't meet threshold", async () => {
+      beforeEach(async () => {
+        // Set minWitnessSignatures to 3
+        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        
+        // Provide 3 witnesses
+        const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+        witnesses = [hardhatWitness, witness1.address, witness2.address];
+        
+        // Need to recreate message with correct receiverId
+        const testPayeeDetails = "test_payee_id";
+        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+        
+        const paymentDetailsForTest = {
+          ...samplePaymentDetails,
+          receiverId: hashedPayeeDetails
+        };
+        
+        // Recreate message hash
+        const encoded = ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
+          [
+            paymentDetailsForTest.processorProviderHash,
+            paymentDetailsForTest.paymentMethod,
+            paymentDetailsForTest.intentHash,
+            paymentDetailsForTest.receiverId,
+            paymentDetailsForTest.amount,
+            paymentDetailsForTest.timestamp,
+            paymentDetailsForTest.paymentId,
+            paymentDetailsForTest.currency
+          ]
+        );
+        const newMessageHash = ethers.utils.keccak256(encoded);
+        
+        // Only get 2 valid signatures (when 3 are required)
+        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        
+        const paymentDetailsWithSignatures = {
+          ...paymentDetailsForTest,
+          signatures: [signature1, signature2] // Only 2 signatures when 3 are required
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string)"],
+          [[
+            paymentDetailsWithSignatures.processorProviderHash,
+            paymentDetailsWithSignatures.signatures,
+            paymentDetailsWithSignatures.paymentMethod,
+            paymentDetailsWithSignatures.intentHash,
+            paymentDetailsWithSignatures.receiverId,
+            paymentDetailsWithSignatures.amount,
+            paymentDetailsWithSignatures.timestamp,
+            paymentDetailsWithSignatures.paymentId,
+            paymentDetailsWithSignatures.currency
+          ]]
+        );
+
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [witnesses]
+        );
+        
+        subjectPayeeDetails = testPayeeDetails;
+      });
+
+      it("should revert with not enough signatures error", async () => {
+        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not enough signatures provided");
+      });
+    });
+
+    describe("when exactly meeting threshold without early exit", async () => {
+      beforeEach(async () => {
+        // Set minWitnessSignatures to 2
+        await verifier.connect(owner.wallet).setMinWitnessSignatures(2);
+        
+        // Provide exactly 2 witnesses
+        const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+        witnesses = [hardhatWitness, witness1.address];
+        
+        // Need to recreate message with correct receiverId
+        const testPayeeDetails = "test_payee_id";
+        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+        
+        const paymentDetailsForTest = {
+          ...samplePaymentDetails,
+          receiverId: hashedPayeeDetails
+        };
+        
+        // Recreate message hash
+        const encoded = ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
+          [
+            paymentDetailsForTest.processorProviderHash,
+            paymentDetailsForTest.paymentMethod,
+            paymentDetailsForTest.intentHash,
+            paymentDetailsForTest.receiverId,
+            paymentDetailsForTest.amount,
+            paymentDetailsForTest.timestamp,
+            paymentDetailsForTest.paymentId,
+            paymentDetailsForTest.currency
+          ]
+        );
+        const newMessageHash = ethers.utils.keccak256(encoded);
+        
+        // Get exactly 2 valid signatures
+        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        
+        const paymentDetailsWithSignatures = {
+          ...paymentDetailsForTest,
+          signatures: [signature1, signature2] // Exactly 2 signatures to meet threshold
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string)"],
+          [[
+            paymentDetailsWithSignatures.processorProviderHash,
+            paymentDetailsWithSignatures.signatures,
+            paymentDetailsWithSignatures.paymentMethod,
+            paymentDetailsWithSignatures.intentHash,
+            paymentDetailsWithSignatures.receiverId,
+            paymentDetailsWithSignatures.amount,
+            paymentDetailsWithSignatures.timestamp,
+            paymentDetailsWithSignatures.paymentId,
+            paymentDetailsWithSignatures.currency
+          ]]
+        );
+
+        subjectDepositData = ethers.utils.defaultAbiCoder.encode(
+          ['address[]'],
+          [witnesses]
+        );
+        
+        subjectPayeeDetails = testPayeeDetails;
+      });
+
+      it("should succeed by meeting exact threshold", async () => {
+        const result = await subjectCallStatic();
+        expect(result.success).to.be.true;
+      });
+    });
+
     describe("integration with different conversion rates", async () => {
       describe("when conversion rate makes release amount smaller", async () => {
         beforeEach(async () => {
@@ -675,7 +967,7 @@ describe.only("GenericVerifier", () => {
         paypalPaymentMethodHash,
         BigNumber.from(60000), // 60 second timestamp buffer for PayPal
         ["0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"], // Different processor
-        ["USD", "EUR", "GBP"] // Multiple currencies
+        [usdCurrencyHash, eurCurrencyHash, gbpCurrencyHash] // Multiple currencies
       );
     });
 
