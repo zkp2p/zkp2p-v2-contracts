@@ -87,7 +87,15 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.TRY,
   Currency.PLN,
   Currency.CHF,
-  Currency.ZAR
+  Currency.ZAR,
+  // 29 July 2025
+  Currency.CZK,
+  Currency.CNY,
+  Currency.DKK,
+  Currency.HUF,
+  Currency.NOK,
+  Currency.RON,
+  Currency.SEK,
 ];
 
 export const REVOLUT_OLD_APPCLIP_PROVIDER_HASHES = [
