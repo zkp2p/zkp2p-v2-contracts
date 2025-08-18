@@ -93,18 +93,23 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
     
     /**
-     * Authorizes a processor hash for a specific payment method
+     * Authorizes processor hashes for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _processorHash The processor provider hash to authorize
+     * @param _processorHashes Array of processor provider hashes to authorize
      */
-    function addProcessorHash(bytes32 _paymentMethod, bytes32 _processorHash) public onlyOwner {
+    function addProcessorHashes(bytes32 _paymentMethod, bytes32[] calldata _processorHashes) public onlyOwner {
         require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
-        require(_processorHash != bytes32(0), "BaseUnifiedPaymentVerifier: Invalid processor hash");
-        require(!paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseUnifiedPaymentVerifier: Already authorized");
+        require(_processorHashes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one processor");
         
-        paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash] = true;
-        paymentMethodConfig[_paymentMethod].processorHashes.push(_processorHash);
-        emit ProcessorHashAdded(_paymentMethod, _processorHash);
+        for (uint256 i = 0; i < _processorHashes.length; i++) {
+            bytes32 processorHash = _processorHashes[i];
+            require(processorHash != bytes32(0), "BaseUnifiedPaymentVerifier: Invalid processor hash");
+            require(!paymentMethodConfig[_paymentMethod].processorHashExists[processorHash], "BaseUnifiedPaymentVerifier: Already authorized");
+            
+            paymentMethodConfig[_paymentMethod].processorHashExists[processorHash] = true;
+            paymentMethodConfig[_paymentMethod].processorHashes.push(processorHash);
+            emit ProcessorHashAdded(_paymentMethod, processorHash);
+        }
     }
     
     /**
@@ -199,10 +204,8 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
         paymentMethodConfig[_paymentMethod].timestampBuffer = _timestampBuffer;
         paymentMethods.push(_paymentMethod);
         
-        // Add processors
-        for (uint256 i = 0; i < _processorHashes.length; i++) {
-            addProcessorHash(_paymentMethod, _processorHashes[i]);
-        }
+        // Add processors using batch function
+        addProcessorHashes(_paymentMethod, _processorHashes);
         
         // Add currencies
         for (uint256 i = 0; i < _currencyCodes.length; i++) {

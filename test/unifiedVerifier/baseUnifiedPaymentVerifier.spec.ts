@@ -346,9 +346,9 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     });
   });
 
-  describe("#addProcessorHash", async () => {
+  describe("#addProcessorHashes", async () => {
     let subjectPaymentMethod: string;
-    let subjectProcessorHash: string;
+    let subjectProcessorHashes: string[];
     let subjectCaller: Account;
 
     beforeEach(async () => {
@@ -361,27 +361,61 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
-      subjectProcessorHash = "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9";
+      subjectProcessorHashes = [
+        "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9",
+        "0xe46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729aa",
+        "0xf46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729ab"
+      ];
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addProcessorHashes(subjectPaymentMethod, subjectProcessorHashes);
     }
 
-    it("should add the processor hash", async () => {
+    it("should add multiple processor hashes", async () => {
       await subject();
 
-      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      for (const hash of subjectProcessorHashes) {
+        const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, hash);
+        expect(isAuthorized).to.be.true;
+      }
+
+      const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
+      for (const hash of subjectProcessorHashes) {
+        expect(processorHashes).to.contain(hash);
+      }
+    });
+
+    it("should add a single processor hash", async () => {
+      subjectProcessorHashes = ["0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"];
+      
+      await subject();
+
+      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHashes[0]);
       expect(isAuthorized).to.be.true;
 
       const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
-      expect(processorHashes).to.contain(subjectProcessorHash);
+      expect(processorHashes).to.contain(subjectProcessorHashes[0]);
     });
 
-    it("should emit the ProcessorHashAdded event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashAdded")
-        .withArgs(subjectPaymentMethod, subjectProcessorHash);
+    it("should emit ProcessorHashAdded events for each hash", async () => {
+      const tx = await subject();
+
+      for (const hash of subjectProcessorHashes) {
+        await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashAdded")
+          .withArgs(subjectPaymentMethod, hash);
+      }
+    });
+
+    describe("when empty array is provided", async () => {
+      beforeEach(async () => {
+        subjectProcessorHashes = [];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
+      });
     });
 
     describe("when payment method does not exist", async () => {
@@ -396,7 +430,11 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     describe("when processor hash is zero", async () => {
       beforeEach(async () => {
-        subjectProcessorHash = ethers.constants.HashZero;
+        subjectProcessorHashes = [
+          "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9",
+          ethers.constants.HashZero,
+          "0xe46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729aa"
+        ];
       });
 
       it("should revert", async () => {
@@ -406,7 +444,11 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     describe("when processor hash already exists", async () => {
       beforeEach(async () => {
-        subjectProcessorHash = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"; // Already added in setup
+        subjectProcessorHashes = [
+          "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9",
+          "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8", // Already added in setup
+          "0xe46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729aa"
+        ];
       });
 
       it("should revert", async () => {
