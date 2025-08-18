@@ -113,16 +113,21 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
     
     /**
-     * Revokes a processor hash for a specific payment method
+     * Revokes processor hashes for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _processorHash The processor provider hash to revoke
+     * @param _processorHashes Array of processor provider hashes to revoke
      */
-    function removeProcessorHash(bytes32 _paymentMethod, bytes32 _processorHash) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseUnifiedPaymentVerifier: Not authorized");
+    function removeProcessorHashes(bytes32 _paymentMethod, bytes32[] calldata _processorHashes) external onlyOwner {
+        require(_processorHashes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one processor");
         
-        paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash] = false;
-        paymentMethodConfig[_paymentMethod].processorHashes.removeStorage(_processorHash);
-        emit ProcessorHashRemoved(_paymentMethod, _processorHash);
+        for (uint256 i = 0; i < _processorHashes.length; i++) {
+            bytes32 processorHash = _processorHashes[i];
+            require(paymentMethodConfig[_paymentMethod].processorHashExists[processorHash], "BaseUnifiedPaymentVerifier: Not authorized");
+            
+            paymentMethodConfig[_paymentMethod].processorHashExists[processorHash] = false;
+            paymentMethodConfig[_paymentMethod].processorHashes.removeStorage(processorHash);
+            emit ProcessorHashRemoved(_paymentMethod, processorHash);
+        }
     }
     
     /**

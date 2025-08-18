@@ -467,48 +467,101 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     });
   });
 
-  describe("#removeProcessorHash", async () => {
+  describe("#removeProcessorHashes", async () => {
     let subjectPaymentMethod: string;
-    let subjectProcessorHash: string;
+    let subjectProcessorHashes: string[];
     let subjectCaller: Account;
+    let existingProcessorHashes: string[];
 
     beforeEach(async () => {
-      subjectProcessorHash = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8";
+      existingProcessorHashes = [
+        "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8",
+        "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9",
+        "0xe46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729aa",
+        "0xf46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729ab"
+      ];
 
-      // Add a payment method with processor hash
+      // Add a payment method with multiple processor hashes
       await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
-        [subjectProcessorHash],
+        existingProcessorHashes,
         [usdCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
+      subjectProcessorHashes = [
+        existingProcessorHashes[0],
+        existingProcessorHashes[2],
+        existingProcessorHashes[3]
+      ];
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeProcessorHashes(subjectPaymentMethod, subjectProcessorHashes);
     }
 
-    it("should remove the processor hash", async () => {
+    it("should remove multiple processor hashes in a single transaction", async () => {
       await subject();
 
-      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      // Check that removed hashes are no longer authorized
+      for (const hash of subjectProcessorHashes) {
+        const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, hash);
+        expect(isAuthorized).to.be.false;
+      }
+
+      // Check that non-removed hash is still authorized
+      const stillAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, existingProcessorHashes[1]);
+      expect(stillAuthorized).to.be.true;
+
+      // Check the processor hashes array
+      const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
+      for (const hash of subjectProcessorHashes) {
+        expect(processorHashes).to.not.contain(hash);
+      }
+      expect(processorHashes).to.contain(existingProcessorHashes[1]);
+    });
+
+    it("should remove a single processor hash (array with one element)", async () => {
+      subjectProcessorHashes = [existingProcessorHashes[0]];
+      
+      await subject();
+
+      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, existingProcessorHashes[0]);
       expect(isAuthorized).to.be.false;
 
       const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
-      expect(processorHashes).to.not.contain(subjectProcessorHash);
+      expect(processorHashes).to.not.contain(existingProcessorHashes[0]);
+      expect(processorHashes.length).to.eq(existingProcessorHashes.length - 1);
     });
 
-    it("should emit the ProcessorHashRemoved event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashRemoved")
-        .withArgs(subjectPaymentMethod, subjectProcessorHash);
+    it("should emit ProcessorHashRemoved events for each processor hash removed", async () => {
+      const tx = await subject();
+
+      for (const hash of subjectProcessorHashes) {
+        await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashRemoved")
+          .withArgs(subjectPaymentMethod, hash);
+      }
     });
 
-    describe("when processor hash is not authorized", async () => {
+    describe("when empty array is provided", async () => {
       beforeEach(async () => {
-        subjectProcessorHash = "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9";
+        subjectProcessorHashes = [];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
+      });
+    });
+
+    describe("when non-authorized processor hash is included", async () => {
+      beforeEach(async () => {
+        subjectProcessorHashes = [
+          existingProcessorHashes[0],
+          "0xa46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729ac", // Not authorized
+          existingProcessorHashes[1]
+        ];
       });
 
       it("should revert", async () => {
