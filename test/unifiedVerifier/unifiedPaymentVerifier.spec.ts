@@ -454,7 +454,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough signatures provided");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: req threshold exceeds signatures");
       });
     });
 
@@ -486,7 +486,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid signature");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: Not enough valid witness signatures");
       });
     });
 
@@ -619,7 +619,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: No witnesses provided");
+        await expect(subject()).to.be.revertedWith("BUPN: No witnesses provided");
       });
     });
 
@@ -635,7 +635,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Duplicate witnesses");
+        await expect(subject()).to.be.revertedWith("BUPN: Duplicate witnesses");
       });
     });
 
@@ -707,16 +707,16 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough witnesses");
+        await expect(subject()).to.be.revertedWith("BUPN: Not enough witnesses");
       });
     });
 
 
     describe("when same witness signs multiple times", async () => {
       beforeEach(async () => {
-        // Use the hardhat witness for multiple signatures
+        // Use only 2 witnesses but require 3 signatures
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-        witnesses = [hardhatWitness, witness1.address, witness2.address];
+        witnesses = [hardhatWitness, witness1.address];
 
         // Set minWitnessSignatures to 3
         await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
@@ -746,15 +746,14 @@ describe.only("UnifiedPaymentVerifier", () => {
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
 
-        // Get signatures from all witnesses
+        // Get signatures from only 2 witnesses
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
 
-        // Include duplicate signature from first witness (4 signatures total but only 3 unique)
+        // Include duplicate signatures to try to meet threshold of 3 (won't work because only 2 unique witnesses)
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
-          signatures: [signature1, signature2, signature1, signature3] // First signature duplicated
+          signatures: [signature1, signature2, signature1, signature2] // Both signatures duplicated
         };
 
         subjectProof = ethers.utils.defaultAbiCoder.encode(
@@ -781,7 +780,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert when duplicate signatures are provided", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid signature");
+        await expect(subject()).to.be.revertedWith("BUPN: Not enough witnesses");
       });
     });
 
@@ -852,7 +851,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert with not enough signatures error", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough signatures provided");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: req threshold exceeds signatures");
       });
     });
 

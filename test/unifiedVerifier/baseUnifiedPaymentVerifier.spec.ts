@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
-import { UnifiedPaymentVerifier, NullifierRegistry } from "@utils/contracts";
+import { BaseUnifiedPaymentVerifier, NullifierRegistry } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -21,7 +21,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
   let attacker: Account;
   let escrow: Account;
 
-  let BaseUnifiedPaymentVerifier: UnifiedPaymentVerifier;
+  let BaseUnifiedPaymentVerifier: BaseUnifiedPaymentVerifier;
   let nullifierRegistry: NullifierRegistry;
 
   let deployer: DeployHelper;
@@ -82,7 +82,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
             nullifierRegistry.address,
             BigNumber.from(minWitnessSignatures)
           )
-        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid escrow");
+        ).to.be.revertedWith("BUPN: Invalid escrow");
       });
     });
 
@@ -94,7 +94,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
             ethers.constants.AddressZero,
             BigNumber.from(minWitnessSignatures)
           )
-        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid nullifier registry");
+        ).to.be.revertedWith("BUPN: Invalid nullifier registry");
       });
     });
 
@@ -106,7 +106,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
             nullifierRegistry.address,
             BigNumber.from(0)
           )
-        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Min signatures must be > 0");
+        ).to.be.revertedWith("BUPN: Min signatures must be > 0");
       });
     });
   });
@@ -141,7 +141,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Min signatures must be > 0");
+        await expect(subject()).to.be.revertedWith("BUPN: Min signatures must be > 0");
       });
     });
 
@@ -151,7 +151,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Same value");
+        await expect(subject()).to.be.revertedWith("BUPN: Same value");
       });
     });
 
@@ -256,7 +256,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method already exists");
+        await expect(subject()).to.be.revertedWith("BUPN: Payment method already exists");
       });
     });
 
@@ -266,7 +266,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one processor");
       });
     });
 
@@ -276,7 +276,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one currency");
       });
     });
 
@@ -331,7 +331,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BUPN: Payment method does not exist");
       });
     });
 
@@ -389,7 +389,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     it("should add a single processor hash", async () => {
       subjectProcessorHashes = ["0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"];
-      
+
       await subject();
 
       const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHashes[0]);
@@ -414,7 +414,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one processor");
       });
     });
 
@@ -424,7 +424,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BUPN: Payment method does not exist");
       });
     });
 
@@ -438,7 +438,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid processor hash");
+        await expect(subject()).to.be.revertedWith("BUPN: Invalid processor hash");
       });
     });
 
@@ -452,7 +452,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Already authorized");
+        await expect(subject()).to.be.revertedWith("BUPN: Already authorized");
       });
     });
 
@@ -525,7 +525,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     it("should remove a single processor hash (array with one element)", async () => {
       subjectProcessorHashes = [existingProcessorHashes[0]];
-      
+
       await subject();
 
       const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, existingProcessorHashes[0]);
@@ -551,7 +551,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one processor");
       });
     });
 
@@ -565,7 +565,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not authorized");
+        await expect(subject()).to.be.revertedWith("BUPN: Not authorized");
       });
     });
 
@@ -622,7 +622,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     it("should add a single currency (array with one element)", async () => {
       subjectCurrencies = [eurCurrencyHash];
-      
+
       await subject();
 
       const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, eurCurrencyHash);
@@ -647,7 +647,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one currency");
       });
     });
 
@@ -657,7 +657,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid currency code");
+        await expect(subject()).to.be.revertedWith("BUPN: Invalid currency code");
       });
     });
 
@@ -667,7 +667,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency already supported");
+        await expect(subject()).to.be.revertedWith("BUPN: Currency already supported");
       });
     });
 
@@ -677,7 +677,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BUPN: Payment method does not exist");
       });
     });
 
@@ -739,7 +739,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
     it("should remove a single currency (array with one element)", async () => {
       subjectCurrencies = [usdCurrencyHash];
-      
+
       await subject();
 
       const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash);
@@ -767,7 +767,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
+        await expect(subject()).to.be.revertedWith("BUPN: Must provide at least one currency");
       });
     });
 
@@ -778,7 +778,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency not supported");
+        await expect(subject()).to.be.revertedWith("BUPN: Currency not supported");
       });
     });
 
@@ -825,7 +825,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
       // Should revert when trying to access removed payment method
       await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod))
-        .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+        .to.be.revertedWith("BUPN: Payment method does not exist");
     });
 
     it("should remove all processor hashes", async () => {
@@ -856,7 +856,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BUPN: Payment method does not exist");
       });
     });
 
@@ -911,7 +911,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
           await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(nonExistentMethod))
-            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+            .to.be.revertedWith("BUPN: Payment method does not exist");
         });
       });
     });
@@ -929,7 +929,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
           await expect(BaseUnifiedPaymentVerifier.getProcessorHashes(nonExistentMethod))
-            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+            .to.be.revertedWith("BUPN: Payment method does not exist");
         });
       });
     });
@@ -947,7 +947,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
           await expect(BaseUnifiedPaymentVerifier.getCurrencies(nonExistentMethod))
-            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
+            .to.be.revertedWith("BUPN: Payment method does not exist");
         });
       });
     });

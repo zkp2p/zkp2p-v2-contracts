@@ -33,7 +33,8 @@ import {
   OrchestratorMock,
   EscrowRegistry,
   BaseUnifiedPaymentVerifier,
-  UnifiedPaymentVerifier
+  UnifiedPaymentVerifier,
+  ThresholdSigVerifierUtilsMock
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -43,6 +44,9 @@ import {
   PostIntentHookMock__factory,
   OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
+import {
+  ThresholdSigVerifierUtilsMock__factory
+} from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock.sol";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
@@ -374,5 +378,9 @@ export default class DeployHelper {
       nullifierRegistry,
       minWitnessSignatures
     );
+  }
+
+  public async deployThresholdSigVerifierUtilsMock(): Promise<ThresholdSigVerifierUtilsMock> {
+    return await new ThresholdSigVerifierUtilsMock__factory(this._deployerSigner).deploy();
   }
 }
