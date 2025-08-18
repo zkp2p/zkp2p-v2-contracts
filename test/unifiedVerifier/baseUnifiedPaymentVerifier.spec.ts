@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
-import { GenericVerifier, NullifierRegistry } from "@utils/contracts";
+import { UnifiedPaymentVerifier, NullifierRegistry } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -16,12 +16,12 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("BaseGenericPaymentVerifier", () => {
+describe.only("BaseUnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
 
-  let baseGenericPaymentVerifier: GenericVerifier;
+  let BaseUnifiedPaymentVerifier: UnifiedPaymentVerifier;
   let nullifierRegistry: NullifierRegistry;
 
   let deployer: DeployHelper;
@@ -45,8 +45,8 @@ describe("BaseGenericPaymentVerifier", () => {
     // Deploy the nullifier registry
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    // Deploy the GenericVerifier (which inherits BaseGenericPaymentVerifier functionality)
-    baseGenericPaymentVerifier = await deployer.deployGenericVerifier(
+    // Deploy the UnifiedPaymentVerifier (which inherits BaseUnifiedPaymentVerifier functionality)
+    BaseUnifiedPaymentVerifier = await deployer.deployUnifiedPaymentVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(minWitnessSignatures)
@@ -55,58 +55,58 @@ describe("BaseGenericPaymentVerifier", () => {
 
   describe("#constructor", async () => {
     it("should set the correct escrow address", async () => {
-      const escrowAddress = await baseGenericPaymentVerifier.escrow();
+      const escrowAddress = await BaseUnifiedPaymentVerifier.escrow();
       expect(escrowAddress).to.eq(escrow.address);
     });
 
     it("should set the correct nullifier registry", async () => {
-      const nullifierRegistryAddress = await baseGenericPaymentVerifier.nullifierRegistry();
+      const nullifierRegistryAddress = await BaseUnifiedPaymentVerifier.nullifierRegistry();
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
     });
 
     it("should set the correct min witness signatures", async () => {
-      const minSignatures = await baseGenericPaymentVerifier.minWitnessSignatures();
+      const minSignatures = await BaseUnifiedPaymentVerifier.minWitnessSignatures();
       expect(minSignatures).to.eq(BigNumber.from(minWitnessSignatures));
     });
 
     it("should have the correct owner set", async () => {
-      const contractOwner = await baseGenericPaymentVerifier.owner();
+      const contractOwner = await BaseUnifiedPaymentVerifier.owner();
       expect(contractOwner).to.eq(owner.address);
     });
 
     describe("when escrow address is zero", async () => {
       it("should revert", async () => {
         await expect(
-          deployer.deployGenericVerifier(
+          deployer.deployUnifiedPaymentVerifier(
             ethers.constants.AddressZero,
             nullifierRegistry.address,
             BigNumber.from(minWitnessSignatures)
           )
-        ).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid escrow");
+        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid escrow");
       });
     });
 
     describe("when nullifier registry address is zero", async () => {
       it("should revert", async () => {
         await expect(
-          deployer.deployGenericVerifier(
+          deployer.deployUnifiedPaymentVerifier(
             escrow.address,
             ethers.constants.AddressZero,
             BigNumber.from(minWitnessSignatures)
           )
-        ).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid nullifier registry");
+        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid nullifier registry");
       });
     });
 
     describe("when min witness signatures is zero", async () => {
       it("should revert", async () => {
         await expect(
-          deployer.deployGenericVerifier(
+          deployer.deployUnifiedPaymentVerifier(
             escrow.address,
             nullifierRegistry.address,
             BigNumber.from(0)
           )
-        ).to.be.revertedWith("BaseGenericPaymentVerifier: Min signatures must be > 0");
+        ).to.be.revertedWith("BaseUnifiedPaymentVerifier: Min signatures must be > 0");
       });
     });
   });
@@ -121,17 +121,17 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).setMinWitnessSignatures(subjectNewMinSignatures);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).setMinWitnessSignatures(subjectNewMinSignatures);
     }
 
     it("should update the min witness signatures", async () => {
       await subject();
-      const minSignatures = await baseGenericPaymentVerifier.minWitnessSignatures();
+      const minSignatures = await BaseUnifiedPaymentVerifier.minWitnessSignatures();
       expect(minSignatures).to.eq(subjectNewMinSignatures);
     });
 
     it("should emit the MinWitnessSignaturesUpdated event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "MinWitnessSignaturesUpdated")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "MinWitnessSignaturesUpdated")
         .withArgs(BigNumber.from(minWitnessSignatures), subjectNewMinSignatures);
     });
 
@@ -141,7 +141,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Min signatures must be > 0");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Min signatures must be > 0");
       });
     });
 
@@ -151,7 +151,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Same value");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Same value");
       });
     });
 
@@ -185,7 +185,7 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).addPaymentMethod(
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addPaymentMethod(
         subjectPaymentMethod,
         subjectTimestampBuffer,
         subjectProcessorHashes,
@@ -195,57 +195,57 @@ describe("BaseGenericPaymentVerifier", () => {
 
     it("should add the payment method", async () => {
       await subject();
-      
-      const paymentMethods = await baseGenericPaymentVerifier.getPaymentMethods();
+
+      const paymentMethods = await BaseUnifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.contain(subjectPaymentMethod);
-      
-      const timestampBuffer = await baseGenericPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
+
+      const timestampBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
       expect(timestampBuffer).to.eq(subjectTimestampBuffer);
     });
 
     it("should add all processor hashes", async () => {
       await subject();
-      
-      const processorHashes = await baseGenericPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
+
+      const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
       expect(processorHashes).to.deep.eq(subjectProcessorHashes);
-      
+
       for (const hash of subjectProcessorHashes) {
-        const isAuthorized = await baseGenericPaymentVerifier.isProcessorHash(subjectPaymentMethod, hash);
+        const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, hash);
         expect(isAuthorized).to.be.true;
       }
     });
 
     it("should add all currencies", async () => {
       await subject();
-      
-      const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
+
+      const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
       expect(currencies).to.deep.eq(subjectCurrencies);
-      
+
       for (const currency of subjectCurrencies) {
-        const isSupported = await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, currency);
+        const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, currency);
         expect(isSupported).to.be.true;
       }
     });
 
     it("should emit the PaymentMethodAdded event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "PaymentMethodAdded")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "PaymentMethodAdded")
         .withArgs(subjectPaymentMethod, subjectTimestampBuffer);
     });
 
     it("should emit ProcessorHashAdded events", async () => {
       const tx = await subject();
-      
+
       for (const hash of subjectProcessorHashes) {
-        await expect(tx).to.emit(baseGenericPaymentVerifier, "ProcessorHashAdded")
+        await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashAdded")
           .withArgs(subjectPaymentMethod, hash);
       }
     });
 
     it("should emit CurrencyAdded events", async () => {
       const tx = await subject();
-      
+
       for (const currency of subjectCurrencies) {
-        await expect(tx).to.emit(baseGenericPaymentVerifier, "CurrencyAdded")
+        await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "CurrencyAdded")
           .withArgs(subjectPaymentMethod, currency);
       }
     });
@@ -256,7 +256,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Payment method already exists");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method already exists");
       });
     });
 
@@ -266,7 +266,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Must provide at least one processor");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one processor");
       });
     });
 
@@ -276,7 +276,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Must provide at least one currency");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
       });
     });
 
@@ -298,7 +298,7 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       // Add a payment method first
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
@@ -311,17 +311,17 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).setTimestampBuffer(subjectPaymentMethod, subjectNewBuffer);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).setTimestampBuffer(subjectPaymentMethod, subjectNewBuffer);
     }
 
     it("should update the timestamp buffer", async () => {
       await subject();
-      const buffer = await baseGenericPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
+      const buffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
       expect(buffer).to.eq(subjectNewBuffer);
     });
 
     it("should emit the TimestampBufferSet event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "TimestampBufferSet")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "TimestampBufferSet")
         .withArgs(subjectPaymentMethod, BigNumber.from(30), subjectNewBuffer);
     });
 
@@ -331,7 +331,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
       });
     });
 
@@ -353,7 +353,7 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       // Add a payment method first
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
@@ -366,21 +366,21 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).addProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addProcessorHash(subjectPaymentMethod, subjectProcessorHash);
     }
 
     it("should add the processor hash", async () => {
       await subject();
-      
-      const isAuthorized = await baseGenericPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+
+      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
       expect(isAuthorized).to.be.true;
-      
-      const processorHashes = await baseGenericPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
+
+      const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
       expect(processorHashes).to.contain(subjectProcessorHash);
     });
 
     it("should emit the ProcessorHashAdded event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "ProcessorHashAdded")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashAdded")
         .withArgs(subjectPaymentMethod, subjectProcessorHash);
     });
 
@@ -390,7 +390,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
       });
     });
 
@@ -400,7 +400,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid processor hash");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid processor hash");
       });
     });
 
@@ -410,7 +410,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Already authorized");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Already authorized");
       });
     });
 
@@ -432,9 +432,9 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       subjectProcessorHash = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8";
-      
+
       // Add a payment method with processor hash
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         [subjectProcessorHash],
@@ -446,21 +446,21 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).removeProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeProcessorHash(subjectPaymentMethod, subjectProcessorHash);
     }
 
     it("should remove the processor hash", async () => {
       await subject();
-      
-      const isAuthorized = await baseGenericPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
+
+      const isAuthorized = await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, subjectProcessorHash);
       expect(isAuthorized).to.be.false;
-      
-      const processorHashes = await baseGenericPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
+
+      const processorHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(subjectPaymentMethod);
       expect(processorHashes).to.not.contain(subjectProcessorHash);
     });
 
     it("should emit the ProcessorHashRemoved event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "ProcessorHashRemoved")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "ProcessorHashRemoved")
         .withArgs(subjectPaymentMethod, subjectProcessorHash);
     });
 
@@ -470,7 +470,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not authorized");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not authorized");
       });
     });
 
@@ -492,7 +492,7 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       // Add a payment method first
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
@@ -505,21 +505,21 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).addCurrency(subjectPaymentMethod, subjectCurrency);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addCurrency(subjectPaymentMethod, subjectCurrency);
     }
 
     it("should add the currency", async () => {
       await subject();
-      
-      const isSupported = await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
+
+      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
       expect(isSupported).to.be.true;
-      
-      const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
+
+      const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
       expect(currencies).to.contain(subjectCurrency);
     });
 
     it("should emit the CurrencyAdded event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "CurrencyAdded")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "CurrencyAdded")
         .withArgs(subjectPaymentMethod, subjectCurrency);
     });
 
@@ -529,7 +529,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
       });
     });
 
@@ -539,7 +539,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Currency already supported");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency already supported");
       });
     });
 
@@ -561,9 +561,9 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       subjectCurrency = usdCurrencyHash;
-      
+
       // Add a payment method with currency
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
@@ -575,21 +575,21 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).removeCurrency(subjectPaymentMethod, subjectCurrency);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeCurrency(subjectPaymentMethod, subjectCurrency);
     }
 
     it("should remove the currency", async () => {
       await subject();
-      
-      const isSupported = await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
+
+      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
       expect(isSupported).to.be.false;
-      
-      const currencies = await baseGenericPaymentVerifier.getCurrencies(subjectPaymentMethod);
+
+      const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
       expect(currencies).to.not.contain(subjectCurrency);
     });
 
     it("should emit the CurrencyRemoved event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "CurrencyRemoved")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "CurrencyRemoved")
         .withArgs(subjectPaymentMethod, subjectCurrency);
     });
 
@@ -599,7 +599,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Currency not supported");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency not supported");
       });
     });
 
@@ -620,7 +620,7 @@ describe("BaseGenericPaymentVerifier", () => {
 
     beforeEach(async () => {
       // Add a payment method with multiple processors and currencies
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         [
@@ -635,39 +635,39 @@ describe("BaseGenericPaymentVerifier", () => {
     });
 
     async function subject(): Promise<any> {
-      return await baseGenericPaymentVerifier.connect(subjectCaller.wallet).removePaymentMethod(subjectPaymentMethod);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removePaymentMethod(subjectPaymentMethod);
     }
 
     it("should remove the payment method", async () => {
       await subject();
-      
-      const paymentMethods = await baseGenericPaymentVerifier.getPaymentMethods();
+
+      const paymentMethods = await BaseUnifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.not.contain(subjectPaymentMethod);
-      
+
       // Should revert when trying to access removed payment method
-      await expect(baseGenericPaymentVerifier.getTimestampBuffer(subjectPaymentMethod))
-        .to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+      await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod))
+        .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
     });
 
     it("should remove all processor hashes", async () => {
       const processorHashBefore = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8";
-      expect(await baseGenericPaymentVerifier.isProcessorHash(subjectPaymentMethod, processorHashBefore)).to.be.true;
-      
+      expect(await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, processorHashBefore)).to.be.true;
+
       await subject();
-      
-      expect(await baseGenericPaymentVerifier.isProcessorHash(subjectPaymentMethod, processorHashBefore)).to.be.false;
+
+      expect(await BaseUnifiedPaymentVerifier.isProcessorHash(subjectPaymentMethod, processorHashBefore)).to.be.false;
     });
 
     it("should remove all currencies", async () => {
-      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.true;
-      
+      expect(await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.true;
+
       await subject();
-      
-      expect(await baseGenericPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.false;
+
+      expect(await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash)).to.be.false;
     });
 
     it("should emit the PaymentMethodRemoved event", async () => {
-      await expect(subject()).to.emit(baseGenericPaymentVerifier, "PaymentMethodRemoved")
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "PaymentMethodRemoved")
         .withArgs(subjectPaymentMethod);
     });
 
@@ -677,7 +677,7 @@ describe("BaseGenericPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
       });
     });
 
@@ -695,14 +695,14 @@ describe("BaseGenericPaymentVerifier", () => {
   describe("view functions", async () => {
     beforeEach(async () => {
       // Add multiple payment methods for testing
-      await baseGenericPaymentVerifier.addPaymentMethod(
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
         [usdCurrencyHash]
       );
-      
-      await baseGenericPaymentVerifier.addPaymentMethod(
+
+      await BaseUnifiedPaymentVerifier.addPaymentMethod(
         paypalPaymentMethodHash,
         BigNumber.from(60),
         ["0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"],
@@ -712,7 +712,7 @@ describe("BaseGenericPaymentVerifier", () => {
 
     describe("#getPaymentMethods", async () => {
       it("should return all payment methods", async () => {
-        const paymentMethods = await baseGenericPaymentVerifier.getPaymentMethods();
+        const paymentMethods = await BaseUnifiedPaymentVerifier.getPaymentMethods();
         expect(paymentMethods).to.contain(venmoPaymentMethodHash);
         expect(paymentMethods).to.contain(paypalPaymentMethodHash);
         expect(paymentMethods.length).to.eq(2);
@@ -721,9 +721,9 @@ describe("BaseGenericPaymentVerifier", () => {
 
     describe("#getTimestampBuffer", async () => {
       it("should return the correct timestamp buffer", async () => {
-        const venmoBuffer = await baseGenericPaymentVerifier.getTimestampBuffer(venmoPaymentMethodHash);
-        const paypalBuffer = await baseGenericPaymentVerifier.getTimestampBuffer(paypalPaymentMethodHash);
-        
+        const venmoBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(venmoPaymentMethodHash);
+        const paypalBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(paypalPaymentMethodHash);
+
         expect(venmoBuffer).to.eq(BigNumber.from(30));
         expect(paypalBuffer).to.eq(BigNumber.from(60));
       });
@@ -731,17 +731,17 @@ describe("BaseGenericPaymentVerifier", () => {
       describe("when payment method does not exist", async () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
-          await expect(baseGenericPaymentVerifier.getTimestampBuffer(nonExistentMethod))
-            .to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+          await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(nonExistentMethod))
+            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
         });
       });
     });
 
     describe("#getProcessorHashes", async () => {
       it("should return the correct processor hashes", async () => {
-        const venmoHashes = await baseGenericPaymentVerifier.getProcessorHashes(venmoPaymentMethodHash);
-        const paypalHashes = await baseGenericPaymentVerifier.getProcessorHashes(paypalPaymentMethodHash);
-        
+        const venmoHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(venmoPaymentMethodHash);
+        const paypalHashes = await BaseUnifiedPaymentVerifier.getProcessorHashes(paypalPaymentMethodHash);
+
         expect(venmoHashes).to.deep.eq(["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"]);
         expect(paypalHashes).to.deep.eq(["0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9"]);
       });
@@ -749,17 +749,17 @@ describe("BaseGenericPaymentVerifier", () => {
       describe("when payment method does not exist", async () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
-          await expect(baseGenericPaymentVerifier.getProcessorHashes(nonExistentMethod))
-            .to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+          await expect(BaseUnifiedPaymentVerifier.getProcessorHashes(nonExistentMethod))
+            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
         });
       });
     });
 
     describe("#getCurrencies", async () => {
       it("should return the correct currencies", async () => {
-        const venmoCurrencies = await baseGenericPaymentVerifier.getCurrencies(venmoPaymentMethodHash);
-        const paypalCurrencies = await baseGenericPaymentVerifier.getCurrencies(paypalPaymentMethodHash);
-        
+        const venmoCurrencies = await BaseUnifiedPaymentVerifier.getCurrencies(venmoPaymentMethodHash);
+        const paypalCurrencies = await BaseUnifiedPaymentVerifier.getCurrencies(paypalPaymentMethodHash);
+
         expect(venmoCurrencies).to.deep.eq([usdCurrencyHash]);
         expect(paypalCurrencies).to.deep.eq([eurCurrencyHash]);
       });
@@ -767,8 +767,8 @@ describe("BaseGenericPaymentVerifier", () => {
       describe("when payment method does not exist", async () => {
         it("should revert", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
-          await expect(baseGenericPaymentVerifier.getCurrencies(nonExistentMethod))
-            .to.be.revertedWith("BaseGenericPaymentVerifier: Payment method does not exist");
+          await expect(BaseUnifiedPaymentVerifier.getCurrencies(nonExistentMethod))
+            .to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
         });
       });
     });

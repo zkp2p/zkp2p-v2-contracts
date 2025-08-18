@@ -32,8 +32,8 @@ import {
   RelayerRegistry,
   OrchestratorMock,
   EscrowRegistry,
-  BaseGenericPaymentVerifier,
-  GenericVerifier
+  BaseUnifiedPaymentVerifier,
+  UnifiedPaymentVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -49,7 +49,6 @@ import { PostIntentHookRegistry__factory } from "../typechain/factories/contract
 import { RelayerRegistry__factory } from "../typechain/factories/contracts/registries";
 import { EscrowRegistry__factory } from "../typechain/factories/contracts/registries";
 import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
-import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contracts/verifiers/keyHashAdapters";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { ProtocolViewer__factory } from "../typechain/factories/contracts/index";
 import { Orchestrator__factory } from "../typechain/factories/contracts/index";
@@ -62,8 +61,8 @@ import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/cont
 import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
-import { BaseGenericPaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
-import { GenericVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { BaseUnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
+import { UnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -313,10 +312,6 @@ export default class DeployHelper {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployManagedKeyHashAdapterV2(keyHashes: string[]): Promise<ManagedKeyHashAdapterV2> {
-    return await new ManagedKeyHashAdapterV2__factory(this._deployerSigner).deploy(keyHashes);
-  }
-
   public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
     return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
   }
@@ -369,12 +364,12 @@ export default class DeployHelper {
   }
 
 
-  public async deployGenericVerifier(
+  public async deployUnifiedPaymentVerifier(
     escrow: Address,
     nullifierRegistry: Address,
     minWitnessSignatures: BigNumber
-  ): Promise<GenericVerifier> {
-    return await new GenericVerifier__factory(this._deployerSigner).deploy(
+  ): Promise<UnifiedPaymentVerifier> {
+    return await new UnifiedPaymentVerifier__factory(this._deployerSigner).deploy(
       escrow,
       nullifierRegistry,
       minWitnessSignatures

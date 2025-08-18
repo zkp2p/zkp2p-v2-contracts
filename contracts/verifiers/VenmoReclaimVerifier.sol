@@ -7,7 +7,7 @@ import { ClaimVerifier } from "../lib/ClaimVerifier.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { BaseReclaimPaymentVerifier } from "./BaseVerifiers/BaseReclaimPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 
 pragma solidity ^0.8.18;
 

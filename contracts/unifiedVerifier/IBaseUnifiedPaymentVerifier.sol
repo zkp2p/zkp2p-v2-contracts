@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.18;
 
-interface IBaseGenericPaymentVerifier {    
+interface IBaseUnifiedPaymentVerifier {    
     struct PaymentMethodConfig {
         bool initialized;
         uint256 timestampBuffer;

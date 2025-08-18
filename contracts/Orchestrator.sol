@@ -17,7 +17,7 @@ import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IEscrowRegistry } from "./interfaces/IEscrowRegistry.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
 import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
-import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";

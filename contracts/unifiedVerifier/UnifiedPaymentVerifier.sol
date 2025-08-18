@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import { BaseGenericPaymentVerifier } from "./BaseVerifiers/BaseGenericPaymentVerifier.sol";
+import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 
-contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
+contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier {
     
     /* ============ Structs ============ */
     
     // Struct to hold the standardized payment details extracted from the proof
     struct PaymentDetails {
-        bytes32 processorProviderHash;   // Unique identifier binding processor to provider
+        // Payment proof details
+        bytes32 processorProviderHash;   // Unique identifier binding processor to provider (TODO: UNDERSTAND THIS)
         bytes[] signatures;              // Array of signatures from witnesses
         string paymentMethod;            // Payment method (e.g., "venmo", "paypal", "wise")
         uint256 intentHash;              // Intent hash from the protocol
+        // Payment details
         bytes32 receiverId;              // Payment receiver ID
         uint256 amount;                  // Payment amount in smallest currency unit (i.e. cents)
         uint256 timestamp;               // Payment timestamp in UTC in milliseconds
@@ -25,7 +27,7 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
     /* ============ Constructor ============ */
     
     /**
-     * Initializes the generic verifier
+     * Initializes the unified payment verifier
      * @param _escrow The escrow contract address
      * @param _nullifierRegistry The nullifier registry contract
      * @param _minWitnessSignatures Minimum number of witness signatures required
@@ -34,7 +36,7 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
         address _escrow,
         INullifierRegistry _nullifierRegistry,
         uint256 _minWitnessSignatures
-    ) BaseGenericPaymentVerifier(
+    ) BaseUnifiedPaymentVerifier(
         _escrow,
         _nullifierRegistry,
         _minWitnessSignatures
@@ -64,12 +66,12 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
         
         // Get payment method configuration
         PaymentMethodConfig storage config = paymentMethodConfig[paymentMethodHash];
-        require(config.initialized, "GenericVerifier: Payment method does not exist");
+        require(config.initialized, "UnifiedPaymentVerifier: Payment method does not exist");
         
         // Verify the processor hash is authorized for this payment method
         require(
             config.processorHashExists[paymentDetails.processorProviderHash],
-            "GenericVerifier: Unauthorized processor for payment method"
+            "UnifiedPaymentVerifier: Unauthorized processor for payment method"
         );
         
         // Decode witnesses from deposit data
@@ -92,32 +94,32 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
         // Verify witness signatures meet threshold
         require(
             _verifyWitnessSignatures(messageHash, paymentDetails.signatures, witnesses),
-            "GenericVerifier: Invalid witness signatures"
+            "UnifiedPaymentVerifier: Invalid witness signatures"
         );
         
         // Verify the payee matches what's expected
         bytes32 expectedPayeeHash = keccak256(abi.encodePacked(_verifyPaymentData.payeeDetails));
         require(
             paymentDetails.receiverId == expectedPayeeHash,
-            "GenericVerifier: Payee mismatch"
+            "UnifiedPaymentVerifier: Payee mismatch"
         );
         
         // Verify the currency matches and is supported for this payment method
         bytes32 currencyHash = keccak256(abi.encodePacked(paymentDetails.currency));
         require(
             currencyHash == _verifyPaymentData.fiatCurrency,
-            "GenericVerifier: Currency mismatch"
+            "UnifiedPaymentVerifier: Currency mismatch"
         );
         require(
             config.currencyExists[currencyHash],
-            "GenericVerifier: Currency not supported for payment method"
+            "UnifiedPaymentVerifier: Currency not supported for payment method"
         );
         
         // Verify timestamp is after intent creation (with payment method-specific buffer for L2 flexibility)
         uint256 paymentTimestampWithBuffer = paymentDetails.timestamp + config.timestampBuffer;
         require(
             paymentTimestampWithBuffer >= _verifyPaymentData.intentTimestamp,
-            "GenericVerifier: Payment before intent"
+            "UnifiedPaymentVerifier: Payment before intent"
         );
         
         // Calculate release amount based on conversion rate
@@ -125,12 +127,14 @@ contract GenericVerifier is IPaymentVerifier, BaseGenericPaymentVerifier {
         uint256 releaseAmount = (paymentDetails.amount * 1e18) / _verifyPaymentData.conversionRate;
         
         // Ensure release amount doesn't exceed intent amount
+        // TODO: INSTEAD JUST CAP THE RELEASE AMOUNT TO THE INTENT AMOUNT
         require(
             releaseAmount <= _verifyPaymentData.intentAmount,
-            "GenericVerifier: Release amount exceeds intent"
+            "UnifiedPaymentVerifier: Release amount exceeds intent"
         );
         
         // Nullify the payment to prevent double-spending
+        // TODO: ADDRESS SCROLL AUDIT CONCERNS
         bytes32 nullifier = keccak256(abi.encodePacked(paymentDetails.paymentId));
         _validateAndAddNullifier(nullifier);
         

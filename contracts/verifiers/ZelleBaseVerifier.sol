@@ -9,7 +9,7 @@ import { Bytes32ConversionUtils } from "../lib/Bytes32ConversionUtils.sol";
 
 import { BasePaymentVerifier } from "./BaseVerifiers/BasePaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 import { IReclaimVerifier } from "./interfaces/IReclaimVerifier.sol";
 
 pragma solidity ^0.8.18;

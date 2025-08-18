@@ -26,8 +26,8 @@ export {
   ZelleBoAReclaimVerifier,
   ZelleCitiReclaimVerifier,
   ZelleChaseReclaimVerifier,
-  BaseGenericPaymentVerifier,
-  GenericVerifier,
+  BaseUnifiedPaymentVerifier,
+  UnifiedPaymentVerifier,
   IPaymentVerifier
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";

@@ -6,7 +6,7 @@ import { BigNumber, BytesLike } from "ethers";
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 import { Escrow } from "@typechain/contracts/Escrow";
-import { GenericVerifier } from "@typechain/contracts/verifiers/GenericVerifier";
+import { UnifiedPaymentVerifier } from "@typechain/contracts/verifiers/UnifiedPaymentVerifier";
 import { NullifierRegistry } from "@typechain/contracts/registries/NullifierRegistry";
 import { USDCMock } from "@typechain/contracts/mocks/USDCMock";
 import DeployHelper from "@utils/deploys";
@@ -20,7 +20,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("GenericVerifier", () => {
+describe.only("UnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
@@ -29,7 +29,7 @@ describe("GenericVerifier", () => {
   let witness3: Account;
 
   let nullifierRegistry: NullifierRegistry;
-  let verifier: GenericVerifier;
+  let verifier: UnifiedPaymentVerifier;
   let usdcToken: USDCMock;
 
   let deployer: DeployHelper;
@@ -70,7 +70,7 @@ describe("GenericVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    verifier = await deployer.deployGenericVerifier(
+    verifier = await deployer.deployUnifiedPaymentVerifier(
       escrow.address,
       nullifierRegistry.address,
       BigNumber.from(minWitnessSignatures)
@@ -118,7 +118,7 @@ describe("GenericVerifier", () => {
       // Set up payee details and update receiverId to match
       const testPayeeDetails = "test_payee_id";
       const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-      
+
       // Create updated payment details with correct receiverId
       const updatedSamplePaymentDetails = {
         ...samplePaymentDetails,
@@ -213,7 +213,7 @@ describe("GenericVerifier", () => {
 
     it("should verify the proof successfully", async () => {
       const result = await subjectCallStatic();
-      
+
       expect(result.success).to.be.true;
       expect(result.intentHash).to.eq(BigNumber.from(samplePaymentDetails.intentHash).toHexString());
       expect(result.releaseAmount).to.eq(samplePaymentDetails.amount); // With 1:1 conversion
@@ -223,7 +223,7 @@ describe("GenericVerifier", () => {
 
     it("should nullify the payment id", async () => {
       await subject();
-      
+
       const nullifier = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(samplePaymentDetails.paymentId));
       expect(await nullifierRegistry.isNullified(nullifier)).to.be.true;
     });
@@ -235,7 +235,7 @@ describe("GenericVerifier", () => {
 
       it("should succeed with partial release", async () => {
         const result = await subjectCallStatic();
-        
+
         expect(result.success).to.be.true;
         expect(result.releaseAmount).to.eq(samplePaymentDetails.amount); // 49980 cents
       });
@@ -246,7 +246,7 @@ describe("GenericVerifier", () => {
         // Use two witness addresses including the hardhat witness
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address];
-        
+
         // Update deposit data with 2 witnesses but still only 1 signature
         subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
@@ -264,20 +264,20 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         // Update to require 3 signatures
         await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
-        
+
         // Use hardhat witness and two other witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address, witness2.address];
-        
+
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsForThree = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails
         };
-        
+
         // Recreate message hash
         const encoded = ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
@@ -293,11 +293,11 @@ describe("GenericVerifier", () => {
           ]
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
-        
+
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        
+
         const paymentDetailsWithThreeSignatures = {
           ...paymentDetailsForThree,
           signatures: [signature1, signature2, signature3]
@@ -322,7 +322,7 @@ describe("GenericVerifier", () => {
           ['address[]'],
           [witnesses]
         );
-        
+
         subjectPayeeDetails = testPayeeDetails;
       });
 
@@ -336,7 +336,7 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsWithInvalidMethod = {
           ...samplePaymentDetails,
           paymentMethod: "nonexistent",
@@ -380,7 +380,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payment method does not exist");
       });
     });
 
@@ -388,7 +388,7 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsWithInvalidProcessor = {
           ...samplePaymentDetails,
           processorProviderHash: "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9", // Different hash
@@ -432,7 +432,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Unauthorized processor for payment method");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Unauthorized processor for payment method");
       });
     });
 
@@ -440,13 +440,13 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         // Update to require 2 signatures
         await verifier.connect(owner.wallet).setMinWitnessSignatures(2);
-        
+
         // Use two witness addresses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address];
-        
+
         // Provide only 1 signature when 2 are required (still using the existing signature)
-        
+
         subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [witnesses]
@@ -454,7 +454,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not enough signatures provided");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough signatures provided");
       });
     });
 
@@ -462,7 +462,7 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsWithInvalidSignature = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails,
@@ -486,7 +486,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid signature");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid signature");
       });
     });
 
@@ -496,7 +496,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Payee mismatch");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payee mismatch");
       });
     });
 
@@ -506,7 +506,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Currency mismatch");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Currency mismatch");
       });
     });
 
@@ -514,7 +514,7 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsWithUnsupportedCurrency = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails,
@@ -561,7 +561,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Currency not supported for payment method");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Currency not supported for payment method");
       });
     });
 
@@ -575,7 +575,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Payment before intent");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payment before intent");
       });
     });
 
@@ -586,7 +586,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("GenericVerifier: Release amount exceeds intent");
+        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Release amount exceeds intent");
       });
     });
 
@@ -619,7 +619,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: No witnesses provided");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: No witnesses provided");
       });
     });
 
@@ -627,7 +627,7 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, hardhatWitness]; // Duplicate witness
-        
+
         subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [witnesses]
@@ -635,7 +635,7 @@ describe("GenericVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Duplicate witnesses");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Duplicate witnesses");
       });
     });
 
@@ -643,20 +643,20 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 3
         await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
-        
+
         // But only provide 2 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address];
-        
+
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsForTest = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails
         };
-        
+
         // Recreate message hash
         const encoded = ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
@@ -672,12 +672,12 @@ describe("GenericVerifier", () => {
           ]
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
-        
+
         // Get 3 signatures (even though we only have 2 witnesses)
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        
+
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
           signatures: [signature1, signature2, signature3]
@@ -702,12 +702,12 @@ describe("GenericVerifier", () => {
           ['address[]'],
           [witnesses]
         );
-        
+
         subjectPayeeDetails = testPayeeDetails;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not enough witnesses");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough witnesses");
       });
     });
 
@@ -717,19 +717,19 @@ describe("GenericVerifier", () => {
         // Use the hardhat witness for multiple signatures
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address, witness2.address];
-        
+
         // Set minWitnessSignatures to 3
         await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
-        
+
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsForTest = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails
         };
-        
+
         // Recreate message hash
         const encoded = ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
@@ -745,12 +745,12 @@ describe("GenericVerifier", () => {
           ]
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
-        
+
         // Get signatures from all witnesses
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        
+
         // Include duplicate signature from first witness (4 signatures total but only 3 unique)
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
@@ -776,12 +776,12 @@ describe("GenericVerifier", () => {
           ['address[]'],
           [witnesses]
         );
-        
+
         subjectPayeeDetails = testPayeeDetails;
       });
 
       it("should revert when duplicate signatures are provided", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Invalid signature");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid signature");
       });
     });
 
@@ -789,20 +789,20 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 3
         await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
-        
+
         // Provide 3 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address, witness2.address];
-        
+
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsForTest = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails
         };
-        
+
         // Recreate message hash
         const encoded = ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
@@ -818,11 +818,11 @@ describe("GenericVerifier", () => {
           ]
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
-        
+
         // Only get 2 valid signatures (when 3 are required)
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        
+
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
           signatures: [signature1, signature2] // Only 2 signatures when 3 are required
@@ -847,12 +847,12 @@ describe("GenericVerifier", () => {
           ['address[]'],
           [witnesses]
         );
-        
+
         subjectPayeeDetails = testPayeeDetails;
       });
 
       it("should revert with not enough signatures error", async () => {
-        await expect(subject()).to.be.revertedWith("BaseGenericPaymentVerifier: Not enough signatures provided");
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Not enough signatures provided");
       });
     });
 
@@ -860,20 +860,20 @@ describe("GenericVerifier", () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 2
         await verifier.connect(owner.wallet).setMinWitnessSignatures(2);
-        
+
         // Provide exactly 2 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
         witnesses = [hardhatWitness, witness1.address];
-        
+
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
         const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-        
+
         const paymentDetailsForTest = {
           ...samplePaymentDetails,
           receiverId: hashedPayeeDetails
         };
-        
+
         // Recreate message hash
         const encoded = ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
@@ -889,11 +889,11 @@ describe("GenericVerifier", () => {
           ]
         );
         const newMessageHash = ethers.utils.keccak256(encoded);
-        
+
         // Get exactly 2 valid signatures
         const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
         const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        
+
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
           signatures: [signature1, signature2] // Exactly 2 signatures to meet threshold
@@ -918,7 +918,7 @@ describe("GenericVerifier", () => {
           ['address[]'],
           [witnesses]
         );
-        
+
         subjectPayeeDetails = testPayeeDetails;
       });
 
@@ -937,7 +937,7 @@ describe("GenericVerifier", () => {
         it("should calculate correct release amount", async () => {
           const result = await subjectCallStatic();
           const expectedReleaseAmount = BigNumber.from(samplePaymentDetails.amount).mul(ether(1)).div(ether(2));
-          
+
           expect(result.releaseAmount).to.eq(expectedReleaseAmount);
         });
       });
@@ -951,7 +951,7 @@ describe("GenericVerifier", () => {
         it("should calculate correct release amount", async () => {
           const result = await subjectCallStatic();
           const expectedReleaseAmount = BigNumber.from(samplePaymentDetails.amount).mul(ether(1)).div(ether(0.5));
-          
+
           expect(result.releaseAmount).to.eq(expectedReleaseAmount);
         });
       });
@@ -976,16 +976,16 @@ describe("GenericVerifier", () => {
       const venmoProcessors = await verifier.getProcessorHashes(venmoPaymentMethodHash);
       const venmoCurrencies = await verifier.getCurrencies(venmoPaymentMethodHash);
       const venmoTimestampBuffer = await verifier.getTimestampBuffer(venmoPaymentMethodHash);
-      
+
       expect(venmoProcessors.length).to.eq(1);
       expect(venmoCurrencies.length).to.eq(1);
       expect(venmoTimestampBuffer).to.eq(30000);
-      
+
       // Check PayPal configuration
       const paypalProcessors = await verifier.getProcessorHashes(paypalPaymentMethodHash);
       const paypalCurrencies = await verifier.getCurrencies(paypalPaymentMethodHash);
       const paypalTimestampBuffer = await verifier.getTimestampBuffer(paypalPaymentMethodHash);
-      
+
       expect(paypalProcessors.length).to.eq(1);
       expect(paypalCurrencies.length).to.eq(3);
       expect(paypalTimestampBuffer).to.eq(60000);

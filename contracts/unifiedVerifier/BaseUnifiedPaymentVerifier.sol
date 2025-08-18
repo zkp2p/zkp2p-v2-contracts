@@ -6,12 +6,12 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-import { AddressArrayUtils } from "../../external/AddressArrayUtils.sol";
-import { Bytes32ArrayUtils } from "../../external/Bytes32ArrayUtils.sol";
-import { IBaseGenericPaymentVerifier } from "../interfaces/IBaseGenericPaymentVerifier.sol";
-import { INullifierRegistry } from "../../interfaces/INullifierRegistry.sol";
+import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
+import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
+import { IBaseUnifiedPaymentVerifier } from "./IBaseUnifiedPaymentVerifier.sol";
+import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 
-abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Ownable {
+abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Ownable {
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using SignatureChecker for address;
@@ -36,7 +36,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
     uint256 public minWitnessSignatures;
     
     // Mapping of payment method hash => configuration
-    mapping(bytes32 => IBaseGenericPaymentVerifier.PaymentMethodConfig) public paymentMethodConfig;
+    mapping(bytes32 => IBaseUnifiedPaymentVerifier.PaymentMethodConfig) public paymentMethodConfig;
     
     // Array of payment method hashes for enumeration
     bytes32[] public paymentMethods;
@@ -54,9 +54,9 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
         INullifierRegistry _nullifierRegistry,
         uint256 _minWitnessSignatures
     ) Ownable() {
-        require(_escrow != address(0), "BaseGenericPaymentVerifier: Invalid escrow");
-        require(address(_nullifierRegistry) != address(0), "BaseGenericPaymentVerifier: Invalid nullifier registry");
-        require(_minWitnessSignatures > 0, "BaseGenericPaymentVerifier: Min signatures must be > 0");
+        require(_escrow != address(0), "BaseUnifiedPaymentVerifier: Invalid escrow");
+        require(address(_nullifierRegistry) != address(0), "BaseUnifiedPaymentVerifier: Invalid nullifier registry");
+        require(_minWitnessSignatures > 0, "BaseUnifiedPaymentVerifier: Min signatures must be > 0");
         
         escrow = _escrow;
         nullifierRegistry = _nullifierRegistry;
@@ -70,8 +70,8 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _newMinWitnessSignatures The new minimum witness signatures
      */
     function setMinWitnessSignatures(uint256 _newMinWitnessSignatures) external onlyOwner {
-        require(_newMinWitnessSignatures > 0, "BaseGenericPaymentVerifier: Min signatures must be > 0");
-        require(_newMinWitnessSignatures != minWitnessSignatures, "BaseGenericPaymentVerifier: Same value");
+        require(_newMinWitnessSignatures > 0, "BaseUnifiedPaymentVerifier: Min signatures must be > 0");
+        require(_newMinWitnessSignatures != minWitnessSignatures, "BaseUnifiedPaymentVerifier: Same value");
         
         uint256 oldMin = minWitnessSignatures;
         minWitnessSignatures = _newMinWitnessSignatures;
@@ -84,7 +84,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _newTimestampBuffer The new timestamp buffer in seconds
      */
     function setTimestampBuffer(bytes32 _paymentMethod, uint256 _newTimestampBuffer) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
         
         uint256 oldBuffer = paymentMethodConfig[_paymentMethod].timestampBuffer;
         paymentMethodConfig[_paymentMethod].timestampBuffer = _newTimestampBuffer;
@@ -98,9 +98,9 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _processorHash The processor provider hash to authorize
      */
     function addProcessorHash(bytes32 _paymentMethod, bytes32 _processorHash) public onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
-        require(_processorHash != bytes32(0), "BaseGenericPaymentVerifier: Invalid processor hash");
-        require(!paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseGenericPaymentVerifier: Already authorized");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
+        require(_processorHash != bytes32(0), "BaseUnifiedPaymentVerifier: Invalid processor hash");
+        require(!paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseUnifiedPaymentVerifier: Already authorized");
         
         paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash] = true;
         paymentMethodConfig[_paymentMethod].processorHashes.push(_processorHash);
@@ -113,7 +113,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _processorHash The processor provider hash to revoke
      */
     function removeProcessorHash(bytes32 _paymentMethod, bytes32 _processorHash) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseGenericPaymentVerifier: Not authorized");
+        require(paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash], "BaseUnifiedPaymentVerifier: Not authorized");
         
         paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash] = false;
         paymentMethodConfig[_paymentMethod].processorHashes.removeStorage(_processorHash);
@@ -126,8 +126,8 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _currencyCode The currency code hash (e.g., keccak256("USD"), keccak256("EUR"))
      */
     function addCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) public onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
-        require(!paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseGenericPaymentVerifier: Currency already supported");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
+        require(!paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseUnifiedPaymentVerifier: Currency already supported");
         
         paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = true;
         paymentMethodConfig[_paymentMethod].currencies.push(_currencyCode);
@@ -140,7 +140,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _currencyCode The currency code hash
      */
     function removeCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseGenericPaymentVerifier: Currency not supported");
+        require(paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseUnifiedPaymentVerifier: Currency not supported");
         
         paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = false;
         paymentMethodConfig[_paymentMethod].currencies.removeStorage(_currencyCode);
@@ -152,7 +152,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @param _paymentMethod The payment method hash to remove
      */
     function removePaymentMethod(bytes32 _paymentMethod) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
         
         // Clear all processor hashes
         bytes32[] storage processorHashes = paymentMethodConfig[_paymentMethod].processorHashes;
@@ -190,9 +190,9 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
         bytes32[] calldata _processorHashes,
         bytes32[] calldata _currencyCodes
     ) external onlyOwner {
-        require(!paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method already exists");
-        require(_processorHashes.length > 0, "BaseGenericPaymentVerifier: Must provide at least one processor");
-        require(_currencyCodes.length > 0, "BaseGenericPaymentVerifier: Must provide at least one currency");
+        require(!paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method already exists");
+        require(_processorHashes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one processor");
+        require(_currencyCodes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one currency");
         
         // Initialize payment method
         paymentMethodConfig[_paymentMethod].initialized = true;
@@ -228,7 +228,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @return The timestamp buffer in seconds
      */
     function getTimestampBuffer(bytes32 _paymentMethod) external view returns (uint256) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
         return paymentMethodConfig[_paymentMethod].timestampBuffer;
     }
     
@@ -258,7 +258,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @return Array of processor hashes
      */
     function getProcessorHashes(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
         return paymentMethodConfig[_paymentMethod].processorHashes;
     }
     
@@ -268,7 +268,7 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
      * @return Array of currency codes (as bytes32)
      */
     function getCurrencies(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BaseGenericPaymentVerifier: Payment method does not exist");
+        require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
         return paymentMethodConfig[_paymentMethod].currencies;
     }
     
@@ -291,13 +291,13 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
     function _decodeWitnesses(bytes memory _depositData) internal view returns (address[] memory) {
         address[] memory witnesses = abi.decode(_depositData, (address[]));
         
-        require(witnesses.length > 0, "BaseGenericPaymentVerifier: No witnesses provided");
-        require(witnesses.length >= minWitnessSignatures, "BaseGenericPaymentVerifier: Not enough witnesses");
+        require(witnesses.length > 0, "BaseUnifiedPaymentVerifier: No witnesses provided");
+        require(witnesses.length >= minWitnessSignatures, "BaseUnifiedPaymentVerifier: Not enough witnesses");
         
         // Check for duplicates
         for (uint256 i = 0; i < witnesses.length; i++) {
             for (uint256 j = i + 1; j < witnesses.length; j++) {
-                require(witnesses[i] != witnesses[j], "BaseGenericPaymentVerifier: Duplicate witnesses");
+                require(witnesses[i] != witnesses[j], "BaseUnifiedPaymentVerifier: Duplicate witnesses");
             }
         }
         
@@ -321,8 +321,8 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
         view
         returns (bool)
     {
-        require(_signatures.length >= minWitnessSignatures, "BaseGenericPaymentVerifier: Not enough signatures provided");
-        require(minWitnessSignatures <= _witnesses.length, "BaseGenericPaymentVerifier: Required threshold exceeds number of witnesses");
+        require(_signatures.length >= minWitnessSignatures, "BaseUnifiedPaymentVerifier: Not enough signatures provided");
+        require(minWitnessSignatures <= _witnesses.length, "BaseUnifiedPaymentVerifier: Required threshold exceeds number of witnesses");
         
         // Convert to Ethereum signed message hash
         bytes32 ethSignedMessageHash = _messageHash.toEthSignedMessageHash();
@@ -360,13 +360,13 @@ abstract contract BaseGenericPaymentVerifier is IBaseGenericPaymentVerifier, Own
                 }
             }
             
-            require(foundWitness, "BaseGenericPaymentVerifier: Invalid signature");
+            require(foundWitness, "BaseUnifiedPaymentVerifier: Invalid signature");
         }
         
         // Check threshold
         require(
             validWitnessSignatures >= minWitnessSignatures,
-            "BaseGenericPaymentVerifier: Not enough valid witness signatures"
+            "BaseUnifiedPaymentVerifier: Not enough valid witness signatures"
         );
         
         return true;
