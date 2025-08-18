@@ -692,48 +692,89 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     });
   });
 
-  describe("#removeCurrency", async () => {
+  describe("#removeCurrencies", async () => {
     let subjectPaymentMethod: string;
-    let subjectCurrency: string;
+    let subjectCurrencies: string[];
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectCurrency = usdCurrencyHash;
-
-      // Add a payment method with currency
+      // Add a payment method with multiple currencies
       await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
         BigNumber.from(30),
         ["0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8"],
-        [subjectCurrency]
+        [usdCurrencyHash, eurCurrencyHash, gbpCurrencyHash]
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
+      subjectCurrencies = [usdCurrencyHash, eurCurrencyHash];
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeCurrency(subjectPaymentMethod, subjectCurrency);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).removeCurrencies(subjectPaymentMethod, subjectCurrencies);
     }
 
-    it("should remove the currency", async () => {
+    it("should remove multiple currencies in a single transaction", async () => {
       await subject();
 
-      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
+      // Check that removed currencies are no longer supported
+      const isUsdSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash);
+      expect(isUsdSupported).to.be.false;
+
+      const isEurSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, eurCurrencyHash);
+      expect(isEurSupported).to.be.false;
+
+      // Check that non-removed currency is still supported
+      const isGbpSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, gbpCurrencyHash);
+      expect(isGbpSupported).to.be.true;
+
+      // Check the currencies array
+      const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
+      expect(currencies).to.not.contain(usdCurrencyHash);
+      expect(currencies).to.not.contain(eurCurrencyHash);
+      expect(currencies).to.contain(gbpCurrencyHash);
+      expect(currencies.length).to.eq(1);
+    });
+
+    it("should remove a single currency (array with one element)", async () => {
+      subjectCurrencies = [usdCurrencyHash];
+      
+      await subject();
+
+      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, usdCurrencyHash);
       expect(isSupported).to.be.false;
 
       const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
-      expect(currencies).to.not.contain(subjectCurrency);
+      expect(currencies).to.not.contain(usdCurrencyHash);
+      expect(currencies).to.contain(eurCurrencyHash);
+      expect(currencies).to.contain(gbpCurrencyHash);
+      expect(currencies.length).to.eq(2);
     });
 
-    it("should emit the CurrencyRemoved event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "CurrencyRemoved")
-        .withArgs(subjectPaymentMethod, subjectCurrency);
+    it("should emit CurrencyRemoved events for each currency removed", async () => {
+      const tx = await subject();
+
+      await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "CurrencyRemoved")
+        .withArgs(subjectPaymentMethod, usdCurrencyHash);
+      await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "CurrencyRemoved")
+        .withArgs(subjectPaymentMethod, eurCurrencyHash);
     });
 
-    describe("when currency is not supported", async () => {
+    describe("when empty array is provided", async () => {
       beforeEach(async () => {
-        subjectCurrency = eurCurrencyHash;
+        subjectCurrencies = [];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
+      });
+    });
+
+    describe("when non-supported currency is included", async () => {
+      beforeEach(async () => {
+        const nonSupportedCurrency = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("JPY"));
+        subjectCurrencies = [usdCurrencyHash, nonSupportedCurrency, eurCurrencyHash];
       });
 
       it("should revert", async () => {

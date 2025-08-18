@@ -151,16 +151,21 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
     
     /**
-     * Removes a supported currency for a specific payment method
+     * Removes supported currencies for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currencyCode The currency code hash
+     * @param _currencyCodes Array of currency code hashes to remove
      */
-    function removeCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseUnifiedPaymentVerifier: Currency not supported");
+    function removeCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencyCodes) external onlyOwner {
+        require(_currencyCodes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one currency");
         
-        paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = false;
-        paymentMethodConfig[_paymentMethod].currencies.removeStorage(_currencyCode);
-        emit CurrencyRemoved(_paymentMethod, _currencyCode);
+        for (uint256 i = 0; i < _currencyCodes.length; i++) {
+            bytes32 currencyCode = _currencyCodes[i];
+            require(paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BaseUnifiedPaymentVerifier: Currency not supported");
+            
+            paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = false;
+            paymentMethodConfig[_paymentMethod].currencies.removeStorage(currencyCode);
+            emit CurrencyRemoved(_paymentMethod, currencyCode);
+        }
     }
     
     /**
