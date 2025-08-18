@@ -111,10 +111,48 @@ describe.only("UnifiedPaymentVerifier", () => {
     let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
-    let messageHash: string;
     let witnesses: Address[];
 
+    // EIP-712 Domain and Types
+    const domain = {
+      name: 'UnifiedPaymentVerifier',
+      version: '1',
+      chainId: 31337, // Hardhat default chainId
+      verifyingContract: '' // Will be set to verifier.address
+    };
+
+    const types = {
+      PaymentDetails: [
+        { name: 'processorProviderHash', type: 'bytes32' },
+        { name: 'paymentMethod', type: 'string' },
+        { name: 'intentHash', type: 'uint256' },
+        { name: 'receiverId', type: 'bytes32' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'timestamp', type: 'uint256' },
+        { name: 'paymentId', type: 'string' },
+        { name: 'currency', type: 'string' }
+      ]
+    };
+
+    // Helper function to sign payment details using EIP-712
+    async function signPaymentDetails(signer: any, paymentDetails: any): Promise<string> {
+      const value = {
+        processorProviderHash: paymentDetails.processorProviderHash,
+        paymentMethod: paymentDetails.paymentMethod,
+        intentHash: paymentDetails.intentHash,
+        receiverId: paymentDetails.receiverId,
+        amount: paymentDetails.amount,
+        timestamp: paymentDetails.timestamp,
+        paymentId: paymentDetails.paymentId,
+        currency: paymentDetails.currency
+      };
+      return await signer._signTypedData(domain, types, value);
+    }
+
     beforeEach(async () => {
+      // Set the verifying contract in domain
+      domain.verifyingContract = verifier.address;
+
       // Set up payee details and update receiverId to match
       const testPayeeDetails = "test_payee_id";
       const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
@@ -125,28 +163,12 @@ describe.only("UnifiedPaymentVerifier", () => {
         receiverId: hashedPayeeDetails
       };
 
-      // Create the message hash that witnesses need to sign
-      const encoded = ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-        [
-          updatedSamplePaymentDetails.processorProviderHash,
-          updatedSamplePaymentDetails.paymentMethod,
-          updatedSamplePaymentDetails.intentHash,
-          updatedSamplePaymentDetails.receiverId,
-          updatedSamplePaymentDetails.amount,
-          updatedSamplePaymentDetails.timestamp,
-          updatedSamplePaymentDetails.paymentId,
-          updatedSamplePaymentDetails.currency
-        ]
-      );
-      messageHash = ethers.utils.keccak256(encoded);
-
       // Use the specific witness address (first Hardhat account)
       const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
       witnesses = [hardhatWitness];
 
-      // Create witness signature from owner (first Hardhat account)
-      const signature = await owner.wallet.signMessage(ethers.utils.arrayify(messageHash));
+      // Create witness signature using EIP-712
+      const signature = await signPaymentDetails(owner.wallet, updatedSamplePaymentDetails);
 
       // Create payment details with signature
       const paymentDetailsWithSignatures = {
@@ -278,25 +300,10 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Recreate message hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsForThree.processorProviderHash,
-            paymentDetailsForThree.paymentMethod,
-            paymentDetailsForThree.intentHash,
-            paymentDetailsForThree.receiverId,
-            paymentDetailsForThree.amount,
-            paymentDetailsForThree.timestamp,
-            paymentDetailsForThree.paymentId,
-            paymentDetailsForThree.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Sign with EIP-712
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForThree);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForThree);
+        const signature3 = await signPaymentDetails(witness2.wallet, paymentDetailsForThree);
 
         const paymentDetailsWithThreeSignatures = {
           ...paymentDetailsForThree,
@@ -343,23 +350,8 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Re-encode with invalid payment method
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsWithInvalidMethod.processorProviderHash,
-            paymentDetailsWithInvalidMethod.paymentMethod,
-            paymentDetailsWithInvalidMethod.intentHash,
-            paymentDetailsWithInvalidMethod.receiverId,
-            paymentDetailsWithInvalidMethod.amount,
-            paymentDetailsWithInvalidMethod.timestamp,
-            paymentDetailsWithInvalidMethod.paymentId,
-            paymentDetailsWithInvalidMethod.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        const signature = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Sign with EIP-712
+        const signature = await signPaymentDetails(owner.wallet, paymentDetailsWithInvalidMethod);
 
         paymentDetailsWithInvalidMethod.signatures = [signature];
 
@@ -395,23 +387,8 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Re-encode with invalid processor hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsWithInvalidProcessor.processorProviderHash,
-            paymentDetailsWithInvalidProcessor.paymentMethod,
-            paymentDetailsWithInvalidProcessor.intentHash,
-            paymentDetailsWithInvalidProcessor.receiverId,
-            paymentDetailsWithInvalidProcessor.amount,
-            paymentDetailsWithInvalidProcessor.timestamp,
-            paymentDetailsWithInvalidProcessor.paymentId,
-            paymentDetailsWithInvalidProcessor.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        const signature = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Sign with EIP-712
+        const signature = await signPaymentDetails(owner.wallet, paymentDetailsWithInvalidProcessor);
 
         paymentDetailsWithInvalidProcessor.signatures = [signature];
 
@@ -521,23 +498,8 @@ describe.only("UnifiedPaymentVerifier", () => {
           currency: "EUR" // EUR not added to venmo payment method
         };
 
-        // Re-encode with unsupported currency
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsWithUnsupportedCurrency.processorProviderHash,
-            paymentDetailsWithUnsupportedCurrency.paymentMethod,
-            paymentDetailsWithUnsupportedCurrency.intentHash,
-            paymentDetailsWithUnsupportedCurrency.receiverId,
-            paymentDetailsWithUnsupportedCurrency.amount,
-            paymentDetailsWithUnsupportedCurrency.timestamp,
-            paymentDetailsWithUnsupportedCurrency.paymentId,
-            paymentDetailsWithUnsupportedCurrency.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        const signature = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Sign with EIP-712
+        const signature = await signPaymentDetails(owner.wallet, paymentDetailsWithUnsupportedCurrency);
 
         paymentDetailsWithUnsupportedCurrency.signatures = [signature];
 
@@ -657,26 +619,10 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Recreate message hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsForTest.processorProviderHash,
-            paymentDetailsForTest.paymentMethod,
-            paymentDetailsForTest.intentHash,
-            paymentDetailsForTest.receiverId,
-            paymentDetailsForTest.amount,
-            paymentDetailsForTest.timestamp,
-            paymentDetailsForTest.paymentId,
-            paymentDetailsForTest.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        // Get 3 signatures (even though we only have 2 witnesses)
-        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature3 = await witness2.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Get 3 signatures (even though we only have 2 witnesses) using EIP-712
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForTest);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
+        const signature3 = await signPaymentDetails(witness2.wallet, paymentDetailsForTest);
 
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
@@ -730,25 +676,9 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Recreate message hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsForTest.processorProviderHash,
-            paymentDetailsForTest.paymentMethod,
-            paymentDetailsForTest.intentHash,
-            paymentDetailsForTest.receiverId,
-            paymentDetailsForTest.amount,
-            paymentDetailsForTest.timestamp,
-            paymentDetailsForTest.paymentId,
-            paymentDetailsForTest.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        // Get signatures from only 2 witnesses
-        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Get signatures from only 2 witnesses using EIP-712
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForTest);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
 
         // Include duplicate signatures to try to meet threshold of 3 (won't work because only 2 unique witnesses)
         const paymentDetailsWithSignatures = {
@@ -802,25 +732,9 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Recreate message hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsForTest.processorProviderHash,
-            paymentDetailsForTest.paymentMethod,
-            paymentDetailsForTest.intentHash,
-            paymentDetailsForTest.receiverId,
-            paymentDetailsForTest.amount,
-            paymentDetailsForTest.timestamp,
-            paymentDetailsForTest.paymentId,
-            paymentDetailsForTest.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        // Only get 2 valid signatures (when 3 are required)
-        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Only get 2 valid signatures (when 3 are required) using EIP-712
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForTest);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
 
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,
@@ -873,25 +787,9 @@ describe.only("UnifiedPaymentVerifier", () => {
           receiverId: hashedPayeeDetails
         };
 
-        // Recreate message hash
-        const encoded = ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "string", "uint256", "bytes32", "uint256", "uint256", "string", "string"],
-          [
-            paymentDetailsForTest.processorProviderHash,
-            paymentDetailsForTest.paymentMethod,
-            paymentDetailsForTest.intentHash,
-            paymentDetailsForTest.receiverId,
-            paymentDetailsForTest.amount,
-            paymentDetailsForTest.timestamp,
-            paymentDetailsForTest.paymentId,
-            paymentDetailsForTest.currency
-          ]
-        );
-        const newMessageHash = ethers.utils.keccak256(encoded);
-
-        // Get exactly 2 valid signatures
-        const signature1 = await owner.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
-        const signature2 = await witness1.wallet.signMessage(ethers.utils.arrayify(newMessageHash));
+        // Get exactly 2 valid signatures using EIP-712
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForTest);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
 
         const paymentDetailsWithSignatures = {
           ...paymentDetailsForTest,

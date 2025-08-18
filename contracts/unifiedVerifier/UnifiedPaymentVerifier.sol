@@ -5,7 +5,28 @@ import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 
+/**
+ * @title UnifiedPaymentVerifier
+ * @notice Verifies payment proofs from multiple payment methods using witness attestations
+ */
 contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier {
+    
+    /* ============ Constants ============ */
+    
+    // EIP-712 Domain Separator
+    bytes32 private constant DOMAIN_TYPEHASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    
+    // EIP-712 Type Hash for PaymentDetails
+    bytes32 private constant PAYMENT_DETAILS_TYPEHASH = keccak256(
+        "PaymentDetails(bytes32 processorProviderHash,string paymentMethod,uint256 intentHash,bytes32 receiverId,uint256 amount,uint256 timestamp,string paymentId,string currency)"
+    );
+    
+    /* ============ State Variables ============ */
+    
+    // EIP-712 Domain Separator (computed once at deployment)
+    bytes32 public immutable DOMAIN_SEPARATOR;
     
     /* ============ Structs ============ */
     
@@ -40,7 +61,18 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         _escrow,
         _nullifierRegistry,
         _minWitnessSignatures
-    ) {}
+    ) {
+        // Compute EIP-712 domain separator
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                DOMAIN_TYPEHASH,
+                keccak256(bytes("UnifiedPaymentVerifier")), // name
+                keccak256(bytes("1")),                      // version
+                block.chainid,                              // chainId
+                address(this)                               // verifyingContract
+            )
+        );
+    }
 
     /* ============ External Functions ============ */
     
@@ -77,23 +109,33 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         // Decode witnesses from deposit data
         address[] memory witnesses = _decodeWitnesses(_verifyPaymentData.depositData);
         
-        // Reconstruct the message that was signed by the attestor
-        // The attestor signs: keccak256(abi.encode(processorHash, paymentMethod, intentHash, receiverId, amount, timestamp, paymentId, currency))
-        bytes memory encoded = abi.encode(
-            paymentDetails.processorProviderHash,
-            paymentDetails.paymentMethod,
-            paymentDetails.intentHash,
-            paymentDetails.receiverId,
-            paymentDetails.amount,
-            paymentDetails.timestamp,
-            paymentDetails.paymentId,
-            paymentDetails.currency
+        // Create EIP-712 struct hash for the payment details
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PAYMENT_DETAILS_TYPEHASH,
+                paymentDetails.processorProviderHash,
+                keccak256(bytes(paymentDetails.paymentMethod)),    // Hash string fields
+                paymentDetails.intentHash,
+                paymentDetails.receiverId,
+                paymentDetails.amount,
+                paymentDetails.timestamp,
+                keccak256(bytes(paymentDetails.paymentId)),        // Hash string fields
+                keccak256(bytes(paymentDetails.currency))          // Hash string fields
+            )
         );
-        bytes32 messageHash = keccak256(encoded);
         
-        // Verify witness signatures meet threshold
+        // Create EIP-712 digest
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                structHash
+            )
+        );
+        
+        // Verify witness signatures meet threshold using EIP-712 digest
         require(
-            _verifyWitnessSignatures(messageHash, paymentDetails.signatures, witnesses),
+            _verifyWitnessSignatures(digest, paymentDetails.signatures, witnesses),
             "UnifiedPaymentVerifier: Invalid witness signatures"
         );
         

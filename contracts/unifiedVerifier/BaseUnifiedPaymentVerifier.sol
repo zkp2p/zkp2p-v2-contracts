@@ -330,13 +330,13 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     /**
      * Verifies that signatures meet the required threshold from accepted witnesses
      * 
-     * @param _messageHash The hash of the message that was signed
+     * @param _digest The message digest to verify (EIP-712 or EIP-191)
      * @param _signatures Array of signatures (must have at least minWitnessSignatures)
      * @param _witnesses Array of accepted witness addresses
      * @return bool Whether the threshold is met
      */
     function _verifyWitnessSignatures(
-        bytes32 _messageHash,
+        bytes32 _digest,
         bytes[] memory _signatures,
         address[] memory _witnesses
     )
@@ -345,7 +345,7 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
         returns (bool)
     {
         return ThresholdSigVerifierUtils.verifyWitnessSignatures(
-            _messageHash, 
+            _digest, 
             _signatures, 
             _witnesses, 
             minWitnessSignatures

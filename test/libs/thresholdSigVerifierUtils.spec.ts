@@ -61,7 +61,15 @@ describe("ThresholdSigVerifierUtils", () => {
     let subjectThreshold: BigNumber;
 
     beforeEach(async () => {
-      subjectMessageHash = messageHash;
+      // Convert to Ethereum Signed Message Hash for EIP-191
+      // This is what gets signed when using signMessage()
+      const ethSignedMessageHash = ethers.utils.keccak256(
+        ethers.utils.concat([
+          ethers.utils.toUtf8Bytes("\x19Ethereum Signed Message:\n32"),
+          messageHash
+        ])
+      );
+      subjectMessageHash = ethSignedMessageHash;
       subjectSignatures = [];
       subjectWitnesses = [];
       subjectThreshold = BigNumber.from(1);
