@@ -46,7 +46,7 @@ import {
 } from "../typechain/factories/contracts/mocks";
 import {
   ThresholdSigVerifierUtilsMock__factory
-} from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock.sol";
+} from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock__factory";
 import { NullifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PaymentVerifierRegistry__factory } from "../typechain/factories/contracts/registries";
 import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
