@@ -6,7 +6,7 @@ import { BigNumber, BytesLike } from "ethers";
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
 import { Escrow } from "@typechain/contracts/Escrow";
-import { UnifiedPaymentVerifier } from "@typechain/contracts/verifiers/UnifiedPaymentVerifier";
+import { UnifiedPaymentVerifier } from "@typechain/contracts/unifiedVerifier/UnifiedPaymentVerifier";
 import { NullifierRegistry } from "@typechain/contracts/registries/NullifierRegistry";
 import { USDCMock } from "@typechain/contracts/mocks/USDCMock";
 import DeployHelper from "@utils/deploys";
