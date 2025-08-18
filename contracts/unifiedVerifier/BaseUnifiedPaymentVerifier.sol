@@ -131,17 +131,23 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
     
     /**
-     * Adds a supported currency for a specific payment method
+     * Adds supported currencies for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currencyCode The currency code hash (e.g., keccak256("USD"), keccak256("EUR"))
+     * @param _currencyCodes Array of currency code hashes (e.g., keccak256("USD"), keccak256("EUR"))
      */
-    function addCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) public onlyOwner {
+    function addCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencyCodes) public onlyOwner {
         require(paymentMethodConfig[_paymentMethod].initialized, "BaseUnifiedPaymentVerifier: Payment method does not exist");
-        require(!paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode], "BaseUnifiedPaymentVerifier: Currency already supported");
+        require(_currencyCodes.length > 0, "BaseUnifiedPaymentVerifier: Must provide at least one currency");
         
-        paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode] = true;
-        paymentMethodConfig[_paymentMethod].currencies.push(_currencyCode);
-        emit CurrencyAdded(_paymentMethod, _currencyCode);
+        for (uint256 i = 0; i < _currencyCodes.length; i++) {
+            bytes32 currencyCode = _currencyCodes[i];
+            require(currencyCode != bytes32(0), "BaseUnifiedPaymentVerifier: Invalid currency code");
+            require(!paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BaseUnifiedPaymentVerifier: Currency already supported");
+            
+            paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = true;
+            paymentMethodConfig[_paymentMethod].currencies.push(currencyCode);
+            emit CurrencyAdded(_paymentMethod, currencyCode);
+        }
     }
     
     /**
@@ -212,10 +218,8 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
         // Add processors using batch function
         addProcessorHashes(_paymentMethod, _processorHashes);
         
-        // Add currencies
-        for (uint256 i = 0; i < _currencyCodes.length; i++) {
-            addCurrency(_paymentMethod, _currencyCodes[i]);
-        }
+        // Add currencies using batch function
+        addCurrencies(_paymentMethod, _currencyCodes);
         
         emit PaymentMethodAdded(_paymentMethod, _timestampBuffer);
     }

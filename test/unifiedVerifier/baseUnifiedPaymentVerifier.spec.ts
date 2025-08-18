@@ -580,9 +580,9 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     });
   });
 
-  describe("#addCurrency", async () => {
+  describe("#addCurrencies", async () => {
     let subjectPaymentMethod: string;
-    let subjectCurrency: string;
+    let subjectCurrencies: string[];
     let subjectCaller: Account;
 
     beforeEach(async () => {
@@ -595,27 +595,80 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
-      subjectCurrency = eurCurrencyHash;
+      subjectCurrencies = [eurCurrencyHash, gbpCurrencyHash];
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addCurrency(subjectPaymentMethod, subjectCurrency);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addCurrencies(subjectPaymentMethod, subjectCurrencies);
     }
 
-    it("should add the currency", async () => {
+    it("should add multiple currencies in a single transaction", async () => {
       await subject();
 
-      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, subjectCurrency);
+      // Check EUR is supported
+      const isEurSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, eurCurrencyHash);
+      expect(isEurSupported).to.be.true;
+
+      // Check GBP is supported
+      const isGbpSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, gbpCurrencyHash);
+      expect(isGbpSupported).to.be.true;
+
+      const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
+      expect(currencies).to.contain(eurCurrencyHash);
+      expect(currencies).to.contain(gbpCurrencyHash);
+      expect(currencies).to.contain(usdCurrencyHash); // Previously added
+    });
+
+    it("should add a single currency (array with one element)", async () => {
+      subjectCurrencies = [eurCurrencyHash];
+      
+      await subject();
+
+      const isSupported = await BaseUnifiedPaymentVerifier.isCurrency(subjectPaymentMethod, eurCurrencyHash);
       expect(isSupported).to.be.true;
 
       const currencies = await BaseUnifiedPaymentVerifier.getCurrencies(subjectPaymentMethod);
-      expect(currencies).to.contain(subjectCurrency);
+      expect(currencies).to.contain(eurCurrencyHash);
     });
 
-    it("should emit the CurrencyAdded event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "CurrencyAdded")
-        .withArgs(subjectPaymentMethod, subjectCurrency);
+    it("should emit CurrencyAdded events for each currency added", async () => {
+      const tx = await subject();
+
+      await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "CurrencyAdded")
+        .withArgs(subjectPaymentMethod, eurCurrencyHash);
+      await expect(tx).to.emit(BaseUnifiedPaymentVerifier, "CurrencyAdded")
+        .withArgs(subjectPaymentMethod, gbpCurrencyHash);
+    });
+
+    describe("when empty array is provided", async () => {
+      beforeEach(async () => {
+        subjectCurrencies = [];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Must provide at least one currency");
+      });
+    });
+
+    describe("when invalid currency code (bytes32(0)) is provided", async () => {
+      beforeEach(async () => {
+        subjectCurrencies = [eurCurrencyHash, ethers.constants.HashZero, gbpCurrencyHash];
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Invalid currency code");
+      });
+    });
+
+    describe("when already supported currency is included", async () => {
+      beforeEach(async () => {
+        subjectCurrencies = [eurCurrencyHash, usdCurrencyHash, gbpCurrencyHash]; // USD already added in setup
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency already supported");
+      });
     });
 
     describe("when payment method does not exist", async () => {
@@ -625,16 +678,6 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Payment method does not exist");
-      });
-    });
-
-    describe("when currency already exists", async () => {
-      beforeEach(async () => {
-        subjectCurrency = usdCurrencyHash; // Already added in setup
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BaseUnifiedPaymentVerifier: Currency already supported");
       });
     });
 
