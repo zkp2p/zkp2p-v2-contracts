@@ -21,7 +21,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     
     // EIP-712 Type Hash for PaymentDetails
     bytes32 private constant PAYMENT_DETAILS_TYPEHASH = keccak256(
-        "PaymentDetails(bytes32 processorProviderHash,string paymentMethod,uint256 intentHash,bytes32 receiverId,uint256 amount,uint256 timestamp,string paymentId,string currency)"
+        "PaymentDetails(bytes32 processorProviderHash,string paymentMethod,uint256 intentHash,bytes32 receiverId,uint256 amount,uint256 timestamp,string paymentId,string currency,bytes32 dataHash)"
     );
     
     /* ============ State Variables ============ */
@@ -44,6 +44,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         uint256 timestamp;               // Payment timestamp in UTC in milliseconds
         string paymentId;                // Unique payment identifier from the service
         string currency;                 // Currency (e.g., "USD", "EUR")
+        bytes32 dataHash;                // Hash of verification data for integrity
     }
 
     /* ============ Constructor ============ */
@@ -107,6 +108,12 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             "UnifiedPaymentVerifier: Unauthorized processor for payment method"
         );
         
+        // CRITICAL: Verify data integrity - the data hash must match what was signed
+        require(
+            keccak256(_verifyPaymentData.data) == paymentDetails.dataHash,
+            "UnifiedPaymentVerifier: Data hash mismatch"
+        );
+        
         // Create EIP-712 struct hash for the payment details
         bytes32 structHash = keccak256(
             abi.encode(
@@ -118,7 +125,8 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
                 paymentDetails.amount,
                 paymentDetails.timestamp,
                 keccak256(bytes(paymentDetails.paymentId)),        // Hash string fields
-                keccak256(bytes(paymentDetails.currency))          // Hash string fields
+                keccak256(bytes(paymentDetails.currency)),         // Hash string fields
+                paymentDetails.dataHash                            // Include dataHash in struct
             )
         );
         
@@ -131,11 +139,11 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             )
         );
 
-        // Call the attestation verifier
+        // Call the attestation verifier with verified data
         bool isValid = attestationVerifier.verify(
             digest, 
             paymentDetails.signatures,
-            _verifyPaymentData.depositData
+            _verifyPaymentData.data  // Use data field instead of depositData
         );
         
         // Require valid signatures

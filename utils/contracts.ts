@@ -29,7 +29,7 @@ export {
   ZelleChaseReclaimVerifier,
   BaseUnifiedPaymentVerifier,
   UnifiedPaymentVerifier,
-  WitnessAttestationVerifier,
+  SimpleAttestationVerifier,
   IAttestationVerifier,
   IPaymentVerifier
 } from "../typechain";

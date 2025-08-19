@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
-import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, WitnessAttestationVerifier } from "@utils/contracts";
+import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, SimpleAttestationVerifier, WitnessAttestationVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -16,13 +16,15 @@ import {
 
 const expect = getWaffleExpect();
 
-describe.only("BaseUnifiedPaymentVerifier", () => {
+describe("BaseUnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
+  let witness1: Account;
+  let zktlsAttestor: Account;
 
   let BaseUnifiedPaymentVerifier: BaseUnifiedPaymentVerifier;
-  let attestationVerifier: WitnessAttestationVerifier;
+  let attestationVerifier: SimpleAttestationVerifier;
   let nullifierRegistry: NullifierRegistry;
 
   let deployer: DeployHelper;
@@ -38,7 +40,9 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     [
       owner,
       attacker,
-      escrow
+      escrow,
+      witness1,
+      zktlsAttestor
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -46,8 +50,9 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     // Deploy the nullifier registry
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    attestationVerifier = await deployer.deployWitnessAttestationVerifier(
-      BigNumber.from(minWitnessSignatures)
+    attestationVerifier = await deployer.deploySimpleAttestationVerifier(
+      witness1.address,
+      zktlsAttestor.address
     );
 
     // Deploy the UnifiedPaymentVerifier (which inherits BaseUnifiedPaymentVerifier functionality)
@@ -120,10 +125,15 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     let subjectAttestationVerifier: Address;
     let subjectCaller: Account;
 
+    let newAttestationVerifier: SimpleAttestationVerifier;
+
     beforeEach(async () => {
-      subjectAttestationVerifier = (await deployer.deployWitnessAttestationVerifier(
-        BigNumber.from(2)
-      )).address;
+      newAttestationVerifier = await deployer.deploySimpleAttestationVerifier(
+        witness1.address,
+        zktlsAttestor.address
+      );
+
+      subjectAttestationVerifier = newAttestationVerifier.address;
       subjectCaller = owner;
     });
 

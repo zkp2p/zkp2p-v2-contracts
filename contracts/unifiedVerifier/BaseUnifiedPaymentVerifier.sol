@@ -7,7 +7,6 @@ import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 import { IBaseUnifiedPaymentVerifier } from "./IBaseUnifiedPaymentVerifier.sol";
 import { IAttestationVerifier } from "./IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { WitnessAttestationVerifier } from "./WitnessAttestationVerifier.sol";
 
 abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Ownable {
     
