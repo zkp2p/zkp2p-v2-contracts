@@ -501,7 +501,7 @@ describe.only("UnifiedPaymentVerifier", () => {
         // Payment timestamp is 1753762763000 ms
         // Timestamp buffer is 30000 ms (30 seconds)
         // Intent timestamp needs to be after payment + buffer
-        subjectIntentTimestamp = BigNumber.from(samplePaymentDetails.timestamp + 31000); // Intent created 31 seconds after payment
+        subjectIntentTimestamp = BigNumber.from(samplePaymentDetails.timestamp.toNumber() + 31000); // Intent created 31 seconds after payment
       });
 
       it("should revert", async () => {

@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
-import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, SimpleAttestationVerifier, WitnessAttestationVerifier } from "@utils/contracts";
+import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, SimpleAttestationVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -16,7 +16,7 @@ import {
 
 const expect = getWaffleExpect();
 
-describe("BaseUnifiedPaymentVerifier", () => {
+describe.only("BaseUnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let escrow: Account;
