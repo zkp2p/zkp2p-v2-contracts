@@ -13,6 +13,10 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     
+    /* ============ Constants ============ */
+
+    uint256 internal constant PRECISE_UNIT = 1e18;
+
     /* ============ Events ============ */
     
     event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
@@ -312,5 +316,46 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     function _validateAndAddNullifier(bytes32 _nullifier) internal {
         require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(_nullifier);
+    }
+
+    /**
+     * Verifies the payment method and returns the payment configuration
+     * @param paymentMethod The payment method to verify
+     * @return config The payment method configuration
+     */
+    function _verifyPaymentMethod(
+        string memory paymentMethod
+    ) internal view returns (PaymentMethodConfig storage config) {
+        bytes32 paymentMethodHash = keccak256(abi.encodePacked(paymentMethod));
+        config = paymentMethodConfig[paymentMethodHash];
+
+        require(config.initialized, "UnifiedPaymentVerifier: Payment method does not exist");
+
+        return config;
+    }
+
+
+    /**
+     * Calculates the release amount based on the actual payment amount and conversion rate.
+     * Caps the release amount at the intent amount.
+     * NOTES:
+     * - Assumes that _conversionRate is not zero and is in the same precision as PRECISE_UNIT.
+     * - Function might overflow if _paymentAmount is very very large.
+     * 
+     * @param _paymentAmount The actual payment amount.
+     * @param _conversionRate The conversion rate of the deposit token to the fiat currency.
+     * @param _intentAmount The max amount of tokens the offchain payer wants to take.
+     * @return The release amount.
+     */
+    function _calculateReleaseAmount(uint256 _paymentAmount, uint256 _conversionRate, uint256 _intentAmount) internal pure returns (uint256) {
+        // releaseAmount = paymentAmount / conversionRate
+        uint256 releaseAmount = (_paymentAmount * PRECISE_UNIT) / _conversionRate;
+        
+        // Ensure release amount doesn't exceed the intent amount (cap at intent amount)
+        if (releaseAmount > _intentAmount) {
+            releaseAmount = _intentAmount;
+        }
+
+        return releaseAmount;
     }
 }

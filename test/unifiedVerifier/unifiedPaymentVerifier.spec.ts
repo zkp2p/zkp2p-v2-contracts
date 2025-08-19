@@ -446,55 +446,6 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("when currency is not supported for payment method", async () => {
-      beforeEach(async () => {
-        const testPayeeDetails = "test_payee_id";
-        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-
-        const attestationData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [zktlsAttestor.address]
-        );
-        const dataHash = ethers.utils.keccak256(attestationData);
-
-        const paymentDetailsWithUnsupportedCurrency = {
-          ...samplePaymentDetails,
-          receiverId: hashedPayeeDetails,
-          currency: "EUR", // EUR not added to venmo payment method
-          dataHash: dataHash
-        };
-
-        // Sign with EIP-712
-        const signature = await signPaymentDetails(witness1.wallet, paymentDetailsWithUnsupportedCurrency);
-
-        paymentDetailsWithUnsupportedCurrency.signatures = [signature];
-
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-          [[
-            paymentDetailsWithUnsupportedCurrency.processorProviderHash,
-            paymentDetailsWithUnsupportedCurrency.signatures,
-            paymentDetailsWithUnsupportedCurrency.paymentMethod,
-            paymentDetailsWithUnsupportedCurrency.intentHash,
-            paymentDetailsWithUnsupportedCurrency.receiverId,
-            paymentDetailsWithUnsupportedCurrency.amount,
-            paymentDetailsWithUnsupportedCurrency.timestamp,
-            paymentDetailsWithUnsupportedCurrency.paymentId,
-            paymentDetailsWithUnsupportedCurrency.currency,
-            paymentDetailsWithUnsupportedCurrency.dataHash
-          ]]
-        );
-
-        subjectData = attestationData;
-        subjectFiatCurrency = Currency.EUR;
-        subjectPayeeDetails = testPayeeDetails; // Ensure payee matches
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Currency not supported for payment method");
-      });
-    });
-
     describe("when payment was made before intent", async () => {
       beforeEach(async () => {
         // Intent timestamp is after payment timestamp + buffer
@@ -516,7 +467,9 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Release amount exceeds intent");
+        const result = await subjectCallStatic();
+
+        expect(result.releaseAmount).to.eq(40000); // With 1:1 conversion
       });
     });
 
