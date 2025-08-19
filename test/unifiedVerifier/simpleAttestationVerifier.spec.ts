@@ -16,7 +16,7 @@ import { ADDRESS_ZERO } from "@utils/constants";
 
 const expect = getWaffleExpect();
 
-describe.only("SimpleAttestationVerifier", () => {
+describe("SimpleAttestationVerifier", () => {
   let owner: Account;
   let nonOwner: Account;
   let witness: Account;
