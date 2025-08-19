@@ -34,7 +34,8 @@ import {
   EscrowRegistry,
   BaseUnifiedPaymentVerifier,
   UnifiedPaymentVerifier,
-  ThresholdSigVerifierUtilsMock
+  ThresholdSigVerifierUtilsMock,
+  WitnessAttestationVerifier
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
@@ -67,6 +68,7 @@ import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contra
 import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { BaseUnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
 import { UnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
+import { WitnessAttestationVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
 
 export default class DeployHelper {
   private _deployerSigner: Signer;
@@ -371,11 +373,19 @@ export default class DeployHelper {
   public async deployUnifiedPaymentVerifier(
     escrow: Address,
     nullifierRegistry: Address,
-    minWitnessSignatures: BigNumber
+    attestationVerifier: Address
   ): Promise<UnifiedPaymentVerifier> {
     return await new UnifiedPaymentVerifier__factory(this._deployerSigner).deploy(
       escrow,
       nullifierRegistry,
+      attestationVerifier
+    );
+  }
+
+  public async deployWitnessAttestationVerifier(
+    minWitnessSignatures: BigNumber
+  ): Promise<WitnessAttestationVerifier> {
+    return await new WitnessAttestationVerifier__factory(this._deployerSigner).deploy(
       minWitnessSignatures
     );
   }

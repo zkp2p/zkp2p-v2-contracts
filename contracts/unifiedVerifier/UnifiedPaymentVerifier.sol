@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
+import { IAttestationVerifier } from "./IAttestationVerifier.sol";
 
 /**
  * @title UnifiedPaymentVerifier
@@ -51,16 +52,16 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
      * Initializes the unified payment verifier
      * @param _escrow The escrow contract address
      * @param _nullifierRegistry The nullifier registry contract
-     * @param _minWitnessSignatures Minimum number of witness signatures required
+     * @param _attestationVerifier The attestation verifier contract
      */
     constructor(
         address _escrow,
         INullifierRegistry _nullifierRegistry,
-        uint256 _minWitnessSignatures
+        IAttestationVerifier _attestationVerifier
     ) BaseUnifiedPaymentVerifier(
         _escrow,
         _nullifierRegistry,
-        _minWitnessSignatures
+        _attestationVerifier
     ) {
         // Compute EIP-712 domain separator
         DOMAIN_SEPARATOR = keccak256(
@@ -106,9 +107,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             "UnifiedPaymentVerifier: Unauthorized processor for payment method"
         );
         
-        // Decode witnesses from deposit data
-        address[] memory witnesses = _decodeWitnesses(_verifyPaymentData.depositData);
-        
         // Create EIP-712 struct hash for the payment details
         bytes32 structHash = keccak256(
             abi.encode(
@@ -132,12 +130,16 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
                 structHash
             )
         );
-        
-        // Verify witness signatures meet threshold using EIP-712 digest
-        require(
-            _verifyWitnessSignatures(digest, paymentDetails.signatures, witnesses),
-            "UnifiedPaymentVerifier: Invalid witness signatures"
+
+        // Call the attestation verifier
+        bool isValid = attestationVerifier.verify(
+            digest, 
+            paymentDetails.signatures,
+            _verifyPaymentData.depositData
         );
+        
+        // Require valid signatures
+        require(isValid, "UnifiedPaymentVerifier: Invalid witness signatures");
         
         // Verify the payee matches what's expected
         bytes32 expectedPayeeHash = keccak256(abi.encodePacked(_verifyPaymentData.payeeDetails));

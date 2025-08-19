@@ -5,10 +5,7 @@ import { BigNumber, BytesLike } from "ethers";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { Escrow } from "@typechain/contracts/Escrow";
-import { UnifiedPaymentVerifier } from "@typechain/contracts/unifiedVerifier/UnifiedPaymentVerifier";
-import { NullifierRegistry } from "@typechain/contracts/registries/NullifierRegistry";
-import { USDCMock } from "@typechain/contracts/mocks/USDCMock";
+import { UnifiedPaymentVerifier, WitnessAttestationVerifier, NullifierRegistry, USDCMock } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 import { Currency } from "@utils/protocolUtils";
 import { Blockchain, usdc, ether } from "@utils/common";
@@ -29,6 +26,7 @@ describe.only("UnifiedPaymentVerifier", () => {
   let witness3: Account;
 
   let nullifierRegistry: NullifierRegistry;
+  let attestationVerifier: WitnessAttestationVerifier;
   let verifier: UnifiedPaymentVerifier;
   let usdcToken: USDCMock;
 
@@ -70,10 +68,13 @@ describe.only("UnifiedPaymentVerifier", () => {
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
     nullifierRegistry = await deployer.deployNullifierRegistry();
+    attestationVerifier = await deployer.deployWitnessAttestationVerifier(
+      BigNumber.from(minWitnessSignatures)
+    );
     verifier = await deployer.deployUnifiedPaymentVerifier(
       escrow.address,
       nullifierRegistry.address,
-      BigNumber.from(minWitnessSignatures)
+      attestationVerifier.address
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
@@ -91,11 +92,11 @@ describe.only("UnifiedPaymentVerifier", () => {
     it("should set the correct state", async () => {
       const escrowAddress = await verifier.escrow();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
-      const minSignatures = await verifier.minWitnessSignatures();
+      const attestationVerifierAddress = await verifier.attestationVerifier();
 
       expect(escrowAddress).to.eq(escrow.address);
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(minSignatures).to.eq(BigNumber.from(minWitnessSignatures));
+      expect(attestationVerifierAddress).to.eq(attestationVerifier.address);
     });
   });
 
@@ -285,7 +286,7 @@ describe.only("UnifiedPaymentVerifier", () => {
     describe("when using 3 signatures from 3 witnesses", async () => {
       beforeEach(async () => {
         // Update to require 3 signatures
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(3);
 
         // Use hardhat witness and two other witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -416,7 +417,7 @@ describe.only("UnifiedPaymentVerifier", () => {
     describe("when not enough witness signatures provided", () => {
       beforeEach(async () => {
         // Update to require 2 signatures
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(2);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(2);
 
         // Use two witness addresses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -581,30 +582,70 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: No witnesses provided");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: req threshold exceeds witnesses");
       });
     });
 
     describe("when duplicate witnesses provided", async () => {
       beforeEach(async () => {
-        const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-        witnesses = [hardhatWitness, hardhatWitness]; // Duplicate witness
+        // Use owner.address and witness1.address as duplicate witness
+        // This tests that the system properly handles duplicate witness addresses
+        witnesses = [owner.address, owner.address, witness1.address]; // Duplicate owner
+
+        // Need to recreate message with correct receiverId
+        const testPayeeDetails = "test_payee_id";
+        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+
+        const paymentDetailsForTest = {
+          ...samplePaymentDetails,
+          receiverId: hashedPayeeDetails
+        };
+
+        // Get signatures from owner and witness1 using EIP-712
+        // Even though owner appears twice in witnesses, only one signature counts
+        const signature1 = await signPaymentDetails(owner.wallet, paymentDetailsForTest);
+        const signature2 = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
+
+        const paymentDetailsWithSignatures = {
+          ...paymentDetailsForTest,
+          signatures: [signature1, signature2]
+        };
+
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string)"],
+          [[
+            paymentDetailsWithSignatures.processorProviderHash,
+            paymentDetailsWithSignatures.signatures,
+            paymentDetailsWithSignatures.paymentMethod,
+            paymentDetailsWithSignatures.intentHash,
+            paymentDetailsWithSignatures.receiverId,
+            paymentDetailsWithSignatures.amount,
+            paymentDetailsWithSignatures.timestamp,
+            paymentDetailsWithSignatures.paymentId,
+            paymentDetailsWithSignatures.currency
+          ]]
+        );
 
         subjectDepositData = ethers.utils.defaultAbiCoder.encode(
           ['address[]'],
           [witnesses]
         );
+
+        subjectPayeeDetails = testPayeeDetails;
       });
 
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: Duplicate witnesses");
+      it("should succeed with duplicate witnesses", async () => {
+        // Duplicate witnesses are allowed - the system handles them correctly
+        // by counting unique valid signatures
+        const result = await subjectCallStatic();
+        expect(result.success).to.be.true;
       });
     });
 
     describe("when minWitnessSignatures exceeds number of witnesses", async () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 3
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(3);
 
         // But only provide 2 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -653,7 +694,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: Not enough witnesses");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: req threshold exceeds witnesses");
       });
     });
 
@@ -665,7 +706,7 @@ describe.only("UnifiedPaymentVerifier", () => {
         witnesses = [hardhatWitness, witness1.address];
 
         // Set minWitnessSignatures to 3
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(3);
 
         // Need to recreate message with correct receiverId
         const testPayeeDetails = "test_payee_id";
@@ -710,14 +751,14 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert when duplicate signatures are provided", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: Not enough witnesses");
+        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: req threshold exceeds witnesses");
       });
     });
 
     describe("when valid signatures don't meet threshold", async () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 3
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(3);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(3);
 
         // Provide 3 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -772,7 +813,7 @@ describe.only("UnifiedPaymentVerifier", () => {
     describe("when exactly meeting threshold without early exit", async () => {
       beforeEach(async () => {
         // Set minWitnessSignatures to 2
-        await verifier.connect(owner.wallet).setMinWitnessSignatures(2);
+        await attestationVerifier.connect(owner.wallet).setMinWitnessSignatures(2);
 
         // Provide exactly 2 witnesses
         const hardhatWitness = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";

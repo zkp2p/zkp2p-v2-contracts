@@ -13,6 +13,8 @@ library ThresholdSigVerifierUtils {
     using SignatureChecker for address;
     using ECDSA for bytes32;
 
+    // todo: does this function take care of duplicate signatures or witnesses? 
+
     /**
      * Verifies that signatures meet the required threshold from accepted witnesses
      * 

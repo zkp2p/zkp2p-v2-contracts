@@ -5,8 +5,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 import { IBaseUnifiedPaymentVerifier } from "./IBaseUnifiedPaymentVerifier.sol";
+import { IAttestationVerifier } from "./IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { ThresholdSigVerifierUtils } from "../lib/ThresholdSigVerifierUtils.sol";
+import { WitnessAttestationVerifier } from "./WitnessAttestationVerifier.sol";
 
 abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Ownable {
     
@@ -15,10 +16,14 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     
     /* ============ Events ============ */
     
-    event MinWitnessSignaturesUpdated(uint256 oldMin, uint256 newMin);
+    event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
+    
+    // todo: emit the payment method details
     event PaymentMethodAdded(bytes32 indexed paymentMethod, uint256 timestampBuffer);
     event PaymentMethodRemoved(bytes32 indexed paymentMethod);
+    // todo: rename to TimestampBufferUpdated
     event TimestampBufferSet(bytes32 indexed paymentMethod, uint256 oldBuffer, uint256 newBuffer);
+    
     event ProcessorHashAdded(bytes32 indexed paymentMethod, bytes32 indexed processorHash);
     event ProcessorHashRemoved(bytes32 indexed paymentMethod, bytes32 indexed processorHash);
     event CurrencyAdded(bytes32 indexed paymentMethod, bytes32 indexed currencyCode);
@@ -29,7 +34,8 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     address public immutable escrow;
     INullifierRegistry public immutable nullifierRegistry;
     
-    uint256 public minWitnessSignatures;
+    // The attestation verifier used for verifying attestation by the attestation service / attestor
+    IAttestationVerifier public attestationVerifier;
     
     // Mapping of payment method hash => configuration
     mapping(bytes32 => IBaseUnifiedPaymentVerifier.PaymentMethodConfig) public paymentMethodConfig;
@@ -50,23 +56,24 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     /* ============ Constructor ============ */
     
     /**
-     * Initializes base payment verifier
+     * @notice Initializes base payment verifier
      * @param _escrow The escrow contract address
      * @param _nullifierRegistry The nullifier registry contract
-     * @param _minWitnessSignatures Minimum number of witness signatures required
+     * @param _attestationVerifier The attestation verifier contract
      */
     constructor(
         address _escrow,
         INullifierRegistry _nullifierRegistry,
-        uint256 _minWitnessSignatures
+        IAttestationVerifier _attestationVerifier
     ) Ownable() {
         require(_escrow != address(0), "BUPN: Invalid escrow");
         require(address(_nullifierRegistry) != address(0), "BUPN: Invalid nullifier registry");
-        require(_minWitnessSignatures > 0, "BUPN: Min signatures must be > 0");
         
         escrow = _escrow;
         nullifierRegistry = _nullifierRegistry;
-        minWitnessSignatures = _minWitnessSignatures;
+        
+        // Deploy and set the default witness attestation verifier
+        attestationVerifier = _attestationVerifier;
     }
     
     /* ============ External Functions ============ */
@@ -133,16 +140,17 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
     
     /**
-     * Updates the minimum witness signatures required
-     * @param _newMinWitnessSignatures The new minimum witness signatures
+     * @notice Updates the attestation verifier contract
+     * @param _newAttestationVerifier The new attestation verifier address
+     * @dev Only callable by owner
      */
-    function setMinWitnessSignatures(uint256 _newMinWitnessSignatures) external onlyOwner {
-        require(_newMinWitnessSignatures > 0, "BUPN: Min signatures must be > 0");
-        require(_newMinWitnessSignatures != minWitnessSignatures, "BUPN: Same value");
+    function setAttestationVerifier(IAttestationVerifier _newAttestationVerifier) external onlyOwner {
+        require(address(_newAttestationVerifier) != address(0), "BUPN: Invalid attestation verifier");
+        require(address(_newAttestationVerifier) != address(attestationVerifier), "BUPN: Same verifier");
         
-        uint256 oldMin = minWitnessSignatures;
-        minWitnessSignatures = _newMinWitnessSignatures;
-        emit MinWitnessSignaturesUpdated(oldMin, _newMinWitnessSignatures);
+        address oldVerifier = address(attestationVerifier);
+        attestationVerifier = _newAttestationVerifier;
+        emit AttestationVerifierUpdated(oldVerifier, address(_newAttestationVerifier));
     }
     
     /**
@@ -158,7 +166,7 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
         
         emit TimestampBufferSet(_paymentMethod, oldBuffer, _newTimestampBuffer);
     }
-    
+                                                                                                                            
     /**
      * Authorizes processor hashes for a specific payment method
      * @param _paymentMethod The payment method hash
@@ -304,51 +312,5 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     function _validateAndAddNullifier(bytes32 _nullifier) internal {
         require(!nullifierRegistry.isNullified(_nullifier), "Nullifier has already been used");
         nullifierRegistry.addNullifier(_nullifier);
-    }
-    
-    /**
-     * Decodes witness addresses from deposit data with duplicate checking
-     * @param _depositData The encoded witness addresses
-     * @return witnesses Array of unique witness addresses
-     */
-    function _decodeWitnesses(bytes memory _depositData) internal view returns (address[] memory) {
-        address[] memory witnesses = abi.decode(_depositData, (address[]));
-        
-        require(witnesses.length > 0, "BUPN: No witnesses provided");
-        require(witnesses.length >= minWitnessSignatures, "BUPN: Not enough witnesses");
-        
-        // Check for duplicates
-        for (uint256 i = 0; i < witnesses.length; i++) {
-            for (uint256 j = i + 1; j < witnesses.length; j++) {
-                require(witnesses[i] != witnesses[j], "BUPN: Duplicate witnesses");
-            }
-        }
-        
-        return witnesses;
-    }
-    
-    /**
-     * Verifies that signatures meet the required threshold from accepted witnesses
-     * 
-     * @param _digest The message digest to verify (EIP-712 or EIP-191)
-     * @param _signatures Array of signatures (must have at least minWitnessSignatures)
-     * @param _witnesses Array of accepted witness addresses
-     * @return bool Whether the threshold is met
-     */
-    function _verifyWitnessSignatures(
-        bytes32 _digest,
-        bytes[] memory _signatures,
-        address[] memory _witnesses
-    )
-        internal
-        view
-        returns (bool)
-    {
-        return ThresholdSigVerifierUtils.verifyWitnessSignatures(
-            _digest, 
-            _signatures, 
-            _witnesses, 
-            minWitnessSignatures
-        );
     }
 }

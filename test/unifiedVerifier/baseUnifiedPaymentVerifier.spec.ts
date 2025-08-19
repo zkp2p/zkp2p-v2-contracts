@@ -3,7 +3,7 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
-import { BaseUnifiedPaymentVerifier, NullifierRegistry } from "@utils/contracts";
+import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, WitnessAttestationVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
@@ -22,6 +22,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
   let escrow: Account;
 
   let BaseUnifiedPaymentVerifier: BaseUnifiedPaymentVerifier;
+  let attestationVerifier: WitnessAttestationVerifier;
   let nullifierRegistry: NullifierRegistry;
 
   let deployer: DeployHelper;
@@ -45,11 +46,15 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     // Deploy the nullifier registry
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
+    attestationVerifier = await deployer.deployWitnessAttestationVerifier(
+      BigNumber.from(minWitnessSignatures)
+    );
+
     // Deploy the UnifiedPaymentVerifier (which inherits BaseUnifiedPaymentVerifier functionality)
     BaseUnifiedPaymentVerifier = await deployer.deployUnifiedPaymentVerifier(
       escrow.address,
       nullifierRegistry.address,
-      BigNumber.from(minWitnessSignatures)
+      attestationVerifier.address
     );
   });
 
@@ -64,9 +69,9 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
     });
 
-    it("should set the correct min witness signatures", async () => {
-      const minSignatures = await BaseUnifiedPaymentVerifier.minWitnessSignatures();
-      expect(minSignatures).to.eq(BigNumber.from(minWitnessSignatures));
+    it("should set the correct attestation verifier", async () => {
+      const attestationVerifierAddress = await BaseUnifiedPaymentVerifier.attestationVerifier();
+      expect(attestationVerifierAddress).to.eq(attestationVerifier.address);
     });
 
     it("should have the correct owner set", async () => {
@@ -111,47 +116,50 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
     });
   });
 
-  describe("#setMinWitnessSignatures", async () => {
-    let subjectNewMinSignatures: BigNumber;
+  describe.only("#setAttestationVerifier", async () => {
+    let subjectAttestationVerifier: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectNewMinSignatures = BigNumber.from(3);
+      subjectAttestationVerifier = (await deployer.deployWitnessAttestationVerifier(
+        BigNumber.from(2)
+      )).address;
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).setMinWitnessSignatures(subjectNewMinSignatures);
+      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).setAttestationVerifier(subjectAttestationVerifier);
     }
 
-    it("should update the min witness signatures", async () => {
+    it("should update the attestation verifier", async () => {
       await subject();
-      const minSignatures = await BaseUnifiedPaymentVerifier.minWitnessSignatures();
-      expect(minSignatures).to.eq(subjectNewMinSignatures);
+      const attestationVerifierAddress = await BaseUnifiedPaymentVerifier.attestationVerifier();
+      expect(attestationVerifierAddress).to.eq(subjectAttestationVerifier);
     });
 
-    it("should emit the MinWitnessSignaturesUpdated event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "MinWitnessSignaturesUpdated")
-        .withArgs(BigNumber.from(minWitnessSignatures), subjectNewMinSignatures);
+    it("should emit the AttestationVerifierUpdated event", async () => {
+      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "AttestationVerifierUpdated")
+        .withArgs(attestationVerifier.address, subjectAttestationVerifier);
     });
 
-    describe("when new min signatures is zero", async () => {
+    describe("when attestation verifier is zero", async () => {
       beforeEach(async () => {
-        subjectNewMinSignatures = BigNumber.from(0);
+        subjectAttestationVerifier = ethers.constants.AddressZero;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: Min signatures must be > 0");
+        await expect(subject()).to.be.revertedWith("BUPN: Invalid attestation verifier");
       });
     });
 
-    describe("when new min signatures is the same as current", async () => {
+    describe("when attestation verifier is the same as current", async () => {
       beforeEach(async () => {
-        subjectNewMinSignatures = BigNumber.from(minWitnessSignatures);
+        // Get the current attestation verifier address
+        subjectAttestationVerifier = attestationVerifier.address;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("BUPN: Same value");
+        await expect(subject()).to.be.revertedWith("BUPN: Same verifier");
       });
     });
 
