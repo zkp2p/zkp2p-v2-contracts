@@ -68,6 +68,7 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     ) Ownable() {
         require(_escrow != address(0), "BUPN: Invalid escrow");
         require(address(_nullifierRegistry) != address(0), "BUPN: Invalid nullifier registry");
+        require(address(_attestationVerifier) != address(0), "BUPN: Invalid attestation verifier");
         
         escrow = _escrow;
         nullifierRegistry = _nullifierRegistry;

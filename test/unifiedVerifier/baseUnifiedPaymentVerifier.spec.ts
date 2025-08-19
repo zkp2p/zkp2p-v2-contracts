@@ -85,7 +85,7 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
           deployer.deployUnifiedPaymentVerifier(
             ethers.constants.AddressZero,
             nullifierRegistry.address,
-            BigNumber.from(minWitnessSignatures)
+            attestationVerifier.address
           )
         ).to.be.revertedWith("BUPN: Invalid escrow");
       });
@@ -97,26 +97,26 @@ describe.only("BaseUnifiedPaymentVerifier", () => {
           deployer.deployUnifiedPaymentVerifier(
             escrow.address,
             ethers.constants.AddressZero,
-            BigNumber.from(minWitnessSignatures)
+            attestationVerifier.address
           )
         ).to.be.revertedWith("BUPN: Invalid nullifier registry");
       });
     });
 
-    describe("when min witness signatures is zero", async () => {
+    describe("when attestation verifier address is zero", async () => {
       it("should revert", async () => {
         await expect(
           deployer.deployUnifiedPaymentVerifier(
             escrow.address,
             nullifierRegistry.address,
-            BigNumber.from(0)
+            ethers.constants.AddressZero
           )
-        ).to.be.revertedWith("BUPN: Min signatures must be > 0");
+        ).to.be.revertedWith("BUPN: Invalid attestation verifier");
       });
     });
   });
 
-  describe.only("#setAttestationVerifier", async () => {
+  describe("#setAttestationVerifier", async () => {
     let subjectAttestationVerifier: Address;
     let subjectCaller: Account;
 
