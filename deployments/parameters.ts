@@ -8,6 +8,7 @@ export const PARTIAL_MANUAL_RELEASE_DELAY: any = {
   "sepolia": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
   "base": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
   "base_staging": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
+  "base_sepolia": ONE_HOUR_IN_SECONDS.mul(12), // 12 hours
 };
 
 export const INTENT_EXPIRATION_PERIOD: any = {
@@ -16,6 +17,7 @@ export const INTENT_EXPIRATION_PERIOD: any = {
   "sepolia": THREE_MINUTES_IN_SECONDS,
   "base": ONE_DAY_IN_SECONDS,
   "base_staging": THREE_MINUTES_IN_SECONDS,
+  "base_sepolia": THREE_MINUTES_IN_SECONDS,
 };
 
 export const PROTOCOL_TAKER_FEE: any = {
@@ -23,7 +25,8 @@ export const PROTOCOL_TAKER_FEE: any = {
   "goerli": ether(.001),
   "sepolia": ether(.001),
   "base": ZERO,
-  "base_staging": ZERO
+  "base_staging": ZERO,
+  "base_sepolia": ZERO
 };
 
 export const PROTOCOL_MAKER_FEE: any = {
@@ -31,7 +34,8 @@ export const PROTOCOL_MAKER_FEE: any = {
   "goerli": ether(.001),
   "sepolia": ether(.001),
   "base": ZERO,
-  "base_staging": ZERO
+  "base_staging": ZERO,
+  "base_sepolia": ZERO
 }
 
 export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
@@ -40,6 +44,7 @@ export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+  "base_sepolia": ""
 };
 
 export const PROTOCOL_MAKER_FEE_RECIPIENT: any = {
@@ -48,6 +53,7 @@ export const PROTOCOL_MAKER_FEE_RECIPIENT: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+  "base_sepolia": ""
 };
 
 export const DUST_THRESHOLD: any = {
@@ -55,7 +61,8 @@ export const DUST_THRESHOLD: any = {
   "goerli": usdc(0.1),
   "sepolia": usdc(0.1),
   "base": ZERO,
-  "base_staging": ZERO
+  "base_staging": ZERO,
+  "base_sepolia": ZERO
 };
 
 export const MAX_INTENTS_PER_DEPOSIT: any = {
@@ -63,7 +70,8 @@ export const MAX_INTENTS_PER_DEPOSIT: any = {
   "goerli": 100,
   "sepolia": 100,
   "base": 200,
-  "base_staging": 200
+  "base_staging": 200,
+  "base_sepolia": 200
 };
 
 export const MULTI_SIG: any = {
@@ -72,6 +80,7 @@ export const MULTI_SIG: any = {
   "sepolia": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
+  "base_sepolia": ""
 };
 
 export const USDC: any = {
