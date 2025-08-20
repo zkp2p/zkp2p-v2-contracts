@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
-import { IAttestationVerifier } from "./IAttestationVerifier.sol";
+import { IAttestationVerifier } from "./interfaces/IAttestationVerifier.sol";
 /**
  * @title UnifiedPaymentVerifier
  * @notice Verifies payment proofs from multiple payment methods using witness attestations
@@ -89,7 +89,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     )
         external
         override
-        onlyEscrow
+        onlyOrchestrator()
         returns (PaymentVerificationResult memory result)
     {
         PaymentDetails memory paymentDetails = abi.decode(
@@ -97,7 +97,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             (PaymentDetails)
         );
         
-        PaymentMethodConfig storage config = _verifyPaymentMethod(
+        PaymentMethodStore storage store = _getPaymentMethodStore(
             paymentDetails.paymentMethod
         );
         
@@ -107,11 +107,11 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
 
         // Verify the processor hash is authorized for this payment method
         require(
-            config.processorHashExists[paymentDetails.processorProviderHash],
+            store.isProviderHash[paymentDetails.processorProviderHash],
             "UnifiedPaymentVerifier: Unauthorized processor for payment method"
         );
         
-        _verifyPaymentDetails(paymentDetails, config, _verifyPaymentData);
+        _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);
 
         // Nullify the payment to prevent double-spending
         // TODO: ADDRESS SCROLL AUDIT CONCERNS
@@ -194,7 +194,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
      */
     function _verifyPaymentDetails(
         PaymentDetails memory paymentDetails,
-        PaymentMethodConfig storage config,
+        PaymentMethodStore storage config,
         VerifyPaymentData calldata _verifyPaymentData
     ) internal view {
         // Verify the payee matches what's expected

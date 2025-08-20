@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { IAttestationVerifier } from "./IAttestationVerifier.sol";
+import { IAttestationVerifier } from "./interfaces/IAttestationVerifier.sol";
 import { ThresholdSigVerifierUtils } from "../lib/ThresholdSigVerifierUtils.sol";
 
 /**

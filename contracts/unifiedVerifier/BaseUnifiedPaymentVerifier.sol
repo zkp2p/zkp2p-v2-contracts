@@ -4,11 +4,18 @@ pragma solidity ^0.8.18;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
-import { IBaseUnifiedPaymentVerifier } from "./IBaseUnifiedPaymentVerifier.sol";
-import { IAttestationVerifier } from "./IAttestationVerifier.sol";
+import { IAttestationVerifier } from "./interfaces/IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 
-abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Ownable {
+/**
+ * @title BaseUnifiedPaymentVerifier
+ * @notice Base contract for unified payment verifier. Stores the payment method configuration (timestamp buffer 
+ * and currency codes) and zkTLS provider hashes for a given payment method. Supports multiple zkTLS proof methods.
+ * This verifier is a more generic form of BasePaymentVerifier (stores currency and timestamp buffer) and BaseReclaimVerifier 
+ * (stores provider hashes). It also supports attestation verification similar to BaseReclaimVerifier.
+ * @dev This contract is abstract and must be inherited by a concrete implementation.
+ */
+abstract contract BaseUnifiedPaymentVerifier is Ownable {
     
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
@@ -17,42 +24,44 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
 
     uint256 internal constant PRECISE_UNIT = 1e18;
 
+    /* ============ Structs ============ */
+
+    struct PaymentMethodStore {
+        bool initialized;
+        uint256 timestampBuffer;
+        mapping(bytes32 => bool) isProviderHash;
+        mapping(bytes32 => bool) isCurrency;
+        bytes32[] providerHashes;
+        bytes32[] currencies;
+    }
+
     /* ============ Events ============ */
     
-    event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
-    
-    // todo: emit the payment method details
     event PaymentMethodAdded(bytes32 indexed paymentMethod, uint256 timestampBuffer);
     event PaymentMethodRemoved(bytes32 indexed paymentMethod);
-    // todo: rename to TimestampBufferUpdated
-    event TimestampBufferSet(bytes32 indexed paymentMethod, uint256 oldBuffer, uint256 newBuffer);
-    
-    event ProcessorHashAdded(bytes32 indexed paymentMethod, bytes32 indexed processorHash);
-    event ProcessorHashRemoved(bytes32 indexed paymentMethod, bytes32 indexed processorHash);
+    event TimestampBufferUpdated(bytes32 indexed paymentMethod, uint256 oldBuffer, uint256 newBuffer);
+    event ProviderHashAdded(bytes32 indexed paymentMethod, bytes32 indexed providerHash);
+    event ProviderHashRemoved(bytes32 indexed paymentMethod, bytes32 indexed providerHash);
     event CurrencyAdded(bytes32 indexed paymentMethod, bytes32 indexed currencyCode);
     event CurrencyRemoved(bytes32 indexed paymentMethod, bytes32 indexed currencyCode);
-    
+    event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
+
     /* ============ State Variables ============ */
     
-    address public immutable escrow;
+    address public immutable orchestrator;
     INullifierRegistry public immutable nullifierRegistry;
-    
-    // The attestation verifier used for verifying attestation by the attestation service / attestor
     IAttestationVerifier public attestationVerifier;
-    
-    // Mapping of payment method hash => configuration
-    mapping(bytes32 => IBaseUnifiedPaymentVerifier.PaymentMethodConfig) public paymentMethodConfig;
-    
-    // Array of payment method hashes for enumeration
+
     bytes32[] public paymentMethods;
+    mapping(bytes32 => PaymentMethodStore) public store;
     
     /* ============ Modifiers ============ */
 
     /**
      * Modifier to ensure only escrow can call
      */
-    modifier onlyEscrow() {
-        require(msg.sender == escrow, "Only escrow can call");
+    modifier onlyOrchestrator() {
+        require(msg.sender == orchestrator, "Only orchestrator can call");
         _;
     }
 
@@ -60,82 +69,72 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     
     /**
      * @notice Initializes base payment verifier
-     * @param _escrow The escrow contract address
-     * @param _nullifierRegistry The nullifier registry contract
-     * @param _attestationVerifier The attestation verifier contract
+     * @param _orchestrator The orchestrator contract address that will be used to verify payments
+     * @param _nullifierRegistry The nullifier registry contract that will be used to prevent double-spends
+     * @param _attestationVerifier The attestation verifier contract that will be used to verify attestation by the attestation service
      */
     constructor(
-        address _escrow,
+        address _orchestrator,
         INullifierRegistry _nullifierRegistry,
         IAttestationVerifier _attestationVerifier
     ) Ownable() {
-        require(_escrow != address(0), "BUPN: Invalid escrow");
-        require(address(_nullifierRegistry) != address(0), "BUPN: Invalid nullifier registry");
-        require(address(_attestationVerifier) != address(0), "BUPN: Invalid attestation verifier");
-        
-        escrow = _escrow;
+        orchestrator = _orchestrator;
         nullifierRegistry = _nullifierRegistry;
-        
-        // Deploy and set the default witness attestation verifier
         attestationVerifier = _attestationVerifier;
     }
     
     /* ============ External Functions ============ */
     
-        /**
+    /**
      * Adds a new payment method with processors and currencies
-     * @param _paymentMethod The payment method hash
+     * @param _paymentMethod The payment method hash; Hash the payment method name in lowercase
      * @param _timestampBuffer Payment method-specific timestamp buffer in seconds
-     * @param _processorHashes Array of processor hashes to authorize
-     * @param _currencyCodes Array of currency code hashes to support
+     * @param _providerHashes Array of provider hashes to authorize
+     * @param _currencies Array of currency code hashes to support
      */
     function addPaymentMethod(
         bytes32 _paymentMethod,
         uint256 _timestampBuffer,
-        bytes32[] calldata _processorHashes,
-        bytes32[] calldata _currencyCodes
+        bytes32[] calldata _providerHashes,
+        bytes32[] calldata _currencies
     ) external onlyOwner {
-        require(!paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method already exists");
-        require(_processorHashes.length > 0, "BUPN: Must provide at least one processor");
-        require(_currencyCodes.length > 0, "BUPN: Must provide at least one currency");
+        require(!store[_paymentMethod].initialized, "UPV: Payment method already exists");
+        require(_providerHashes.length > 0, "UPV: Invalid length");
+        require(_currencies.length > 0, "UPV: Invalid length");
         
-        // Initialize payment method
-        paymentMethodConfig[_paymentMethod].initialized = true;
-        paymentMethodConfig[_paymentMethod].timestampBuffer = _timestampBuffer;
+        store[_paymentMethod].initialized = true;
+        store[_paymentMethod].timestampBuffer = _timestampBuffer;
         paymentMethods.push(_paymentMethod);
         
-        // Add processors using batch function
-        addProcessorHashes(_paymentMethod, _processorHashes);
+        addProviderHashes(_paymentMethod, _providerHashes);
         
-        // Add currencies using batch function
-        addCurrencies(_paymentMethod, _currencyCodes);
+        addCurrencies(_paymentMethod, _currencies);
         
         emit PaymentMethodAdded(_paymentMethod, _timestampBuffer);
     }
     
     /**
-     * Removes a payment method and all associated data
-     * @param _paymentMethod The payment method hash to remove
+     * Removes a payment method and associated configuration
+     * @param _paymentMethod The payment method to remove
+     * @dev Only callable by owner
      */
     function removePaymentMethod(bytes32 _paymentMethod) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
         
-        // Clear all processor hashes
-        bytes32[] storage processorHashes = paymentMethodConfig[_paymentMethod].processorHashes;
-        for (uint256 i = 0; i < processorHashes.length; i++) {
-            delete paymentMethodConfig[_paymentMethod].processorHashExists[processorHashes[i]];
+        // Remove all provider hashes
+        bytes32[] memory providerHashes = store[_paymentMethod].providerHashes;
+        for (uint256 i = 0; i < providerHashes.length; i++) {
+            _removeProviderHash(_paymentMethod, providerHashes[i]);
         }
-        delete paymentMethodConfig[_paymentMethod].processorHashes;
         
-        // Clear all currencies
-        bytes32[] storage currencies = paymentMethodConfig[_paymentMethod].currencies;
+        // Remove all currencies
+        bytes32[] memory currencies = store[_paymentMethod].currencies;
         for (uint256 i = 0; i < currencies.length; i++) {
-            delete paymentMethodConfig[_paymentMethod].currencyExists[currencies[i]];
+            _removeCurrency(_paymentMethod, currencies[i]);
         }
-        delete paymentMethodConfig[_paymentMethod].currencies;
         
-        // Clear payment method config
-        delete paymentMethodConfig[_paymentMethod];
+        // Remove payment method config
+        delete store[_paymentMethod];
         
         // Remove from paymentMethods array
         paymentMethods.removeStorage(_paymentMethod);
@@ -145,16 +144,16 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     
     /**
      * @notice Updates the attestation verifier contract
-     * @param _newAttestationVerifier The new attestation verifier address
+     * @param _newVerifier The new attestation verifier address
      * @dev Only callable by owner
      */
-    function setAttestationVerifier(IAttestationVerifier _newAttestationVerifier) external onlyOwner {
-        require(address(_newAttestationVerifier) != address(0), "BUPN: Invalid attestation verifier");
-        require(address(_newAttestationVerifier) != address(attestationVerifier), "BUPN: Same verifier");
+    function setAttestationVerifier(IAttestationVerifier _newVerifier) external onlyOwner {
+        require(address(_newVerifier) != address(0), "UPV: Invalid attestation verifier");
+        require(address(_newVerifier) != address(attestationVerifier), "UPV: Same verifier");
         
         address oldVerifier = address(attestationVerifier);
-        attestationVerifier = _newAttestationVerifier;
-        emit AttestationVerifierUpdated(oldVerifier, address(_newAttestationVerifier));
+        attestationVerifier = _newVerifier;
+        emit AttestationVerifierUpdated(oldVerifier, address(_newVerifier));
     }
     
     /**
@@ -163,148 +162,96 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
      * @param _newTimestampBuffer The new timestamp buffer in seconds
      */
     function setTimestampBuffer(bytes32 _paymentMethod, uint256 _newTimestampBuffer) external onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
         
-        uint256 oldBuffer = paymentMethodConfig[_paymentMethod].timestampBuffer;
-        paymentMethodConfig[_paymentMethod].timestampBuffer = _newTimestampBuffer;
+        uint256 oldBuffer = store[_paymentMethod].timestampBuffer;
+        store[_paymentMethod].timestampBuffer = _newTimestampBuffer;
         
-        emit TimestampBufferSet(_paymentMethod, oldBuffer, _newTimestampBuffer);
+        emit TimestampBufferUpdated(_paymentMethod, oldBuffer, _newTimestampBuffer);
     }
                                                                                                                             
     /**
-     * Authorizes processor hashes for a specific payment method
+     * Batch adds provider hashes for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _processorHashes Array of processor provider hashes to authorize
+     * @param _providerHashes Array of provider hashes to add
      */
-    function addProcessorHashes(bytes32 _paymentMethod, bytes32[] calldata _processorHashes) public onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
-        require(_processorHashes.length > 0, "BUPN: Must provide at least one processor");
+    function addProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) public onlyOwner {
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
+        require(_providerHashes.length > 0, "UPV: Invalid length");
         
-        for (uint256 i = 0; i < _processorHashes.length; i++) {
-            bytes32 processorHash = _processorHashes[i];
-            require(processorHash != bytes32(0), "BUPN: Invalid processor hash");
-            require(!paymentMethodConfig[_paymentMethod].processorHashExists[processorHash], "BUPN: Already authorized");
-            
-            paymentMethodConfig[_paymentMethod].processorHashExists[processorHash] = true;
-            paymentMethodConfig[_paymentMethod].processorHashes.push(processorHash);
-            emit ProcessorHashAdded(_paymentMethod, processorHash);
+        for (uint256 i = 0; i < _providerHashes.length; i++) {
+            _addProviderHash(_paymentMethod, _providerHashes[i]);
         }
     }
     
     /**
-     * Revokes processor hashes for a specific payment method
+     * Batch removes provider hashes for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _processorHashes Array of processor provider hashes to revoke
+     * @param _providerHashes Array of provider hashes to remove
      */
-    function removeProcessorHashes(bytes32 _paymentMethod, bytes32[] calldata _processorHashes) external onlyOwner {
-        require(_processorHashes.length > 0, "BUPN: Must provide at least one processor");
+    function removeProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) external onlyOwner {
+        require(_providerHashes.length > 0, "UPV: Invalid length");
         
-        for (uint256 i = 0; i < _processorHashes.length; i++) {
-            bytes32 processorHash = _processorHashes[i];
-            require(paymentMethodConfig[_paymentMethod].processorHashExists[processorHash], "BUPN: Not authorized");
-            
-            paymentMethodConfig[_paymentMethod].processorHashExists[processorHash] = false;
-            paymentMethodConfig[_paymentMethod].processorHashes.removeStorage(processorHash);
-            emit ProcessorHashRemoved(_paymentMethod, processorHash);
+        for (uint256 i = 0; i < _providerHashes.length; i++) {
+            _removeProviderHash(_paymentMethod, _providerHashes[i]);
         }
     }
     
     /**
      * Adds supported currencies for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currencyCodes Array of currency code hashes (e.g., keccak256("USD"), keccak256("EUR"))
+     * @param _currencies Array of currency code hashes (e.g., keccak256("USD"), keccak256("EUR"))
      */
-    function addCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencyCodes) public onlyOwner {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
-        require(_currencyCodes.length > 0, "BUPN: Must provide at least one currency");
+    function addCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencies) public onlyOwner {
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
+        require(_currencies.length > 0, "UPV: Invalid length");
         
-        for (uint256 i = 0; i < _currencyCodes.length; i++) {
-            bytes32 currencyCode = _currencyCodes[i];
-            require(currencyCode != bytes32(0), "BUPN: Invalid currency code");
-            require(!paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BUPN: Currency already supported");
-            
-            paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = true;
-            paymentMethodConfig[_paymentMethod].currencies.push(currencyCode);
-            emit CurrencyAdded(_paymentMethod, currencyCode);
+        for (uint256 i = 0; i < _currencies.length; i++) {
+            _addCurrency(_paymentMethod, _currencies[i]);
         }
     }
     
     /**
      * Removes supported currencies for a specific payment method
      * @param _paymentMethod The payment method hash
-     * @param _currencyCodes Array of currency code hashes to remove
+     * @param _currencies Array of currency code hashes to remove
      */
-    function removeCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencyCodes) external onlyOwner {
-        require(_currencyCodes.length > 0, "BUPN: Must provide at least one currency");
+    function removeCurrencies(bytes32 _paymentMethod, bytes32[] calldata _currencies) external onlyOwner {
+        require(_currencies.length > 0, "UPV: Invalid length");
         
-        for (uint256 i = 0; i < _currencyCodes.length; i++) {
-            bytes32 currencyCode = _currencyCodes[i];
-            require(paymentMethodConfig[_paymentMethod].currencyExists[currencyCode], "BUPN: Currency not supported");
-            
-            paymentMethodConfig[_paymentMethod].currencyExists[currencyCode] = false;
-            paymentMethodConfig[_paymentMethod].currencies.removeStorage(currencyCode);
-            emit CurrencyRemoved(_paymentMethod, currencyCode);
+        for (uint256 i = 0; i < _currencies.length; i++) {
+            _removeCurrency(_paymentMethod, _currencies[i]);
         }
     }
     
     /* ============ View Functions ============ */
     
-    /**
-     * Gets all registered paymentMethods
-     * @return Array of payment method hashes
-     */
+
     function getPaymentMethods() external view returns (bytes32[] memory) {
         return paymentMethods;
     }
     
-    /**
-     * Gets the timestamp buffer for a payment method
-     * @param _paymentMethod The payment method hash
-     * @return The timestamp buffer in seconds
-     */
     function getTimestampBuffer(bytes32 _paymentMethod) external view returns (uint256) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
-        return paymentMethodConfig[_paymentMethod].timestampBuffer;
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
+        return store[_paymentMethod].timestampBuffer;
     }
     
-    /**
-     * Checks if a processor is authorized for a payment method
-     * @param _paymentMethod The payment method hash
-     * @param _processorHash The processor hash to check
-     * @return Whether the processor is authorized
-     */
-    function isProcessorHash(bytes32 _paymentMethod, bytes32 _processorHash) external view returns (bool) {
-        return paymentMethodConfig[_paymentMethod].processorHashExists[_processorHash];
+    function isProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) external view returns (bool) {
+        return store[_paymentMethod].isProviderHash[_providerHash];
     }
     
-    /**
-     * Checks if a currency is supported for a payment method
-     * @param _paymentMethod The payment method hash
-     * @param _currencyCode The currency code hash to check
-     * @return Whether the currency is supported
-     */
     function isCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) external view returns (bool) {
-        return paymentMethodConfig[_paymentMethod].currencyExists[_currencyCode];
+        return store[_paymentMethod].isCurrency[_currencyCode];
     }
     
-    /**
-     * Gets all processor hashes for a payment method
-     * @param _paymentMethod The payment method hash
-     * @return Array of processor hashes
-     */
-    function getProcessorHashes(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
-        return paymentMethodConfig[_paymentMethod].processorHashes;
+    function getProviderHashes(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
+        return store[_paymentMethod].providerHashes;
     }
     
-    /**
-     * Gets all supported currencies for a payment method
-     * @param _paymentMethod The payment method hash
-     * @return Array of currency codes (as bytes32)
-     */
     function getCurrencies(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(paymentMethodConfig[_paymentMethod].initialized, "BUPN: Payment method does not exist");
-        return paymentMethodConfig[_paymentMethod].currencies;
+        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
+        return store[_paymentMethod].currencies;
     }
     
     /* ============ Internal Functions ============ */
@@ -319,21 +266,19 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
     }
 
     /**
-     * Verifies the payment method and returns the payment configuration
-     * @param paymentMethod The payment method to verify
-     * @return config The payment method configuration
+     * Gets the payment method store for a given payment method
+     * @param paymentMethod The payment method to get the store for in lowercase string format (e.g. "cashapp")
+     * @return _store The payment method store
      */
-    function _verifyPaymentMethod(
+    function _getPaymentMethodStore(
         string memory paymentMethod
-    ) internal view returns (PaymentMethodConfig storage config) {
+    ) internal view returns (PaymentMethodStore storage _store) {
         bytes32 paymentMethodHash = keccak256(abi.encodePacked(paymentMethod));
-        config = paymentMethodConfig[paymentMethodHash];
+        _store = store[paymentMethodHash];
 
-        require(config.initialized, "UnifiedPaymentVerifier: Payment method does not exist");
-
-        return config;
+        require(_store.initialized, "UPV: Payment method does not exist");
+        return _store;
     }
-
 
     /**
      * Calculates the release amount based on the actual payment amount and conversion rate.
@@ -357,5 +302,41 @@ abstract contract BaseUnifiedPaymentVerifier is IBaseUnifiedPaymentVerifier, Own
         }
 
         return releaseAmount;
+    }
+
+    /* ============ Helper Internal Functions ============ */
+
+    function _addProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {
+        require(_providerHash != bytes32(0), "UPV: Invalid provider hash");
+        require(!store[_paymentMethod].isProviderHash[_providerHash], "UPV: Provider hash already exists");
+
+        store[_paymentMethod].isProviderHash[_providerHash] = true;
+        store[_paymentMethod].providerHashes.push(_providerHash);
+        emit ProviderHashAdded(_paymentMethod, _providerHash);
+    }
+
+    function _removeProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {
+        require(store[_paymentMethod].isProviderHash[_providerHash], "UPV: Provider hash does not exist");
+
+        store[_paymentMethod].isProviderHash[_providerHash] = false;
+        store[_paymentMethod].providerHashes.removeStorage(_providerHash);
+        emit ProviderHashRemoved(_paymentMethod, _providerHash);
+    }
+    
+    function _addCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) internal {
+        require(_currencyCode != bytes32(0), "UPV: Invalid currency code");
+        require(!store[_paymentMethod].isCurrency[_currencyCode], "UPV: Currency already exists");
+
+        store[_paymentMethod].isCurrency[_currencyCode] = true;
+        store[_paymentMethod].currencies.push(_currencyCode);
+        emit CurrencyAdded(_paymentMethod, _currencyCode);
+    }
+    
+    function _removeCurrency(bytes32 _paymentMethod, bytes32 _currencyCode) internal {
+        require(store[_paymentMethod].isCurrency[_currencyCode], "UPV: Currency does not exist");
+
+        store[_paymentMethod].isCurrency[_currencyCode] = false;
+        store[_paymentMethod].currencies.removeStorage(_currencyCode);
+        emit CurrencyRemoved(_paymentMethod, _currencyCode);
     }
 }
