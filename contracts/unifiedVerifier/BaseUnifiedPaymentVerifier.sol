@@ -267,14 +267,13 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
 
     /**
      * Gets the payment method store for a given payment method
-     * @param paymentMethod The payment method to get the store for in lowercase string format (e.g. "cashapp")
+     * @param paymentMethod The payment method to get the store for
      * @return _store The payment method store
      */
     function _getPaymentMethodStore(
-        string memory paymentMethod
+        bytes32 paymentMethod
     ) internal view returns (PaymentMethodStore storage _store) {
-        bytes32 paymentMethodHash = keccak256(abi.encodePacked(paymentMethod));
-        _store = store[paymentMethodHash];
+        _store = store[paymentMethod];
 
         require(_store.initialized, "UPV: Payment method does not exist");
         return _store;

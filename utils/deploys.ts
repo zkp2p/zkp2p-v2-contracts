@@ -371,12 +371,12 @@ export default class DeployHelper {
 
 
   public async deployUnifiedPaymentVerifier(
-    escrow: Address,
+    orchestrator: Address,
     nullifierRegistry: Address,
     attestationVerifier: Address
   ): Promise<UnifiedPaymentVerifier> {
     return await new UnifiedPaymentVerifier__factory(this._deployerSigner).deploy(
-      escrow,
+      orchestrator,
       nullifierRegistry,
       attestationVerifier
     );

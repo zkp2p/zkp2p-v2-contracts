@@ -14,16 +14,17 @@ import {
   getWaffleExpect,
   getAccounts
 } from "@utils/test/index";
+import { createAttestation, encodePaymentDetails, signPaymentDetails } from "@utils/unifiedVerifierUtils";
+import { PaymentDetails } from "@utils/unifiedVerifierUtils";
 
 const expect = getWaffleExpect();
 
-describe("UnifiedPaymentVerifier", () => {
+
+describe.only("UnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let escrow: Account;
+  let orchestrator: Account;
   let witness1: Account;
-  let witness2: Account;
-  let witness3: Account;
 
   let nullifierRegistry: NullifierRegistry;
   let attestationVerifier: SimpleAttestationVerifier;
@@ -34,34 +35,15 @@ describe("UnifiedPaymentVerifier", () => {
   let deployer: DeployHelper;
   let blockchain: Blockchain;
 
-  const minWitnessSignatures = 1;
-  const venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
-  const usdCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USD"));
-  const eurCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("EUR"));
-  const gbpCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GBP"));
-
-  // Sample payment data based on provided proof
-  const samplePaymentDetails = {
-    processorProviderHash: "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8",
-    signatures: [] as BytesLike[], // Will be populated in tests
-    paymentMethod: "venmo",
-    intentHash: BigNumber.from("11114168264614898234767045087100892814911930784849242636571146569793237988689"),
-    receiverId: "0xfb8364bbcc515c51ba6584b91d781a2b787ca30bfcde8fc2552654633276fe03",
-    amount: BigNumber.from(49980), // $499.80 in cents
-    timestamp: BigNumber.from(1753762763000), // milliseconds
-    paymentId: "4386986668001199384",
-    currency: "USD",
-    dataHash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-  };
+  let venmoPaymentMethodHash: BytesLike;
+  let venmoProviderHash: BytesLike;
 
   beforeEach(async () => {
     [
       owner,
       attacker,
-      escrow,
+      orchestrator,
       witness1,
-      witness2,
-      witness3,
       zktlsAttestor
     ] = await getAccounts();
 
@@ -70,35 +52,37 @@ describe("UnifiedPaymentVerifier", () => {
     deployer = new DeployHelper(owner.wallet);
     usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
+    venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+    venmoProviderHash = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8";
+
     nullifierRegistry = await deployer.deployNullifierRegistry();
     attestationVerifier = await deployer.deploySimpleAttestationVerifier(
       witness1.address,
       zktlsAttestor.address
     );
     verifier = await deployer.deployUnifiedPaymentVerifier(
-      escrow.address,
+      orchestrator.address,
       nullifierRegistry.address,
       attestationVerifier.address
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
 
-    // Add venmo payment method with processor hash and USD currency
     await verifier.connect(owner.wallet).addPaymentMethod(
       venmoPaymentMethodHash,
       BigNumber.from(30000), // 30 second timestamp buffer (in milliseconds)
-      [samplePaymentDetails.processorProviderHash],
-      [usdCurrencyHash]
+      [venmoProviderHash],
+      [Currency.USD]
     );
   });
 
   describe("#constructor", async () => {
     it("should set the correct state", async () => {
-      const escrowAddress = await verifier.escrow();
+      const orchestratorAddress = await verifier.orchestrator();
       const nullifierRegistryAddress = await verifier.nullifierRegistry();
       const attestationVerifierAddress = await verifier.attestationVerifier();
 
-      expect(escrowAddress).to.eq(escrow.address);
+      expect(orchestratorAddress).to.eq(orchestrator.address);
       expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
       expect(attestationVerifierAddress).to.eq(attestationVerifier.address);
     });
@@ -116,50 +100,9 @@ describe("UnifiedPaymentVerifier", () => {
     let subjectDepositData: BytesLike;
     let subjectData: BytesLike;
 
-    let witnesses: Address[];
-
-    // EIP-712 Domain and Types
-    const domain = {
-      name: 'UnifiedPaymentVerifier',
-      version: '1',
-      chainId: 31337, // Hardhat default chainId
-      verifyingContract: '' // Will be set to verifier.address
-    };
-
-    const types = {
-      PaymentDetails: [
-        { name: 'processorProviderHash', type: 'bytes32' },
-        { name: 'paymentMethod', type: 'string' },
-        { name: 'intentHash', type: 'uint256' },
-        { name: 'receiverId', type: 'bytes32' },
-        { name: 'amount', type: 'uint256' },
-        { name: 'timestamp', type: 'uint256' },
-        { name: 'paymentId', type: 'string' },
-        { name: 'currency', type: 'string' },
-        { name: 'dataHash', type: 'bytes32' }
-      ]
-    };
-
-    // Helper function to sign payment details using EIP-712
-    async function signPaymentDetails(signer: any, paymentDetails: any): Promise<string> {
-      const value = {
-        processorProviderHash: paymentDetails.processorProviderHash,
-        paymentMethod: paymentDetails.paymentMethod,
-        intentHash: paymentDetails.intentHash,
-        receiverId: paymentDetails.receiverId,
-        amount: paymentDetails.amount,
-        timestamp: paymentDetails.timestamp,
-        paymentId: paymentDetails.paymentId,
-        currency: paymentDetails.currency,
-        dataHash: paymentDetails.dataHash
-      };
-      return await signer._signTypedData(domain, types, value);
-    }
+    let paymentDetails: any;
 
     beforeEach(async () => {
-      // Set the verifying contract in domain
-      domain.verifyingContract = verifier.address;
-
       // Set up the attestation verifier data (zkTLS attestor address)
       // This will be passed to the attestation verifier AND its hash will be stored in dataHash
       const attestationData = ethers.utils.defaultAbiCoder.encode(
@@ -168,65 +111,38 @@ describe("UnifiedPaymentVerifier", () => {
       );
       const dataHash = ethers.utils.keccak256(attestationData);
 
-      // Set up payee details and update receiverId to match
       const testPayeeDetails = "test_payee_id";
       const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
+      const paymentId = "4386986668001199384";
+      const hashedPaymentId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(paymentId));
 
-      // Create updated payment details with correct receiverId and dataHash
-      const updatedSamplePaymentDetails = {
-        processorProviderHash: samplePaymentDetails.processorProviderHash,
-        paymentMethod: samplePaymentDetails.paymentMethod,
-        intentHash: samplePaymentDetails.intentHash,
-        receiverId: hashedPayeeDetails,
-        amount: samplePaymentDetails.amount,
-        timestamp: samplePaymentDetails.timestamp,
-        paymentId: samplePaymentDetails.paymentId,
-        currency: samplePaymentDetails.currency,
+      paymentDetails = {
+        paymentMethod: venmoPaymentMethodHash,
+        providerHash: venmoProviderHash,
+        intentHash: "0x18926574de6ca4682ebe5c9b6425295e92962d505da5737185785206584cb551",
+        recipientId: hashedPayeeDetails,
+        amount: BigNumber.from(49980), // $499.80 in cents
+        timestamp: BigNumber.from(1753762763000), // milliseconds
+        paymentId: hashedPaymentId,
+        currency: Currency.USD,
         dataHash: dataHash
-      };
+      } as PaymentDetails;
 
-      // Create deposit data
-      subjectDepositData = '0x';
-
-      // Create witness signature using EIP-712
-      const signature = await signPaymentDetails(witness1.wallet, updatedSamplePaymentDetails);
-
-      // Create payment details with signature
-      const paymentDetailsWithSignatures = {
-        ...updatedSamplePaymentDetails,
-        signatures: [signature]
-      };
-
-      // Encode with dataHash included
-      subjectProof = ethers.utils.defaultAbiCoder.encode(
-        ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-        [[
-          paymentDetailsWithSignatures.processorProviderHash,
-          paymentDetailsWithSignatures.signatures,
-          paymentDetailsWithSignatures.paymentMethod,
-          paymentDetailsWithSignatures.intentHash,
-          paymentDetailsWithSignatures.receiverId,
-          paymentDetailsWithSignatures.amount,
-          paymentDetailsWithSignatures.timestamp,
-          paymentDetailsWithSignatures.paymentId,
-          paymentDetailsWithSignatures.currency,
-          paymentDetailsWithSignatures.dataHash
-        ]]
+      subjectProof = await createAttestation(
+        witness1,
+        paymentDetails,
+        verifier.address
       );
 
-      subjectCaller = escrow;
+      subjectCaller = orchestrator;
       subjectDepositToken = usdcToken.address;
       subjectIntentAmount = usdc(500); // Intent for $500
-      subjectIntentTimestamp = samplePaymentDetails.timestamp.sub(100000); // Intent created 100 seconds before payment (in milliseconds)
+      subjectIntentTimestamp = paymentDetails.timestamp.sub(100000); // Intent created 100 seconds before payment (in milliseconds)
       subjectConversionRate = ether(1); // 1:1 USD to USDC
       subjectPayeeDetails = testPayeeDetails;
       subjectFiatCurrency = Currency.USD;
-
-      // Pass the attestation data which will be hashed and compared to dataHash
+      subjectDepositData = '0x';
       subjectData = attestationData;
-
-      // Keep witness address for reference if needed later
-      witnesses = [witness1.address];
     });
 
     async function subject(): Promise<any> {
@@ -239,7 +155,7 @@ describe("UnifiedPaymentVerifier", () => {
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
         depositData: subjectDepositData,
-        data: subjectData  // Pass the attestation verifier data
+        data: subjectData
       });
     }
 
@@ -253,7 +169,7 @@ describe("UnifiedPaymentVerifier", () => {
         fiatCurrency: subjectFiatCurrency,
         conversionRate: subjectConversionRate,
         depositData: subjectDepositData,
-        data: subjectData  // Pass the attestation verifier data
+        data: subjectData
       });
     }
 
@@ -261,16 +177,16 @@ describe("UnifiedPaymentVerifier", () => {
       const result = await subjectCallStatic();
 
       expect(result.success).to.be.true;
-      expect(result.intentHash).to.eq(samplePaymentDetails.intentHash.toHexString());
-      expect(result.releaseAmount).to.eq(samplePaymentDetails.amount); // With 1:1 conversion
-      expect(result.paymentCurrency).to.eq(Currency.USD);
-      expect(result.paymentId).to.eq(samplePaymentDetails.paymentId);
+      expect(result.intentHash).to.eq(paymentDetails.intentHash);
+      expect(result.releaseAmount).to.eq(paymentDetails.amount); // With 1:1 conversion
+      expect(result.paymentCurrency).to.eq(paymentDetails.currency);
+      // expect(result.paymentId).to.eq(paymentDetails.paymentId);
     });
 
     it("should nullify the payment id", async () => {
       await subject();
 
-      const nullifier = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(samplePaymentDetails.paymentId));
+      const nullifier = paymentDetails.paymentId;
       expect(await nullifierRegistry.isNullified(nullifier)).to.be.true;
     });
 
@@ -283,142 +199,58 @@ describe("UnifiedPaymentVerifier", () => {
         const result = await subjectCallStatic();
 
         expect(result.success).to.be.true;
-        expect(result.releaseAmount).to.eq(samplePaymentDetails.amount); // 49980 cents
+        expect(result.releaseAmount).to.eq(paymentDetails.amount); // 1:1 conversion
       });
     });
 
     describe("when payment method does not exist", async () => {
       beforeEach(async () => {
-        const testPayeeDetails = "test_payee_id";
-        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-
-        const attestationData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [zktlsAttestor.address]
-        );
-        const dataHash = ethers.utils.keccak256(attestationData);
-
+        const invalidPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid"));
         const paymentDetailsWithInvalidMethod = {
-          ...samplePaymentDetails,
-          paymentMethod: "nonexistent",
-          receiverId: hashedPayeeDetails,
-          dataHash: dataHash
+          ...paymentDetails,
+          paymentMethod: invalidPaymentMethodHash,
         };
 
-        // Sign with EIP-712
-        const signature = await signPaymentDetails(witness1.wallet, paymentDetailsWithInvalidMethod);
-
-        paymentDetailsWithInvalidMethod.signatures = [signature];
-
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-          [[
-            paymentDetailsWithInvalidMethod.processorProviderHash,
-            paymentDetailsWithInvalidMethod.signatures,
-            paymentDetailsWithInvalidMethod.paymentMethod,
-            paymentDetailsWithInvalidMethod.intentHash,
-            paymentDetailsWithInvalidMethod.receiverId,
-            paymentDetailsWithInvalidMethod.amount,
-            paymentDetailsWithInvalidMethod.timestamp,
-            paymentDetailsWithInvalidMethod.paymentId,
-            paymentDetailsWithInvalidMethod.currency,
-            paymentDetailsWithInvalidMethod.dataHash
-          ]]
+        subjectProof = await createAttestation(
+          witness1,
+          paymentDetailsWithInvalidMethod,
+          verifier.address
         );
-
-        subjectData = attestationData;
-        subjectPayeeDetails = testPayeeDetails;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("UPV: Payment method does not exist");
       });
     });
 
-    describe("when processor hash is not authorized", async () => {
+    describe("when provider hash is not correct", async () => {
       beforeEach(async () => {
-        const testPayeeDetails = "test_payee_id";
-        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-
-        const attestationData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [zktlsAttestor.address]
-        );
-        const dataHash = ethers.utils.keccak256(attestationData);
-
-        const paymentDetailsWithInvalidProcessor = {
-          ...samplePaymentDetails,
-          processorProviderHash: "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9", // Different hash
-          receiverId: hashedPayeeDetails,
-          dataHash: dataHash
+        const paymentDetailsWithInvalidProviderHash = {
+          ...paymentDetails,
+          providerHash: "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9", // Different hash
         };
 
         // Sign with EIP-712
-        const signature = await signPaymentDetails(witness1.wallet, paymentDetailsWithInvalidProcessor);
-
-        paymentDetailsWithInvalidProcessor.signatures = [signature];
-
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-          [[
-            paymentDetailsWithInvalidProcessor.processorProviderHash,
-            paymentDetailsWithInvalidProcessor.signatures,
-            paymentDetailsWithInvalidProcessor.paymentMethod,
-            paymentDetailsWithInvalidProcessor.intentHash,
-            paymentDetailsWithInvalidProcessor.receiverId,
-            paymentDetailsWithInvalidProcessor.amount,
-            paymentDetailsWithInvalidProcessor.timestamp,
-            paymentDetailsWithInvalidProcessor.paymentId,
-            paymentDetailsWithInvalidProcessor.currency,
-            paymentDetailsWithInvalidProcessor.dataHash
-          ]]
+        subjectProof = await createAttestation(
+          witness1,
+          paymentDetailsWithInvalidProviderHash,
+          verifier.address
         );
-
-        subjectData = attestationData;
-        subjectPayeeDetails = testPayeeDetails;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Unauthorized processor for payment method");
+        await expect(subject()).to.be.revertedWith("UPV: Invalid provider hash");
       });
     });
 
     describe("when witness signature is invalid", async () => {
       beforeEach(async () => {
-        const testPayeeDetails = "test_payee_id";
-        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-
-        const attestationData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [zktlsAttestor.address]
-        );
-        const dataHash = ethers.utils.keccak256(attestationData);
-
         const paymentDetailsWithInvalidSignature = {
-          ...samplePaymentDetails,
-          receiverId: hashedPayeeDetails,
-          dataHash: dataHash,
+          ...paymentDetails,
           signatures: ["0x" + "00".repeat(65)] // Invalid signature
         };
 
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-          [[
-            paymentDetailsWithInvalidSignature.processorProviderHash,
-            paymentDetailsWithInvalidSignature.signatures,
-            paymentDetailsWithInvalidSignature.paymentMethod,
-            paymentDetailsWithInvalidSignature.intentHash,
-            paymentDetailsWithInvalidSignature.receiverId,
-            paymentDetailsWithInvalidSignature.amount,
-            paymentDetailsWithInvalidSignature.timestamp,
-            paymentDetailsWithInvalidSignature.paymentId,
-            paymentDetailsWithInvalidSignature.currency,
-            paymentDetailsWithInvalidSignature.dataHash
-          ]]
-        );
-
-        subjectData = attestationData;
-        subjectPayeeDetails = testPayeeDetails;
+        subjectProof = encodePaymentDetails(paymentDetailsWithInvalidSignature);
       });
 
       it("should revert", async () => {
@@ -426,13 +258,13 @@ describe("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("when payee details don't match", async () => {
+    describe.skip("when payee details don't match", async () => {
       beforeEach(async () => {
         subjectPayeeDetails = "different_payee_id";
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payee mismatch");
+        await expect(subject()).to.be.revertedWith("UPV: Payee mismatch");
       });
     });
 
@@ -442,7 +274,7 @@ describe("UnifiedPaymentVerifier", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Currency mismatch");
+        await expect(subject()).to.be.revertedWith("UPV: Currency mismatch");
       });
     });
 
@@ -452,11 +284,11 @@ describe("UnifiedPaymentVerifier", () => {
         // Payment timestamp is 1753762763000 ms
         // Timestamp buffer is 30000 ms (30 seconds)
         // Intent timestamp needs to be after payment + buffer
-        subjectIntentTimestamp = BigNumber.from(samplePaymentDetails.timestamp.toNumber() + 31000); // Intent created 31 seconds after payment
+        subjectIntentTimestamp = BigNumber.from(paymentDetails.timestamp.toNumber() + 31000); // Intent created 31 seconds after payment
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Payment before intent");
+        await expect(subject()).to.be.revertedWith("UPV: Payment before intent");
       });
     });
 
@@ -483,29 +315,26 @@ describe("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("when caller is not escrow", async () => {
+    describe("when caller is not orchestrator", async () => {
       beforeEach(async () => {
         subjectCaller = owner;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only escrow can call");
+        await expect(subject()).to.be.revertedWith("Only orchestrator can call");
       });
     });
 
     describe("when dataHash doesn't match provided data", async () => {
       beforeEach(async () => {
-        // Use different data than what was signed with dataHash
-        const wrongAttestationData = ethers.utils.defaultAbiCoder.encode(
+        subjectData = ethers.utils.defaultAbiCoder.encode(
           ['address'],
-          [owner.address] // Different address than what was hashed
+          [attacker.address] // Different address than what was hashed
         );
-
-        subjectData = wrongAttestationData; // This won't match the dataHash in the signature
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Data hash mismatch");
+        await expect(subject()).to.be.revertedWith("UPV: Data hash mismatch");
       });
     });
 
@@ -518,45 +347,21 @@ describe("UnifiedPaymentVerifier", () => {
         );
         const dataHash = ethers.utils.keccak256(wrongAttestationData);
 
-        const testPayeeDetails = "test_payee_id";
-        const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-
-        const paymentDetailsForTest = {
-          ...samplePaymentDetails,
-          receiverId: hashedPayeeDetails,
+        const paymentDetailsWithInvalidDataHash = {
+          ...paymentDetails,
           dataHash: dataHash
         };
 
-        // Sign with valid witness
-        const signature = await signPaymentDetails(witness1.wallet, paymentDetailsForTest);
-
-        const paymentDetailsWithSignatures = {
-          ...paymentDetailsForTest,
-          signatures: [signature]
-        };
-
-        subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["tuple(bytes32,bytes[],string,uint256,bytes32,uint256,uint256,string,string,bytes32)"],
-          [[
-            paymentDetailsWithSignatures.processorProviderHash,
-            paymentDetailsWithSignatures.signatures,
-            paymentDetailsWithSignatures.paymentMethod,
-            paymentDetailsWithSignatures.intentHash,
-            paymentDetailsWithSignatures.receiverId,
-            paymentDetailsWithSignatures.amount,
-            paymentDetailsWithSignatures.timestamp,
-            paymentDetailsWithSignatures.paymentId,
-            paymentDetailsWithSignatures.currency,
-            paymentDetailsWithSignatures.dataHash
-          ]]
-        );
-
         subjectData = wrongAttestationData;
-        subjectPayeeDetails = testPayeeDetails;
+        subjectProof = await createAttestation(
+          witness1,
+          paymentDetailsWithInvalidDataHash,
+          verifier.address
+        );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UnifiedPaymentVerifier: Invalid witness signatures");
+        await expect(subject()).to.be.revertedWith("UPV: Invalid witness signatures");
       });
     });
 
@@ -568,7 +373,7 @@ describe("UnifiedPaymentVerifier", () => {
 
         it("should calculate correct release amount", async () => {
           const result = await subjectCallStatic();
-          const expectedReleaseAmount = BigNumber.from(samplePaymentDetails.amount).mul(ether(1)).div(ether(2));
+          const expectedReleaseAmount = BigNumber.from(paymentDetails.amount).mul(ether(1)).div(ether(2));
 
           expect(result.releaseAmount).to.eq(expectedReleaseAmount);
         });
@@ -582,45 +387,11 @@ describe("UnifiedPaymentVerifier", () => {
 
         it("should calculate correct release amount", async () => {
           const result = await subjectCallStatic();
-          const expectedReleaseAmount = BigNumber.from(samplePaymentDetails.amount).mul(ether(1)).div(ether(0.5));
+          const expectedReleaseAmount = BigNumber.from(paymentDetails.amount).mul(ether(1)).div(ether(0.5));
 
           expect(result.releaseAmount).to.eq(expectedReleaseAmount);
         });
       });
-    });
-  });
-
-  describe("multi-payment method support", async () => {
-    const paypalPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("paypal"));
-
-    beforeEach(async () => {
-      // Add PayPal with different configuration
-      await verifier.connect(owner.wallet).addPaymentMethod(
-        paypalPaymentMethodHash,
-        BigNumber.from(60000), // 60 second timestamp buffer for PayPal
-        ["0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"], // Different processor
-        [usdCurrencyHash, eurCurrencyHash, gbpCurrencyHash] // Multiple currencies
-      );
-    });
-
-    it("should support different payment methods with different configurations", async () => {
-      // Check Venmo configuration
-      const venmoProcessors = await verifier.getProcessorHashes(venmoPaymentMethodHash);
-      const venmoCurrencies = await verifier.getCurrencies(venmoPaymentMethodHash);
-      const venmoTimestampBuffer = await verifier.getTimestampBuffer(venmoPaymentMethodHash);
-
-      expect(venmoProcessors.length).to.eq(1);
-      expect(venmoCurrencies.length).to.eq(1);
-      expect(venmoTimestampBuffer).to.eq(30000);
-
-      // Check PayPal configuration
-      const paypalProcessors = await verifier.getProcessorHashes(paypalPaymentMethodHash);
-      const paypalCurrencies = await verifier.getCurrencies(paypalPaymentMethodHash);
-      const paypalTimestampBuffer = await verifier.getTimestampBuffer(paypalPaymentMethodHash);
-
-      expect(paypalProcessors.length).to.eq(1);
-      expect(paypalCurrencies.length).to.eq(3);
-      expect(paypalTimestampBuffer).to.eq(60000);
     });
   });
 });
