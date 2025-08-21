@@ -14,7 +14,7 @@ import { Uint256ArrayUtils } from "./external/Uint256ArrayUtils.sol";
 import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IOrchestrator } from "./interfaces/IOrchestrator.sol";  // NEW: Added for orchestrator calls
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
-import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
+// import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
@@ -440,7 +440,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (bytes(depositVerifierData[_depositId][_verifier].payeeDetails).length == 0) {
+        if (depositVerifierData[_depositId][_verifier].payeeDetails == bytes32(0)) {
             revert VerifierNotFound(_depositId, _verifier);
         }
 
@@ -474,8 +474,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        string memory payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
-        if (bytes(payeeDetails).length == 0) revert VerifierNotFound(_depositId, _verifier);
+        bytes32 payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
+        if (payeeDetails == bytes32(0)) revert VerifierNotFound(_depositId, _verifier);
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -503,8 +503,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        string memory payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
-        if (bytes(payeeDetails).length == 0) revert VerifierNotFound(_depositId, _verifier);
+        bytes32 payeeDetails = depositVerifierData[_depositId][_verifier].payeeDetails;
+        if (payeeDetails == bytes32(0)) revert VerifierNotFound(_depositId, _verifier);
 
         uint256 currencyMinRate = depositCurrencyMinRate[_depositId][_verifier][_currencyCode];
         if (currencyMinRate == 0) revert CurrencyNotFound(_verifier, _currencyCode);
@@ -1040,14 +1040,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 paymentVerifierRegistry.isAcceptingAllVerifiers())) {
                 revert VerifierNotWhitelisted(verifier);
             }
-            if (bytes(_verifierData[i].payeeDetails).length == 0) revert EmptyPayeeDetails();
-            if (bytes(depositVerifierData[_depositId][verifier].payeeDetails).length != 0) revert VerifierAlreadyExists(_depositId, verifier);
+            if (_verifierData[i].payeeDetails == bytes32(0)) revert EmptyPayeeDetails();
+            if (depositVerifierData[_depositId][verifier].payeeDetails != bytes32(0)) revert VerifierAlreadyExists(_depositId, verifier);
 
             depositVerifierData[_depositId][verifier] = _verifierData[i];
             depositVerifiers[_depositId].push(verifier);
 
-            bytes32 payeeDetailsHash = keccak256(abi.encodePacked(_verifierData[i].payeeDetails));
-            emit DepositVerifierAdded(_depositId, verifier, payeeDetailsHash, _verifierData[i].intentGatingService);
+            emit DepositVerifierAdded(_depositId, verifier, _verifierData[i].payeeDetails, _verifierData[i].intentGatingService);
 
             for (uint256 j = 0; j < _currencies[i].length; j++) {
                 Currency memory currency = _currencies[i][j];
@@ -1071,9 +1070,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _currencyCode,
         uint256 _minConversionRate
     ) internal {
-        if (!IBasePaymentVerifier(_verifier).isCurrency(_currencyCode)) {
-            revert CurrencyNotSupported(_verifier, _currencyCode);
-        }
+        // if (!IBasePaymentVerifier(_verifier).isCurrency(_currencyCode)) {
+        //     revert CurrencyNotSupported(_verifier, _currencyCode);
+        // }
         if (_minConversionRate == 0) revert ZeroConversionRate();
         if (depositCurrencyMinRate[_depositId][_verifier][_currencyCode] != 0) {
             revert CurrencyAlreadyExists(_verifier, _currencyCode);

@@ -16,7 +16,6 @@ import { IOrchestrator } from "./interfaces/IOrchestrator.sol";
 import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IEscrowRegistry } from "./interfaces/IEscrowRegistry.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
-import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
 import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
@@ -261,9 +260,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         IPaymentVerifier.PaymentVerificationResult memory manualReleaseResult = IPaymentVerifier.PaymentVerificationResult({
             success: true,
             intentHash: _intentHash,
-            releaseAmount: _releaseAmount,
-            paymentCurrency: intent.fiatCurrency,
-            paymentId: ""
+            releaseAmount: _releaseAmount
         });
         
         _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, manualReleaseResult, _releaseData, true);
@@ -434,7 +431,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         IEscrow.DepositVerifierData memory verifierData = IEscrow(_intent.escrow).getDepositVerifierData(
             _intent.depositId, _intent.verifier
         );
-        if (bytes(verifierData.payeeDetails).length == 0) revert VerifierNotSupported(_intent.depositId, _intent.verifier);
+        if (verifierData.payeeDetails == bytes32(0)) revert VerifierNotSupported(_intent.depositId, _intent.verifier);
         
         uint256 minConversionRate = IEscrow(_intent.escrow).getDepositCurrencyMinRate(
             _intent.depositId, _intent.verifier, _intent.fiatCurrency
@@ -539,9 +536,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _intentHash, 
             fundsTransferredTo, 
             netAmount, 
-            _isManualRelease,
-            _verificationResult.paymentCurrency,
-            _verificationResult.paymentId
+            _isManualRelease
         );
     }
 

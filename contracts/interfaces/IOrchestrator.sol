@@ -72,9 +72,7 @@ interface IOrchestrator {
         bytes32 indexed intentHash,
         address indexed fundsTransferredTo,   // Address that funds were transferred to; can be intent.to or postIntentHook address
         uint256 amount,
-        bool isManualRelease,
-        bytes32 paymentCurrency,      // The currency that was actually paid
-        string paymentId              // The payment ID from the payment platform
+        bool isManualRelease
     );
 
     event AllowMultipleIntentsUpdated(bool allowMultiple);

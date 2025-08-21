@@ -32,7 +32,7 @@ export async function signPaymentDetails(
   };
 
   const types = {
-    PaymentDetails: [
+    PaymentAttestation: [
       { name: 'paymentMethod', type: 'bytes32' },
       { name: 'providerHash', type: 'bytes32' },
       { name: 'intentHash', type: 'bytes32' },

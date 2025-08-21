@@ -50,7 +50,7 @@ interface IEscrow {
 
     struct DepositVerifierData {
         address intentGatingService;                // Public key of gating service that will be used to verify intents
-        string payeeDetails;                        // Payee details, could be both hash or raw details; verifier will decide how to parse it
+        bytes32 payeeDetails;                       // Payee details, has to be hash of payee details
         bytes data;                                 // Verification Data: Additional data used for payment verification; Can hold attester address
                                                     // in case of TLS proofs, domain key hash in case of zkEmail proofs, currency code etc.
     }
@@ -72,7 +72,7 @@ interface IEscrow {
 
     event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
 
-    event DepositVerifierAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed payeeDetailsHash, address intentGatingService);
+    event DepositVerifierAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed payeeDetails, address intentGatingService);
     event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
 
     event DepositCurrencyAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 conversionRate);

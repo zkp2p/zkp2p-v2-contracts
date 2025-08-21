@@ -20,7 +20,7 @@ import { PaymentDetails } from "@utils/unifiedVerifierUtils";
 const expect = getWaffleExpect();
 
 
-describe.only("UnifiedPaymentVerifier", () => {
+describe("UnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
   let orchestrator: Account;
@@ -139,7 +139,7 @@ describe.only("UnifiedPaymentVerifier", () => {
       subjectIntentAmount = usdc(500); // Intent for $500
       subjectIntentTimestamp = paymentDetails.timestamp.sub(100000); // Intent created 100 seconds before payment (in milliseconds)
       subjectConversionRate = ether(1); // 1:1 USD to USDC
-      subjectPayeeDetails = testPayeeDetails;
+      subjectPayeeDetails = hashedPayeeDetails;
       subjectFiatCurrency = Currency.USD;
       subjectDepositData = '0x';
       subjectData = attestationData;
@@ -179,8 +179,6 @@ describe.only("UnifiedPaymentVerifier", () => {
       expect(result.success).to.be.true;
       expect(result.intentHash).to.eq(paymentDetails.intentHash);
       expect(result.releaseAmount).to.eq(paymentDetails.amount); // With 1:1 conversion
-      expect(result.paymentCurrency).to.eq(paymentDetails.currency);
-      // expect(result.paymentId).to.eq(paymentDetails.paymentId);
     });
 
     it("should nullify the payment id", async () => {
@@ -258,9 +256,12 @@ describe.only("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe.skip("when payee details don't match", async () => {
+    describe("when payee details don't match", async () => {
       beforeEach(async () => {
-        subjectPayeeDetails = "different_payee_id";
+        const differentPayeeDetails = "different_payee_id";
+        const differentHashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(differentPayeeDetails));
+
+        subjectPayeeDetails = differentHashedPayeeDetails;
       });
 
       it("should revert", async () => {

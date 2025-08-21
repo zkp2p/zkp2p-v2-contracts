@@ -10,22 +10,22 @@ import {
   ProtocolViewer,
   Orchestrator,
   PaymentVerifierMock,
-  VenmoReclaimVerifier,
-  RevolutReclaimVerifier,
+  // VenmoReclaimVerifier,
+  // RevolutReclaimVerifier,
   NullifierRegistry,
   BasePaymentVerifier,
   StringConversionUtilsMock,
   ClaimVerifierMock,
-  ManagedKeyHashAdapterV2,
-  BaseReclaimPaymentVerifier,
-  CashappReclaimVerifier,
-  WiseReclaimVerifier,
-  MercadoPagoReclaimVerifier,
-  ZelleBoAReclaimVerifier,
-  ZelleCitiReclaimVerifier,
-  ZelleChaseReclaimVerifier,
-  ZelleBaseVerifier,
-  BaseReclaimVerifier,
+  // ManagedKeyHashAdapterV2,
+  // BaseReclaimPaymentVerifier,
+  // CashappReclaimVerifier,
+  // WiseReclaimVerifier,
+  // MercadoPagoReclaimVerifier,
+  // ZelleBoAReclaimVerifier,
+  // ZelleCitiReclaimVerifier,
+  // ZelleChaseReclaimVerifier,
+  // ZelleBaseVerifier,
+  // BaseReclaimVerifier,
   PostIntentHookMock,
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
@@ -40,11 +40,11 @@ import {
 import {
   StringConversionUtilsMock__factory,
   USDCMock__factory,
-  PaymentVerifierMock__factory,
   ClaimVerifierMock__factory,
   PostIntentHookMock__factory,
   OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
+import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks/PaymentVerifierMock.sol"
 import {
   ThresholdSigVerifierUtilsMock__factory
 } from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock__factory";
@@ -53,19 +53,9 @@ import { PaymentVerifierRegistry__factory } from "../typechain/factories/contrac
 import { PostIntentHookRegistry__factory } from "../typechain/factories/contracts/registries";
 import { RelayerRegistry__factory } from "../typechain/factories/contracts/registries";
 import { EscrowRegistry__factory } from "../typechain/factories/contracts/registries";
-import { BaseReclaimPaymentVerifier__factory, BaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { ProtocolViewer__factory } from "../typechain/factories/contracts/index";
 import { Orchestrator__factory } from "../typechain/factories/contracts/index";
-import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
-import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
-import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { MercadoPagoReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { ZelleBoAReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
-import { ZelleCitiReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
-import { ZelleChaseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/ZelleVerifiers";
 import { BaseUnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
 import { UnifiedPaymentVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
 import { SimpleAttestationVerifier__factory } from "../typechain/factories/contracts/unifiedVerifier";
@@ -131,188 +121,188 @@ export default class DeployHelper {
     return await new ProtocolViewer__factory(this._deployerSigner).deploy(escrowAddress, orchestratorAddress);
   }
 
-  public async deployBasePaymentVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[]
-  ): Promise<BasePaymentVerifier> {
-    return await new BasePaymentVerifier__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies
-    );
-  }
+  // public async deployBasePaymentVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[]
+  // ): Promise<BasePaymentVerifier> {
+  //   return await new BasePaymentVerifier__factory(this._deployerSigner).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies
+  //   );
+  // }
 
-  public async deployBaseReclaimPaymentVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<BaseReclaimPaymentVerifier> {
-    return await new BaseReclaimPaymentVerifier__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployBaseReclaimPaymentVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<BaseReclaimPaymentVerifier> {
+  //   return await new BaseReclaimPaymentVerifier__factory(this._deployerSigner).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployBaseReclaimVerifier(
-    providerHashes: string[]
-  ): Promise<BaseReclaimVerifier> {
-    return await new BaseReclaimVerifier__factory(this._deployerSigner).deploy(
-      providerHashes
-    );
-  }
+  // public async deployBaseReclaimVerifier(
+  //   providerHashes: string[]
+  // ): Promise<BaseReclaimVerifier> {
+  //   return await new BaseReclaimVerifier__factory(this._deployerSigner).deploy(
+  //     providerHashes
+  //   );
+  // }
 
 
-  public async deployVenmoReclaimVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber = BigNumber.from(30),
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<VenmoReclaimVerifier> {
-    return await new VenmoReclaimVerifier__factory(
-      this._deployerSigner
-    ).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployVenmoReclaimVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber = BigNumber.from(30),
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<VenmoReclaimVerifier> {
+  //   return await new VenmoReclaimVerifier__factory(
+  //     this._deployerSigner
+  //   ).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployRevolutReclaimVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<RevolutReclaimVerifier> {
-    return await new RevolutReclaimVerifier__factory(
-      this._deployerSigner
-    ).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployRevolutReclaimVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<RevolutReclaimVerifier> {
+  //   return await new RevolutReclaimVerifier__factory(
+  //     this._deployerSigner
+  //   ).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployMercadoPagoReclaimVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<MercadoPagoReclaimVerifier> {
-    return await new MercadoPagoReclaimVerifier__factory(
-      this._deployerSigner
-    ).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployMercadoPagoReclaimVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<MercadoPagoReclaimVerifier> {
+  //   return await new MercadoPagoReclaimVerifier__factory(
+  //     this._deployerSigner
+  //   ).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployCashappReclaimVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<CashappReclaimVerifier> {
-    return await new CashappReclaimVerifier__factory(
-      this._deployerSigner
-    ).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployCashappReclaimVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<CashappReclaimVerifier> {
+  //   return await new CashappReclaimVerifier__factory(
+  //     this._deployerSigner
+  //   ).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployWiseReclaimVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[],
-    providerHashes: string[]
-  ): Promise<WiseReclaimVerifier> {
-    return await new WiseReclaimVerifier__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies,
-      providerHashes
-    );
-  }
+  // public async deployWiseReclaimVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[],
+  //   providerHashes: string[]
+  // ): Promise<WiseReclaimVerifier> {
+  //   return await new WiseReclaimVerifier__factory(this._deployerSigner).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies,
+  //     providerHashes
+  //   );
+  // }
 
-  public async deployZelleBaseVerifier(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    currencies: string[]
-  ): Promise<ZelleBaseVerifier> {
-    return await new ZelleBaseVerifier__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      currencies
-    );
-  }
+  // public async deployZelleBaseVerifier(
+  //   ramp: Address,
+  //   nullifierRegistry: Address,
+  //   timestampBuffer: BigNumber,
+  //   currencies: string[]
+  // ): Promise<ZelleBaseVerifier> {
+  //   return await new ZelleBaseVerifier__factory(this._deployerSigner).deploy(
+  //     ramp,
+  //     nullifierRegistry,
+  //     timestampBuffer,
+  //     currencies
+  //   );
+  // }
 
-  public async deployZelleBoAReclaimVerifier(
-    baseVerifier: Address,
-    nullifierRegistry: Address,
-    providerHashes: string[],
-    timestampBuffer: BigNumber
-  ): Promise<ZelleBoAReclaimVerifier> {
-    return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
-      baseVerifier,
-      nullifierRegistry,
-      providerHashes,
-      timestampBuffer
-    );
-  }
+  // public async deployZelleBoAReclaimVerifier(
+  //   baseVerifier: Address,
+  //   nullifierRegistry: Address,
+  //   providerHashes: string[],
+  //   timestampBuffer: BigNumber
+  // ): Promise<ZelleBoAReclaimVerifier> {
+  //   return await new ZelleBoAReclaimVerifier__factory(this._deployerSigner).deploy(
+  //     baseVerifier,
+  //     nullifierRegistry,
+  //     providerHashes,
+  //     timestampBuffer
+  //   );
+  // }
 
-  public async deployZelleCitiReclaimVerifier(
-    baseVerifier: Address,
-    nullifierRegistry: Address,
-    providerHashes: string[],
-    timestampBuffer: BigNumber
-  ): Promise<ZelleCitiReclaimVerifier> {
-    return await new ZelleCitiReclaimVerifier__factory(this._deployerSigner).deploy(
-      baseVerifier,
-      nullifierRegistry,
-      providerHashes,
-      timestampBuffer
-    );
-  }
+  // public async deployZelleCitiReclaimVerifier(
+  //   baseVerifier: Address,
+  //   nullifierRegistry: Address,
+  //   providerHashes: string[],
+  //   timestampBuffer: BigNumber
+  // ): Promise<ZelleCitiReclaimVerifier> {
+  //   return await new ZelleCitiReclaimVerifier__factory(this._deployerSigner).deploy(
+  //     baseVerifier,
+  //     nullifierRegistry,
+  //     providerHashes,
+  //     timestampBuffer
+  //   );
+  // }
 
-  public async deployZelleChaseReclaimVerifier(
-    baseVerifier: Address,
-    nullifierRegistry: Address,
-    providerHashes: string[],
-    timestampBuffer: BigNumber
-  ): Promise<ZelleChaseReclaimVerifier> {
-    return await new ZelleChaseReclaimVerifier__factory(this._deployerSigner).deploy(
-      baseVerifier,
-      nullifierRegistry,
-      providerHashes,
-      timestampBuffer
-    );
-  }
+  // public async deployZelleChaseReclaimVerifier(
+  //   baseVerifier: Address,
+  //   nullifierRegistry: Address,
+  //   providerHashes: string[],
+  //   timestampBuffer: BigNumber
+  // ): Promise<ZelleChaseReclaimVerifier> {
+  //   return await new ZelleChaseReclaimVerifier__factory(this._deployerSigner).deploy(
+  //     baseVerifier,
+  //     nullifierRegistry,
+  //     providerHashes,
+  //     timestampBuffer
+  //   );
+  // }
 
   public async deployNullifierRegistry(): Promise<NullifierRegistry> {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();

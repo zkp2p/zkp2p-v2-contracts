@@ -29,7 +29,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     
     // EIP-712 Type Hash for PaymentAttestation
     bytes32 private constant PAYMENT_ATTESTATION_TYPEHASH = keccak256(
-        "PaymentDetails(bytes32 paymentMethod,bytes32 providerHash,bytes32 intentHash,bytes32 recipientId,uint256 amount,uint256 timestamp,bytes32 paymentId,bytes32 currency,bytes32 dataHash)"
+        "PaymentAttestation(bytes32 paymentMethod,bytes32 providerHash,bytes32 intentHash,bytes32 recipientId,uint256 amount,uint256 timestamp,bytes32 paymentId,bytes32 currency,bytes32 dataHash)"
     );
     
     /* ============ State Variables ============ */
@@ -136,7 +136,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         PaymentAttestation memory attestation,
         VerifyPaymentData calldata _verifyPaymentData
     ) internal view returns (bool) {
-        // Create EIP-712 struct hash for the payment details
         bytes32 structHash = keccak256(
             abi.encode(
                 PAYMENT_ATTESTATION_TYPEHASH,
@@ -152,7 +151,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             )
         );
         
-        // Create EIP-712 digest
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -167,7 +165,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             "UPV: Data hash mismatch"
         );
 
-        // Call the attestation verifier with verified data
         bool isValid = attestationVerifier.verify(
             digest, 
             attestation.signatures,
@@ -185,11 +182,10 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         PaymentMethodStore storage config,
         VerifyPaymentData calldata _verifyPaymentData
     ) internal view {
-        // TODO: FIX THIS!
-        // require(
-        //     paymentDetails.recipientId.stringComparison(_verifyPaymentData.payeeDetails),
-        //     "UPV: Payee mismatch"
-        // );
+        require(
+            paymentDetails.recipientId == _verifyPaymentData.payeeDetails,
+            "UPV: Payee mismatch"
+        );
         
         require(
             paymentDetails.currency == _verifyPaymentData.fiatCurrency,
@@ -225,10 +221,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         result = PaymentVerificationResult({
             success: true,
             intentHash: bytes32(attestation.intentHash),
-            releaseAmount: releaseAmount,
-            paymentCurrency: paymentDetails.currency,
-            // TODO: FIX THIS!
-            paymentId: string(abi.encodePacked(paymentDetails.paymentId))
+            releaseAmount: releaseAmount
         });
     }
 }
