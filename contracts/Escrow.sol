@@ -1036,10 +1036,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
             address verifier = _verifiers[i];
             
             if (verifier == address(0)) revert ZeroAddress();
-            if (!(paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
-                paymentVerifierRegistry.isAcceptingAllVerifiers())) {
-                revert VerifierNotWhitelisted(verifier);
-            }
+            // if (!(paymentVerifierRegistry.isWhitelistedVerifier(verifier) || 
+            //     paymentVerifierRegistry.isAcceptingAllVerifiers())) {
+            //     revert VerifierNotWhitelisted(verifier);
+            // }
             if (_verifierData[i].payeeDetails == bytes32(0)) revert EmptyPayeeDetails();
             if (depositVerifierData[_depositId][verifier].payeeDetails != bytes32(0)) revert VerifierAlreadyExists(_depositId, verifier);
 

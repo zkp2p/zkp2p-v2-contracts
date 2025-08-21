@@ -71,8 +71,7 @@ describe("UnifiedPaymentVerifier", () => {
     await verifier.connect(owner.wallet).addPaymentMethod(
       venmoPaymentMethodHash,
       BigNumber.from(30000), // 30 second timestamp buffer (in milliseconds)
-      [venmoProviderHash],
-      [Currency.USD]
+      [venmoProviderHash]
     );
   });
 
