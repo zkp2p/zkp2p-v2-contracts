@@ -1033,7 +1033,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         // Incresases min rate from 1.08 to 1.09
         await escrow.connect(offRamper.wallet).updateDepositMinConversionRate(
-          ZERO, verifier.address, Currency.USD, ether(1.09)
+          ZERO, venmoPaymentMethod, Currency.USD, ether(1.09)
         );
       });
 
@@ -1368,7 +1368,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           chainId.toString(),
@@ -1385,7 +1385,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,
