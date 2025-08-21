@@ -44,7 +44,7 @@ contract ProtocolViewer is IProtocolViewer {
             }
             paymentMethodViews[i] = PaymentMethodDataView({
                 paymentMethod: paymentMethod,
-                data: escrowContract.getDepositPaymentMethodData(_depositId, paymentMethod),
+                verificationData: escrowContract.getDepositPaymentMethodData(_depositId, paymentMethod),
                 currencies: currencies
             });
         }

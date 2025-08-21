@@ -208,7 +208,7 @@ describe("ProtocolViewer", () => {
 
       expect(depositView.paymentMethods.length).to.eq(1);
       expect(depositView.paymentMethods[0].paymentMethod).to.eq(venmoPaymentMethodHash);
-      expect(depositView.paymentMethods[0].data.intentGatingService).to.eq(gatingService.address);
+      expect(depositView.paymentMethods[0].verificationData.intentGatingService).to.eq(gatingService.address);
       expect(depositView.paymentMethods[0].currencies.length).to.eq(1);
       expect(depositView.paymentMethods[0].currencies[0].code).to.eq(Currency.USD);
       expect(depositView.paymentMethods[0].currencies[0].minConversionRate).to.eq(depositConversionRate);

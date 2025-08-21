@@ -11,7 +11,7 @@ interface IProtocolViewer {
 
     struct PaymentMethodDataView {
         bytes32 paymentMethod;
-        IEscrow.DepositPaymentMethodData data;
+        IEscrow.DepositPaymentMethodData verificationData;
         IEscrow.Currency[] currencies;
     }
 
