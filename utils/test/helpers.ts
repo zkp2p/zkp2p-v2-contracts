@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, BytesLike } from "ethers";
 import { ethers } from "hardhat";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
@@ -10,7 +10,7 @@ export const generateGatingServiceSignature = async (
   depositId: BigNumber,
   amount: BigNumber,
   to: Address,
-  verifier: Address,
+  paymentMethod: BytesLike,
   fiatCurrency: string,
   conversionRate: BigNumber,
   chainId: string,
@@ -24,8 +24,8 @@ export const generateGatingServiceSignature = async (
   }
 
   const messageHash = ethers.utils.solidityKeccak256(
-    ["address", "address", "uint256", "uint256", "address", "address", "bytes32", "uint256", "uint256", "uint256"],
-    [orchestrator, escrow, depositId, amount, to, verifier, fiatCurrency, conversionRate, signatureExpiration, chainId]
+    ["address", "address", "uint256", "uint256", "address", "bytes32", "bytes32", "uint256", "uint256", "uint256"],
+    [orchestrator, escrow, depositId, amount, to, paymentMethod, fiatCurrency, conversionRate, signatureExpiration, chainId]
   );
   return await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
 }
@@ -36,7 +36,7 @@ export const createSignalIntentParams = async (
   depositId: BigNumber,
   amount: BigNumber,
   to: Address,
-  verifier: Address,
+  paymentMethod: BytesLike,
   fiatCurrency: string,
   conversionRate: BigNumber,
   referrer: Address = ethers.constants.AddressZero,
@@ -64,7 +64,7 @@ export const createSignalIntentParams = async (
       depositId,
       amount,
       to,
-      verifier,
+      paymentMethod,
       fiatCurrency,
       conversionRate,
       chainId,
@@ -77,7 +77,7 @@ export const createSignalIntentParams = async (
     depositId,
     amount,
     to,
-    verifier,
+    paymentMethod,
     fiatCurrency,
     conversionRate,
     referrer,

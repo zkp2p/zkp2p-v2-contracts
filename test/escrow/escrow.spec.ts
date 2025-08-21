@@ -1,7 +1,7 @@
 import "module-alias/register";
 
 import { ethers, network } from "hardhat";
-import { Signer } from "ethers";
+import { BytesLike, Signer } from "ethers";
 
 import {
   Address,
@@ -56,6 +56,8 @@ describe("Escrow", () => {
   let referrer: Account;
   let chainId: BigNumber = ONE;
   let currentIntentCounter: number = 0;
+  let venmoPaymentMethodHash: string;
+  let paypalPaymentMethodHash: string;
 
   let ramp: Escrow;
   let protocolViewer: ProtocolViewer;
@@ -92,6 +94,10 @@ describe("Escrow", () => {
       intentGuardian,
       referrer
     ] = await getAccounts();
+
+    // Initialize payment method hashes
+    venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+    paypalPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("paypal"));
 
     deployer = new DeployHelper(owner.wallet);
 
@@ -148,7 +154,17 @@ describe("Escrow", () => {
       [Currency.USD]
     );
 
-    await paymentVerifierRegistry.addPaymentVerifier(verifier.address);
+    // Register payment methods with their verifiers and supported currencies
+    await paymentVerifierRegistry.addPaymentMethod(
+      venmoPaymentMethodHash,
+      verifier.address,
+      [Currency.USD, Currency.EUR]
+    );
+    await paymentVerifierRegistry.addPaymentMethod(
+      paypalPaymentMethodHash,
+      otherVerifier.address,
+      [Currency.USD, Currency.EUR]  // Added EUR support for PayPal to match test requirements
+    );
 
     postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, ramp.address);
 
@@ -182,8 +198,8 @@ describe("Escrow", () => {
     let subjectToken: Address;
     let subjectAmount: BigNumber;
     let subjectIntentAmountRange: IEscrow.RangeStruct;
-    let subjectVerifiers: Address[];
-    let subjectVerificationData: IEscrow.DepositVerifierDataStruct[];
+    let subjectPaymentMethods: string[];
+    let subjectPaymentMethodData: IEscrow.DepositPaymentMethodDataStruct[];
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
     let subjectDelegate: Address;
     let subjectIntentGuardian: Address;
@@ -194,8 +210,8 @@ describe("Escrow", () => {
       subjectToken = usdcToken.address;
       subjectAmount = usdc(100);
       subjectIntentAmountRange = { min: usdc(10), max: usdc(200) }; // Example range
-      subjectVerifiers = [verifier.address];
-      subjectVerificationData = [
+      subjectPaymentMethods = [venmoPaymentMethodHash];
+      subjectPaymentMethodData = [
         {
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PaymentService1payeeDetails")),
@@ -220,8 +236,8 @@ describe("Escrow", () => {
         token: subjectToken,
         amount: subjectAmount,
         intentAmountRange: subjectIntentAmountRange,
-        verifiers: subjectVerifiers,
-        verifierData: subjectVerificationData,
+        paymentMethods: subjectPaymentMethods,
+        paymentMethodData: subjectPaymentMethodData,
         currencies: subjectCurrencies,
         delegate: subjectDelegate,
         intentGuardian: subjectIntentGuardian,
@@ -254,16 +270,16 @@ describe("Escrow", () => {
       expect(depositView.deposit.referrer).to.eq(subjectReferrer);
       expect(depositView.deposit.referrerFee).to.eq(subjectReferrerFee);
 
-      expect(depositView.verifiers.length).to.eq(1);
-      expect(depositView.verifiers[0].verifier).to.eq(subjectVerifiers[0]);
-      expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-      expect(depositView.verifiers[0].verificationData.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
-      expect(depositView.verifiers[0].verificationData.data).to.eq(subjectVerificationData[0].data);
-      expect(depositView.verifiers[0].currencies.length).to.eq(2);
-      expect(depositView.verifiers[0].currencies[0].code).to.eq(subjectCurrencies[0][0].code);
-      expect(depositView.verifiers[0].currencies[0].minConversionRate).to.eq(subjectCurrencies[0][0].minConversionRate);
-      expect(depositView.verifiers[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
-      expect(depositView.verifiers[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
+      expect(depositView.paymentMethods.length).to.eq(1);
+      expect(depositView.paymentMethods[0].paymentMethod).to.eq(subjectPaymentMethods[0]);
+      expect(depositView.paymentMethods[0].verificationData.intentGatingService).to.eq(subjectPaymentMethodData[0].intentGatingService);
+      expect(depositView.paymentMethods[0].verificationData.payeeDetails).to.eq(subjectPaymentMethodData[0].payeeDetails);
+      expect(depositView.paymentMethods[0].verificationData.data).to.eq(subjectPaymentMethodData[0].data);
+      expect(depositView.paymentMethods[0].currencies.length).to.eq(2);
+      expect(depositView.paymentMethods[0].currencies[0].code).to.eq(subjectCurrencies[0][0].code);
+      expect(depositView.paymentMethods[0].currencies[0].minConversionRate).to.eq(subjectCurrencies[0][0].minConversionRate);
+      expect(depositView.paymentMethods[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
+      expect(depositView.paymentMethods[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
       expect(depositView.deposit.intentGuardian).to.eq(subjectIntentGuardian);
       expect(depositView.deposit.makerProtocolFee).to.eq(ZERO);
     });
@@ -285,23 +301,23 @@ describe("Escrow", () => {
       expect(postDepositCounter).to.eq(preDepositCounter.add(1));
     });
 
-    it("should correctly update the depositVerifierData mapping", async () => {
+    it("should correctly update the depositPaymentMethodData mapping", async () => {
       await subject();
 
-      const verificationData = await ramp.getDepositVerifierData(0, subjectVerifiers[0]);
+      const paymentMethodData = await ramp.getDepositPaymentMethodData(0, subjectPaymentMethods[0]);
 
-      expect(verificationData.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-      expect(verificationData.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
-      expect(verificationData.data).to.eq(subjectVerificationData[0].data);
+      expect(paymentMethodData.intentGatingService).to.eq(subjectPaymentMethodData[0].intentGatingService);
+      expect(paymentMethodData.payeeDetails).to.eq(subjectPaymentMethodData[0].payeeDetails);
+      expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
     it("should correctly update the depositCurrencyMinRate mapping", async () => {
       await subject();
 
-      const currencyMinRate = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
+      const currencyMinRate = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[0], subjectCurrencies[0][0].code);
       expect(currencyMinRate).to.eq(subjectCurrencies[0][0].minConversionRate);
 
-      const currencyMinRate2 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
+      const currencyMinRate2 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[0], subjectCurrencies[0][1].code);
       expect(currencyMinRate2).to.eq(subjectCurrencies[0][1].minConversionRate);
     });
 
@@ -317,12 +333,12 @@ describe("Escrow", () => {
       );
     });
 
-    it("should emit a DepositVerifierAdded event", async () => {
-      await expect(subject()).to.emit(ramp, "DepositVerifierAdded").withArgs(
+    it("should emit a DepositPaymentMethodAdded event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositPaymentMethodAdded").withArgs(
         ZERO, // depositId starts at 0
-        subjectVerifiers[0],
-        subjectVerificationData[0].payeeDetails,
-        subjectVerificationData[0].intentGatingService
+        subjectPaymentMethods[0],
+        subjectPaymentMethodData[0].payeeDetails,
+        subjectPaymentMethodData[0].intentGatingService
       );
     });
 
@@ -335,23 +351,21 @@ describe("Escrow", () => {
 
       // First event
       expect(events[0].args.depositId).to.equal(0);
-      expect(events[0].args.verifier).to.equal(subjectVerifiers[0]);
+      expect(events[0].args.paymentMethod).to.equal(subjectPaymentMethods[0]);
       expect(events[0].args.currency).to.equal(subjectCurrencies[0][0].code);
       expect(events[0].args.conversionRate).to.equal(subjectCurrencies[0][0].minConversionRate);
 
       // Second event  
       expect(events[1].args.depositId).to.equal(0);
-      expect(events[1].args.verifier).to.equal(subjectVerifiers[0]);
+      expect(events[1].args.paymentMethod).to.equal(subjectPaymentMethods[0]);
       expect(events[1].args.currency).to.equal(subjectCurrencies[0][1].code);
       expect(events[1].args.conversionRate).to.equal(subjectCurrencies[0][1].minConversionRate);
     });
 
-    describe("when there are multiple verifiers", async () => {
+    describe("when there are multiple payment methods", async () => {
       beforeEach(async () => {
-        await paymentVerifierRegistry.addPaymentVerifier(otherVerifier.address);
-
-        subjectVerifiers = [verifier.address, otherVerifier.address];
-        subjectVerificationData = [
+        subjectPaymentMethods = [venmoPaymentMethodHash, paypalPaymentMethodHash];
+        subjectPaymentMethodData = [
           {
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.formatBytes32String("test"),
@@ -374,27 +388,27 @@ describe("Escrow", () => {
         ];
       });
 
-      it("should correctly update mappings for all verifiers", async () => {
+      it("should correctly update mappings for all payment methods", async () => {
         await subject();
 
-        // Check first verifier
-        const verificationData1 = await ramp.getDepositVerifierData(0, subjectVerifiers[0]);
-        expect(verificationData1.intentGatingService).to.eq(subjectVerificationData[0].intentGatingService);
-        expect(verificationData1.payeeDetails).to.eq(subjectVerificationData[0].payeeDetails);
-        expect(verificationData1.data).to.eq(subjectVerificationData[0].data);
+        // Check first payment method
+        const paymentMethodData1 = await ramp.getDepositPaymentMethodData(0, subjectPaymentMethods[0]);
+        expect(paymentMethodData1.intentGatingService).to.eq(subjectPaymentMethodData[0].intentGatingService);
+        expect(paymentMethodData1.payeeDetails).to.eq(subjectPaymentMethodData[0].payeeDetails);
+        expect(paymentMethodData1.data).to.eq(subjectPaymentMethodData[0].data);
 
-        const currencyRate1_1 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][0].code);
+        const currencyRate1_1 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[0], subjectCurrencies[0][0].code);
         expect(currencyRate1_1).to.eq(subjectCurrencies[0][0].minConversionRate);
-        const currencyRate1_2 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[0], subjectCurrencies[0][1].code);
+        const currencyRate1_2 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[0], subjectCurrencies[0][1].code);
         expect(currencyRate1_2).to.eq(subjectCurrencies[0][1].minConversionRate);
 
-        // Check second verifier
-        const verificationData2 = await ramp.getDepositVerifierData(0, subjectVerifiers[1]);
-        expect(verificationData2.intentGatingService).to.eq(subjectVerificationData[1].intentGatingService);
-        expect(verificationData2.payeeDetails).to.eq(subjectVerificationData[1].payeeDetails);
-        expect(verificationData2.data).to.eq(subjectVerificationData[1].data);
+        // Check second payment method
+        const paymentMethodData2 = await ramp.getDepositPaymentMethodData(0, subjectPaymentMethods[1]);
+        expect(paymentMethodData2.intentGatingService).to.eq(subjectPaymentMethodData[1].intentGatingService);
+        expect(paymentMethodData2.payeeDetails).to.eq(subjectPaymentMethodData[1].payeeDetails);
+        expect(paymentMethodData2.data).to.eq(subjectPaymentMethodData[1].data);
 
-        const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectVerifiers[1], subjectCurrencies[1][0].code);
+        const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
       });
     });
@@ -410,8 +424,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(1000),
           intentAmountRange: { min: usdc(10), max: usdc(100) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -532,9 +546,9 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the length of the verifiers array is not equal to the length of the verifiersData array", async () => {
+    describe("when the length of the payment methods array is not equal to the length of the paymentMethodData array", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [verifier.address, otherVerifier.address];
+        subjectPaymentMethods = [venmoPaymentMethodHash, paypalPaymentMethodHash];
       });
 
       it("should revert", async () => {
@@ -542,10 +556,10 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the length of the verifiers array is not equal to the length of the currencies array", async () => {
+    describe("when the length of the payment methods array is not equal to the length of the currencies array", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [verifier.address, otherVerifier.address];
-        subjectVerificationData = [
+        subjectPaymentMethods = [venmoPaymentMethodHash, paypalPaymentMethodHash];
+        subjectPaymentMethodData = [
           {
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.formatBytes32String("test"),
@@ -564,7 +578,7 @@ describe("Escrow", () => {
       });
     });
 
-    describe.skip("when the accepted currencies is not supported by the verifier", async () => {
+    describe("when the accepted currencies is not supported by the payment method", async () => {
       beforeEach(async () => {
         subjectCurrencies[0][0].code = Currency.AED;
       });
@@ -584,9 +598,9 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the verifier is zero address", async () => {
+    describe("when the payment method is zero bytes32", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [ADDRESS_ZERO];
+        subjectPaymentMethods = [ZERO_BYTES32];
       });
 
       it("should revert", async () => {
@@ -594,30 +608,20 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the verifier is not whitelisted", async () => {
+    describe("when the payment method is not whitelisted", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [otherVerifier.address];
+        const unknownPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("unknown"));
+        subjectPaymentMethods = [unknownPaymentMethod];
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotWhitelisted");
-      });
-
-      describe("when accept all verifiers is true", async () => {
-        beforeEach(async () => {
-          await otherVerifier.addCurrency(Currency.EUR);
-          await paymentVerifierRegistry.connect(owner.wallet).setAcceptAllVerifiers(true);
-        });
-
-        it("should not revert", async () => {
-          await expect(subject()).to.not.be.reverted;
-        });
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotWhitelisted");
       });
     });
 
     describe("when payee details hash is empty", async () => {
       beforeEach(async () => {
-        subjectVerificationData[0].payeeDetails = ZERO_BYTES32;
+        subjectPaymentMethodData[0].payeeDetails = ZERO_BYTES32;
       });
 
       it("should revert", async () => {
@@ -625,10 +629,10 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when there are duplicate verifiers", async () => {
+    describe("when there are duplicate payment methods", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [verifier.address, verifier.address];
-        subjectVerificationData = [
+        subjectPaymentMethods = [venmoPaymentMethodHash, venmoPaymentMethodHash];
+        subjectPaymentMethodData = [
           {
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.formatBytes32String("test"),
@@ -647,14 +651,14 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierAlreadyExists");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodAlreadyExists");
       });
     });
 
-    describe("when there are duplicate currencies for a verifier", async () => {
+    describe("when there are duplicate currencies for a payment method", async () => {
       beforeEach(async () => {
-        subjectVerifiers = [verifier.address];
-        subjectVerificationData = [{
+        subjectPaymentMethods = [venmoPaymentMethodHash];
+        subjectPaymentMethodData = [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.formatBytes32String("test"),
           data: "0x"
@@ -760,8 +764,8 @@ describe("Escrow", () => {
             token: usdcToken.address,
             amount: usdc(200),
             intentAmountRange: { min: usdc(10), max: usdc(200) },
-            verifiers: [verifier.address],
-            verifierData: [{
+            paymentMethods: [venmoPaymentMethodHash],
+            paymentMethodData: [{
               intentGatingService: gatingService.address,
               payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
               data: "0x"
@@ -786,8 +790,8 @@ describe("Escrow", () => {
             token: usdcToken.address,
             amount: usdc(200),
             intentAmountRange: { min: usdc(10), max: usdc(200) },
-            verifiers: [verifier.address],
-            verifierData: [{
+            paymentMethods: [venmoPaymentMethodHash],
+            paymentMethodData: [{
               intentGatingService: gatingService.address,
               payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
               data: "0x"
@@ -828,8 +832,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -959,8 +963,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(100),
           intentAmountRange: { min: usdc(10), max: usdc(200) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -1033,8 +1037,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(100),
           intentAmountRange: { min: usdc(10), max: usdc(200) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsWithReferrer")),
             data: "0x"
@@ -1092,7 +1096,7 @@ describe("Escrow", () => {
 
           // Create new deposit with both fees
           depositWithReferrerParams.amount = usdc(200); // Use different amount to distinguish
-          depositWithReferrerParams.verifierData[0].payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsBothFees"));
+          depositWithReferrerParams.paymentMethodData[0].payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsBothFees"));
 
           await ramp.connect(offRamper.wallet).createDeposit(depositWithReferrerParams);
 
@@ -1174,8 +1178,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -1305,7 +1309,7 @@ describe("Escrow", () => {
           subjectDepositId,
           intentAmount,
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           conversionRate,
           ADDRESS_ZERO,
@@ -1364,7 +1368,7 @@ describe("Escrow", () => {
           subjectDepositId,
           intentAmount,
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           conversionRate,
           ADDRESS_ZERO,
@@ -1441,8 +1445,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -1498,22 +1502,22 @@ describe("Escrow", () => {
     });
 
     it("should remove the deposit verifier data", async () => {
-      const preVerifierData = await ramp.getDepositVerifierData(subjectDepositId, verifier.address);
-      expect(preVerifierData.intentGatingService).to.not.eq(ADDRESS_ZERO);
+      const prePaymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, venmoPaymentMethodHash);
+      expect(prePaymentMethodData.intentGatingService).to.not.eq(ADDRESS_ZERO);
 
       await subject();
 
-      const postVerifierData = await ramp.getDepositVerifierData(subjectDepositId, verifier.address);
-      expect(postVerifierData.intentGatingService).to.eq(ADDRESS_ZERO);
+      const postPaymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, venmoPaymentMethodHash);
+      expect(postPaymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
     });
 
     it("should delete deposit currency min conversion data", async () => {
-      const preCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, verifier.address, Currency.USD);
+      const preCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, venmoPaymentMethodHash, Currency.USD);
       expect(preCurrencyMinRate).to.not.eq(ZERO);
 
       await subject();
 
-      const postCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, verifier.address, Currency.USD);
+      const postCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, venmoPaymentMethodHash, Currency.USD);
       expect(postCurrencyMinRate).to.eq(ZERO);
     });
 
@@ -1545,7 +1549,7 @@ describe("Escrow", () => {
           subjectDepositId,
           usdc(50),
           receiver.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
           chainId.toString()
@@ -1557,7 +1561,7 @@ describe("Escrow", () => {
           subjectDepositId,
           usdc(50),
           receiver.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,
@@ -1737,8 +1741,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: grossDepositAmount,
           intentAmountRange: { min: usdc(10), max: usdc(200) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -1797,7 +1801,7 @@ describe("Escrow", () => {
             subjectDepositId,
             intentAmount,
             onRamper.address,
-            verifier.address,
+            venmoPaymentMethodHash,
             Currency.USD,
             conversionRate,
             ADDRESS_ZERO,
@@ -1887,7 +1891,7 @@ describe("Escrow", () => {
             subjectDepositId,
             intentAmount,
             onRamper.address,
-            verifier.address,
+            venmoPaymentMethodHash,
             Currency.USD,
             conversionRate,
             ADDRESS_ZERO,
@@ -1981,8 +1985,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(1000),
           intentAmountRange: { min: usdc(10), max: usdc(1000) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -2005,7 +2009,7 @@ describe("Escrow", () => {
           subjectDepositId,
           usdc(100),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           ether(1),
           ADDRESS_ZERO,
@@ -2079,7 +2083,7 @@ describe("Escrow", () => {
 
   describe("#updateDepositMinConversionRate", async () => {
     let subjectDepositId: BigNumber;
-    let subjectVerifier: Address;
+    let subjectPaymentMethod: BytesLike;
     let subjectFiatCurrency: string;
     let subjectNewMinConversionRate: BigNumber;
     let subjectCaller: Account;
@@ -2091,8 +2095,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2107,7 +2111,7 @@ describe("Escrow", () => {
       });
 
       subjectDepositId = ZERO;
-      subjectVerifier = verifier.address;
+      subjectPaymentMethod = venmoPaymentMethodHash;
       subjectFiatCurrency = Currency.USD;
       subjectNewMinConversionRate = ether(1.05);
       subjectCaller = offRamper;
@@ -2116,7 +2120,7 @@ describe("Escrow", () => {
     async function subject(): Promise<any> {
       return ramp.connect(subjectCaller.wallet).updateDepositMinConversionRate(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectFiatCurrency,
         subjectNewMinConversionRate
       );
@@ -2127,7 +2131,7 @@ describe("Escrow", () => {
 
       const newRate = await ramp.getDepositCurrencyMinRate(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectFiatCurrency
       );
       expect(newRate).to.eq(subjectNewMinConversionRate);
@@ -2138,7 +2142,7 @@ describe("Escrow", () => {
 
       expect(tx).to.emit(ramp, "DepositMinConversionRateUpdated").withArgs(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectFiatCurrency,
         subjectNewMinConversionRate
       );
@@ -2175,7 +2179,7 @@ describe("Escrow", () => {
     });
 
 
-    describe.skip("when the currency or verifier is not supported", async () => {
+    describe("when the currency or verifier is not supported", async () => {
       beforeEach(async () => {
         subjectFiatCurrency = Currency.EUR;
       });
@@ -2218,8 +2222,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2321,10 +2325,10 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#addVerifiersToDeposit", async () => {
+  describe("#addPaymentMethodsToDeposit", async () => {
     let subjectDepositId: BigNumber;
-    let subjectVerifiers: Address[];
-    let subjectVerifierData: IEscrow.DepositVerifierDataStruct[];
+    let subjectPaymentMethods: string[];
+    let subjectPaymentMethodData: IEscrow.DepositPaymentMethodDataStruct[];
     let subjectCurrencies: IEscrow.CurrencyStruct[][];
     let subjectCaller: Account;
 
@@ -2335,8 +2339,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2350,13 +2354,11 @@ describe("Escrow", () => {
         referrerFee: ZERO
       });
 
-      // Add otherVerifier to whitelist
-      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
-      await otherVerifier.addCurrency(Currency.EUR);
+      // Already registered paypalPaymentMethodHash in beforeEach
 
       subjectDepositId = ZERO;
-      subjectVerifiers = [otherVerifier.address];
-      subjectVerifierData = [{
+      subjectPaymentMethods = [paypalPaymentMethodHash];
+      subjectPaymentMethodData = [{
         intentGatingService: gatingService.address,
         payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")),
         data: "0x"
@@ -2371,49 +2373,49 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).addVerifiersToDeposit(
+      return ramp.connect(subjectCaller.wallet).addPaymentMethodsToDeposit(
         subjectDepositId,
-        subjectVerifiers,
-        subjectVerifierData,
+        subjectPaymentMethods,
+        subjectPaymentMethodData,
         subjectCurrencies
       );
     }
 
-    it("should add the verifier to the deposit", async () => {
+    it("should add the payment method to the deposit", async () => {
       await subject();
 
-      const verifiers = await ramp.getDepositVerifiers(subjectDepositId);
-      expect(verifiers).to.include(otherVerifier.address);
+      const paymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
+      expect(paymentMethods).to.include(paypalPaymentMethodHash);
 
-      const verifierData = await ramp.getDepositVerifierData(subjectDepositId, otherVerifier.address);
-      expect(verifierData.intentGatingService).to.eq(subjectVerifierData[0].intentGatingService);
-      expect(verifierData.payeeDetails).to.eq(subjectVerifierData[0].payeeDetails);
-      expect(verifierData.data).to.eq(subjectVerifierData[0].data);
+      const paymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, paypalPaymentMethodHash);
+      expect(paymentMethodData.intentGatingService).to.eq(subjectPaymentMethodData[0].intentGatingService);
+      expect(paymentMethodData.payeeDetails).to.eq(subjectPaymentMethodData[0].payeeDetails);
+      expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
-    it("should add the currencies to the verifier", async () => {
+    it("should add the currencies to the payment method", async () => {
       await subject();
 
-      const currencies = await ramp.getDepositCurrencies(subjectDepositId, otherVerifier.address);
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, paypalPaymentMethodHash);
       expect(currencies).to.have.length(2);
       expect(currencies).to.include(Currency.USD);
       expect(currencies).to.include(Currency.EUR);
 
-      const usdRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, otherVerifier.address, Currency.USD);
+      const usdRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, paypalPaymentMethodHash, Currency.USD);
       expect(usdRate).to.eq(subjectCurrencies[0][0].minConversionRate);
 
-      const eurRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, otherVerifier.address, Currency.EUR);
+      const eurRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, paypalPaymentMethodHash, Currency.EUR);
       expect(eurRate).to.eq(subjectCurrencies[0][1].minConversionRate);
     });
 
     it("should emit DepositVerifierAdded and DepositCurrencyAdded events", async () => {
       const tx = await subject();
 
-      await expect(tx).to.emit(ramp, "DepositVerifierAdded").withArgs(
+      await expect(tx).to.emit(ramp, "DepositPaymentMethodAdded").withArgs(
         subjectDepositId,
-        otherVerifier.address,
-        subjectVerifierData[0].payeeDetails,
-        subjectVerifierData[0].intentGatingService
+        paypalPaymentMethodHash,
+        subjectPaymentMethodData[0].payeeDetails,
+        subjectPaymentMethodData[0].intentGatingService
       );
 
       const receipt = await tx.wait();
@@ -2451,19 +2453,14 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the verifier is not whitelisted", async () => {
+    describe("when the payment method is not whitelisted", async () => {
       beforeEach(async () => {
-        const newVerifier = await deployer.deployPaymentVerifierMock(
-          ramp.address,
-          ethers.constants.AddressZero,
-          ZERO,
-          [Currency.USD]
-        );
-        subjectVerifiers = [newVerifier.address];
+        const unknownPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("unknown"));
+        subjectPaymentMethods = [unknownPaymentMethod];
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotWhitelisted");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotWhitelisted");
       });
     });
 
@@ -2478,22 +2475,21 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#removeVerifierFromDeposit", async () => {
+  describe("#removePaymentMethodFromDeposit", async () => {
     let subjectDepositId: BigNumber;
-    let subjectVerifier: Address;
+    let subjectPaymentMethod: string;
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      // Create deposit with multiple verifiers
+      // Create deposit with multiple payment methods
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      await paymentVerifierRegistry.connect(owner.wallet).addPaymentVerifier(otherVerifier.address);
 
       await ramp.connect(offRamper.wallet).createDeposit({
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address, otherVerifier.address],
-        verifierData: [
+        paymentMethods: [venmoPaymentMethodHash, paypalPaymentMethodHash],
+        paymentMethodData: [
           {
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
@@ -2516,48 +2512,48 @@ describe("Escrow", () => {
       });
 
       subjectDepositId = ZERO;
-      subjectVerifier = otherVerifier.address;
+      subjectPaymentMethod = paypalPaymentMethodHash;
       subjectCaller = offRamper;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removeVerifierFromDeposit(
+      return ramp.connect(subjectCaller.wallet).removePaymentMethodFromDeposit(
         subjectDepositId,
-        subjectVerifier
+        subjectPaymentMethod
       );
     }
 
-    it("should remove the verifier from the deposit", async () => {
+    it("should remove the payment method from the deposit", async () => {
       await subject();
 
-      const verifiers = await ramp.getDepositVerifiers(subjectDepositId);
-      expect(verifiers).to.not.include(subjectVerifier);
+      const paymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
+      expect(paymentMethods).to.not.include(subjectPaymentMethod);
 
     });
 
-    it("should NOT delete the verifier data", async () => {
+    it("should NOT delete the payment method data", async () => {
       await subject();
 
-      const verifierData = await ramp.getDepositVerifierData(subjectDepositId, subjectVerifier);
-      expect(verifierData.intentGatingService).to.eq(gatingService.address);
-      expect(verifierData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
-      expect(verifierData.data).to.eq("0x");
+      const paymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, subjectPaymentMethod);
+      expect(paymentMethodData.intentGatingService).to.eq(gatingService.address);
+      expect(paymentMethodData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
+      expect(paymentMethodData.data).to.eq("0x");
     });
 
-    it("should remove the currency data for the verifier", async () => {
+    it("should remove the currency data for the payment method", async () => {
       await subject();
 
-      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
       expect(currencies).to.have.length(0);
 
-      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, Currency.USD);
+      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, Currency.USD);
       expect(minConversionRate).to.eq(ZERO);
     });
 
-    it("should emit a DepositVerifierRemoved event", async () => {
-      await expect(subject()).to.emit(ramp, "DepositVerifierRemoved").withArgs(
+    it("should emit a DepositPaymentMethodRemoved event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositPaymentMethodRemoved").withArgs(
         subjectDepositId,
-        subjectVerifier
+        subjectPaymentMethod
       );
     });
 
@@ -2591,19 +2587,14 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the verifier is not found for the deposit", async () => {
+    describe("when the payment method is not found for the deposit", async () => {
       beforeEach(async () => {
-        const newVerifier = await deployer.deployPaymentVerifierMock(
-          ramp.address,
-          ethers.constants.AddressZero,
-          ZERO,
-          [Currency.USD]
-        );
-        subjectVerifier = newVerifier.address;
+        const unknownPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("unknown"));
+        subjectPaymentMethod = unknownPaymentMethod;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
       });
     });
 
@@ -2618,9 +2609,9 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#addCurrenciesToDepositVerifier", async () => {
+  describe("#addCurrenciesToDepositPaymentMethod", async () => {
     let subjectDepositId: BigNumber;
-    let subjectVerifier: Address;
+    let subjectPaymentMethod: string;
     let subjectCurrencies: IEscrow.CurrencyStruct[];
     let subjectCaller: Account;
 
@@ -2631,8 +2622,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2647,7 +2638,7 @@ describe("Escrow", () => {
       });
 
       subjectDepositId = ZERO;
-      subjectVerifier = verifier.address;
+      subjectPaymentMethod = venmoPaymentMethodHash;
       subjectCurrencies = [
         { code: Currency.EUR, minConversionRate: ether(0.95) }
       ];
@@ -2655,27 +2646,27 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).addCurrenciesToDepositVerifier(
+      return ramp.connect(subjectCaller.wallet).addCurrenciesToDepositPaymentMethod(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectCurrencies
       );
     }
 
-    it("should add the currencies to the verifier", async () => {
+    it("should add the currencies to the payment method", async () => {
       await subject();
 
-      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
       expect(currencies).to.include(Currency.EUR);
 
-      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, Currency.EUR);
+      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, Currency.EUR);
       expect(minConversionRate).to.eq(subjectCurrencies[0].minConversionRate);
     });
 
     it("should emit a DepositCurrencyAdded event", async () => {
       await expect(subject()).to.emit(ramp, "DepositCurrencyAdded").withArgs(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         Currency.EUR,
         subjectCurrencies[0].minConversionRate
       );
@@ -2711,17 +2702,17 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the verifier is not found for the deposit", async () => {
+    describe("when the payment method is not found for the deposit", async () => {
       beforeEach(async () => {
-        subjectVerifier = otherVerifier.address;
+        subjectPaymentMethod = paypalPaymentMethodHash;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
       });
     });
 
-    describe.skip("when the currency is not supported by the verifier", async () => {
+    describe("when the currency is not supported by the payment method", async () => {
       beforeEach(async () => {
         subjectCurrencies = [
           { code: Currency.AED, minConversionRate: ether(3.67) }
@@ -2766,9 +2757,9 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#removeCurrencyFromDepositVerifier", async () => {
+  describe("#removeCurrencyFromDepositPaymentMethod", async () => {
     let subjectDepositId: BigNumber;
-    let subjectVerifier: Address;
+    let subjectPaymentMethod: string;
     let subjectCurrencyCode: string;
     let subjectCaller: Account;
 
@@ -2779,8 +2770,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2798,33 +2789,33 @@ describe("Escrow", () => {
       });
 
       subjectDepositId = ZERO;
-      subjectVerifier = verifier.address;
+      subjectPaymentMethod = venmoPaymentMethodHash;
       subjectCurrencyCode = Currency.EUR;
       subjectCaller = offRamper;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removeCurrencyFromDepositVerifier(
+      return ramp.connect(subjectCaller.wallet).removeCurrencyFromDepositPaymentMethod(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectCurrencyCode
       );
     }
 
-    it("should remove the currency from the verifier", async () => {
+    it("should remove the currency from the payment method", async () => {
       await subject();
 
-      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectVerifier);
+      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
       expect(currencies).to.not.include(subjectCurrencyCode);
 
-      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectVerifier, subjectCurrencyCode);
+      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, subjectCurrencyCode);
       expect(minConversionRate).to.eq(ZERO);
     });
 
     it("should emit a DepositCurrencyRemoved event", async () => {
       await expect(subject()).to.emit(ramp, "DepositCurrencyRemoved").withArgs(
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectCurrencyCode
       );
     });
@@ -2860,17 +2851,17 @@ describe("Escrow", () => {
     });
 
 
-    describe("when the verifier is not found for the deposit", async () => {
+    describe("when the payment method is not found for the deposit", async () => {
       beforeEach(async () => {
-        subjectVerifier = otherVerifier.address;
+        subjectPaymentMethod = paypalPaymentMethodHash;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "VerifierNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
       });
     });
 
-    describe("when the currency is not found for the verifier", async () => {
+    describe("when the currency is not found for the payment method", async () => {
       beforeEach(async () => {
         subjectCurrencyCode = Currency.AED;
       });
@@ -2903,8 +2894,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3021,8 +3012,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3112,8 +3103,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3306,8 +3297,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3427,8 +3418,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(60) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3629,7 +3620,7 @@ describe("Escrow", () => {
           depositId,
           usdc(1),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           ether(1),
           ADDRESS_ZERO,
@@ -3665,8 +3656,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(1000),
           intentAmountRange: { min: usdc(1), max: usdc(100) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: payeeDetails,
             data: depositData
@@ -3755,8 +3746,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(50) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -3889,8 +3880,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(50) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -4104,8 +4095,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: grossDepositAmount,
           intentAmountRange: { min: usdc(10), max: usdc(100) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -4361,8 +4352,8 @@ describe("Escrow", () => {
             token: usdcToken.address,
             amount: usdc(1000),
             intentAmountRange: { min: usdc(10), max: usdc(1000) },
-            verifiers: [verifier.address],
-            verifierData: [{
+            paymentMethods: [venmoPaymentMethodHash],
+            paymentMethodData: [{
               intentGatingService: gatingService.address,
               payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
               data: "0x"
@@ -4433,8 +4424,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(1000),
           intentAmountRange: { min: usdc(10), max: usdc(1000) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
             data: "0x"
@@ -4520,8 +4511,8 @@ describe("Escrow", () => {
             token: usdcToken.address,
             amount: usdc(50),
             intentAmountRange: { min: usdc(1), max: usdc(50) },
-            verifiers: [verifier.address],
-            verifierData: [{
+            paymentMethods: [venmoPaymentMethodHash],
+            paymentMethodData: [{
               intentGatingService: gatingService.address,
               payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
               data: "0x"
@@ -4544,7 +4535,7 @@ describe("Escrow", () => {
             depositId,
             intentAmount,
             onRamper.address,
-            verifier.address,
+            venmoPaymentMethodHash,
             Currency.USD,
             ether(1),
             ADDRESS_ZERO,
@@ -4626,8 +4617,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(100) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -4650,7 +4641,7 @@ describe("Escrow", () => {
         subjectDepositId,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         ether(1),
         ADDRESS_ZERO,
@@ -4735,8 +4726,8 @@ describe("Escrow", () => {
           token: usdcToken.address,
           amount: usdc(100),
           intentAmountRange: { min: usdc(10), max: usdc(100) },
-          verifiers: [verifier.address],
-          verifierData: [{
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
             intentGatingService: gatingService.address,
             payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
             data: "0x"
@@ -4759,7 +4750,7 @@ describe("Escrow", () => {
           newDepositId,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           ether(1),
           ADDRESS_ZERO,
@@ -5356,8 +5347,8 @@ describe("Escrow", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"

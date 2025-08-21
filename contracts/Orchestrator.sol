@@ -127,7 +127,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             escrow: _params.escrow,
             depositId: _params.depositId,
             amount: _params.amount,
-            paymentVerifier: _params.verifier,
+            paymentMethod: _params.paymentMethod,
             fiatCurrency: _params.fiatCurrency,
             conversionRate: _params.conversionRate,
             timestamp: block.timestamp,
@@ -144,7 +144,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             intentHash, 
             _params.escrow,
             _params.depositId, 
-            _params.verifier, 
+            _params.paymentMethod, 
             msg.sender, 
             _params.to, 
             _params.amount, 
@@ -183,14 +183,17 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     function fulfillIntent(FulfillIntentParams calldata _params) external nonReentrant whenNotPaused {
         // Checks
         Intent memory intent = intents[_params.intentHash];
-        if (intent.paymentVerifier == address(0)) revert IntentNotFound(_params.intentHash);
+        if (intent.paymentMethod == bytes32(0)) revert IntentNotFound(_params.intentHash);
         
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
-        IEscrow.DepositVerifierData memory depositData = IEscrow(intent.escrow).getDepositVerifierData(
-            intent.depositId, intent.paymentVerifier
+        IEscrow.DepositPaymentMethodData memory depositData = IEscrow(intent.escrow).getDepositPaymentMethodData(
+            intent.depositId, intent.paymentMethod
         );
         
-        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(intent.paymentVerifier).verifyPayment(
+        address verifier = paymentVerifierRegistry.getVerifier(intent.paymentMethod);
+        if (verifier == address(0)) revert PaymentMethodNotSupported(intent.paymentMethod);
+        
+        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(verifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
                 paymentProof: _params.paymentProof,
                 depositToken: address(deposit.token),
@@ -428,18 +431,18 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             revert EscrowNotWhitelisted(_intent.escrow);
         }
 
-        IEscrow.DepositVerifierData memory verifierData = IEscrow(_intent.escrow).getDepositVerifierData(
-            _intent.depositId, _intent.verifier
+        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(_intent.escrow).getDepositPaymentMethodData(
+            _intent.depositId, _intent.paymentMethod
         );
-        if (verifierData.payeeDetails == bytes32(0)) revert VerifierNotSupported(_intent.depositId, _intent.verifier);
+        if (paymentMethodData.payeeDetails == bytes32(0)) revert PaymentMethodNotSupported(_intent.paymentMethod);
         
         uint256 minConversionRate = IEscrow(_intent.escrow).getDepositCurrencyMinRate(
-            _intent.depositId, _intent.verifier, _intent.fiatCurrency
+            _intent.depositId, _intent.paymentMethod, _intent.fiatCurrency
         );
-        if (minConversionRate == 0) revert CurrencyNotSupported(_intent.verifier, _intent.fiatCurrency);
+        if (minConversionRate == 0) revert CurrencyNotSupported(_intent.paymentMethod, _intent.fiatCurrency);
         if (_intent.conversionRate < minConversionRate) revert RateBelowMinimum(_intent.conversionRate, minConversionRate);
 
-        address intentGatingService = verifierData.intentGatingService;
+        address intentGatingService = paymentMethodData.intentGatingService;
         if (intentGatingService != address(0)) {
             // Check if signature has expired
             if (block.timestamp > _intent.signatureExpiration) {
@@ -558,7 +561,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _intent.depositId, 
             _intent.amount, 
             _intent.to, 
-            _intent.verifier, 
+            _intent.paymentMethod, 
             _intent.fiatCurrency, 
             _intent.conversionRate, 
             _intent.signatureExpiration,

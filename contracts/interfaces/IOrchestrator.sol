@@ -16,8 +16,7 @@ interface IOrchestrator {
         uint256 depositId;                          // ID of the deposit the intent is associated with
         uint256 amount;                             // Amount of the deposit.token the owner wants to take
         uint256 timestamp;                          // Timestamp of the intent
-        address paymentVerifier;                    // Address of the payment verifier corresponding to payment service the owner is 
-                                                    // going to pay with offchain
+        bytes32 paymentMethod;                      // The payment method to be used for the offchain payment
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
         uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
         address referrer;                           // Address of the referrer who brought this intent (if any)
@@ -31,7 +30,7 @@ interface IOrchestrator {
         uint256 depositId;                          // The ID of the deposit the taker intends to use
         uint256 amount;                             // The amount of deposit.token the user wants to take
         address to;                                 // Address to forward funds to
-        address verifier;                           // The payment verifier for the payment service
+        bytes32 paymentMethod;                      // The payment method to be used for the offchain payment
         bytes32 fiatCurrency;                       // The currency code for offchain payment
         uint256 conversionRate;                     // The conversion rate agreed offchain
         address referrer;                           // Address of the referrer (address(0) if no referrer)
@@ -55,7 +54,7 @@ interface IOrchestrator {
         bytes32 indexed intentHash, 
         address indexed escrow,
         uint256 indexed depositId, 
-        address verifier, 
+        bytes32 paymentMethod, 
         address owner, 
         address to, 
         uint256 amount, 
@@ -98,11 +97,11 @@ interface IOrchestrator {
     
     // Not found errors
     error IntentNotFound(bytes32 intentHash);
-    error VerifierNotSupported(uint256 depositId, address verifier);
-    error CurrencyNotSupported(address verifier, bytes32 currency);
+    error PaymentMethodNotSupported(bytes32 paymentMethod);
+    error CurrencyNotSupported(bytes32 paymentMethod, bytes32 currency);
     
     // Whitelist errors
-    error VerifierNotWhitelisted(address verifier);
+    error PaymentMethodNotWhitelisted(bytes32 paymentMethod);
     error PostIntentHookNotWhitelisted(address hook);
     error EscrowNotWhitelisted(address escrow);
     
