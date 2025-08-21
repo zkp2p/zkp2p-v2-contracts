@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
@@ -11,5 +11,7 @@ export const getMercadoReclaimProviderHashes = async (length: number) => {
 export const MERCADO_RECLAIM_CURRENCIES: any = [
   Currency.ARS
 ];
+
+export const MERCADOPAGO_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("mercadopago"));
 
 export const MERCADO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

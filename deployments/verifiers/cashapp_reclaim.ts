@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
@@ -72,5 +72,8 @@ export const getCashappReclaimProviderHashes = async (length: number) => {
 export const CASHAPP_RECLAIM_CURRENCIES: any = [
   Currency.USD,
 ];
+
+// 0x10940ee67cfb3c6c064569ec92c0ee934cd7afa18dd2ca2d6a2254fcb009c17d
+export const CASHAPP_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("cashapp"));
 
 export const CASHAPP_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

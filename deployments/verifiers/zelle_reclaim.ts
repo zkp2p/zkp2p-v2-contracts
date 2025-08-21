@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 import { ONE_DAY_IN_SECONDS } from "@utils/constants";
@@ -184,3 +184,10 @@ export const ZELLE_RECLAIM_TIMESTAMP_BUFFER = {
   'chase': ONE_DAY_IN_SECONDS,
   'bofa': ONE_DAY_IN_SECONDS,
 }
+
+// 0x817260692b75e93c7fbc51c71637d4075a975e221e1ebc1abeddfabd731fd90d
+export const ZELLE_CITI_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("zelle-citi"));
+// 0x6aa1d1401e79ad0549dced8b1b96fb72c41cd02b32a7d9ea1fed54ba9e17152e
+export const ZELLE_CHASE_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("zelle-chase"));
+// 0x4bc42b322a3ad413b91b2fde30549ca70d6ee900eded1681de91aaf32ffd7ab5
+export const ZELLE_BOFA_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("zelle-bofa"));
