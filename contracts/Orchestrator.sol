@@ -236,7 +236,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         bytes32 _intentHash, 
         uint256 _releaseAmount, 
         bytes calldata _releaseData
-    ) external {
+    ) external nonReentrant {
         // Checks
         Intent memory intent = intents[_intentHash];
         if (intent.owner == address(0)) revert IntentNotFound(_intentHash);
