@@ -541,9 +541,15 @@ describe("Orchestrator", () => {
       });
     });
 
-    describe("when the payment method is not supported", async () => {
+    describe("when the payment method is not supported on the deposit", async () => {
       beforeEach(async () => {
-        subjectPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("notSupported")); // Not supported payment method
+        const paypalPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("paypal"));
+        await paymentVerifierRegistry.connect(owner.wallet).addPaymentMethod(
+          paypalPaymentMethod,
+          verifier.address,
+          [Currency.USD]
+        );
+        subjectPaymentMethod = paypalPaymentMethod;
       });
 
       it("should revert", async () => {
