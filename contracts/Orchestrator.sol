@@ -191,7 +191,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         );
         
         address verifier = paymentVerifierRegistry.getVerifier(intent.paymentMethod);
-        if (verifier == address(0)) revert PaymentMethodNotSupported(intent.paymentMethod);
+        if (verifier == address(0)) revert PaymentMethodDoesNotExist(intent.paymentMethod);
         
         IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(verifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
@@ -431,6 +431,10 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             revert EscrowNotWhitelisted(_intent.escrow);
         }
 
+        // Verify payment method is still valid in registry
+        address verifier = paymentVerifierRegistry.getVerifier(_intent.paymentMethod);
+        if (verifier == address(0)) revert PaymentMethodDoesNotExist(_intent.paymentMethod);
+        
         IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(_intent.escrow).getDepositPaymentMethodData(
             _intent.depositId, _intent.paymentMethod
         );

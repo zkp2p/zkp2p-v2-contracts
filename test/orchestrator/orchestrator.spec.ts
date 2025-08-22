@@ -551,6 +551,17 @@ describe("Orchestrator", () => {
       });
     });
 
+    describe("when the payment method is removed from registry after deposit creation", async () => {
+      beforeEach(async () => {
+        // Payment method is valid for the deposit but will be removed from registry
+        await paymentVerifierRegistry.connect(owner.wallet).removePaymentMethod(venmoPaymentMethod);
+      });
+
+      it("should revert on signalIntent", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodDoesNotExist");
+      });
+    });
+
     describe("when the fiat currency is not supported by the verifier", async () => {
       beforeEach(async () => {
         subjectFiatCurrency = Currency.EUR;    // supported by verifier but not supported by deposit
@@ -1326,8 +1337,8 @@ describe("Orchestrator", () => {
         await paymentVerifierRegistry.connect(owner.wallet).removePaymentMethod(venmoPaymentMethod);
       });
 
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodNotSupported");
+      it("should revert on fulfillIntent", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodDoesNotExist");
       });
     });
 
