@@ -814,14 +814,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice GOVERNANCE ONLY: Pauses deposit creation, intent creation and intent fulfillment functionality for the escrow.
+     * @notice GOVERNANCE ONLY: Pauses deposit modifications and new deposit creation.
+     * 
      * Functionalities that are paused:
-     * - Deposit creation
-     * - Updating conversion rates
-     * TODO: Update this list.
+     * - Deposit creation (createDeposit)
+     * - Adding/removing funds to deposits (addFundsToDeposit, removeFundsFromDeposit)
+     * - Updating deposit parameters (conversion rates, intent ranges, accepting intents state)
+     * - Adding/removing payment methods and currencies
      *
-     * Functionalities that remain unpaused to allow users to retrieve funds in contract:
-     * - Deposit withdrawal
+     * Functionalities that remain unpaused to allow users to retrieve funds:
+     * - Full deposit withdrawal (withdrawDeposit)
+     * - Delegate management (setDepositDelegate, removeDepositDelegate)
+     * - Expired intent pruning (pruneExpiredIntents)
+     * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
+     * - Intent expiry extensions by guardian
+     * - All view functions
      */
     function pauseEscrow() external onlyOwner {
         _pause();

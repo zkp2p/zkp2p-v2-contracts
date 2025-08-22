@@ -378,7 +378,18 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     }
 
     /**
-     * @notice GOVERNANCE ONLY: Pauses intent creation and intent fulfillment functionality for the orchestrator.
+     * @notice GOVERNANCE ONLY: Pauses intent creation and fulfillment functionality.
+     * 
+     * Functionalities that are paused:
+     * - Intent creation (signalIntent)
+     * - Intent fulfillment (fulfillIntent)
+     *
+     * Functionalities that remain unpaused to allow users to recover funds:
+     * - Intent cancellation (cancelIntent)
+     * - Manual fund release by depositor (releaseFundsToPayer)
+     * - Intent pruning by escrow (pruneIntents)
+     * - All governance functions
+     * - All view functions
      */
     function pauseOrchestrator() external onlyOwner {
         _pause();
