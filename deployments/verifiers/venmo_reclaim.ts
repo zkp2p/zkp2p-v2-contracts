@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
@@ -75,6 +75,9 @@ export const VENMO_OLD_EXTENSION_PROVIDER_HASHES = [
   '0x5c084f7696c7b5ea85b23c7da714487e9f3b0c95aa5c036c7fc88443ab4b044b',
   '0x1f9bb657d328715a31789af4a1a2f6c1e970ff2e370ae5cd62d8c4f26997fa49'
 ]
+
+// 0x90262a3db0edd0be2369c6b28f9e8511ec0bac7136cefbada0880602f87e7268
+export const VENMO_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
 
 
 export const VENMO_RECLAIM_CURRENCIES: any = [

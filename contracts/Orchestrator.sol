@@ -8,16 +8,13 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
-
 import { IOrchestrator } from "./interfaces/IOrchestrator.sol";
 import { IEscrow } from "./interfaces/IEscrow.sol";
 import { IEscrowRegistry } from "./interfaces/IEscrowRegistry.sol";
 import { IPostIntentHook } from "./interfaces/IPostIntentHook.sol";
-import { IBasePaymentVerifier } from "./verifiers/interfaces/IBasePaymentVerifier.sol";
-import { IPaymentVerifier } from "./verifiers/interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
@@ -128,7 +125,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             escrow: _params.escrow,
             depositId: _params.depositId,
             amount: _params.amount,
-            paymentVerifier: _params.verifier,
+            paymentMethod: _params.paymentMethod,
             fiatCurrency: _params.fiatCurrency,
             conversionRate: _params.conversionRate,
             timestamp: block.timestamp,
@@ -145,7 +142,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             intentHash, 
             _params.escrow,
             _params.depositId, 
-            _params.verifier, 
+            _params.paymentMethod, 
             msg.sender, 
             _params.to, 
             _params.amount, 
@@ -184,14 +181,17 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     function fulfillIntent(FulfillIntentParams calldata _params) external nonReentrant whenNotPaused {
         // Checks
         Intent memory intent = intents[_params.intentHash];
-        if (intent.paymentVerifier == address(0)) revert IntentNotFound(_params.intentHash);
+        if (intent.paymentMethod == bytes32(0)) revert IntentNotFound(_params.intentHash);
         
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
-        IEscrow.DepositVerifierData memory depositData = IEscrow(intent.escrow).getDepositVerifierData(
-            intent.depositId, intent.paymentVerifier
+        IEscrow.DepositPaymentMethodData memory depositData = IEscrow(intent.escrow).getDepositPaymentMethodData(
+            intent.depositId, intent.paymentMethod
         );
         
-        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(intent.paymentVerifier).verifyPayment(
+        address verifier = paymentVerifierRegistry.getVerifier(intent.paymentMethod);
+        if (verifier == address(0)) revert PaymentMethodNotSupported(intent.paymentMethod);
+        
+        IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(verifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
                 paymentProof: _params.paymentProof,
                 depositToken: address(deposit.token),
@@ -261,9 +261,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         IPaymentVerifier.PaymentVerificationResult memory manualReleaseResult = IPaymentVerifier.PaymentVerificationResult({
             success: true,
             intentHash: _intentHash,
-            releaseAmount: _releaseAmount,
-            paymentCurrency: intent.fiatCurrency,
-            paymentId: ""
+            releaseAmount: _releaseAmount
         });
         
         _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, manualReleaseResult, _releaseData, true);
@@ -431,18 +429,18 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             revert EscrowNotWhitelisted(_intent.escrow);
         }
 
-        IEscrow.DepositVerifierData memory verifierData = IEscrow(_intent.escrow).getDepositVerifierData(
-            _intent.depositId, _intent.verifier
+        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(_intent.escrow).getDepositPaymentMethodData(
+            _intent.depositId, _intent.paymentMethod
         );
-        if (bytes(verifierData.payeeDetails).length == 0) revert VerifierNotSupported(_intent.depositId, _intent.verifier);
+        if (paymentMethodData.payeeDetails == bytes32(0)) revert PaymentMethodNotSupported(_intent.paymentMethod);
         
         uint256 minConversionRate = IEscrow(_intent.escrow).getDepositCurrencyMinRate(
-            _intent.depositId, _intent.verifier, _intent.fiatCurrency
+            _intent.depositId, _intent.paymentMethod, _intent.fiatCurrency
         );
-        if (minConversionRate == 0) revert CurrencyNotSupported(_intent.verifier, _intent.fiatCurrency);
+        if (minConversionRate == 0) revert CurrencyNotSupported(_intent.paymentMethod, _intent.fiatCurrency);
         if (_intent.conversionRate < minConversionRate) revert RateBelowMinimum(_intent.conversionRate, minConversionRate);
 
-        address intentGatingService = verifierData.intentGatingService;
+        address intentGatingService = paymentMethodData.intentGatingService;
         if (intentGatingService != address(0)) {
             // Check if signature has expired
             if (block.timestamp > _intent.signatureExpiration) {
@@ -539,9 +537,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _intentHash, 
             fundsTransferredTo, 
             netAmount, 
-            _isManualRelease,
-            _verificationResult.paymentCurrency,
-            _verificationResult.paymentId
+            _isManualRelease
         );
     }
 
@@ -563,7 +559,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _intent.depositId, 
             _intent.amount, 
             _intent.to, 
-            _intent.verifier, 
+            _intent.paymentMethod, 
             _intent.fiatCurrency, 
             _intent.conversionRate, 
             _intent.signatureExpiration,

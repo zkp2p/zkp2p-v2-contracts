@@ -9,9 +9,9 @@ interface IProtocolViewer {
 
     /* ============ Structs ============ */
 
-    struct VerifierDataView {
-        address verifier;
-        IEscrow.DepositVerifierData verificationData;
+    struct PaymentMethodDataView {
+        bytes32 paymentMethod;
+        IEscrow.DepositPaymentMethodData verificationData;
         IEscrow.Currency[] currencies;
     }
 
@@ -19,7 +19,7 @@ interface IProtocolViewer {
         uint256 depositId;
         IEscrow.Deposit deposit;
         uint256 availableLiquidity;                 // Amount of liquidity available to signal intents (net of expired intents)
-        VerifierDataView[] verifiers;
+        PaymentMethodDataView[] paymentMethods;
         bytes32[] intentHashes;
     }
 

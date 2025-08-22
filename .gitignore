@@ -14,3 +14,11 @@ artifacts
 yarn-error.log
 
 .yarn/install-state.gz
+
+*CLAUDE.md
+
+CLAUDE.md
+*/CLAUDE.md
+*/*/CLAUDE.md
+*/*/*/CLAUDE.md
+docs/ai-context/

@@ -48,42 +48,42 @@ interface IEscrow {
         uint256 minConversionRate;                  // Minimum rate of deposit token to fiat currency (in preciseUnits)
     }
 
-    struct DepositVerifierData {
+    struct DepositPaymentMethodData {
         address intentGatingService;                // Public key of gating service that will be used to verify intents
-        string payeeDetails;                        // Payee details, could be both hash or raw details; verifier will decide how to parse it
+        bytes32 payeeDetails;                       // Payee details, has to be hash of payee details
         bytes data;                                 // Verification Data: Additional data used for payment verification; Can hold attester address
                                                     // in case of TLS proofs, domain key hash in case of zkEmail proofs, currency code etc.
     }
 
     struct CreateDepositParams {
-        IERC20 token;                             // The token to be deposited
-        uint256 amount;                           // The amount of token to deposit
-        Range intentAmountRange;                  // The max and min take amount for each intent
-        address[] verifiers;                      // The payment verifiers that deposit supports
-        DepositVerifierData[] verifierData;       // The payment verification data for each verifier that deposit supports
-        Currency[][] currencies;                  // The currencies for each verifier that deposit supports
-        address delegate;                         // Optional delegate address that can manage this deposit (address(0) for no delegate)
-        address intentGuardian;                   // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
-        address referrer;                         // Address of the referrer who brought this deposit (address(0) if no referrer)
-        uint256 referrerFee;                      // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
+        IERC20 token;                                // The token to be deposited
+        uint256 amount;                              // The amount of token to deposit
+        Range intentAmountRange;                     // The max and min take amount for each intent
+        bytes32[] paymentMethods;                    // The payment methods that deposit supports
+        DepositPaymentMethodData[] paymentMethodData;// The payment verification data for each payment method that deposit supports
+        Currency[][] currencies;                     // The currencies for each payment method that deposit supports
+        address delegate;                            // Optional delegate address that can manage this deposit (address(0) for no delegate)
+        address intentGuardian;                      // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
+        address referrer;                            // Address of the referrer who brought this deposit (address(0) if no referrer)
+        uint256 referrerFee;                         // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
     }
 
     /* ============ Events ============ */
 
     event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
 
-    event DepositVerifierAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed payeeDetailsHash, address intentGatingService);
-    event DepositVerifierRemoved(uint256 indexed depositId, address indexed verifier);
+    event DepositPaymentMethodAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed payeeDetails, address intentGatingService);
+    event DepositPaymentMethodRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod);
 
-    event DepositCurrencyAdded(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 conversionRate);
-    event DepositCurrencyRemoved(uint256 indexed depositId, address indexed verifier, bytes32 indexed currencyCode);        
+    event DepositCurrencyAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 conversionRate);
+    event DepositCurrencyRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currencyCode);        
 
     event DepositFundsAdded(uint256 indexed depositId, address indexed depositor, uint256 amount);
     event DepositWithdrawn(uint256 indexed depositId, address indexed depositor, uint256 amount, bool acceptingIntents);
     event DepositClosed(uint256 depositId, address depositor);
 
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
-    event DepositMinConversionRateUpdated(uint256 indexed depositId, address indexed verifier, bytes32 indexed currency, uint256 newMinConversionRate);
+    event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
     event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
@@ -138,13 +138,13 @@ interface IEscrow {
     // Not found errors
     error DepositNotFound(uint256 depositId);
     error IntentNotFound(bytes32 intentHash);
-    error VerifierNotFound(uint256 depositId, address verifier);
-    error CurrencyNotFound(address verifier, bytes32 currency);
+    error PaymentMethodNotFound(uint256 depositId, bytes32 paymentMethod);
+    error CurrencyNotFound(bytes32 paymentMethod, bytes32 currency);
     error DelegateNotFound(uint256 depositId);
 
     // Already exists errors
-    error VerifierAlreadyExists(uint256 depositId, address verifier);
-    error CurrencyAlreadyExists(address verifier, bytes32 currency);
+    error PaymentMethodAlreadyExists(uint256 depositId, bytes32 paymentMethod);
+    error CurrencyAlreadyExists(bytes32 paymentMethod, bytes32 currency);
 
     // State errors
     error DepositNotAcceptingIntents(uint256 depositId);
@@ -157,9 +157,9 @@ interface IEscrow {
     error ArrayLengthMismatch(uint256 length1, uint256 length2);
     error InvalidReferrerFeeConfiguration();
 
-    // Verifier errors
-    error VerifierNotWhitelisted(address verifier);
-    error CurrencyNotSupported(address verifier, bytes32 currency);
+    // Payment method errors
+    error PaymentMethodNotWhitelisted(bytes32 paymentMethod);
+    error CurrencyNotSupported(bytes32 paymentMethod, bytes32 currency);
 
     
     /* ============ External Functions for Orchestrator ============ */
@@ -173,10 +173,10 @@ interface IEscrow {
 
     function getDeposit(uint256 _depositId) external view returns (Deposit memory);
     function getDepositIntent(uint256 _depositId, bytes32 _intentHash) external view returns (Intent memory);
-    function getDepositVerifiers(uint256 _depositId) external view returns (address[] memory);
-    function getDepositCurrencies(uint256 _depositId, address _verifier) external view returns (bytes32[] memory);
-    function getDepositCurrencyMinRate(uint256 _depositId, address _verifier, bytes32 _currencyCode) external view returns (uint256);
-    function getDepositVerifierData(uint256 _depositId, address _verifier) external view returns (DepositVerifierData memory);
+    function getDepositPaymentMethods(uint256 _depositId) external view returns (bytes32[] memory);
+    function getDepositCurrencies(uint256 _depositId, bytes32 _paymentMethod) external view returns (bytes32[] memory);
+    function getDepositCurrencyMinRate(uint256 _depositId, bytes32 _paymentMethod, bytes32 _currencyCode) external view returns (uint256);
+    function getDepositPaymentMethodData(uint256 _depositId, bytes32 _paymentMethod) external view returns (DepositPaymentMethodData memory);
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount);

@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 
-import { IPaymentVerifier } from "../verifiers/interfaces/IPaymentVerifier.sol";
+import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
-
-import { BasePaymentVerifier } from "../verifiers/BaseVerifiers/BasePaymentVerifier.sol";
+import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
+import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 pragma solidity ^0.8.18;
 
-
-contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
+contract PaymentVerifierMock is IPaymentVerifier {
 
     using StringConversionUtils for string;
 
     struct PaymentDetails {
         uint256 amount;
         uint256 timestamp;
-        string offRamperId;
+        bytes32 offRamperId;
         bytes32 fiatCurrency;
         bytes32 intentHash;
     }
@@ -33,7 +33,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         INullifierRegistry _nullifierRegistry,
         uint256 _timestampBuffer,
         bytes32[] memory _currencies
-    ) BasePaymentVerifier(_escrow, _nullifierRegistry, _timestampBuffer, _currencies) {}
+    )  {}
 
     /* ============ External Functions ============ */
 
@@ -70,7 +70,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         if (shouldVerifyPayment) {
             require(paymentDetails.timestamp >= _verifyPaymentData.intentTimestamp, "Payment timestamp is before intent timestamp");
             require(paymentDetails.amount >= 0, "Payment amount cannot be zero");
-            require(paymentDetails.offRamperId.stringComparison(_verifyPaymentData.payeeDetails), "Payment offramper does not match intent relayer");
+            require(paymentDetails.offRamperId == _verifyPaymentData.payeeDetails, "Payment offramper does not match intent relayer");
             require(paymentDetails.fiatCurrency == _verifyPaymentData.fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
@@ -78,9 +78,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
             return PaymentVerificationResult({
                 success: false,
                 intentHash: bytes32(0),
-                releaseAmount: 0,
-                paymentCurrency: bytes32(0),
-                paymentId: ""
+                releaseAmount: 0
             });
         }
 
@@ -95,9 +93,7 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         return PaymentVerificationResult({
             success: true,
             intentHash: paymentDetails.intentHash,
-            releaseAmount: releaseAmount,
-            paymentCurrency: paymentDetails.fiatCurrency,
-            paymentId: "1234abcd"
+            releaseAmount: releaseAmount
         });
     }
 
@@ -105,10 +101,10 @@ contract PaymentVerifierMock is IPaymentVerifier, BasePaymentVerifier {
         (
             uint256 amount,
             uint256 timestamp,
-            string memory offRamperId,
+            bytes32 offRamperId,
             bytes32 fiatCurrency,
             bytes32 intentHash
-        ) = abi.decode(_proof, (uint256, uint256, string, bytes32, bytes32));
+        ) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32, bytes32));
 
         return PaymentDetails(amount, timestamp, offRamperId, fiatCurrency, intentHash);
     }

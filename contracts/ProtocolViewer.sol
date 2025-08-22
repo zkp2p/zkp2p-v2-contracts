@@ -30,20 +30,21 @@ contract ProtocolViewer is IProtocolViewer {
         ( , uint256 reclaimableAmount) = escrowContract.getExpiredIntents(_depositId);
         bytes32[] memory intentHashes = escrowContract.getDepositIntentHashes(_depositId);
 
-        VerifierDataView[] memory verifiers = new VerifierDataView[](escrowContract.getDepositVerifiers(_depositId).length);
-        for (uint256 i = 0; i < verifiers.length; ++i) {
-            address verifier = escrowContract.getDepositVerifiers(_depositId)[i];
-            IEscrow.Currency[] memory currencies = new IEscrow.Currency[](escrowContract.getDepositCurrencies(_depositId, verifier).length);
+        bytes32[] memory paymentMethods = escrowContract.getDepositPaymentMethods(_depositId);
+        PaymentMethodDataView[] memory paymentMethodViews = new PaymentMethodDataView[](paymentMethods.length);
+        for (uint256 i = 0; i < paymentMethods.length; ++i) {
+            bytes32 paymentMethod = paymentMethods[i];
+            IEscrow.Currency[] memory currencies = new IEscrow.Currency[](escrowContract.getDepositCurrencies(_depositId, paymentMethod).length);
             for (uint256 j = 0; j < currencies.length; ++j) {
-                bytes32 code = escrowContract.getDepositCurrencies(_depositId, verifier)[j];
+                bytes32 code = escrowContract.getDepositCurrencies(_depositId, paymentMethod)[j];
                 currencies[j] = IEscrow.Currency({
                     code: code,
-                    minConversionRate: escrowContract.getDepositCurrencyMinRate(_depositId, verifier, code)
+                    minConversionRate: escrowContract.getDepositCurrencyMinRate(_depositId, paymentMethod, code)
                 });
             }
-            verifiers[i] = VerifierDataView({
-                verifier: verifier,
-                verificationData: escrowContract.getDepositVerifierData(_depositId, verifier),
+            paymentMethodViews[i] = PaymentMethodDataView({
+                paymentMethod: paymentMethod,
+                verificationData: escrowContract.getDepositPaymentMethodData(_depositId, paymentMethod),
                 currencies: currencies
             });
         }
@@ -52,7 +53,7 @@ contract ProtocolViewer is IProtocolViewer {
             depositId: _depositId,
             deposit: deposit,
             availableLiquidity: deposit.remainingDeposits + reclaimableAmount,
-            verifiers: verifiers,
+            paymentMethods: paymentMethodViews,
             intentHashes: intentHashes
         });
     }

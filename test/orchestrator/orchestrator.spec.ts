@@ -1,7 +1,7 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
-import { Signer } from "ethers";
+import { BytesLike, Signer } from "ethers";
 
 import {
   Address,
@@ -14,6 +14,7 @@ import {
   USDCMock,
   PaymentVerifierMock,
   PostIntentHookMock,
+  ReentrantPostIntentHook,
   PostIntentHookRegistry,
   PaymentVerifierRegistry,
   RelayerRegistry,
@@ -71,6 +72,7 @@ describe("Orchestrator", () => {
   let otherVerifier: PaymentVerifierMock;
   let postIntentHookMock: PostIntentHookMock;
   let deployer: DeployHelper;
+  let venmoPaymentMethod: BytesLike;
 
   beforeEach(async () => {
     currentIntentCounter = 0;  // Reset intent counter for each test
@@ -155,7 +157,12 @@ describe("Orchestrator", () => {
 
     await postIntentHookRegistry.addPostIntentHook(postIntentHookMock.address);
 
-    await paymentVerifierRegistry.addPaymentVerifier(verifier.address);
+    venmoPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+    await paymentVerifierRegistry.addPaymentMethod(
+      venmoPaymentMethod,
+      verifier.address,
+      [Currency.USD]
+    );
   });
 
   describe("#constructor", async () => {
@@ -185,7 +192,7 @@ describe("Orchestrator", () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectTo: Address;
-    let subjectVerifier: Address;
+    let subjectPaymentMethod: BytesLike;
     let subjectFiatCurrency: string;
     let subjectConversionRate: BigNumber;
     let subjectReferrer: Address;
@@ -207,8 +214,8 @@ describe("Orchestrator", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -228,7 +235,7 @@ describe("Orchestrator", () => {
       subjectDepositId = ZERO;
       subjectAmount = usdc(50);
       subjectTo = receiver.address;
-      subjectVerifier = verifier.address;
+      subjectPaymentMethod = venmoPaymentMethod;
       subjectFiatCurrency = Currency.USD;
       subjectConversionRate = ether(1.02);   // Slightly higher than depositConversionRate
       subjectReferrer = ADDRESS_ZERO;       // No referrer by default
@@ -241,7 +248,7 @@ describe("Orchestrator", () => {
         subjectDepositId,
         subjectAmount,
         subjectTo,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectFiatCurrency,
         subjectConversionRate,
         chainId.toString(),
@@ -261,7 +268,7 @@ describe("Orchestrator", () => {
         subjectDepositId,
         subjectAmount,
         subjectTo,
-        subjectVerifier,
+        subjectPaymentMethod,
         subjectFiatCurrency,
         subjectConversionRate,
         subjectReferrer,
@@ -292,7 +299,7 @@ describe("Orchestrator", () => {
       expect(intent.to).to.eq(subjectTo);
       expect(intent.depositId).to.eq(subjectDepositId);
       expect(intent.amount).to.eq(subjectAmount);
-      expect(intent.paymentVerifier).to.eq(subjectVerifier);
+      expect(intent.paymentMethod).to.eq(subjectPaymentMethod);
       expect(intent.fiatCurrency).to.eq(subjectFiatCurrency);
       expect(intent.conversionRate).to.eq(subjectConversionRate);
       expect(intent.referrer).to.eq(subjectReferrer);
@@ -350,7 +357,7 @@ describe("Orchestrator", () => {
         intentHash,
         escrow.address,
         subjectDepositId,
-        subjectVerifier,
+        subjectPaymentMethod,
         onRamper.address,
         subjectTo,
         subjectAmount,
@@ -390,7 +397,7 @@ describe("Orchestrator", () => {
           subjectDepositId,
           subjectAmount,
           subjectTo,
-          subjectVerifier,
+          subjectPaymentMethod,
           subjectFiatCurrency,
           subjectConversionRate,
           chainId.toString(),
@@ -530,17 +537,17 @@ describe("Orchestrator", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "VerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodNotSupported");
       });
     });
 
-    describe("when the verifier is not supported", async () => {
+    describe("when the payment method is not supported", async () => {
       beforeEach(async () => {
-        subjectVerifier = otherVerifier.address; // Not supported verifier
+        subjectPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("notSupported")); // Not supported payment method
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "VerifierNotSupported");
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodNotSupported");
       });
     });
 
@@ -576,7 +583,7 @@ describe("Orchestrator", () => {
             subjectDepositId,
             subjectAmount,
             subjectTo,
-            subjectVerifier,
+            subjectPaymentMethod,
             subjectFiatCurrency,
             subjectConversionRate,
             chainId.toString(),
@@ -619,7 +626,7 @@ describe("Orchestrator", () => {
           subjectDepositId,
           usdc(50),
           receiver.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           subjectConversionRate,
           ADDRESS_ZERO,    // referrer
@@ -684,8 +691,8 @@ describe("Orchestrator", () => {
             token: usdcToken.address,
             amount: usdc(100),
             intentAmountRange: { min: usdc(10), max: usdc(200) },
-            verifiers: [verifier.address],
-            verifierData: [{
+            paymentMethods: [venmoPaymentMethod],
+            paymentMethodData: [{
               intentGatingService: ADDRESS_ZERO,
               payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
               data: "0x"
@@ -788,8 +795,8 @@ describe("Orchestrator", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -810,7 +817,7 @@ describe("Orchestrator", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethod,
         Currency.USD,
         depositConversionRate,
         ADDRESS_ZERO,
@@ -901,7 +908,7 @@ describe("Orchestrator", () => {
     let intentAmount: BigNumber;
     let releaseAmount: BigNumber;
     let intentHash: string;
-    let payeeDetails: string;
+    let payeeDetails: BytesLike;
     let depositConversionRate: BigNumber;
 
     beforeEach(async () => {
@@ -919,8 +926,8 @@ describe("Orchestrator", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: payeeDetails,
           data: depositData
@@ -942,7 +949,7 @@ describe("Orchestrator", () => {
         ZERO,
         intentAmount,
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethod,
         Currency.USD,
         depositConversionRate,
         ADDRESS_ZERO,    // referrer
@@ -965,7 +972,7 @@ describe("Orchestrator", () => {
       await verifier.setShouldVerifyPayment(true);
 
       subjectProof = ethers.utils.defaultAbiCoder.encode(
-        ["uint256", "uint256", "string", "bytes32", "bytes32"],
+        ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
         [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
       );
       subjectIntentHash = intentHash;
@@ -1019,9 +1026,7 @@ describe("Orchestrator", () => {
         intentHash,
         onRamper.address,
         releaseAmount,
-        false,
-        Currency.USD,
-        "1234abcd"    // hardcoded payment ID in mock verifier
+        false
       );
     });
 
@@ -1029,7 +1034,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         // Incresases min rate from 1.08 to 1.09
         await escrow.connect(offRamper.wallet).updateDepositMinConversionRate(
-          ZERO, verifier.address, Currency.USD, ether(1.09)
+          ZERO, venmoPaymentMethod, Currency.USD, ether(1.09)
         );
       });
 
@@ -1060,7 +1065,7 @@ describe("Orchestrator", () => {
       beforeEach(async () => {
         const currentTimestamp1 = await blockchain.getCurrentTimestamp();
         const proof1 = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(60), currentTimestamp1, payeeDetails, Currency.USD, intentHash]
         );
 
@@ -1082,7 +1087,7 @@ describe("Orchestrator", () => {
           ZERO,
           intentAmount,
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,    // referrer
@@ -1102,7 +1107,7 @@ describe("Orchestrator", () => {
         );
         currentIntentCounter++;  // Increment after signalIntent
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(60), currentTimestamp2, payeeDetails, Currency.USD, subjectIntentHash]
         );
       });
@@ -1114,17 +1119,17 @@ describe("Orchestrator", () => {
         expect(deposit.depositor).to.eq(ADDRESS_ZERO);
       });
 
-      it("should delete the deposit verifier data", async () => {
+      it("should delete the deposit payment method data", async () => {
         await subject();
 
-        const verifierData = await escrow.getDepositVerifierData(ZERO, verifier.address);
-        expect(verifierData.intentGatingService).to.eq(ADDRESS_ZERO);
+        const paymentMethodData = await escrow.getDepositPaymentMethodData(ZERO, venmoPaymentMethod);
+        expect(paymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
       });
 
       it("should delete deposit currency conversion data", async () => {
         await subject();
 
-        const currencyConversionData = await escrow.getDepositCurrencyMinRate(ZERO, verifier.address, Currency.USD);
+        const currencyConversionData = await escrow.getDepositCurrencyMinRate(ZERO, venmoPaymentMethod, Currency.USD);
         expect(currencyConversionData).to.eq(ZERO);
       });
 
@@ -1165,9 +1170,7 @@ describe("Orchestrator", () => {
           intentHash,
           onRamper.address,
           releaseAmount.sub(fee),
-          false,
-          Currency.USD,
-          "1234abcd"    // hardcoded payment ID in mock verifier
+          false
         );
       });
     });
@@ -1185,7 +1188,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           chainId.toString()
@@ -1197,7 +1200,7 @@ describe("Orchestrator", () => {
           ZERO, // depositId
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           receiver.address,    // referrer
@@ -1216,7 +1219,7 @@ describe("Orchestrator", () => {
 
         // Update the subject variables
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
         );
         subjectIntentHash = intentHash;
@@ -1246,9 +1249,7 @@ describe("Orchestrator", () => {
           intentHash,
           onRamper.address,
           releaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
-          false,
-          Currency.USD,
-          "1234abcd"    // hardcoded payment ID in mock verifier  
+          false
         );
       });
 
@@ -1288,9 +1289,7 @@ describe("Orchestrator", () => {
             intentHash,
             onRamper.address,
             releaseAmount.sub(totalFees),
-            false,
-            Currency.USD,
-            "1234abcd"    // hardcoded payment ID in mock verifier
+            false
           );
         });
       });
@@ -1312,13 +1311,23 @@ describe("Orchestrator", () => {
 
         subjectIntentHash = intentHash;
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(50), currentTimestamp, payeeDetails, Currency.USD, ZERO_BYTES32]
         );
       });
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "HashMismatch");
+      });
+    });
+
+    describe("when the payment method is removed post signalIntent", async () => {
+      beforeEach(async () => {
+        await paymentVerifierRegistry.connect(owner.wallet).removePaymentMethod(venmoPaymentMethod);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodNotSupported");
       });
     });
 
@@ -1370,7 +1379,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           chainId.toString(),
@@ -1387,7 +1396,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,
@@ -1410,7 +1419,7 @@ describe("Orchestrator", () => {
 
         // Prepare the proof and processor for the onRamp function
         subjectProof = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(50), currentTimestamp2, payeeDetails, Currency.USD, intentHash]
         );
         subjectIntentHash = intentHash;
@@ -1441,9 +1450,7 @@ describe("Orchestrator", () => {
           subjectIntentHash,    // Hash of the intent fulfilled
           postIntentHookMock.address,     // Post intent hook address
           releaseAmount,             // Amount transferred (after 0 fees in this case)
-          false,
-          Currency.USD,
-          "1234abcd"    // hardcoded payment ID in mock verifier
+          false
         );
       });
 
@@ -1477,9 +1484,7 @@ describe("Orchestrator", () => {
             subjectIntentHash,
             postIntentHookMock.address,     // Post intent hook address
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
-            false,
-            Currency.USD,
-            "1234abcd"    // hardcoded payment ID in mock verifier
+            false
           );
         });
       });
@@ -1531,9 +1536,7 @@ describe("Orchestrator", () => {
           intentHash,
           onRamper.address,
           releasedAmount,
-          false,
-          Currency.USD,
-          "1234abcd"    // hardcoded payment ID in mock verifier
+          false
         );
       });
 
@@ -1559,6 +1562,168 @@ describe("Orchestrator", () => {
         });
       });
     });
+
+    describe("when a malicious hook attempts reentrancy", async () => {
+      let reentrantHook: ReentrantPostIntentHook;
+      let maliciousIntentHash: string;
+
+      beforeEach(async () => {
+        // Deploy the malicious reentrancy hook
+        reentrantHook = await deployer.deployReentrantPostIntentHook(
+          usdcToken.address,
+          orchestrator.address
+        );
+
+        // Whitelist the malicious hook (simulating it passed review)
+        await postIntentHookRegistry.addPostIntentHook(reentrantHook.address);
+
+        // Cancel existing intent and create new one with malicious hook
+        await orchestrator.connect(onRamper.wallet).cancelIntent(intentHash);
+
+        // Create intent with the malicious hook
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        const signatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
+        const gatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
+          orchestrator.address,
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          venmoPaymentMethod,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString(),
+          signatureExpiration
+        );
+
+        const params = await createSignalIntentParams(
+          orchestrator.address,
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          venmoPaymentMethod,
+          Currency.USD,
+          depositConversionRate,
+          ADDRESS_ZERO,
+          ZERO,
+          null,
+          chainId.toString(),
+          reentrantHook.address,  // Use malicious hook
+          "0x",
+          signatureExpiration
+        );
+        params.gatingServiceSignature = gatingServiceSignature;
+
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
+        maliciousIntentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
+        currentIntentCounter++;
+
+        // Prepare fulfill params for the reentrancy attempt
+        const currentTimestamp2 = await blockchain.getCurrentTimestamp();
+        const fulfillProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
+          [usdc(50), currentTimestamp2, payeeDetails, Currency.USD, maliciousIntentHash]
+        );
+
+        // Store params in the malicious hook for reentrancy attempt
+        await reentrantHook.setFulfillParams(
+          fulfillProof,
+          maliciousIntentHash,
+          "0x",
+          "0x"
+        );
+
+        // Update subject parameters for this test
+        subjectProof = fulfillProof;
+        subjectIntentHash = maliciousIntentHash;
+      });
+
+      it("should block reentrancy attempt and emit failed attempt event", async () => {
+        // The transaction succeeds but the reentrancy attempt fails
+        const tx = await subject();
+
+        // Check that the reentrancy attempt was blocked (emitted false)
+        await expect(tx)
+          .to.emit(reentrantHook, "ReentrancyAttempted")
+          .withArgs(false);
+
+        // Verify the main intent was still fulfilled successfully
+        const intent = await orchestrator.getIntent(maliciousIntentHash);
+        expect(intent.owner).to.equal(ADDRESS_ZERO); // Intent was pruned
+
+        // Verify hook was called and attempted reentrancy
+        const attempts = await reentrantHook.getReentrancyAttempts();
+        expect(attempts).to.equal(ONE);
+      });
+
+      it("should complete the original fulfillment despite blocked reentrancy", async () => {
+        const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+        // Execute the transaction
+        const tx = await subject();
+
+        // Verify the reentrancy was attempted but failed
+        await expect(tx)
+          .to.emit(reentrantHook, "ReentrancyAttempted")
+          .withArgs(false);
+
+        // Verify the original intent was fulfilled successfully
+        const finalBalance = await usdcToken.balanceOf(onRamper.address);
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
+
+        // Verify intent was pruned (successful completion)
+        const intent = await orchestrator.getIntent(maliciousIntentHash);
+        expect(intent.owner).to.equal(ADDRESS_ZERO);
+
+        // Verify deposit state was updated correctly
+        const deposit = await escrow.getDeposit(ZERO);
+        expect(deposit.outstandingIntentAmount).to.equal(ZERO);
+      });
+
+      describe("when reentrancy protection is disabled in hook", async () => {
+        beforeEach(async () => {
+          // Disable reentrancy attempt in hook to test normal execution
+          await reentrantHook.setAttemptReentry(false);
+        });
+
+        it("should execute normally without reentrancy attempt", async () => {
+          const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+          await subject();
+
+          const finalBalance = await usdcToken.balanceOf(onRamper.address);
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
+
+          // Verify intent was pruned
+          const intent = await orchestrator.getIntent(maliciousIntentHash);
+          expect(intent.owner).to.equal(ADDRESS_ZERO);
+
+          // Verify hook was called
+          const attempts = await reentrantHook.getReentrancyAttempts();
+          expect(attempts).to.equal(ONE);
+        });
+      });
+    });
+
+    describe("when the contract is paused", async () => {
+      beforeEach(async () => {
+        await orchestrator.connect(owner.wallet).pauseOrchestrator();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+
+      describe("when the contract is unpaused", async () => {
+        beforeEach(async () => {
+          await orchestrator.connect(owner.wallet).unpauseOrchestrator();
+        });
+      });
+    });
   });
 
   describe("#releaseFundsToPayer", async () => {
@@ -1568,7 +1733,7 @@ describe("Orchestrator", () => {
     let subjectCaller: Account;
 
     let intentAmount: BigNumber;
-    let payeeDetails: string;
+    let payeeDetails: BytesLike;
     let intentHash: string;
     let depositConversionRate: BigNumber;
 
@@ -1577,13 +1742,13 @@ describe("Orchestrator", () => {
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.08);
 
-      payeeDetails = "12345678@revolut.me";
+      payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("12345678@revolut.me"));
       await escrow.connect(offRamper.wallet).createDeposit({
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           payeeDetails: payeeDetails,
           intentGatingService: gatingService.address,
           data: "0x"
@@ -1606,7 +1771,7 @@ describe("Orchestrator", () => {
         ZERO,
         intentAmount,
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethod,
         Currency.USD,
         depositConversionRate,
         ADDRESS_ZERO,
@@ -1682,9 +1847,7 @@ describe("Orchestrator", () => {
         subjectIntentHash,
         onRamper.address,
         subjectReleaseAmount,
-        true, // manual release
-        Currency.USD,
-        ""    // Empty payment ID since release is manual
+        true  // manual release
       );
     });
 
@@ -1700,7 +1863,7 @@ describe("Orchestrator", () => {
           ZERO,
           intentAmount,
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,    // referrer
@@ -1731,17 +1894,17 @@ describe("Orchestrator", () => {
         expect(deposit.depositor).to.eq(ADDRESS_ZERO);
       });
 
-      it("should delete the deposit verifier data", async () => {
+      it("should delete the deposit payment method data", async () => {
         await subject();
 
-        const verifierData = await escrow.getDepositVerifierData(ZERO, verifier.address);
-        expect(verifierData.intentGatingService).to.eq(ADDRESS_ZERO);
+        const paymentMethodData = await escrow.getDepositPaymentMethodData(ZERO, venmoPaymentMethod);
+        expect(paymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
       });
 
       it("should delete deposit currency conversion data", async () => {
         await subject();
 
-        const currencyConversionData = await escrow.getDepositCurrencyMinRate(ZERO, verifier.address, Currency.USD);
+        const currencyConversionData = await escrow.getDepositCurrencyMinRate(ZERO, venmoPaymentMethod, Currency.USD);
         expect(currencyConversionData).to.eq(ZERO);
       });
 
@@ -1780,9 +1943,7 @@ describe("Orchestrator", () => {
           intentHash,
           onRamper.address,
           subjectReleaseAmount.sub(fee),
-          true,  // manual release
-          Currency.USD,
-          ""    // Empty payment ID since release is manual
+          true  // manual release
         );
       });
     });
@@ -1800,7 +1961,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           chainId.toString()
@@ -1812,7 +1973,7 @@ describe("Orchestrator", () => {
           ZERO, // depositId
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           receiver.address,    // referrer
@@ -1858,9 +2019,7 @@ describe("Orchestrator", () => {
           intentHash,
           onRamper.address,
           subjectReleaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
-          true,  // manual release
-          Currency.USD,
-          ""    // Empty payment ID since release is manual
+          true  // manual release
         );
       });
 
@@ -1898,9 +2057,7 @@ describe("Orchestrator", () => {
             intentHash,
             onRamper.address,
             subjectReleaseAmount.sub(totalFees),
-            true,  // manual release
-            Currency.USD,
-            ""    // Empty payment ID since release is manual
+            true  // manual release
           );
         });
       });
@@ -1935,7 +2092,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           chainId.toString(),
@@ -1952,7 +2109,7 @@ describe("Orchestrator", () => {
           ZERO,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           depositConversionRate,
           ADDRESS_ZERO,
@@ -2008,9 +2165,7 @@ describe("Orchestrator", () => {
             subjectIntentHash,
             onRamper.address,     // Original intent.to
             subjectReleaseAmount.sub(fee),    // Amount transferred to hook's destination
-            true,
-            Currency.USD,
-            ""    // Empty payment ID since release is manual
+            true  // manual release
           );
         });
       });
@@ -2096,8 +2251,8 @@ describe("Orchestrator", () => {
         token: usdcToken.address,
         amount: usdc(300),
         intentAmountRange: { min: usdc(10), max: usdc(100) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2126,7 +2281,7 @@ describe("Orchestrator", () => {
           depositId,
           intentAmounts[i],
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           ether(1.02),
           ADDRESS_ZERO,
@@ -2270,7 +2425,7 @@ describe("Orchestrator", () => {
           depositId,
           usdc(40),
           onRamperTwo.address,
-          verifier.address,
+          venmoPaymentMethod,
           Currency.USD,
           ether(1.02),
           ADDRESS_ZERO,
@@ -2745,8 +2900,8 @@ describe("Orchestrator", () => {
         token: usdcToken.address,
         amount: usdc(1000),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethod],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -2774,7 +2929,7 @@ describe("Orchestrator", () => {
         ZERO,
         usdc(50),
         receiver.address,
-        verifier.address,
+        venmoPaymentMethod,
         Currency.USD,
         ether(1.02),
         ADDRESS_ZERO,
@@ -2795,7 +2950,7 @@ describe("Orchestrator", () => {
         ZERO,
         usdc(75),
         receiver.address,
-        verifier.address,
+        venmoPaymentMethod,
         Currency.USD,
         ether(1.02),
         ADDRESS_ZERO,

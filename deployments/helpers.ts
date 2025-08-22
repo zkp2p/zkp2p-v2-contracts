@@ -100,31 +100,6 @@ export async function addWritePermission(
   }
 }
 
-export async function addWhitelistedPaymentVerifier(
-  hre: HardhatRuntimeEnvironment,
-  contract: any,
-  newWhitelistedAddress: Address
-): Promise<void> {
-  const currentOwner = await contract.owner();
-  if (!(await contract.isWhitelistedVerifier(newWhitelistedAddress))) {
-    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      const data = contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress]);
-
-      await hre.deployments.rawTx({
-        from: currentOwner,
-        to: contract.address,
-        data
-      });
-    } else {
-      console.log(
-        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
-        ${contract.interface.encodeFunctionData("addPaymentVerifier", [newWhitelistedAddress])}
-        `
-      );
-    }
-  }
-}
-
 export async function addCurrency(
   hre: HardhatRuntimeEnvironment,
   contract: any,
@@ -204,5 +179,85 @@ export async function addProviderHash(
     }
   } else {
     console.log("Provider hash", providerHash, "already exists in", contract.address);
+  }
+}
+
+export async function addPaymentMethodToRegistry(
+  hre: HardhatRuntimeEnvironment,
+  paymentVerifierRegistryContract: any,
+  paymentMethodHash: string,
+  verifierAddress: Address,
+  currencies: string[]
+): Promise<void> {
+  const currentOwner = await paymentVerifierRegistryContract.owner();
+  const isPaymentMethod = await paymentVerifierRegistryContract.isPaymentMethod(paymentMethodHash);
+
+  if (!isPaymentMethod) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      console.log(`Adding payment method ${paymentMethodHash} to registry with verifier ${verifierAddress}`);
+      const data = paymentVerifierRegistryContract.interface.encodeFunctionData("addPaymentMethod", [
+        paymentMethodHash,
+        verifierAddress,
+        currencies
+      ]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: paymentVerifierRegistryContract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${paymentVerifierRegistryContract.interface.encodeFunctionData("addPaymentMethod", [
+          paymentMethodHash,
+          verifierAddress,
+          currencies
+        ])}
+        contract address: ${paymentVerifierRegistryContract.address}
+        `
+      );
+    }
+  } else {
+    console.log(`Payment method ${paymentMethodHash} already exists in registry`);
+  }
+}
+
+export async function addPaymentMethodToUnifiedVerifier(
+  hre: HardhatRuntimeEnvironment,
+  unifiedVerifierContract: any,
+  paymentMethodHash: string,
+  timestampBuffer: any,
+  providerHashes: string[]
+): Promise<void> {
+  const currentOwner = await unifiedVerifierContract.owner();
+  const paymentMethods = await unifiedVerifierContract.getPaymentMethods();
+
+  if (!paymentMethods.includes(paymentMethodHash)) {
+    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
+      console.log(`Adding payment method ${paymentMethodHash} to unified verifier with ${providerHashes.length} provider hashes`);
+      const data = unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
+        paymentMethodHash,
+        timestampBuffer,
+        providerHashes
+      ]);
+      await hre.deployments.rawTx({
+        from: currentOwner,
+        to: unifiedVerifierContract.address,
+        data
+      });
+    } else {
+      console.log(
+        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
+        ${unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
+          paymentMethodHash,
+          timestampBuffer,
+          providerHashes
+        ])}
+        contract address: ${unifiedVerifierContract.address}
+        `
+      );
+    }
+  } else {
+    console.log(`Payment method ${paymentMethodHash} already exists in unified verifier`);
   }
 }
