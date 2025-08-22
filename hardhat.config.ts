@@ -100,7 +100,13 @@ const config: HardhatUserConfig = {
     enabled: false,
     reportPureAndViewMethods: true,
     showMethodSig: true,
-  }
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts",
+  },
 };
 
 export default config;

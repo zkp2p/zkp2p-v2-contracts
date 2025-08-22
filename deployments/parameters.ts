@@ -82,3 +82,19 @@ export const USDC: any = {
 // For Goerli and localhost
 export const USDC_MINT_AMOUNT = usdc(1000000);
 export const USDC_RECIPIENT = "0x84e113087C97Cd80eA9D78983D4B8Ff61ECa1929";
+
+export const WITNESS_ADDRESS: any = {
+  "localhost": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "goerli": "",
+  "sepolia": "",
+  "base": "",
+  "base_staging": "",
+};
+
+export const ZKTLS_ATTESTOR_ADDRESS: any = {
+  "localhost": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "goerli": "",
+  "sepolia": "",
+  "base": "",
+  "base_staging": "",
+};

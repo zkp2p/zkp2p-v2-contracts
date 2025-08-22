@@ -35,15 +35,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     PostIntentHookRegistry:             ${getDeployedContractAddress(network, "PostIntentHookRegistry")}
     RelayerRegistry:                    ${getDeployedContractAddress(network, "RelayerRegistry")}
     NullifierRegistry:                  ${getDeployedContractAddress(network, "NullifierRegistry")}
-    VenmoReclaimVerifier:               ${getDeployedContractAddress(network, "VenmoReclaimVerifier")}
-    RevolutReclaimVerifier:             ${getDeployedContractAddress(network, "RevolutReclaimVerifier")}
-    CashappReclaimVerifier:             ${getDeployedContractAddress(network, "CashappReclaimVerifier")}
-    WiseReclaimVerifier:                ${getDeployedContractAddress(network, "WiseReclaimVerifier")}
-    MercadoPagoReclaimVerifier:         ${getDeployedContractAddress(network, "MercadoPagoReclaimVerifier")}
-    ZelleCitiReclaimVerifier:           ${getDeployedContractAddress(network, "ZelleCitiReclaimVerifier")}
-    ZelleBoAReclaimVerifier:            ${getDeployedContractAddress(network, "ZelleBoAReclaimVerifier")}
-    ZelleChaseReclaimVerifier:          ${getDeployedContractAddress(network, "ZelleChaseReclaimVerifier")}
-    ZelleBaseVerifier:                  ${getDeployedContractAddress(network, "ZelleBaseVerifier")}
+    UnifiedPaymentVerifier:             ${getDeployedContractAddress(network, "UnifiedPaymentVerifier")}
+    SimpleAttestationVerifier:          ${getDeployedContractAddress(network, "SimpleAttestationVerifier")}
     USDC:                               ${USDC[network] ? USDC[network] : getDeployedContractAddress(network, "USDCMock")}
     `
   );

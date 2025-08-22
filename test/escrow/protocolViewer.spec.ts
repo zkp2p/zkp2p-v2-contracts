@@ -64,6 +64,7 @@ describe("ProtocolViewer", () => {
   let otherVerifier: PaymentVerifierMock;
   let deployer: DeployHelper;
   let currentIntentCounter: number = 0;
+  let venmoPaymentMethodHash: string;
 
   beforeEach(async () => {
     [
@@ -139,7 +140,12 @@ describe("ProtocolViewer", () => {
       [Currency.USD]
     );
 
-    await paymentVerifierRegistry.addPaymentVerifier(verifier.address);
+    venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+    await paymentVerifierRegistry.addPaymentMethod(
+      venmoPaymentMethodHash,
+      verifier.address,
+      [Currency.USD]
+    );
   });
 
   describe("#getDeposit", async () => {
@@ -161,8 +167,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: payeeDetails,
           data: depositData,
@@ -197,15 +203,15 @@ describe("ProtocolViewer", () => {
       expect(depositView.deposit.acceptingIntents).to.be.true;
     });
 
-    it("should return the correct verifier details", async () => {
+    it("should return the correct payment method details", async () => {
       const depositView = await subject();
 
-      expect(depositView.verifiers.length).to.eq(1);
-      expect(depositView.verifiers[0].verifier).to.eq(verifier.address);
-      expect(depositView.verifiers[0].verificationData.intentGatingService).to.eq(gatingService.address);
-      expect(depositView.verifiers[0].currencies.length).to.eq(1);
-      expect(depositView.verifiers[0].currencies[0].code).to.eq(Currency.USD);
-      expect(depositView.verifiers[0].currencies[0].minConversionRate).to.eq(depositConversionRate);
+      expect(depositView.paymentMethods.length).to.eq(1);
+      expect(depositView.paymentMethods[0].paymentMethod).to.eq(venmoPaymentMethodHash);
+      expect(depositView.paymentMethods[0].verificationData.intentGatingService).to.eq(gatingService.address);
+      expect(depositView.paymentMethods[0].currencies.length).to.eq(1);
+      expect(depositView.paymentMethods[0].currencies[0].code).to.eq(Currency.USD);
+      expect(depositView.paymentMethods[0].currencies[0].minConversionRate).to.eq(depositConversionRate);
     });
 
     it("should return the correct available liquidity", async () => {
@@ -223,7 +229,7 @@ describe("ProtocolViewer", () => {
           subjectDepositId,
           usdc(50),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
           ethers.constants.AddressZero,  // referrer
@@ -256,7 +262,7 @@ describe("ProtocolViewer", () => {
         const depositView = await subject();
 
         expect(depositView.deposit.depositor).to.eq(ADDRESS_ZERO);
-        expect(depositView.verifiers.length).to.eq(0);
+        expect(depositView.paymentMethods.length).to.eq(0);
       });
     });
   });
@@ -272,8 +278,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -291,8 +297,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(200),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -343,8 +349,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -362,8 +368,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(200),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -417,8 +423,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -439,7 +445,7 @@ describe("ProtocolViewer", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
         chainId.toString()
@@ -451,7 +457,7 @@ describe("ProtocolViewer", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
         ethers.constants.AddressZero,  // referrer
@@ -498,8 +504,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -520,7 +526,7 @@ describe("ProtocolViewer", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
         chainId.toString()
@@ -532,7 +538,7 @@ describe("ProtocolViewer", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
         ethers.constants.AddressZero,  // referrer
@@ -583,8 +589,8 @@ describe("ProtocolViewer", () => {
         token: usdcToken.address,
         amount: usdc(100),
         intentAmountRange: { min: usdc(10), max: usdc(200) },
-        verifiers: [verifier.address],
-        verifierData: [{
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
           intentGatingService: gatingService.address,
           payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
           data: "0x"
@@ -604,7 +610,7 @@ describe("ProtocolViewer", () => {
         ZERO,
         usdc(50),
         onRamper.address,
-        verifier.address,
+        venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
         ethers.constants.AddressZero,  // referrer
@@ -651,7 +657,7 @@ describe("ProtocolViewer", () => {
           ZERO,
           usdc(30),
           onRamper.address,
-          verifier.address,
+          venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
           ethers.constants.AddressZero,

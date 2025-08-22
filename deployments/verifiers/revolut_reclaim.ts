@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
@@ -89,5 +89,7 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.ZAR
 ];
 
+// 0x617f88ab82b5c1b014c539f7e75121427f0bb50a4c58b187a238531e7d58605d
+export const REVOLUT_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("revolut"));
 
 export const REVOLUT_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds

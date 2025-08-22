@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { Currency } from "../../utils/protocolUtils";
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
@@ -32,5 +32,8 @@ export const WISE_RECLAIM_CURRENCIES: any = [
   Currency.THB,
   Currency.VND,
 ];
+
+// 0x554a007c2217df766b977723b276671aee5ebb4adaea0edb6433c88b3e61dac5
+export const WISE_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("wise"));
 
 export const WISE_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
