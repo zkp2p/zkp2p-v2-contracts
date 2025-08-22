@@ -42,6 +42,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant MAX_REFERRER_FEE = 5e16;             // 5% max referrer fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
+    uint256 internal constant MAX_PAYMENT_METHODS_PER_DEPOSIT = 10; // Maximum payment methods per deposit
+    uint256 internal constant MAX_CURRENCIES_PER_METHOD = 10;       // Maximum currencies per payment method
     
     /* ============ State Variables ============ */
 
@@ -406,6 +408,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to add a new payment verifier and its associated currencies to an existing deposit.
+     * @dev WARNING: Adding excessive payment methods or currencies may cause withdrawal to exceed gas limits. Depositors
+     * can remove entries individually if needed. Recommended: <10 payment methods, <50 currencies each.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethods        The payment methods to add
@@ -460,6 +464,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to add a new currencies to an existing verifier for a deposit.
+     * @dev WARNING: Adding excessive currencies may cause withdrawal to exceed gas limits. Depositors
+     * can remove entries individually if needed. Recommended: <50 currencies per payment method.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method
