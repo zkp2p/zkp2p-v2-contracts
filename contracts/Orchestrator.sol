@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -29,6 +30,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
+    using SafeERC20 for IERC20;
     using SignatureChecker for address;
 
 
@@ -513,12 +515,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         
         // Transfer protocol fee to recipient
         if (protocolFeeAmount > 0) {
-            _token.transfer(protocolFeeRecipient, protocolFeeAmount);
+            _token.safeTransfer(protocolFeeRecipient, protocolFeeAmount);
         }
         
         // Transfer referrer fee
         if (referrerFeeAmount > 0) {
-            _token.transfer(_intent.referrer, referrerFeeAmount);
+            _token.safeTransfer(_intent.referrer, referrerFeeAmount);
         }
 
         // If there's a post-intent hook, handle it; skip if manual release
@@ -533,7 +535,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
             // Otherwise transfer directly to the intent recipient
-            _token.transfer(_intent.to, netAmount);
+            _token.safeTransfer(_intent.to, netAmount);
         }
 
         emit IntentFulfilled(

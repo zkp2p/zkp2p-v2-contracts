@@ -2,6 +2,7 @@
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -30,6 +31,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
+    using SafeERC20 for IERC20;
     using SignatureChecker for address;
     using StringArrayUtils for string[];
     using Uint256ArrayUtils for uint256[];
@@ -190,7 +192,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _addPaymentMethodsToDeposit(depositId, _params.paymentMethods, _params.paymentMethodData, _params.currencies);
 
         // Interactions
-        _params.token.transferFrom(msg.sender, address(this), _params.amount);
+        _params.token.safeTransferFrom(msg.sender, address(this), _params.amount);
     }
 
     /**
@@ -230,7 +232,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
         // Interactions
-        deposit.token.transferFrom(msg.sender, address(this), _amount);
+        deposit.token.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -266,7 +268,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
         
         // Interactions
-        deposit.token.transfer(msg.sender, _amount);
+        deposit.token.safeTransfer(msg.sender, _amount);
     }
 
     /**
@@ -311,7 +313,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
         
         // Interactions
-        token.transfer(msg.sender, returnAmount);
+        token.safeTransfer(msg.sender, returnAmount);
     }
 
     /**
@@ -683,7 +685,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         );
 
         // Interactions
-        token.transfer(_to, _transferAmount);
+        token.safeTransfer(_to, _transferAmount);
     }
 
     /* ============ Intent Guardian Only (External Functions) ============ */
@@ -957,7 +959,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _collectAccruedReferrerFees(_depositId, _deposit);
             
             if (totalRemaining > 0) {
-                _deposit.token.transfer(makerFeeRecipient, totalRemaining);
+                _deposit.token.safeTransfer(makerFeeRecipient, totalRemaining);
                 emit DustCollected(_depositId, totalRemaining, makerFeeRecipient);
             }
             
@@ -971,7 +973,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _collectAccruedMakerFees(uint256 _depositId, Deposit storage _deposit) internal {
         if (_deposit.accruedMakerFees > 0) {
-            _deposit.token.transfer(makerFeeRecipient, _deposit.accruedMakerFees);
+            _deposit.token.safeTransfer(makerFeeRecipient, _deposit.accruedMakerFees);
             emit MakerFeesCollected(_depositId, _deposit.accruedMakerFees, makerFeeRecipient);
         }
     }
@@ -981,7 +983,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _collectAccruedReferrerFees(uint256 _depositId, Deposit storage _deposit) internal {
         if (_deposit.accruedReferrerFees > 0) {
-            _deposit.token.transfer(_deposit.referrer, _deposit.accruedReferrerFees);
+            _deposit.token.safeTransfer(_deposit.referrer, _deposit.accruedReferrerFees);
             emit ReferrerFeesCollected(_depositId, _deposit.accruedReferrerFees, _deposit.referrer);
         }
     }
