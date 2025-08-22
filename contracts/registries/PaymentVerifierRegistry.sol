@@ -73,7 +73,6 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
             _removeCurrency(_paymentMethod, currencies[i]);
         }
         
-        // TODO: MAKE SURE THIS DELETES ALL THE INDIVIDUAL FIELDS
         delete store[_paymentMethod];
         
         paymentMethods.removeStorage(_paymentMethod);

@@ -9,7 +9,6 @@ export {
   Escrow,
   ProtocolViewer,
   Orchestrator,
-  BasePaymentVerifier,
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
   RelayerRegistry,
