@@ -257,16 +257,59 @@ describe("SimpleAttestationVerifier", () => {
       });
 
       describe("when witness signature is invalid", () => {
-        beforeEach(async () => {
-          // Sign with wrong account
-          const sig = await otherAccount.wallet.signMessage(ethers.utils.arrayify(messageHash));
-          subjectSignatures = [sig];
+        describe("when signed by non-witness account", () => {
+          beforeEach(async () => {
+            // Sign with wrong account
+            const sig = await otherAccount.wallet.signMessage(ethers.utils.arrayify(messageHash));
+            subjectSignatures = [sig];
+          });
+
+          it("should revert with threshold error", async () => {
+            await expect(subject()).to.be.revertedWith(
+              "ThresholdSigVerifierUtils: Not enough valid witness signatures"
+            );
+          });
         });
 
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith(
-            "ThresholdSigVerifierUtils: Not enough valid witness signatures"
-          );
+        describe("when witness signs wrong message", () => {
+          beforeEach(async () => {
+            // Witness signs a different message
+            const wrongMessage = "Wrong message";
+            const wrongMessageHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(wrongMessage));
+            const sig = await witness.wallet.signMessage(ethers.utils.arrayify(wrongMessageHash));
+            subjectSignatures = [sig];
+          });
+
+          it("should revert with threshold error", async () => {
+            await expect(subject()).to.be.revertedWith(
+              "ThresholdSigVerifierUtils: Not enough valid witness signatures"
+            );
+          });
+        });
+
+        describe("when signature is malformed", () => {
+          beforeEach(async () => {
+            // Create malformed signature (too short)
+            subjectSignatures = ["0x1234"];
+          });
+
+          it("should revert with threshold error", async () => {
+            await expect(subject()).to.be.revertedWith(
+              "ThresholdSigVerifierUtils: Not enough valid witness signatures"
+            );
+          });
+        });
+
+        describe("when signature is empty bytes", () => {
+          beforeEach(async () => {
+            subjectSignatures = ["0x"];
+          });
+
+          it("should revert with threshold error", async () => {
+            await expect(subject()).to.be.revertedWith(
+              "ThresholdSigVerifierUtils: Not enough valid witness signatures"
+            );
+          });
         });
       });
 
@@ -315,7 +358,11 @@ describe("SimpleAttestationVerifier", () => {
           subjectData = ethers.utils.defaultAbiCoder.encode(["address"], [otherAccount.address]);
         });
 
-        it("should return false", async () => {
+        it("attestation verification passes but trust anchor fails", async () => {
+          // This test explicitly shows the two-phase verification:
+          // 1. Attestation verification would pass (valid witness signature)
+          // 2. But trust anchor verification fails (wrong attestor)
+          // Result: Overall verification returns false
           const result = await subject();
           expect(result).to.be.false;
         });

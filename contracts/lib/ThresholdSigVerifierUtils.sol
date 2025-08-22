@@ -20,7 +20,7 @@ library ThresholdSigVerifierUtils {
      * @param _signatures Array of signatures (must have at least minWitnessSignatures)
      * @param _witnesses Array of accepted witness addresses
      * @param _reqThreshold The minimum number of witness signatures required
-     * @return bool Whether the threshold is met
+     * @return success Returns true if the threshold is met, otherwise reverts
      * @dev The digest should already be properly formatted:
      *      - For EIP-712: keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash))
      *      - For EIP-191: the message hash that will be signed with personal_sign
@@ -34,8 +34,9 @@ library ThresholdSigVerifierUtils {
     )
         internal
         view
-        returns (bool)
+        returns (bool success)
     {
+        success = false;
         require(_reqThreshold > 0, "ThresholdSigVerifierUtils: req threshold must be > 0");
         require(_reqThreshold <= _signatures.length, "ThresholdSigVerifierUtils: req threshold exceeds signatures");
         require(_reqThreshold <= _witnesses.length, "ThresholdSigVerifierUtils: req threshold exceeds witnesses");
@@ -68,7 +69,7 @@ library ThresholdSigVerifierUtils {
                         
                         // Early exit if threshold is met
                         if (validWitnessSignatures >= _reqThreshold) {
-                            return true;
+                            success = true;
                         }
                         break;
                     }
@@ -81,7 +82,5 @@ library ThresholdSigVerifierUtils {
             validWitnessSignatures >= _reqThreshold,
             "ThresholdSigVerifierUtils: Not enough valid witness signatures"
         );
-        
-        return true;
     }
 }

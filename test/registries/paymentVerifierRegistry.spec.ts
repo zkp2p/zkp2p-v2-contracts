@@ -240,9 +240,8 @@ describe("PaymentVerifierRegistry", () => {
     it("should clear the verifier", async () => {
       await subject();
 
-      // Trying to get verifier for removed payment method should revert
-      await expect(paymentVerifierRegistry.getVerifier(subjectPaymentMethod))
-        .to.be.revertedWith("Payment method does not exist");
+      const verifier = await paymentVerifierRegistry.getVerifier(subjectPaymentMethod);
+      expect(verifier).to.eq(ethers.constants.AddressZero);
     });
 
     it("should set initialized to false", async () => {
@@ -576,10 +575,10 @@ describe("PaymentVerifierRegistry", () => {
       });
 
       describe("when payment method does not exist", async () => {
-        it("should revert", async () => {
+        it("should return the zero address", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("cashapp"));
-          await expect(paymentVerifierRegistry.getVerifier(nonExistentMethod))
-            .to.be.revertedWith("Payment method does not exist");
+          const verifier = await paymentVerifierRegistry.getVerifier(nonExistentMethod);
+          expect(verifier).to.eq(ethers.constants.AddressZero);
         });
       });
     });
@@ -622,10 +621,10 @@ describe("PaymentVerifierRegistry", () => {
       });
 
       describe("when payment method does not exist", async () => {
-        it("should revert", async () => {
+        it("should return an empty array", async () => {
           const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("stripe"));
-          await expect(paymentVerifierRegistry.getCurrencies(nonExistentMethod))
-            .to.be.revertedWith("Payment method does not exist");
+          const currencies = await paymentVerifierRegistry.getCurrencies(nonExistentMethod);
+          expect(currencies).to.deep.eq([]);
         });
       });
     });

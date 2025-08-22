@@ -224,6 +224,65 @@ describe("ThresholdSigVerifierUtils", () => {
         });
       });
 
+      describe("Some valid signatures but below threshold", () => {
+        beforeEach(async () => {
+          // Get 2 valid signatures from actual witnesses
+          const validSig1 = await witness1.wallet.signMessage(ethers.utils.arrayify(messageHash));
+          const validSig2 = await witness2.wallet.signMessage(ethers.utils.arrayify(messageHash));
+
+          // Get 2 invalid signatures (from non-witnesses)
+          const invalidSig1 = await nonWitness.wallet.signMessage(ethers.utils.arrayify(messageHash));
+          // Create another invalid signature from a different message
+          const wrongMessage = "Different message";
+          const wrongMessageHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(wrongMessage));
+          const invalidSig2 = await witness3.wallet.signMessage(ethers.utils.arrayify(wrongMessageHash));
+
+          // Mix valid and invalid signatures: 2 valid + 2 invalid = 4 total
+          subjectSignatures = [validSig1, invalidSig1, validSig2, invalidSig2];
+
+          // Provide 4 witnesses but threshold requires 3 valid signatures
+          subjectWitnesses = [witness1.address, witness2.address, witness3.address, witness4.address];
+          subjectThreshold = BigNumber.from(3);
+        });
+
+        it("should revert with proper error when valid signatures exist but don't meet threshold", async () => {
+          // This test verifies that even though we have 2 valid signatures (from witness1 and witness2),
+          // they don't meet the required threshold of 3, so the function should revert
+          await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: Not enough valid witness signatures");
+        });
+
+        it("should verify the exact failure scenario", async () => {
+          // Additional test to confirm the specific case:
+          // - Threshold is 3
+          // - 4 witnesses are provided
+          // - Only 2 valid signatures (witness1 and witness2)
+          // - 2 invalid signatures (non-witness and wrong message)
+
+          // First, let's verify that if we had 3 valid signatures, it would pass
+          const validSig3 = await witness3.wallet.signMessage(ethers.utils.arrayify(messageHash));
+          const validSig4 = await witness4.wallet.signMessage(ethers.utils.arrayify(messageHash));
+
+          // With 3 valid signatures, it should pass
+          const threeValidSigs = [
+            await witness1.wallet.signMessage(ethers.utils.arrayify(messageHash)),
+            await witness2.wallet.signMessage(ethers.utils.arrayify(messageHash)),
+            await witness3.wallet.signMessage(ethers.utils.arrayify(messageHash)),
+            await nonWitness.wallet.signMessage(ethers.utils.arrayify(messageHash)) // Invalid but doesn't matter
+          ];
+
+          const result = await thresholdVerifier.verifyWitnessSignatures(
+            subjectMessageHash,
+            threeValidSigs,
+            [witness1.address, witness2.address, witness3.address, witness4.address],
+            BigNumber.from(3)
+          );
+          expect(result).to.be.true;
+
+          // But with only 2 valid signatures (our original setup), it should fail
+          await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: Not enough valid witness signatures");
+        });
+      });
+
       describe("Invalid signatures", () => {
         beforeEach(async () => {
           // Create invalid signature by signing with wrong account

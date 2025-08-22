@@ -118,7 +118,6 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
     }
     
     function getVerifier(bytes32 _paymentMethod) external view returns (address) {
-        require(store[_paymentMethod].initialized, "Payment method does not exist");
         return store[_paymentMethod].verifier;
     }
 
@@ -127,7 +126,6 @@ contract PaymentVerifierRegistry is Ownable, IPaymentVerifierRegistry {
     }
     
     function getCurrencies(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(store[_paymentMethod].initialized, "Payment method does not exist");
         return store[_paymentMethod].currencies;
     }
 

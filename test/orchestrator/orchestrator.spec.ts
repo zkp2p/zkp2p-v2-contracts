@@ -1320,6 +1320,16 @@ describe("Orchestrator", () => {
       });
     });
 
+    describe("when the payment method is removed post signalIntent", async () => {
+      beforeEach(async () => {
+        await paymentVerifierRegistry.connect(owner.wallet).removePaymentMethod(venmoPaymentMethod);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PaymentMethodNotSupported");
+      });
+    });
+
     describe("when the payment verification fails", async () => {
       beforeEach(async () => {
         await verifier.setShouldReturnFalse(true);
