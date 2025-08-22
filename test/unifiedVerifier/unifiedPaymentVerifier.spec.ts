@@ -180,11 +180,18 @@ describe("UnifiedPaymentVerifier", () => {
       expect(result.releaseAmount).to.eq(paymentDetails.amount); // With 1:1 conversion
     });
 
-    it("should nullify the payment id", async () => {
+    it("should nullify the payment with correct collision-resistant nullifier", async () => {
       await subject();
 
-      const nullifier = paymentDetails.paymentId;
-      expect(await nullifierRegistry.isNullified(nullifier)).to.be.true;
+      // Verify the nullifier is calculated as keccak256(abi.encodePacked(paymentMethod, paymentId))
+      const expectedNullifier = ethers.utils.keccak256(
+        ethers.utils.solidityPack(
+          ["bytes32", "bytes32"],
+          [paymentDetails.paymentMethod, paymentDetails.paymentId]
+        )
+      );
+
+      expect(await nullifierRegistry.isNullified(expectedNullifier)).to.be.true;
     });
 
     describe("when payment amount is less than intent amount", async () => {
