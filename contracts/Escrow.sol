@@ -70,13 +70,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => bytes32[]) internal depositIntentHashes;             // Mapping of depositId to array of intentHashes
     mapping(uint256 => mapping(bytes32 => Intent)) internal depositIntents; // Mapping of depositId to intentHash to intent
 
-    uint256 public depositCounter;                                  // Counter for depositIds
+    uint256 public depositCounter;          // Counter for depositIds
     
-    uint256 public makerProtocolFee;                                // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
-    address public makerFeeRecipient;                               // Address that receives maker protocol fees
-    uint256 public dustThreshold;                                   // Amount below which deposits are considered dust and can be closed
-    uint256 public maxIntentsPerDeposit;                            // Maximum active intents per deposit
-    uint256 public intentExpirationPeriod;                          // Time period after which an intent expires
+    uint256 public makerProtocolFee;        // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
+    address public makerFeeRecipient;       // Address that receives maker protocol fees
+    uint256 public dustThreshold;           // Amount below which deposits are considered dust and can be closed
+    uint256 public maxIntentsPerDeposit;    // Maximum active intents per deposit (suggested to keep below 100 to prevent deposit withdraw DOS)
+    uint256 public intentExpirationPeriod;  // Time period after which an intent expires
 
     /* ============ Modifiers ============ */
 
