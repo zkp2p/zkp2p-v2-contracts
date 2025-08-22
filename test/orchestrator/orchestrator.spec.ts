@@ -1561,6 +1561,22 @@ describe("Orchestrator", () => {
         });
       });
     });
+
+    describe("when the contract is paused", async () => {
+      beforeEach(async () => {
+        await orchestrator.connect(owner.wallet).pauseOrchestrator();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+
+      describe("when the contract is unpaused", async () => {
+        beforeEach(async () => {
+          await orchestrator.connect(owner.wallet).unpauseOrchestrator();
+        });
+      });
+    });
   });
 
   describe("#releaseFundsToPayer", async () => {
