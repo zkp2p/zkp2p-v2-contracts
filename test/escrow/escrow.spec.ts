@@ -1511,6 +1511,28 @@ describe("Escrow", () => {
       expect(postPaymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
     });
 
+    it("should delete the deposit payment methods array", async () => {
+      const prePaymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
+      expect(prePaymentMethods.length).to.eq(1);
+      expect(prePaymentMethods[0]).to.eq(venmoPaymentMethodHash);
+
+      await subject();
+
+      const postPaymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
+      expect(postPaymentMethods.length).to.eq(0);
+    });
+
+    it("should delete the deposit currencies array", async () => {
+      const preCurrencies = await ramp.getDepositCurrencies(subjectDepositId, venmoPaymentMethodHash);
+      expect(preCurrencies.length).to.eq(1);
+      expect(preCurrencies[0]).to.eq(Currency.USD);
+
+      await subject();
+
+      const postCurrencies = await ramp.getDepositCurrencies(subjectDepositId, venmoPaymentMethodHash);
+      expect(postCurrencies.length).to.eq(0);
+    });
+
     it("should delete deposit currency min conversion data", async () => {
       const preCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, venmoPaymentMethodHash, Currency.USD);
       expect(preCurrencyMinRate).to.not.eq(ZERO);

@@ -1021,7 +1021,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyMinRate[_depositId][paymentMethod][currencies[j]];
             }
+            delete depositCurrencies[_depositId][paymentMethod];
         }
+        delete depositPaymentMethods[_depositId];
     }
 
     /**
