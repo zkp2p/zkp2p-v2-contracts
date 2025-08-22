@@ -1454,6 +1454,17 @@ describe("Orchestrator", () => {
         );
       });
 
+      it("should reset token approval to zero after hook execution", async () => {
+        const initialAllowance = await usdcToken.allowance(orchestrator.address, postIntentHookMock.address);
+        expect(initialAllowance).to.eq(ZERO);
+
+        // Execute fulfillIntent which will approve and then reset
+        await subject();
+
+        const finalAllowance = await usdcToken.allowance(orchestrator.address, postIntentHookMock.address);
+        expect(finalAllowance).to.eq(ZERO);
+      });
+
       describe("when protocol fee is set with a hook", async () => {
         beforeEach(async () => {
           await orchestrator.connect(owner.wallet).setProtocolFee(ether(0.02)); // 2% fee

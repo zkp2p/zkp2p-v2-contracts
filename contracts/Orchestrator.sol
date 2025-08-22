@@ -526,6 +526,9 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         if (address(_intent.postIntentHook) != address(0) && !_isManualRelease) {
             _token.approve(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
+            
+            // Reset allowance to prevent residual balance drainage
+            _token.approve(address(_intent.postIntentHook), 0);
 
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
