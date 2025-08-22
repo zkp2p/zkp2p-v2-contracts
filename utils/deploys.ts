@@ -30,7 +30,7 @@ import {
   PostIntentHookMock__factory,
   OrchestratorMock__factory
 } from "../typechain/factories/contracts/mocks";
-import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks/PaymentVerifierMock.sol"
+import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks"
 import {
   ThresholdSigVerifierUtilsMock__factory
 } from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock__factory";
