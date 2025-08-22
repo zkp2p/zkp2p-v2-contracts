@@ -555,7 +555,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _pruneExpiredIntents(deposits[_depositId], _depositId, 0);
     }
 
-
     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
 
     /**
@@ -676,8 +675,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         deposit.outstandingIntentAmount -= intent.amount;
+        
+        // If this is a partial release, return the unused portion to remainingDeposits
         if (_transferAmount < intent.amount) {
-            // Return unused funds to remaining deposits (partial release)
             deposit.remainingDeposits += (intent.amount - _transferAmount);
         }
 

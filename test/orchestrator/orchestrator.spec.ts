@@ -130,8 +130,7 @@ describe("Orchestrator", () => {
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
-      feeRecipient.address,              // protocol fee recipient
-      ONE_HOUR_IN_SECONDS                // partialManualReleaseDelay (1 hour)
+      feeRecipient.address               // protocol fee recipient
     );
 
     protocolViewer = await deployer.deployProtocolViewer(escrow.address, orchestrator.address);
@@ -174,7 +173,6 @@ describe("Orchestrator", () => {
       const actualRelayerRegistry = await orchestrator.relayerRegistry();
       const actualProtocolFee = await orchestrator.protocolFee();
       const actualProtocolFeeRecipient = await orchestrator.protocolFeeRecipient();
-      const actualPartialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
 
       expect(actualChainId).to.eq(chainId);
       expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
@@ -183,7 +181,6 @@ describe("Orchestrator", () => {
       expect(actualRelayerRegistry).to.eq(relayerRegistry.address);
       expect(actualProtocolFee).to.eq(ZERO);
       expect(actualProtocolFeeRecipient).to.eq(feeRecipient.address);
-      expect(actualPartialManualReleaseDelay).to.eq(ONE_HOUR_IN_SECONDS);
     });
   });
 
@@ -1756,8 +1753,6 @@ describe("Orchestrator", () => {
 
   describe("#releaseFundsToPayer", async () => {
     let subjectIntentHash: string;
-    let subjectReleaseAmount: BigNumber;
-    let subjectReleaseData: string;
     let subjectCaller: Account;
 
     let intentAmount: BigNumber;
@@ -1820,29 +1815,22 @@ describe("Orchestrator", () => {
       currentIntentCounter++;  // Increment after signalIntent
 
       subjectIntentHash = intentHash;
-      subjectReleaseAmount = usdc(40);  // Partial release
-      subjectReleaseData = "0x";
       subjectCaller = offRamper; // Depositor
-
-      // Increase time to 1 hour + 1 second
-      await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
     });
 
     async function subject(): Promise<any> {
       return orchestrator.connect(subjectCaller.wallet).releaseFundsToPayer(
-        subjectIntentHash,
-        subjectReleaseAmount,
-        subjectReleaseData
+        subjectIntentHash
       );
     }
 
-    it("should transfer the usdc correctly to the payer", async () => {
+    it("should transfer the full intent amount to the payer", async () => {
       const preBalance = await usdcToken.balanceOf(onRamper.address);
 
       await subject();
 
       const postBalance = await usdcToken.balanceOf(onRamper.address);
-      expect(postBalance.sub(preBalance)).to.eq(subjectReleaseAmount);
+      expect(postBalance.sub(preBalance)).to.eq(intentAmount);
     });
 
     it("should delete the intent from the intents and account intents mapping", async () => {
@@ -1863,7 +1851,9 @@ describe("Orchestrator", () => {
       await subject();
 
       const postDeposit = await escrow.getDeposit(ZERO);
-      const expectedPostRemainingDeposits = preRemainingDeposits.add(intentAmount.sub(subjectReleaseAmount));
+      // When releaseFundsToPayer is called, funds are transferred out of escrow
+      // so remainingDeposits stays the same and outstandingIntentAmount is reduced
+      const expectedPostRemainingDeposits = preRemainingDeposits;
       const expectedPostOutstandingIntentAmount = preOutstandingIntentAmount.sub(intentAmount);
 
       expect(postDeposit.remainingDeposits).to.eq(expectedPostRemainingDeposits);
@@ -1874,14 +1864,13 @@ describe("Orchestrator", () => {
       await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
         subjectIntentHash,
         onRamper.address,
-        subjectReleaseAmount,
+        intentAmount,
         true  // manual release
       );
     });
 
     describe("when the fulfill intent zeroes out the deposit", async () => {
       beforeEach(async () => {
-        subjectReleaseAmount = intentAmount;
         await subject(); // release the full $50 to the payer
 
         // Signal a new intent for $50
@@ -1912,7 +1901,6 @@ describe("Orchestrator", () => {
         currentIntentCounter++;  // Increment after signalIntent
 
         subjectIntentHash = intentHash2;
-        subjectReleaseAmount = usdc(50);
       });
 
       it("should delete the deposit", async () => {
@@ -1958,19 +1946,19 @@ describe("Orchestrator", () => {
         const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
         const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
 
-        const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+        const fee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
 
-        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(subjectReleaseAmount.sub(fee));
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(intentAmount.sub(fee));
         expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
       });
 
       it("should emit an IntentFulfilled event with fee details", async () => {
-        const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+        const fee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
           onRamper.address,
-          subjectReleaseAmount.sub(fee),
+          intentAmount.sub(fee),
           true  // manual release
         );
       });
@@ -2018,9 +2006,6 @@ describe("Orchestrator", () => {
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
-        // Increase time to 1 hour + 1 second
-        await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
-
         // Update the subject variables
         subjectIntentHash = intentHash;
       });
@@ -2034,19 +2019,19 @@ describe("Orchestrator", () => {
         const finalOnRamperBalance = await usdcToken.balanceOf(onRamper.address);
         const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
-        const referrerFee = subjectReleaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
+        const referrerFee = intentAmount.mul(ether(0.01)).div(ether(1)); // 1% of intent amount
 
-        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(subjectReleaseAmount.sub(referrerFee));
+        expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(intentAmount.sub(referrerFee));
         expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
       });
 
       it("should emit an IntentFulfilled event with referrer fee details", async () => {
-        const referrerFee = subjectReleaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
+        const referrerFee = intentAmount.mul(ether(0.01)).div(ether(1)); // 1% of intent amount
 
         await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
           intentHash,
           onRamper.address,
-          subjectReleaseAmount.sub(referrerFee),        // Amount transferred to the on-ramper
+          intentAmount.sub(referrerFee),        // Amount transferred to the on-ramper
           true  // manual release
         );
       });
@@ -2067,24 +2052,24 @@ describe("Orchestrator", () => {
           const finalFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
           const finalReferrerBalance = await usdcToken.balanceOf(receiver.address);
 
-          const protocolFee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
-          const referrerFee = subjectReleaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
+          const protocolFee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
+          const referrerFee = intentAmount.mul(ether(0.01)).div(ether(1)); // 1% of intent amount
           const totalFees = protocolFee.add(referrerFee);
 
-          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(subjectReleaseAmount.sub(totalFees));
+          expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(intentAmount.sub(totalFees));
           expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(protocolFee);
           expect(finalReferrerBalance.sub(initialReferrerBalance)).to.eq(referrerFee);
         });
 
         it("should emit an IntentFulfilled event with correct fee details", async () => {
-          const protocolFee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
-          const referrerFee = subjectReleaseAmount.mul(ether(0.01)).div(ether(1)); // 1% of release amount
+          const protocolFee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
+          const referrerFee = intentAmount.mul(ether(0.01)).div(ether(1)); // 1% of intent amount
           const totalFees = protocolFee.add(referrerFee);
 
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             intentHash,
             onRamper.address,
-            subjectReleaseAmount.sub(totalFees),
+            intentAmount.sub(totalFees),
             true  // manual release
           );
         });
@@ -2155,9 +2140,6 @@ describe("Orchestrator", () => {
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
         currentIntentCounter++;  // Increment after signalIntent
 
-        // Increase time to 1 hour + 1 second
-        await blockchain.increaseTimeAsync(ONE_HOUR_IN_SECONDS.toNumber() + 1);
-
         subjectIntentHash = intentHash;
       });
 
@@ -2167,9 +2149,8 @@ describe("Orchestrator", () => {
         await subject();
 
         const postBalance = await usdcToken.balanceOf(onRamper.address);
-        expect(postBalance.sub(preBalance)).to.eq(subjectReleaseAmount);
+        expect(postBalance.sub(preBalance)).to.eq(intentAmount);
       });
-
 
       describe("when protocol fee is set with a hook", async () => {
         beforeEach(async () => {
@@ -2183,29 +2164,19 @@ describe("Orchestrator", () => {
 
           const finalIntentToBalance = await usdcToken.balanceOf(onRamper.address);
 
-          const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
-          expect(finalIntentToBalance.sub(initialIntentToBalance)).to.eq(subjectReleaseAmount.sub(fee)); // 49 USDC
+          const fee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
+          expect(finalIntentToBalance.sub(initialIntentToBalance)).to.eq(intentAmount.sub(fee)); // 49 USDC
         });
 
         it("should emit IntentFulfilled with correct fee details when hook is used", async () => {
-          const fee = subjectReleaseAmount.mul(ether(0.02)).div(ether(1)); // 2% of release amount
+          const fee = intentAmount.mul(ether(0.02)).div(ether(1)); // 2% of intent amount
           await expect(subject()).to.emit(orchestrator, "IntentFulfilled").withArgs(
             subjectIntentHash,
             onRamper.address,     // Original intent.to
-            subjectReleaseAmount.sub(fee),    // Amount transferred to hook's destination
+            intentAmount.sub(fee),    // Amount transferred to hook's destination
             true  // manual release
           );
         });
-      });
-    });
-
-    describe("when the release amount exceeds the intent amount", async () => {
-      beforeEach(async () => {
-        subjectReleaseAmount = usdc(60); // More than intent amount of 50
-      });
-
-      it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountExceedsLimit");
       });
     });
 
@@ -2216,48 +2187,6 @@ describe("Orchestrator", () => {
 
       it("should revert with CallerMustBeDepositor", async () => {
         await expect(subject()).to.be.revertedWithCustomError(orchestrator, "UnauthorizedCaller");
-      });
-    });
-
-    describe("when release amount exceeds intent amount", async () => {
-      beforeEach(async () => {
-        subjectReleaseAmount = usdc(100); // More than intent amount of 50
-      });
-
-      it("should revert with ReleaseAmountExceedsIntentAmount", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountExceedsLimit");
-      });
-    });
-
-    describe("when partialManualReleaseDelay has not passed", async () => {
-      beforeEach(async () => {
-        // Set partial manual release delay to 1 day
-        await orchestrator.connect(owner.wallet).setPartialManualReleaseDelay(ONE_DAY_IN_SECONDS.toNumber());
-      });
-
-      describe("when trying to release partial amount before delay", async () => {
-        beforeEach(async () => {
-          subjectReleaseAmount = usdc(30); // Partial release
-        });
-
-        it("should revert with PartialReleaseNotAllowedYet", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(orchestrator, "PartialReleaseNotAllowedYet");
-        });
-      });
-
-      describe("when trying to release full amount before delay", async () => {
-        beforeEach(async () => {
-          subjectReleaseAmount = intentAmount; // Full release
-        });
-
-        it("should allow full release even before delay", async () => {
-          const preBalance = await usdcToken.balanceOf(onRamper.address);
-
-          await subject();
-
-          const postBalance = await usdcToken.balanceOf(onRamper.address);
-          expect(postBalance.sub(preBalance)).to.eq(subjectReleaseAmount);
-        });
       });
     });
   });
@@ -2661,50 +2590,6 @@ describe("Orchestrator", () => {
     });
   });
 
-  describe("#setPartialManualReleaseDelay", async () => {
-    let subjectPartialManualReleaseDelay: BigNumber;
-    let subjectCaller: Account;
-
-    beforeEach(async () => {
-      subjectPartialManualReleaseDelay = BigNumber.from(7200); // 2 hours
-      subjectCaller = owner;
-    });
-
-    async function subject(): Promise<any> {
-      return orchestrator.connect(subjectCaller.wallet).setPartialManualReleaseDelay(subjectPartialManualReleaseDelay);
-    }
-
-    it("should set the partial manual release delay", async () => {
-      await subject();
-
-      const partialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
-      expect(partialManualReleaseDelay).to.eq(subjectPartialManualReleaseDelay);
-    });
-
-    it("should emit PartialManualReleaseDelayUpdated event", async () => {
-      await expect(subject()).to.emit(orchestrator, "PartialManualReleaseDelayUpdated").withArgs(subjectPartialManualReleaseDelay);
-    });
-
-    describe("when the caller is not the owner", async () => {
-      beforeEach(async () => {
-        subjectCaller = onRamper;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-
-    describe("when setting it to below 15 minutes", async () => {
-      beforeEach(async () => {
-        subjectPartialManualReleaseDelay = ONE;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountBelowMin");
-      });
-    });
-  });
 
   describe("#setPostIntentHookRegistry", async () => {
     let subjectPostIntentHookRegistry: Address;

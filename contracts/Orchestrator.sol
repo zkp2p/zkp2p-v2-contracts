@@ -39,7 +39,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 constant MAX_REFERRER_FEE = 5e16;      // 5% max referrer fee
     uint256 constant MAX_PROTOCOL_FEE = 5e16;      // 5% max protocol fee
-    uint256 constant MIN_PARTIAL_MANUAL_RELEASE_DELAY = 15 minutes;
 
     /* ============ State Variables ============ */
 
@@ -61,8 +60,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     bool public allowMultipleIntents;                               // Whether to allow multiple intents per account
 
     uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
-    
-    uint256 public partialManualReleaseDelay;                      // Time after intent creation before partial manual releases are allowed
 
     /* ============ Modifiers ============ */
 
@@ -82,8 +79,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         address _postIntentHookRegistry,
         address _relayerRegistry,
         uint256 _protocolFee,
-        address _protocolFeeRecipient,
-        uint256 _partialManualReleaseDelay
+        address _protocolFeeRecipient
     )
         Ownable()
     {
@@ -94,7 +90,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
         protocolFee = _protocolFee;
         protocolFeeRecipient = _protocolFeeRecipient;
-        partialManualReleaseDelay = _partialManualReleaseDelay;
 
         transferOwnership(_owner);
     }
@@ -215,13 +210,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // Interactions
         IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _params.intentHash, verificationResult.releaseAmount, address(this));
 
-        _transferFundsAndExecuteAction(
+        _collectFeesTransferFundsAndExecuteAction(
             deposit.token, 
             _params.intentHash, 
             intent, 
-            verificationResult,
-            _params.postIntentHookData,
-            false
+            verificationResult.releaseAmount,
+            _params.postIntentHookData
         );
     }
 
@@ -231,42 +225,22 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
      * escrow state is updated. Deposit token is transferred to the payer.
      *
      * @param _intentHash        Hash of intent to resolve by releasing the funds
-     * @param _releaseAmount     Amount of funds to release to the payer
-     * @param _releaseData       Data to be passed to the post intent hook
      */
-    function releaseFundsToPayer(
-        bytes32 _intentHash, 
-        uint256 _releaseAmount, 
-        bytes calldata _releaseData
-    ) external nonReentrant {
+    function releaseFundsToPayer(bytes32 _intentHash) external nonReentrant {
         // Checks
         Intent memory intent = intents[_intentHash];
         if (intent.owner == address(0)) revert IntentNotFound(_intentHash);
-        if (_releaseAmount > intent.amount) revert AmountExceedsLimit(_releaseAmount, intent.amount);
 
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
-
-        // Check if partial releases are allowed based on time elapsed
-        uint256 timeSinceIntent = block.timestamp - intent.timestamp;
-        if (timeSinceIntent < partialManualReleaseDelay && _releaseAmount < intent.amount) {
-            revert PartialReleaseNotAllowedYet(block.timestamp, intent.timestamp + partialManualReleaseDelay);
-        }
-
+        
         // Effects
         _pruneIntent(_intentHash);
 
         // Interactions
-        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, _releaseAmount, address(this));
+        IEscrow(intent.escrow).unlockAndTransferFunds(intent.depositId, _intentHash, intent.amount, address(this));
 
-        // Create a result struct for manual release
-        IPaymentVerifier.PaymentVerificationResult memory manualReleaseResult = IPaymentVerifier.PaymentVerificationResult({
-            success: true,
-            intentHash: _intentHash,
-            releaseAmount: _releaseAmount
-        });
-        
-        _transferFundsAndExecuteAction(deposit.token, _intentHash, intent, manualReleaseResult, _releaseData, true);
+        _collectFeesAndTransferFunds(deposit.token, _intentHash, intent, intent.amount);
     }
 
     /* ============ Escrow Functions ============ */
@@ -361,20 +335,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         
         relayerRegistry = IRelayerRegistry(_relayerRegistry);
         emit RelayerRegistryUpdated(_relayerRegistry);
-    }
-
-    /**
-     * @notice GOVERNANCE ONLY: Updates the partial manual release delay period.
-     *
-     * @param _partialManualReleaseDelay   New delay period in seconds before partial manual releases are allowed
-     */
-    function setPartialManualReleaseDelay(uint256 _partialManualReleaseDelay) external onlyOwner {
-        if (_partialManualReleaseDelay < MIN_PARTIAL_MANUAL_RELEASE_DELAY) {
-            revert AmountBelowMin(_partialManualReleaseDelay, MIN_PARTIAL_MANUAL_RELEASE_DELAY);
-        }
-
-        partialManualReleaseDelay = _partialManualReleaseDelay;
-        emit PartialManualReleaseDelayUpdated(_partialManualReleaseDelay);
     }
 
     /**
@@ -501,46 +461,69 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     }
 
     /**
-     * @notice Handles fee calculations and transfers, then executes any post-intent hooks
+     * @notice Calculates and transfers fees to the protocol fee recipient and referrer.
      */
-    function _transferFundsAndExecuteAction(
-        IERC20 _token, 
-        bytes32 _intentHash, 
+    function _calculateAndTransferFees(
+        IERC20 _token,
         Intent memory _intent, 
-        IPaymentVerifier.PaymentVerificationResult memory _verificationResult,
-        bytes memory _postIntentHookData,
-        bool _isManualRelease
-    ) internal {
-        
+        uint256 _releaseAmount
+    ) internal returns (uint256 netFees) {
         uint256 protocolFeeAmount;
         uint256 referrerFeeAmount; 
 
         // Calculate protocol fee (taken from taker) - based on release amount
         if (protocolFeeRecipient != address(0) && protocolFee > 0) {
-            protocolFeeAmount = (_verificationResult.releaseAmount * protocolFee) / PRECISE_UNIT;
+            protocolFeeAmount = (_releaseAmount * protocolFee) / PRECISE_UNIT;
+            _token.safeTransfer(protocolFeeRecipient, protocolFeeAmount);
         }
         
         // Calculate referrer fee (taken from taker) - based on release amount
         if (_intent.referrer != address(0) && _intent.referrerFee > 0) {
-            referrerFeeAmount = (_verificationResult.releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
-        }
-        
-        // Net amount the taker receives after fees
-        uint256 netAmount = _verificationResult.releaseAmount - protocolFeeAmount - referrerFeeAmount;
-        
-        // Transfer protocol fee to recipient
-        if (protocolFeeAmount > 0) {
-            _token.safeTransfer(protocolFeeRecipient, protocolFeeAmount);
-        }
-        
-        // Transfer referrer fee
-        if (referrerFeeAmount > 0) {
+            referrerFeeAmount = (_releaseAmount * _intent.referrerFee) / PRECISE_UNIT;
             _token.safeTransfer(_intent.referrer, referrerFeeAmount);
         }
 
+        netFees = protocolFeeAmount + referrerFeeAmount;
+    }
+
+    /**
+     * @notice Transfers funds to the intent recipient. Called by manual release.
+     */
+    function _collectFeesAndTransferFunds(
+        IERC20 _token, 
+        bytes32 _intentHash, 
+        Intent memory _intent,
+        uint256 _releaseAmount
+    ) internal {
+        uint256 netFees = _calculateAndTransferFees(_token, _intent, _releaseAmount);
+        uint256 netAmount = _releaseAmount - netFees;
+
+        _token.safeTransfer(_intent.to, netAmount);
+
+        emit IntentFulfilled(
+            _intentHash, 
+            _intent.to, 
+            netAmount, 
+            true
+        );
+    }
+
+    /**
+     * @notice Handles fee calculations and transfers, then executes any post-intent hooks. Called by fulfillIntent.
+     */
+    function _collectFeesTransferFundsAndExecuteAction(
+        IERC20 _token, 
+        bytes32 _intentHash, 
+        Intent memory _intent, 
+        uint256 _releaseAmount,
+        bytes memory _postIntentHookData
+    ) internal {
+        uint256 netFees = _calculateAndTransferFees(_token, _intent, _releaseAmount);
+        uint256 netAmount = _releaseAmount - netFees;
+
         // If there's a post-intent hook, handle it; skip if manual release
         address fundsTransferredTo = _intent.to;
-        if (address(_intent.postIntentHook) != address(0) && !_isManualRelease) {
+        if (address(_intent.postIntentHook) != address(0)) {
             _token.approve(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
             
@@ -557,7 +540,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _intentHash, 
             fundsTransferredTo, 
             netAmount, 
-            _isManualRelease
+            false
         );
     }
 

@@ -141,11 +141,7 @@ interface IOrchestrator {
 
     function fulfillIntent(FulfillIntentParams calldata params) external;
 
-    function releaseFundsToPayer(
-        bytes32 intentHash, 
-        uint256 releaseAmount, 
-        bytes calldata releaseData
-    ) external;
+    function releaseFundsToPayer(bytes32 intentHash) external;
 
     /* ============ External Functions for Escrow ============ */
 

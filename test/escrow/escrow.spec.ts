@@ -131,8 +131,7 @@ describe("Escrow", () => {
       postIntentHookRegistry.address,
       relayerRegistry.address,
       ZERO,
-      feeRecipient.address,
-      ONE_HOUR_IN_SECONDS
+      feeRecipient.address
     );
 
     await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
@@ -4880,8 +4879,7 @@ describe("Escrow", () => {
         postIntentHookRegistry.address,
         relayerRegistry.address,
         ZERO,
-        feeRecipient.address,
-        ONE_HOUR_IN_SECONDS
+        feeRecipient.address
       );
 
       subjectOrchestrator = newOrchestrator.address;

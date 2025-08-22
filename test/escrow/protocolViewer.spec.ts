@@ -114,8 +114,7 @@ describe("ProtocolViewer", () => {
       postIntentHookRegistry.address,
       relayerRegistry.address,           // relayer registry
       ZERO,                              // protocol fee (0%)
-      feeRecipient.address,              // protocol fee recipient
-      ONE_HOUR_IN_SECONDS                // partialManualReleaseDelay (1 hour)
+      feeRecipient.address               // protocol fee recipient
     );
 
     await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);

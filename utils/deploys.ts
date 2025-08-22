@@ -88,8 +88,7 @@ export default class DeployHelper {
     postIntentHookRegistry: Address,
     relayerRegistry: Address,
     protocolFee: BigNumber,
-    protocolFeeRecipient: Address,
-    partialManualReleaseDelay: BigNumber
+    protocolFeeRecipient: Address
   ): Promise<Orchestrator> {
     return await new Orchestrator__factory(this._deployerSigner).deploy(
       owner,
@@ -99,8 +98,7 @@ export default class DeployHelper {
       postIntentHookRegistry,
       relayerRegistry,
       protocolFee,
-      protocolFeeRecipient,
-      partialManualReleaseDelay
+      protocolFeeRecipient
     );
   }
 
