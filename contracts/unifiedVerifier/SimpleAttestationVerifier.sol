@@ -68,7 +68,7 @@ contract SimpleAttestationVerifier is IAttestationVerifier, Ownable {
         bytes[] calldata _sigs,
         bytes calldata _data
     ) external view override returns (bool isValid) {
-        _verifyAttestation(_digest, _sigs);
+        isValid = _verifyAttestation(_digest, _sigs);
 
         if (isValid) {
             isValid = _verifyTrustAnchor(_data);
@@ -125,6 +125,7 @@ contract SimpleAttestationVerifier is IAttestationVerifier, Ownable {
             MIN_WITNESS_SIGNATURES
         );
 
+        // Only return isValid if it's true, otherwise library reverts
         return isValid;
     }
 
