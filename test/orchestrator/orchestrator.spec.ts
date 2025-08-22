@@ -14,6 +14,7 @@ import {
   USDCMock,
   PaymentVerifierMock,
   PostIntentHookMock,
+  ReentrantPostIntentHook,
   PostIntentHookRegistry,
   PaymentVerifierRegistry,
   RelayerRegistry,
@@ -1558,6 +1559,152 @@ describe("Orchestrator", () => {
 
           expect(finalOnRamperBalance.sub(initialOnRamperBalance)).to.eq(releasedAmount.sub(fee));
           expect(finalFeeRecipientBalance.sub(initialFeeRecipientBalance)).to.eq(fee);
+        });
+      });
+    });
+
+    describe("when a malicious hook attempts reentrancy", async () => {
+      let reentrantHook: ReentrantPostIntentHook;
+      let maliciousIntentHash: string;
+
+      beforeEach(async () => {
+        // Deploy the malicious reentrancy hook
+        reentrantHook = await deployer.deployReentrantPostIntentHook(
+          usdcToken.address,
+          orchestrator.address
+        );
+
+        // Whitelist the malicious hook (simulating it passed review)
+        await postIntentHookRegistry.addPostIntentHook(reentrantHook.address);
+
+        // Cancel existing intent and create new one with malicious hook
+        await orchestrator.connect(onRamper.wallet).cancelIntent(intentHash);
+
+        // Create intent with the malicious hook
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        const signatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
+        const gatingServiceSignature = await generateGatingServiceSignature(
+          gatingService,
+          orchestrator.address,
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          venmoPaymentMethod,
+          Currency.USD,
+          depositConversionRate,
+          chainId.toString(),
+          signatureExpiration
+        );
+
+        const params = await createSignalIntentParams(
+          orchestrator.address,
+          escrow.address,
+          ZERO,
+          usdc(50),
+          onRamper.address,
+          venmoPaymentMethod,
+          Currency.USD,
+          depositConversionRate,
+          ADDRESS_ZERO,
+          ZERO,
+          null,
+          chainId.toString(),
+          reentrantHook.address,  // Use malicious hook
+          "0x",
+          signatureExpiration
+        );
+        params.gatingServiceSignature = gatingServiceSignature;
+
+        await orchestrator.connect(onRamper.wallet).signalIntent(params);
+        maliciousIntentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
+        currentIntentCounter++;
+
+        // Prepare fulfill params for the reentrancy attempt
+        const currentTimestamp2 = await blockchain.getCurrentTimestamp();
+        const fulfillProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
+          [usdc(50), currentTimestamp2, payeeDetails, Currency.USD, maliciousIntentHash]
+        );
+
+        // Store params in the malicious hook for reentrancy attempt
+        await reentrantHook.setFulfillParams(
+          fulfillProof,
+          maliciousIntentHash,
+          "0x",
+          "0x"
+        );
+
+        // Update subject parameters for this test
+        subjectProof = fulfillProof;
+        subjectIntentHash = maliciousIntentHash;
+      });
+
+      it("should block reentrancy attempt and emit failed attempt event", async () => {
+        // The transaction succeeds but the reentrancy attempt fails
+        const tx = await subject();
+
+        // Check that the reentrancy attempt was blocked (emitted false)
+        await expect(tx)
+          .to.emit(reentrantHook, "ReentrancyAttempted")
+          .withArgs(false);
+
+        // Verify the main intent was still fulfilled successfully
+        const intent = await orchestrator.getIntent(maliciousIntentHash);
+        expect(intent.owner).to.equal(ADDRESS_ZERO); // Intent was pruned
+
+        // Verify hook was called and attempted reentrancy
+        const attempts = await reentrantHook.getReentrancyAttempts();
+        expect(attempts).to.equal(ONE);
+      });
+
+      it("should complete the original fulfillment despite blocked reentrancy", async () => {
+        const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+        // Execute the transaction
+        const tx = await subject();
+
+        // Verify the reentrancy was attempted but failed
+        await expect(tx)
+          .to.emit(reentrantHook, "ReentrancyAttempted")
+          .withArgs(false);
+
+        // Verify the original intent was fulfilled successfully
+        const finalBalance = await usdcToken.balanceOf(onRamper.address);
+        const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+        expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
+
+        // Verify intent was pruned (successful completion)
+        const intent = await orchestrator.getIntent(maliciousIntentHash);
+        expect(intent.owner).to.equal(ADDRESS_ZERO);
+
+        // Verify deposit state was updated correctly
+        const deposit = await escrow.getDeposit(ZERO);
+        expect(deposit.outstandingIntentAmount).to.equal(ZERO);
+      });
+
+      describe("when reentrancy protection is disabled in hook", async () => {
+        beforeEach(async () => {
+          // Disable reentrancy attempt in hook to test normal execution
+          await reentrantHook.setAttemptReentry(false);
+        });
+
+        it("should execute normally without reentrancy attempt", async () => {
+          const initialBalance = await usdcToken.balanceOf(onRamper.address);
+
+          await subject();
+
+          const finalBalance = await usdcToken.balanceOf(onRamper.address);
+          const releaseAmount = usdc(50).mul(ether(1)).div(ether(1.08));
+          expect(finalBalance.sub(initialBalance)).to.eq(releaseAmount);
+
+          // Verify intent was pruned
+          const intent = await orchestrator.getIntent(maliciousIntentHash);
+          expect(intent.owner).to.equal(ADDRESS_ZERO);
+
+          // Verify hook was called
+          const attempts = await reentrantHook.getReentrancyAttempts();
+          expect(attempts).to.equal(ONE);
         });
       });
     });

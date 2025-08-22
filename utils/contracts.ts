@@ -5,6 +5,7 @@ export {
   ThresholdSigVerifierUtilsMock,
   ClaimVerifierMock,
   PostIntentHookMock,
+  ReentrantPostIntentHook,
   OrchestratorMock,
   Escrow,
   ProtocolViewer,

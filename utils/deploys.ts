@@ -21,14 +21,16 @@ import {
   EscrowRegistry,
   UnifiedPaymentVerifier,
   ThresholdSigVerifierUtilsMock,
-  SimpleAttestationVerifier
+  SimpleAttestationVerifier,
+  ReentrantPostIntentHook
 } from "./contracts";
 import {
   StringConversionUtilsMock__factory,
   USDCMock__factory,
   ClaimVerifierMock__factory,
   PostIntentHookMock__factory,
-  OrchestratorMock__factory
+  OrchestratorMock__factory,
+  ReentrantPostIntentHook__factory
 } from "../typechain/factories/contracts/mocks";
 import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks"
 import {
@@ -187,5 +189,15 @@ export default class DeployHelper {
 
   public async deployThresholdSigVerifierUtilsMock(): Promise<ThresholdSigVerifierUtilsMock> {
     return await new ThresholdSigVerifierUtilsMock__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployReentrantPostIntentHook(
+    usdc: Address,
+    orchestrator: Address
+  ): Promise<ReentrantPostIntentHook> {
+    return await new ReentrantPostIntentHook__factory(this._deployerSigner).deploy(
+      usdc,
+      orchestrator
+    );
   }
 }
