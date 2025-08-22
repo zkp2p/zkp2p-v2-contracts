@@ -9,6 +9,8 @@ import { ThresholdSigVerifierUtils } from "../lib/ThresholdSigVerifierUtils.sol"
  */
 contract ThresholdSigVerifierUtilsMock {
     
+    using ThresholdSigVerifierUtils for bytes32;
+    
     /**
      * @notice Exposes the internal verifyWitnessSignatures function for testing
      */
@@ -22,8 +24,7 @@ contract ThresholdSigVerifierUtilsMock {
         view
         returns (bool)
     {
-        return ThresholdSigVerifierUtils.verifyWitnessSignatures(
-            _messageHash,
+        return _messageHash.verifyWitnessSignatures(
             _signatures,
             _witnesses,
             _reqThreshold

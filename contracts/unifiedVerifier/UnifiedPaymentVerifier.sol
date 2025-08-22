@@ -4,19 +4,20 @@ pragma solidity ^0.8.18;
 import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
-import { IAttestationVerifier } from "./interfaces/IAttestationVerifier.sol";
+import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
 
 /**
  * @title UnifiedPaymentVerifier
- * @notice Verifies payment proofs for multiple payment methods. This verifier is a more generic
- * form of individual payment verifiers (e.g. VenmoVerifier, PayPalVerifier, WiseVerifier). It
- * extends BaseUnifiedPaymentVerifier to support multiple payment methods, each with its own store of
- * currencies, timestamp buffer, and zkTLS provider hashes. It leverages AttestationVerifier to verify
- * the attestation and trust anchors to ensure the integrity of the offchain zkTLS verification and 
- * payment proof transformations that form the standardized payment details this contract accepts.
- * It then verifies the payment details against the provided payment data and returns the payment 
- * verification result back to the Orchestrator.
- * @dev The payment attestation should be signed using the EIP-712 standard.
+ * @notice Verifies payment proofs for multiple payment methods. This is a unified verifier that 
+ * replaces individual payment verifiers (VenmoVerifier, PayPalVerifier, etc.) with a single 
+ * configurable contract.
+ * 
+ * Key features:
+ * - Supports multiple payment methods, each with custom configuration
+ * - Uses AttestationVerifier to validate off-chain zkTLS proofs and transformations
+ * - Ensures trust anchor integrity for off-chain verification processes
+ * - Verifies standardized payment details against provided data
+ * @dev The payment attestation should be signed using the EIP-712 standard
  */
 contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier {
 
@@ -114,7 +115,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);
 
         // Nullify the payment to prevent double-spending
-        // TODO: ADDRESS SCROLL AUDIT CONCERNS
+        // TODO: ADDRESS SCROLL AUDIT FIXES
         _nullifyPayment(paymentDetails.paymentId);
 
         result = _createPaymentVerificationResult(
@@ -220,7 +221,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         
         result = PaymentVerificationResult({
             success: true,
-            intentHash: bytes32(attestation.intentHash),
+            intentHash: attestation.intentHash,
             releaseAmount: releaseAmount
         });
     }

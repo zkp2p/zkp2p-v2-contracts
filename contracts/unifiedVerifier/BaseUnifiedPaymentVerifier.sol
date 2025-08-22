@@ -4,16 +4,20 @@ pragma solidity ^0.8.18;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
-import { IAttestationVerifier } from "./interfaces/IAttestationVerifier.sol";
+import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 
 /**
  * @title BaseUnifiedPaymentVerifier
- * @notice Base contract for unified payment verifier. Stores the payment method configuration (timestamp buffer 
- * and currency codes) and zkTLS provider hashes for a given payment method. Supports multiple zkTLS proof methods.
- * This verifier is a more generic form of BasePaymentVerifier (stores currency and timestamp buffer) and BaseReclaimVerifier 
- * (stores provider hashes). It also supports attestation verification similar to BaseReclaimVerifier.
- * @dev This contract is abstract and must be inherited by a concrete implementation.
+ * @notice Base contract for unified payment verification that manages configuration for multiple payment methods.
+ * 
+ * This contract handles:
+ * - Payment method configuration (timestamp buffers, zkTLS provider hashes)
+ * - zkTLS attestation verification through pluggable attestation verifiers
+ * - Support for multiple zkTLS proofs per payment method
+ * 
+ * @dev This is an abstract contract that must be inherited by concrete implementations.
+ *      It replaces the previous BaseReclaimVerifier with a more flexible architecture.
  */
 abstract contract BaseUnifiedPaymentVerifier is Ownable {
     
@@ -67,7 +71,8 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
      * @notice Initializes base payment verifier
      * @param _orchestrator The orchestrator contract address that will be used to verify payments
      * @param _nullifierRegistry The nullifier registry contract that will be used to prevent double-spends
-     * @param _attestationVerifier The attestation verifier contract that will be used to verify attestation by the attestation service
+     * @param _attestationVerifier The attestation verifier contract that will be used to verify attestation by the
+     * offchain / ZK attestation service
      */
     constructor(
         address _orchestrator,
@@ -82,10 +87,10 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     /* ============ External Functions ============ */
     
     /**
-     * Adds a new payment method with processors and currencies
+     * ONLY OWNER: Adds a new payment method with timestamp buffer and zkTLS provider hashes
      * @param _paymentMethod The payment method hash; Hash the payment method name in lowercase
      * @param _timestampBuffer Payment method-specific timestamp buffer in seconds
-     * @param _providerHashes Array of provider hashes to authorize
+     * @param _providerHashes Array of zkTLS provider hashes to store
      */
     function addPaymentMethod(
         bytes32 _paymentMethod,
@@ -105,7 +110,7 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     }
     
     /**
-     * Removes a payment method and associated configuration
+     * ONLY OWNER: Removes a payment method and associated configuration
      * @param _paymentMethod The payment method to remove
      * @dev Only callable by owner
      */
@@ -132,13 +137,13 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
      * @param _newVerifier The new attestation verifier address
      * @dev Only callable by owner
      */
-    function setAttestationVerifier(IAttestationVerifier _newVerifier) external onlyOwner {
-        require(address(_newVerifier) != address(0), "UPV: Invalid attestation verifier");
-        require(address(_newVerifier) != address(attestationVerifier), "UPV: Same verifier");
-        
+    function setAttestationVerifier(address _newVerifier) external onlyOwner {
         address oldVerifier = address(attestationVerifier);
-        attestationVerifier = _newVerifier;
-        emit AttestationVerifierUpdated(oldVerifier, address(_newVerifier));
+        require(_newVerifier != address(0), "UPV: Invalid attestation verifier");
+        require(_newVerifier != oldVerifier, "UPV: Same verifier");
+        
+        attestationVerifier = IAttestationVerifier(_newVerifier);
+        emit AttestationVerifierUpdated(oldVerifier, _newVerifier);
     }
 
     /**
