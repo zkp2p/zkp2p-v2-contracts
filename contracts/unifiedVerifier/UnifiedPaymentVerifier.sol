@@ -115,8 +115,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);
 
         // Nullify the payment to prevent double-spending
-        // TODO: ADDRESS SCROLL AUDIT FIXES
-        _nullifyPayment(paymentDetails.paymentId);
+        _nullifyPayment(attestation.paymentMethod, paymentDetails.paymentId);
 
         result = _createPaymentVerificationResult(
             _verifyPaymentData,
@@ -201,8 +200,15 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         );
     }
 
-    function _nullifyPayment(bytes32 paymentId) internal {
-        _validateAndAddNullifier(paymentId);
+    /**
+     * Nullifies a payment to prevent double-spending
+     * @dev Creates a unique nullifier by encoding both the payment method and payment ID together.
+     * This prevents collisions where the same payment ID could exist across different payment
+     * methods (e.g., Venmo transaction #123 vs PayPal transaction #123).
+     */
+    function _nullifyPayment(bytes32 paymentMethod, bytes32 paymentId) internal {
+        bytes32 nullifier = keccak256(abi.encodePacked(paymentMethod, paymentId));
+        _validateAndAddNullifier(nullifier);
     }
 
     /**

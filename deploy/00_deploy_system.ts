@@ -114,8 +114,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       PROTOCOL_TAKER_FEE[network],
       PROTOCOL_TAKER_FEE_RECIPIENT[network] != ""
         ? PROTOCOL_TAKER_FEE_RECIPIENT[network]
-        : deployer,
-      PARTIAL_MANUAL_RELEASE_DELAY[network],
+        : deployer
     ],
   });
   console.log("Orchestrator deployed at", orchestrator.address);

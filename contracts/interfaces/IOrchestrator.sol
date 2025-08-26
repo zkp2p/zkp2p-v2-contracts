@@ -97,6 +97,7 @@ interface IOrchestrator {
     
     // Not found errors
     error IntentNotFound(bytes32 intentHash);
+    error PaymentMethodDoesNotExist(bytes32 paymentMethod);
     error PaymentMethodNotSupported(bytes32 paymentMethod);
     error CurrencyNotSupported(bytes32 paymentMethod, bytes32 currency);
     
@@ -140,11 +141,7 @@ interface IOrchestrator {
 
     function fulfillIntent(FulfillIntentParams calldata params) external;
 
-    function releaseFundsToPayer(
-        bytes32 intentHash, 
-        uint256 releaseAmount, 
-        bytes calldata releaseData
-    ) external;
+    function releaseFundsToPayer(bytes32 intentHash) external;
 
     /* ============ External Functions for Escrow ============ */
 

@@ -2,6 +2,7 @@
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -30,6 +31,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     using ECDSA for bytes32;
+    using SafeERC20 for IERC20;
     using SignatureChecker for address;
     using StringArrayUtils for string[];
     using Uint256ArrayUtils for uint256[];
@@ -40,6 +42,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant MAX_REFERRER_FEE = 5e16;             // 5% max referrer fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
+    uint256 internal constant MAX_PAYMENT_METHODS_PER_DEPOSIT = 10; // Maximum payment methods per deposit
+    uint256 internal constant MAX_CURRENCIES_PER_METHOD = 10;       // Maximum currencies per payment method
     
     /* ============ State Variables ============ */
 
@@ -68,13 +72,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => bytes32[]) internal depositIntentHashes;             // Mapping of depositId to array of intentHashes
     mapping(uint256 => mapping(bytes32 => Intent)) internal depositIntents; // Mapping of depositId to intentHash to intent
 
-    uint256 public depositCounter;                                  // Counter for depositIds
+    uint256 public depositCounter;          // Counter for depositIds
     
-    uint256 public makerProtocolFee;                                // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
-    address public makerFeeRecipient;                               // Address that receives maker protocol fees
-    uint256 public dustThreshold;                                   // Amount below which deposits are considered dust and can be closed
-    uint256 public maxIntentsPerDeposit;                            // Maximum active intents per deposit
-    uint256 public intentExpirationPeriod;                          // Time period after which an intent expires
+    uint256 public makerProtocolFee;        // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
+    address public makerFeeRecipient;       // Address that receives maker protocol fees
+    uint256 public dustThreshold;           // Amount below which deposits are considered dust and can be closed
+    uint256 public maxIntentsPerDeposit;    // Maximum active intents per deposit (suggested to keep below 100 to prevent deposit withdraw DOS)
+    uint256 public intentExpirationPeriod;  // Time period after which an intent expires
 
     /* ============ Modifiers ============ */
 
@@ -190,7 +194,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _addPaymentMethodsToDeposit(depositId, _params.paymentMethods, _params.paymentMethodData, _params.currencies);
 
         // Interactions
-        _params.token.transferFrom(msg.sender, address(this), _params.amount);
+        _params.token.safeTransferFrom(msg.sender, address(this), _params.amount);
     }
 
     /**
@@ -230,7 +234,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
         // Interactions
-        deposit.token.transferFrom(msg.sender, address(this), _amount);
+        deposit.token.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -266,7 +270,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
         
         // Interactions
-        deposit.token.transfer(msg.sender, _amount);
+        deposit.token.safeTransfer(msg.sender, _amount);
     }
 
     /**
@@ -311,7 +315,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
         
         // Interactions
-        token.transfer(msg.sender, returnAmount);
+        token.safeTransfer(msg.sender, returnAmount);
     }
 
     /**
@@ -404,6 +408,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to add a new payment verifier and its associated currencies to an existing deposit.
+     * @dev WARNING: Adding excessive payment methods or currencies may cause withdrawal to exceed gas limits. Depositors
+     * can remove entries individually if needed. Recommended: <10 payment methods, <50 currencies each.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethods        The payment methods to add
@@ -458,6 +464,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to add a new currencies to an existing verifier for a deposit.
+     * @dev WARNING: Adding excessive currencies may cause withdrawal to exceed gas limits. Depositors
+     * can remove entries individually if needed. Recommended: <50 currencies per payment method.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method
@@ -546,7 +554,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function pruneExpiredIntents(uint256 _depositId) external {
         _pruneExpiredIntents(deposits[_depositId], _depositId, 0);
     }
-
 
     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
 
@@ -668,8 +675,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         deposit.outstandingIntentAmount -= intent.amount;
+        
+        // If this is a partial release, return the unused portion to remainingDeposits
         if (_transferAmount < intent.amount) {
-            // Return unused funds to remaining deposits (partial release)
             deposit.remainingDeposits += (intent.amount - _transferAmount);
         }
 
@@ -683,7 +691,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         );
 
         // Interactions
-        token.transfer(_to, _transferAmount);
+        token.safeTransfer(_to, _transferAmount);
     }
 
     /* ============ Intent Guardian Only (External Functions) ============ */
@@ -806,14 +814,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice GOVERNANCE ONLY: Pauses deposit creation, intent creation and intent fulfillment functionality for the escrow.
+     * @notice GOVERNANCE ONLY: Pauses deposit modifications and new deposit creation.
+     * 
      * Functionalities that are paused:
-     * - Deposit creation
-     * - Updating conversion rates
-     * TODO: Update this list.
+     * - Deposit creation (createDeposit)
+     * - Adding/removing funds to deposits (addFundsToDeposit, removeFundsFromDeposit)
+     * - Updating deposit parameters (conversion rates, intent ranges, accepting intents state)
+     * - Adding/removing payment methods and currencies
      *
-     * Functionalities that remain unpaused to allow users to retrieve funds in contract:
-     * - Deposit withdrawal
+     * Functionalities that remain unpaused to allow users to retrieve funds:
+     * - Full deposit withdrawal (withdrawDeposit)
+     * - Delegate management (setDepositDelegate, removeDepositDelegate)
+     * - Expired intent pruning (pruneExpiredIntents)
+     * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
+     * - Intent expiry extensions by guardian
+     * - All view functions
      */
     function pauseEscrow() external onlyOwner {
         _pause();
@@ -957,7 +972,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _collectAccruedReferrerFees(_depositId, _deposit);
             
             if (totalRemaining > 0) {
-                _deposit.token.transfer(makerFeeRecipient, totalRemaining);
+                _deposit.token.safeTransfer(makerFeeRecipient, totalRemaining);
                 emit DustCollected(_depositId, totalRemaining, makerFeeRecipient);
             }
             
@@ -971,7 +986,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _collectAccruedMakerFees(uint256 _depositId, Deposit storage _deposit) internal {
         if (_deposit.accruedMakerFees > 0) {
-            _deposit.token.transfer(makerFeeRecipient, _deposit.accruedMakerFees);
+            _deposit.token.safeTransfer(makerFeeRecipient, _deposit.accruedMakerFees);
             emit MakerFeesCollected(_depositId, _deposit.accruedMakerFees, makerFeeRecipient);
         }
     }
@@ -981,7 +996,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function _collectAccruedReferrerFees(uint256 _depositId, Deposit storage _deposit) internal {
         if (_deposit.accruedReferrerFees > 0) {
-            _deposit.token.transfer(_deposit.referrer, _deposit.accruedReferrerFees);
+            _deposit.token.safeTransfer(_deposit.referrer, _deposit.accruedReferrerFees);
             emit ReferrerFeesCollected(_depositId, _deposit.accruedReferrerFees, _deposit.referrer);
         }
     }
@@ -1013,7 +1028,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyMinRate[_depositId][paymentMethod][currencies[j]];
             }
+            delete depositCurrencies[_depositId][paymentMethod];
         }
+        delete depositPaymentMethods[_depositId];
     }
 
     /**
