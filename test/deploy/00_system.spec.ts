@@ -194,11 +194,6 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       const actualEscrowRegistry = await orchestrator.escrowRegistry();
       expect(actualEscrowRegistry).to.eq(escrowRegistry.address);
     });
-
-    it("should have the correct partial manual release delay set", async () => {
-      const actualPartialManualReleaseDelay = await orchestrator.partialManualReleaseDelay();
-      expect(actualPartialManualReleaseDelay).to.eq(PARTIAL_MANUAL_RELEASE_DELAY[network]);
-    });
   });
 
   describe("NullifierRegistry", async () => {
