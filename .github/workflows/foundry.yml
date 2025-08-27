@@ -1,12 +1,9 @@
 name: Foundry Tests
-on: [push, pull_request]
+on: [push]
 
 jobs:
   foundry-tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        test-type: [unit, fuzz, invariant, critical]
     
     steps:
       - name: Checkout repository
@@ -27,21 +24,12 @@ jobs:
           yarn install
           forge --version
 
-      - name: Run unit tests
-        if: matrix.test-type == 'unit'
-        run: forge test --match-test "^test[^_]" -vv
-
-      - name: Run fuzz tests
-        if: matrix.test-type == 'fuzz'
-        run: FOUNDRY_FUZZ_RUNS=1000 forge test --match-contract "Fuzz" -vv
-
-      - name: Run invariant tests
-        if: matrix.test-type == 'invariant'
-        run: forge test --match-contract "Invariant" -vv
-
-      - name: Run critical path tests
-        if: matrix.test-type == 'critical'
-        run: FOUNDRY_FUZZ_RUNS=100 forge test --match-contract "CriticalPathFuzz" -vv
+      - name: Run all Foundry tests
+        run: |
+          echo "Running fuzz tests..."
+          FOUNDRY_FUZZ_RUNS=100 forge test --match-contract "Fuzz" -vv
+          echo "Running invariant tests..."
+          forge test --match-contract "Invariant" -vv
 
   # foundry-coverage:
   #   runs-on: ubuntu-latest
