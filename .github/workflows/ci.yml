@@ -6,12 +6,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Specify node version...
         uses: actions/setup-node@v3
         with:
           node-version: '18.15.0'
       - name: Enable Corepack
         run: corepack enable
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Install Dependencies
         run: yarn install
       - name: Set up env variables...
@@ -26,6 +32,11 @@ jobs:
         run: yarn deploy:localhost
       - name: Test deploy
         run: yarn test:deploy --network localhost
+      - name: Run Foundry tests
+        run: |
+          forge --version
+          forge build
+          yarn test:forge:critical
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
