@@ -17,9 +17,14 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.15.0'
+
       - name: Install dependencies
         run: |
-          forge install
+          yarn install
           forge --version
 
       - name: Run unit tests
@@ -49,8 +54,13 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.15.0'
+
       - name: Install dependencies
-        run: forge install
+        run: yarn install
 
       - name: Run coverage
         run: forge coverage --report lcov
