@@ -42,8 +42,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant MAX_REFERRER_FEE = 5e16;             // 5% max referrer fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
-    uint256 internal constant MAX_PAYMENT_METHODS_PER_DEPOSIT = 10; // Maximum payment methods per deposit
-    uint256 internal constant MAX_CURRENCIES_PER_METHOD = 10;       // Maximum currencies per payment method
     
     /* ============ State Variables ============ */
 
