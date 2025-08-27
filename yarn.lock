@@ -2014,6 +2014,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nomicfoundation/hardhat-foundry@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "@nomicfoundation/hardhat-foundry@npm:1.2.0"
+  dependencies:
+    picocolors: "npm:^1.1.0"
+  peerDependencies:
+    hardhat: ^2.26.0
+  checksum: 10c0/52010a4cd2d4dadd8d5ef13c7f709ef89b9a4372f03900917009f2ab7b8411de75e768a526ac8de8fb2e2128683183e3af63e20c4fc79e4f5e28460d6f69f38f
+  languageName: node
+  linkType: hard
+
 "@nomicfoundation/hardhat-network-helpers@npm:^1.0.8":
   version: 1.0.8
   resolution: "@nomicfoundation/hardhat-network-helpers@npm:1.0.8"
@@ -13361,6 +13372,7 @@ __metadata:
   resolution: "zkp2p-v2-contracts@workspace:."
   dependencies:
     "@nomicfoundation/hardhat-chai-matchers": "npm:^1.0.6"
+    "@nomicfoundation/hardhat-foundry": "npm:^1.2.0"
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.8"
     "@nomicfoundation/hardhat-verify": "npm:^1.1.1"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.2"

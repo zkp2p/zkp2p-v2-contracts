@@ -7,6 +7,7 @@ import 'hardhat-deploy';
 import '@nomiclabs/hardhat-etherscan';
 import '@nomicfoundation/hardhat-chai-matchers'
 import 'hardhat-gas-reporter';
+import '@nomicfoundation/hardhat-foundry';
 
 import { HardhatUserConfig } from "hardhat/config";
 

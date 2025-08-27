@@ -22,3 +22,6 @@ CLAUDE.md
 */*/CLAUDE.md
 */*/*/CLAUDE.md
 docs/ai-context/
+
+out/
+cache_forge/
