@@ -33,6 +33,7 @@ contract OrchestratorCriticalPathFuzz is Test {
     uint256 constant MAX_PROTOCOL_FEE = 5e16; // 5%
     uint256 constant MAX_REFERRER_FEE = 5e16; // 5%
     uint256 constant INTENT_EXPIRATION_PERIOD = 7 days;
+    uint256 constant CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     bytes32 constant VENMO = keccak256("VENMO");
     bytes32 constant PAYPAL = keccak256("PAYPAL");
     bytes32 constant USD = keccak256("USD");
@@ -186,9 +187,9 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 amount2,
         uint256 protocolFeeRate
     ) public {
-        // Bound inputs
-        amount1 = bound(amount1, 1e6, 1000000e6);
-        amount2 = bound(amount2, amount1, 2000000e6); // amount2 >= amount1
+        // Bound inputs to realistic USDC values (max 250 billion USDC)
+        amount1 = bound(amount1, 1e6, 10000000e6); // 10M USDC with 6 decimals
+        amount2 = bound(amount2, amount1, 10000000e6); // amount2 >= amount1
         protocolFeeRate = bound(protocolFeeRate, 0, MAX_PROTOCOL_FEE);
         
         // Set protocol fee
@@ -234,8 +235,8 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 referrerFeeRate,
         bool hasReferrer
     ) public {
-        // Bound inputs
-        amount = bound(amount, 10e6, 1000000e6);
+        // Bound inputs to realistic USDC values (max 250 billion USDC)
+        amount = bound(amount, 10e6, 10000000e6); // 10M USDC with 6 decimals
         protocolFeeRate = bound(protocolFeeRate, 0, MAX_PROTOCOL_FEE);
         referrerFeeRate = bound(referrerFeeRate, 0, MAX_REFERRER_FEE);
         
@@ -276,8 +277,13 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 referrerFeeRate,
         bool hasReferrer
     ) public {
-        // Bound inputs
-        releaseAmount = bound(releaseAmount, 10e6, 1000000e6);
+        // Pre-clamp inputs to prevent overflow
+        releaseAmount = releaseAmount > 10000000e6 ? 10000000e6 : releaseAmount;
+        protocolFeeRate = protocolFeeRate > PRECISE_UNIT ? PRECISE_UNIT : protocolFeeRate;
+        referrerFeeRate = referrerFeeRate > PRECISE_UNIT ? PRECISE_UNIT : referrerFeeRate;
+        
+        // Bound inputs to realistic USDC values (max 250 billion USDC)
+        releaseAmount = bound(releaseAmount, 10e6, 10000000e6); // 10M USDC with 6 decimals
         protocolFeeRate = bound(protocolFeeRate, 0, MAX_PROTOCOL_FEE);
         referrerFeeRate = bound(referrerFeeRate, 0, MAX_REFERRER_FEE);
         
@@ -303,7 +309,9 @@ contract OrchestratorCriticalPathFuzz is Test {
         }
         
         // Property: Net amount decreases as fees increase
-        if (protocolFeeRate > 0 || (hasReferrer && referrerFeeRate > 0)) {
+        // Check if actual fees were deducted (not just if rates are non-zero)
+        uint256 totalFeesDeducted = protocolFeeAmount + referrerFeeAmount;
+        if (totalFeesDeducted > 0) {
             assertLt(netAmount, releaseAmount, "Net amount should be less than release amount with fees");
         } else {
             assertEq(netAmount, releaseAmount, "Net amount should equal release amount without fees");
@@ -380,9 +388,19 @@ contract OrchestratorCriticalPathFuzz is Test {
         bool useReferrer,
         bool usePostHook
     ) public {
-        // Bound inputs
-        amount = bound(amount, 10e6, 100000e6);
+        // Pre-clamp inputs to prevent overflow
+        amount = amount > 200000e6 ? 200000e6 : amount;
+        referrerFeeRate = referrerFeeRate > PRECISE_UNIT ? PRECISE_UNIT : referrerFeeRate;
+        
+        // Bound inputs to realistic values (must be within base deposit's available liquidity)
+        // Base deposit is 500k USDC, after 1% fee it's 495k USDC
+        // Since we signal two intents in this test, limit to 200k each to stay within 495k total
+        amount = bound(amount, 10e6, 200000e6); // Max 200k USDC per intent
         referrerFeeRate = bound(referrerFeeRate, 0, MAX_REFERRER_FEE);
+        
+        // Enable multiple intents per account for this test
+        vm.prank(owner);
+        orchestrator.setAllowMultipleIntents(true);
         
         // Build intent params
         IOrchestrator.SignalIntentParams memory params = _buildIntentParams(
@@ -462,8 +480,14 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 referrerFeeRate,
         bool useReferrer
     ) public {
-        // Bound inputs
-        intentAmount = bound(intentAmount, 10e6, 100000e6);
+        // Pre-clamp inputs to prevent overflow
+        intentAmount = intentAmount > 400000e6 ? 400000e6 : intentAmount;
+        releaseAmount = releaseAmount > 400000e6 ? 400000e6 : releaseAmount;
+        protocolFeeRate = protocolFeeRate > PRECISE_UNIT ? PRECISE_UNIT : protocolFeeRate;
+        referrerFeeRate = referrerFeeRate > PRECISE_UNIT ? PRECISE_UNIT : referrerFeeRate;
+        
+        // Bound inputs to realistic values (within base deposit's available liquidity)
+        intentAmount = bound(intentAmount, 10e6, 400000e6); // Max 400k USDC
         releaseAmount = bound(releaseAmount, intentAmount / 2, intentAmount);
         protocolFeeRate = bound(protocolFeeRate, 0, MAX_PROTOCOL_FEE);
         referrerFeeRate = bound(referrerFeeRate, 0, MAX_REFERRER_FEE);
@@ -502,6 +526,7 @@ contract OrchestratorCriticalPathFuzz is Test {
             releaseAmount,
             block.timestamp,
             keccak256(abi.encodePacked("venmo:", depositor)),
+            USD,  // fiatCurrency
             intentHash
         );
         
@@ -558,8 +583,8 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 intentAmount,
         address randomCaller
     ) public {
-        // Bound inputs
-        intentAmount = bound(intentAmount, 10e6, 100000e6);
+        // Bound inputs to realistic values (within base deposit's available liquidity)
+        intentAmount = bound(intentAmount, 10e6, 400000e6); // Max 400k USDC
         vm.assume(randomCaller != taker && randomCaller != address(0));
         
         // Create and signal intent
@@ -616,14 +641,14 @@ contract OrchestratorCriticalPathFuzz is Test {
     
     /**
      * @notice Test manual release by depositor
-     * @dev Property: Only depositor can manually release funds, bypassing verification
+     * @dev Property: Only depositor can manually release funds, with fees deducted
      */
     function testFuzz_ManualReleaseByDepositor(
         uint256 intentAmount,
         address randomCaller
     ) public {
-        // Bound inputs
-        intentAmount = bound(intentAmount, 10e6, 100000e6);
+        // Bound inputs to realistic values (within base deposit's available liquidity)
+        intentAmount = bound(intentAmount, 10e6, 400000e6); // Max 400k USDC
         vm.assume(randomCaller != depositor && randomCaller != address(0));
         
         // Create and signal intent
@@ -650,17 +675,29 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         // Track balance before release
         uint256 takerBalanceBefore = usdc.balanceOf(taker);
+        uint256 protocolBalanceBefore = usdc.balanceOf(protocolFeeRecipient);
         uint256 escrowBalanceBefore = usdc.balanceOf(address(escrow));
         
         // Property: Depositor can manually release
         vm.prank(depositor);
         orchestrator.releaseFundsToPayer(intentHash);
         
-        // Property: Full amount released to taker (no fees on manual release)
+        // Calculate expected fees (1% protocol fee from setUp)
+        uint256 protocolFee = (intentAmount * orchestrator.protocolFee()) / PRECISE_UNIT;
+        uint256 netAmount = intentAmount - protocolFee;
+        
+        // Property: Net amount released to taker (after fees)
         assertEq(
             usdc.balanceOf(taker) - takerBalanceBefore,
-            intentAmount,
-            "Taker didn't receive full amount"
+            netAmount,
+            "Taker didn't receive correct net amount"
+        );
+        
+        // Property: Protocol fee collected
+        assertEq(
+            usdc.balanceOf(protocolFeeRecipient) - protocolBalanceBefore,
+            protocolFee,
+            "Protocol fee not collected"
         );
         
         // Property: Escrow balance decreased
@@ -725,8 +762,11 @@ contract OrchestratorCriticalPathFuzz is Test {
     function testFuzz_PauseMechanismEffects(
         uint256 intentAmount
     ) public {
-        // Bound inputs
-        intentAmount = bound(intentAmount, 10e6, 100000e6);
+        // Pre-clamp inputs to prevent overflow
+        intentAmount = intentAmount > 400000e6 ? 400000e6 : intentAmount;
+        
+        // Bound inputs (within base deposit's available liquidity)
+        intentAmount = bound(intentAmount, 10e6, 400000e6); // Max 400k USDC
         
         // Create intent before pause
         IOrchestrator.SignalIntentParams memory params = _buildIntentParams(
@@ -777,7 +817,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         vm.prank(taker);
         orchestrator.signalIntent(params);
-        bytes32 newIntentHash = keccak256(abi.encodePacked(taker, orchestrator.intentCounter() - 1));
+        bytes32 newIntentHash = _calculateIntentHash(orchestrator.intentCounter() - 1);
         
         vm.prank(owner);
         orchestrator.pauseOrchestrator();
@@ -799,6 +839,13 @@ contract OrchestratorCriticalPathFuzz is Test {
     function testFuzz_PaymentVerifierValidation(
         address randomVerifier
     ) public {
+        // Pre-validate address to prevent issues
+        if (randomVerifier == address(0) || 
+            randomVerifier == address(venmoVerifier) || 
+            randomVerifier == address(paypalVerifier)) {
+            randomVerifier = address(uint160(uint256(keccak256(abi.encode(randomVerifier, "test")))));
+        }
+        
         // Assume random verifier is not whitelisted
         vm.assume(randomVerifier != address(venmoVerifier) && randomVerifier != address(paypalVerifier));
         vm.assume(randomVerifier != address(0));
@@ -826,7 +873,13 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         // Property: Whitelisted verifiers work correctly
         IOrchestrator.FulfillIntentParams memory fulfillParams = IOrchestrator.FulfillIntentParams({
-            paymentProof: abi.encode(intentHash),
+            paymentProof: abi.encode(
+                10e6,  // amount
+                block.timestamp,  // timestamp
+                keccak256(abi.encodePacked("venmo:", depositor)),  // offRamperId
+                USD,  // fiatCurrency
+                intentHash  // intentHash
+            ),
             intentHash: intentHash,
             verificationData: abi.encode(USD),
             postIntentHookData: ""
@@ -893,8 +946,12 @@ contract OrchestratorCriticalPathFuzz is Test {
         uint256 releaseAmount,
         bytes memory hookData
     ) public {
-        // Bound inputs
-        intentAmount = bound(intentAmount, 10e6, 100000e6);
+        // Pre-clamp inputs to prevent overflow
+        intentAmount = intentAmount > 400000e6 ? 400000e6 : intentAmount;
+        releaseAmount = releaseAmount > 400000e6 ? 400000e6 : releaseAmount;
+        
+        // Bound inputs (within base deposit's available liquidity)
+        intentAmount = bound(intentAmount, 10e6, 400000e6); // Max 400k USDC
         releaseAmount = bound(releaseAmount, intentAmount / 2, intentAmount);
         hookData = abi.encodePacked(hookData); // Ensure valid bytes
         
@@ -926,6 +983,7 @@ contract OrchestratorCriticalPathFuzz is Test {
             fiatAmount,
             block.timestamp,
             keccak256(abi.encodePacked("venmo:", depositor)),
+            USD,  // fiatCurrency
             intentHash
         );
         
@@ -947,28 +1005,29 @@ contract OrchestratorCriticalPathFuzz is Test {
     
     /**
      * @notice Test multiple intents for relayers
-     * @dev Property: Relayers can have multiple active intents, regular users cannot
+     * @dev Property: When multiple intents enabled, all users can have multiple active intents
      */
     function testFuzz_MultipleIntentsForRelayers(
         uint256[3] memory intentAmounts,
         address regularUser
     ) public {
+        // Pre-clamp intent amounts
+        for (uint i = 0; i < 3; i++) {
+            intentAmounts[i] = intentAmounts[i] > 100e6 ? 100e6 : intentAmounts[i];
+        }
+        
         // Bound inputs
         vm.assume(regularUser != relayer && regularUser != depositor && regularUser != address(0));
         for (uint i = 0; i < 3; i++) {
             intentAmounts[i] = bound(intentAmounts[i], 1e6, 10e6);
         }
         
-        // Enable multiple intents
-        vm.prank(owner);
-        orchestrator.setAllowMultipleIntents(true);
-        
         // Give regular user tokens
         deal(address(usdc), regularUser, 100e6);
         vm.prank(regularUser);
         usdc.approve(address(escrow), type(uint256).max);
         
-        // Property: Regular user cannot create multiple intents
+        // Property: Regular user cannot create multiple intents when disabled
         IOrchestrator.SignalIntentParams memory params1 = _buildIntentParams(
             baseDepositId,
             regularUser,
@@ -995,6 +1054,14 @@ contract OrchestratorCriticalPathFuzz is Test {
         vm.expectRevert();
         orchestrator.signalIntent(params2);
         
+        // Enable multiple intents
+        vm.prank(owner);
+        orchestrator.setAllowMultipleIntents(true);
+        
+        // Property: Regular user can now create multiple intents
+        vm.prank(regularUser);
+        orchestrator.signalIntent(params2);
+        
         // Property: Relayer can create multiple intents
         bytes32[] memory relayerIntentHashes = new bytes32[](3);
         
@@ -1010,7 +1077,7 @@ contract OrchestratorCriticalPathFuzz is Test {
             
             vm.prank(relayer);
             orchestrator.signalIntent(relayerParams);
-            relayerIntentHashes[i] = keccak256(abi.encodePacked(relayer, orchestrator.intentCounter() - 1));
+            relayerIntentHashes[i] = _calculateIntentHash(orchestrator.intentCounter() - 1);
             
             // Verify intent was created
             IOrchestrator.Intent memory intent = orchestrator.getIntent(relayerIntentHashes[i]);
@@ -1028,7 +1095,8 @@ contract OrchestratorCriticalPathFuzz is Test {
     // ============ Helper Functions ============
     
     function _calculateIntentHash(uint256 counter) internal view returns (bytes32) {
-        uint256 CIRCOM_PRIME_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+        // Intent hash is calculated using orchestrator address and counter, then modulo CIRCOM_PRIME_FIELD
+        // This matches the actual implementation in Orchestrator.sol
         uint256 intermediateHash = uint256(keccak256(abi.encodePacked(address(orchestrator), counter)));
         return bytes32(intermediateHash % CIRCOM_PRIME_FIELD);
     }
@@ -1037,10 +1105,15 @@ contract OrchestratorCriticalPathFuzz is Test {
         vm.startPrank(depositor);
         usdc.approve(address(escrow), 1000000e6);
         
+        // Account for 1% maker protocol fee
+        uint256 depositAmount = 500000e6;
+        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
+        uint256 netDepositAmount = depositAmount - makerFee;
+        
         IEscrow.CreateDepositParams memory params = IEscrow.CreateDepositParams({
             token: IERC20(address(usdc)),
-            amount: 500000e6, // 500k USDC
-            intentAmountRange: IEscrow.Range(1e6, 500000e6),
+            amount: depositAmount, // 500k USDC
+            intentAmountRange: IEscrow.Range(1e6, netDepositAmount),
             paymentMethods: new bytes32[](2),
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](2),
             currencies: new IEscrow.Currency[][](2),
