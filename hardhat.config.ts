@@ -7,7 +7,14 @@ import 'hardhat-deploy';
 import '@nomiclabs/hardhat-etherscan';
 import '@nomicfoundation/hardhat-chai-matchers'
 import 'hardhat-gas-reporter';
-import '@nomicfoundation/hardhat-foundry';
+
+// Conditionally load hardhat-foundry only if Foundry is installed
+try {
+  require('child_process').execSync('which forge', { stdio: 'ignore' });
+  require('@nomicfoundation/hardhat-foundry');
+} catch {
+  // Foundry not installed, skip loading the plugin
+}
 
 import { HardhatUserConfig } from "hardhat/config";
 
