@@ -164,7 +164,7 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 amount2,
         uint256 makerFee,
         uint256 referrerFee
-    ) public {
+    ) public pure {
         // Bound inputs to realistic USDC values (max 10 million USDC)
         amount1 = bound(amount1, 1e6, 10000000e6); // 10M USDC with 6 decimals
         // Ensure amount2 > amount1 without overflow
@@ -206,7 +206,7 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 amount,
         uint256 makerFee,
         uint256 referrerFee
-    ) public {
+    ) public pure {
         // Bound inputs
         amount = bound(amount, 1e6, type(uint128).max);
         makerFee = bound(makerFee, 0, MAX_MAKER_FEE);
@@ -236,7 +236,7 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 amount,
         uint256 makerFee,
         uint256 referrerFee
-    ) public {
+    ) public pure {
         // Bound inputs to avoid overflow
         amount = bound(amount, 1e6, type(uint128).max);
         makerFee = bound(makerFee, 0, MAX_MAKER_FEE);
@@ -271,7 +271,7 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 cryptoAmount,
         uint256 rate1,
         uint256 rate2
-    ) public {
+    ) public pure {
         // Bound inputs
         cryptoAmount = bound(cryptoAmount, 1e6, 1000000e6);
         rate1 = bound(rate1, 1e17, 10e18); // 0.1 to 10
@@ -297,7 +297,7 @@ contract EscrowCriticalPathFuzz is Test {
     function testFuzz_ConversionRatePrecision(
         uint256 cryptoAmount,
         uint256 conversionRate
-    ) public {
+    ) public pure {
         // Bound inputs to realistic values
         // Max USDC: 10 million (10000000e6 with 6 decimals)
         // Conversion rates: 0.01 to 100 (1e16 to 100e18)

@@ -974,7 +974,6 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         // Property: Hook receives correct net amount
         uint256 protocolFee = (releaseAmount * orchestrator.protocolFee()) / PRECISE_UNIT;
-        uint256 expectedNetAmount = releaseAmount - protocolFee;
         
         // Fulfill intent with hook data
         // Encode payment proof that results in desired release amount
