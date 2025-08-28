@@ -10,6 +10,7 @@ import {
   PaymentVerifierMock,
   VenmoReclaimVerifier,
   RevolutReclaimVerifier,
+  RevolutApiVerifier,
   NullifierRegistry,
   BasePaymentVerifier,
   StringConversionUtilsMock,
@@ -40,7 +41,7 @@ import { ManagedKeyHashAdapterV2__factory } from "../typechain/factories/contrac
 import { Quoter__factory } from "../typechain/factories/contracts/periphery"
 import { Escrow__factory } from "../typechain/factories/contracts/index";
 import { VenmoReclaimVerifier__factory, ZelleBaseVerifier__factory } from "../typechain/factories/contracts/verifiers";
-import { RevolutReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
+import { RevolutReclaimVerifier__factory, RevolutApiVerifier__factory } from "../typechain/factories/contracts/verifiers";
 import { BasePaymentVerifier__factory } from "../typechain/factories/contracts/verifiers/BaseVerifiers";
 import { CashappReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers/CashappReclaimVerifeir.sol";
 import { WiseReclaimVerifier__factory } from "../typechain/factories/contracts/verifiers";
@@ -146,6 +147,24 @@ export default class DeployHelper {
       this._deployerSigner
     ).deploy(
       ramp,
+      nullifierRegistry,
+      timestampBuffer,
+      currencies,
+      providerHashes
+    );
+  }
+
+  public async deployRevolutApiVerifier(
+    escrow: Address,
+    nullifierRegistry: Address,
+    timestampBuffer: BigNumber,
+    currencies: string[],
+    providerHashes: string[]
+  ): Promise<RevolutApiVerifier> {
+    return await new RevolutApiVerifier__factory(
+      this._deployerSigner
+    ).deploy(
+      escrow,
       nullifierRegistry,
       timestampBuffer,
       currencies,
