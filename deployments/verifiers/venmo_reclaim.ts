@@ -25,7 +25,6 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": `"id":"(?<receiverId>[^"]+)"`,
-            "hash": true
           },
           {
             "type": "regex",

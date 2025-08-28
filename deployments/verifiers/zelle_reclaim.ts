@@ -30,7 +30,7 @@ export const getZelleCitiReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": "\"partyToken\":\"(?<partyToken>[^\"]+)\"",
-            "hash": true
+
           }
         ],
         responseRedactions: [
@@ -143,7 +143,6 @@ export const getZelleBoAReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": "\"aliasToken\":\"(?<aliasToken>[^\"]+)\"",
-            "hash": true
           }
         ],
         responseRedactions: [

@@ -11,6 +11,8 @@ import '@nomicfoundation/hardhat-foundry';
 
 import { HardhatUserConfig } from "hardhat/config";
 
+import "./tasks/etherscanVerifyWithDelay";
+
 
 dotenv.config();
 
@@ -52,56 +54,26 @@ const config: HardhatUserConfig = {
         }
       },
     },
-    sepolia: {
-      url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
-      // @ts-ignore
-      accounts: [
-        `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
-      ],
-      gasPrice: 100000000000, // 300 gwei
-      gas: 8000000, // 8 million gas limit
-      verify: {
-        etherscan: {
-          apiKey: process.env.ETHERSCAN_KEY
-        }
-      },
-    },
     base_sepolia: {
       url: "https://base-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
       // @ts-ignore
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
-      ],
-      verify: {
-        etherscan: {
-          apiKey: process.env.BASESCAN_API_KEY
-        }
-      },
+      ]
     },
     goerli: {
       url: "https://goerli.infura.io/v3/" + process.env.INFURA_TOKEN,
       // @ts-ignore
       accounts: [
         `0x${process.env.TESTNET_DEPLOY_PRIVATE_KEY}`,
-      ],
-      verify: {
-        etherscan: {
-          apiKey: process.env.ETHERSCAN_KEY
-        }
-      },
+      ]
     },
     base: {
       url: "https://base-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
       // @ts-ignore
       accounts: [
         `0x${process.env.BASE_DEPLOY_PRIVATE_KEY}`,
-      ],
-      verify: {
-        etherscan: {
-          apiUrl: "https://api.basescan.org/",
-          apiKey: process.env.BASESCAN_API_KEY
-        }
-      },
+      ]
     },
   },
   // @ts-ignore
@@ -113,6 +85,31 @@ const config: HardhatUserConfig = {
     enabled: false,
     reportPureAndViewMethods: true,
     showMethodSig: true,
+  },
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_KEY || "",
+      base: process.env.BASESCAN_API_KEY || "",
+      baseSepolia: process.env.BASESCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org"
+        }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      }
+    ]
   },
   paths: {
     sources: "./contracts",

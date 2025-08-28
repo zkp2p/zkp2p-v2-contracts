@@ -33,7 +33,6 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": `"username":"(?<username>[^"]+)"`,
-            "hash": true
           },
         ],
         responseRedactions: [

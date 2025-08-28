@@ -14,7 +14,6 @@ export const getPaypalReclaimProviderHashes = async (
         {
           "type": "regex",
           "value": "\"email\":\"(?<recvId>[^\"]+)\"",
-          "hash": true
         },
         {
           "type": "regex",

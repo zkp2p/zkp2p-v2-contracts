@@ -25,7 +25,6 @@ export const getCashappReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": `"cashtag":"(?<receiverId>[^"]+)"`,
-            "hash": true
           },
           {
             "type": "regex",
