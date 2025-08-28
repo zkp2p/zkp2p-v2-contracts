@@ -24,12 +24,14 @@ jobs:
         run: yarn chain &
         env:
           PORT: 8545
-      - name: Run tests with coverage
-        run: yarn coverage
+      - name: Run tests
+        run: yarn test
       - name: Check deploy
         run: yarn deploy:localhost
       - name: Test deploy
         run: yarn test:deploy --network localhost
+      - name: Run coverage
+        run: yarn coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
