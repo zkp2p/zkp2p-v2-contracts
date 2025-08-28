@@ -2,7 +2,6 @@
 
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
-import { StringConversionUtils } from "../lib/StringConversionUtils.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,8 +9,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 pragma solidity ^0.8.18;
 
 contract PaymentVerifierMock is IPaymentVerifier {
-
-    using StringConversionUtils for string;
 
     struct PaymentDetails {
         uint256 amount;
