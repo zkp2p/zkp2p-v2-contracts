@@ -6368,7 +6368,7 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0x3c70cf961Bc558f8F7351B19dB89db4eCbCf3Dc9",
+      "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
       "abi": [
         {
           "inputs": [
