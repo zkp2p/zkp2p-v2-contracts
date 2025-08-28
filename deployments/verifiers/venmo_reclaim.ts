@@ -29,7 +29,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": `"subType":"none"`, // This is to prevent business payments which charge 2% fees
+            "value": `"subType":"(none|business_profile)"`
           },
         ],
         responseRedactions: [
