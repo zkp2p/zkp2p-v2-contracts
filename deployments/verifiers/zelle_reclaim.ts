@@ -29,7 +29,7 @@ export const getZelleCitiReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": "\"partyToken\":\"(?<partyToken>[^\"]+)\"",
+            "value": "\"partyToken\":\"(?<partyToken>[^\"]+)\""
 
           }
         ],
@@ -110,7 +110,21 @@ export const getZelleChaseReclaimProviderHashes = async (length: number) => {
     hashes.push(listHashes);
   }
 
-  const detailsHash = "0x0f50cfe682d82acfcff1140cfca303d627a9d468764cfa401611d476695ce6cd";
+  const detailsHash = hashProviderParams({
+    url: "https://secure.chase.com/svc/rr/payments/secure/v1/quickpay/payment/activity/detail/list",
+    method: "POST",
+    responseMatches: [
+      {
+        "type": "regex",
+        "value": "\"recipientEmail\":\"(?<recipientEmail>[^\"]+)\""
+      }
+    ],
+    responseRedactions: [
+      {
+        "jsonPath": "$.recipientEmail"
+      }
+    ]
+  });
   hashes.push(detailsHash);
 
   return hashes;
@@ -142,7 +156,7 @@ export const getZelleBoAReclaimProviderHashes = async (length: number) => {
           },
           {
             "type": "regex",
-            "value": "\"aliasToken\":\"(?<aliasToken>[^\"]+)\"",
+            "value": "\"aliasToken\":\"(?<aliasToken>[^\"]+)\""
           }
         ],
         responseRedactions: [
