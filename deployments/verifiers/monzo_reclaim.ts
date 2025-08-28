@@ -22,7 +22,6 @@ export const getMonzoReclaimProviderHashes = async (
         {
           "type": "regex",
           "value": "\"user_id\":\"(?<userId>[^\"]+)\"",
-          "hash": true
         },
         {
           "type": "regex",

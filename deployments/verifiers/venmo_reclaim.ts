@@ -9,6 +9,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
       {
         url: "https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",
@@ -25,11 +26,10 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": `"id":"(?<receiverId>[^"]+)"`,
-            "hash": true
           },
           {
             "type": "regex",
-            "value": `"subType":"none"`, // This is to prevent business payments which charge 2% fees
+            "value": `"subType":"(none|business_profile)"`
           },
         ],
         responseRedactions: [

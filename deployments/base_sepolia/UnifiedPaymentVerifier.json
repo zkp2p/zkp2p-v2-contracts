@@ -1,0 +1,801 @@
+{
+  "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_escrow",
+          "type": "address"
+        },
+        {
+          "internalType": "contract INullifierRegistry",
+          "name": "_nullifierRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IAttestationVerifier",
+          "name": "_attestationVerifier",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "oldVerifier",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newVerifier",
+          "type": "address"
+        }
+      ],
+      "name": "AttestationVerifierUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestampBuffer",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentMethodAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentMethod",
+          "type": "bytes32"
+        }
+      ],
+      "name": "PaymentMethodRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "providerHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ProviderHashAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "providerHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ProviderHashRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldBuffer",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newBuffer",
+          "type": "uint256"
+        }
+      ],
+      "name": "TimestampBufferUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestampBuffer",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_providerHashes",
+          "type": "bytes32[]"
+        }
+      ],
+      "name": "addPaymentMethod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_providerHashes",
+          "type": "bytes32[]"
+        }
+      ],
+      "name": "addProviderHashes",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "attestationVerifier",
+      "outputs": [
+        {
+          "internalType": "contract IAttestationVerifier",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getPaymentMethods",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getProviderHashes",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getTimestampBuffer",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_providerHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isProviderHash",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nullifierRegistry",
+      "outputs": [
+        {
+          "internalType": "contract INullifierRegistry",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "orchestrator",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "paymentMethods",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        }
+      ],
+      "name": "removePaymentMethod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_providerHashes",
+          "type": "bytes32[]"
+        }
+      ],
+      "name": "removeProviderHashes",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newVerifier",
+          "type": "address"
+        }
+      ],
+      "name": "setAttestationVerifier",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_paymentMethod",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_newTimestampBuffer",
+          "type": "uint256"
+        }
+      ],
+      "name": "setTimestampBuffer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "store",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "initialized",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestampBuffer",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes",
+              "name": "paymentProof",
+              "type": "bytes"
+            },
+            {
+              "internalType": "address",
+              "name": "depositToken",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "intentAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "intentTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "payeeDetails",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "fiatCurrency",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "conversionRate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "depositData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct IPaymentVerifier.VerifyPaymentData",
+          "name": "_verifyPaymentData",
+          "type": "tuple"
+        }
+      ],
+      "name": "verifyPayment",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "success",
+              "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "intentHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "releaseAmount",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IPaymentVerifier.PaymentVerificationResult",
+          "name": "result",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xf6efddfed46d3a8962a70e74b2ba6e7df25c52d6fb35e8312d271936294d3c7a",
+  "receipt": {
+    "to": null,
+    "from": "0x84e113087C97Cd80eA9D78983D4B8Ff61ECa1929",
+    "contractAddress": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+    "transactionIndex": 2,
+    "gasUsed": "1716895",
+    "logsBloom": "0x00000000000000000000000000000000000000000000004000800000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000020000020000000000000800000000800000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000001000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x6d64a21480e38b8e7c85bbc9cf5e955d29318ff1bb3cf34b5c80c2a6da2d3649",
+    "transactionHash": "0xf6efddfed46d3a8962a70e74b2ba6e7df25c52d6fb35e8312d271936294d3c7a",
+    "logs": [
+      {
+        "transactionIndex": 2,
+        "blockNumber": 30319210,
+        "transactionHash": "0xf6efddfed46d3a8962a70e74b2ba6e7df25c52d6fb35e8312d271936294d3c7a",
+        "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x00000000000000000000000084e113087c97cd80ea9d78983d4b8ff61eca1929"
+        ],
+        "data": "0x",
+        "logIndex": 6,
+        "blockHash": "0x6d64a21480e38b8e7c85bbc9cf5e955d29318ff1bb3cf34b5c80c2a6da2d3649"
+      }
+    ],
+    "blockNumber": 30319210,
+    "cumulativeGasUsed": "2824963",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x52603a0980AfCC84722db18369768E2e1c906AB8",
+    "0xcb217d660D44EFFD050e6BC0614afB55eB287134",
+    "0xc7e5c933f0eE8A616d15129f3E582bC1910cEf8A"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "a8b7ca78066148b53bbe418be6e5d05f",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.18+commit.87f61d96\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_escrow\",\"type\":\"address\"},{\"internalType\":\"contract INullifierRegistry\",\"name\":\"_nullifierRegistry\",\"type\":\"address\"},{\"internalType\":\"contract IAttestationVerifier\",\"name\":\"_attestationVerifier\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldVerifier\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newVerifier\",\"type\":\"address\"}],\"name\":\"AttestationVerifierUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"paymentMethod\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"timestampBuffer\",\"type\":\"uint256\"}],\"name\":\"PaymentMethodAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"paymentMethod\",\"type\":\"bytes32\"}],\"name\":\"PaymentMethodRemoved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"paymentMethod\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"providerHash\",\"type\":\"bytes32\"}],\"name\":\"ProviderHashAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"paymentMethod\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"providerHash\",\"type\":\"bytes32\"}],\"name\":\"ProviderHashRemoved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"paymentMethod\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldBuffer\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newBuffer\",\"type\":\"uint256\"}],\"name\":\"TimestampBufferUpdated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DOMAIN_SEPARATOR\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_timestampBuffer\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"_providerHashes\",\"type\":\"bytes32[]\"}],\"name\":\"addPaymentMethod\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"_providerHashes\",\"type\":\"bytes32[]\"}],\"name\":\"addProviderHashes\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"attestationVerifier\",\"outputs\":[{\"internalType\":\"contract IAttestationVerifier\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPaymentMethods\",\"outputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"\",\"type\":\"bytes32[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"}],\"name\":\"getProviderHashes\",\"outputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"\",\"type\":\"bytes32[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"}],\"name\":\"getTimestampBuffer\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_providerHash\",\"type\":\"bytes32\"}],\"name\":\"isProviderHash\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nullifierRegistry\",\"outputs\":[{\"internalType\":\"contract INullifierRegistry\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"orchestrator\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"paymentMethods\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"}],\"name\":\"removePaymentMethod\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"_providerHashes\",\"type\":\"bytes32[]\"}],\"name\":\"removeProviderHashes\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_newVerifier\",\"type\":\"address\"}],\"name\":\"setAttestationVerifier\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_paymentMethod\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_newTimestampBuffer\",\"type\":\"uint256\"}],\"name\":\"setTimestampBuffer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"store\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"initialized\",\"type\":\"bool\"},{\"internalType\":\"uint256\",\"name\":\"timestampBuffer\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes\",\"name\":\"paymentProof\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"depositToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"intentAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"intentTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"payeeDetails\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"fiatCurrency\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"conversionRate\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"depositData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"struct IPaymentVerifier.VerifyPaymentData\",\"name\":\"_verifyPaymentData\",\"type\":\"tuple\"}],\"name\":\"verifyPayment\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"internalType\":\"bytes32\",\"name\":\"intentHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"releaseAmount\",\"type\":\"uint256\"}],\"internalType\":\"struct IPaymentVerifier.PaymentVerificationResult\",\"name\":\"result\",\"type\":\"tuple\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"The payment attestation should be signed using the EIP-712 standard\",\"kind\":\"dev\",\"methods\":{\"addPaymentMethod(bytes32,uint256,bytes32[])\":{\"params\":{\"_paymentMethod\":\"The payment method hash; Hash the payment method name in lowercase\",\"_providerHashes\":\"Array of zkTLS provider hashes to store\",\"_timestampBuffer\":\"Payment method-specific timestamp buffer in seconds\"}},\"addProviderHashes(bytes32,bytes32[])\":{\"params\":{\"_paymentMethod\":\"The payment method hash\",\"_providerHashes\":\"Array of provider hashes to add\"}},\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"removePaymentMethod(bytes32)\":{\"details\":\"Only callable by owner\",\"params\":{\"_paymentMethod\":\"The payment method to remove\"}},\"removeProviderHashes(bytes32,bytes32[])\":{\"params\":{\"_paymentMethod\":\"The payment method hash\",\"_providerHashes\":\"Array of provider hashes to remove\"}},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.\"},\"setAttestationVerifier(address)\":{\"details\":\"Only callable by owner\",\"params\":{\"_newVerifier\":\"The new attestation verifier address\"}},\"setTimestampBuffer(bytes32,uint256)\":{\"params\":{\"_newTimestampBuffer\":\"The new timestamp buffer in seconds\",\"_paymentMethod\":\"The payment method hash\"}},\"transferOwnership(address)\":{\"details\":\"Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.\"},\"verifyPayment((bytes,address,uint256,uint256,bytes32,bytes32,uint256,bytes,bytes))\":{\"params\":{\"_verifyPaymentData\":\"Payment proof and intent details required for verification\"},\"returns\":{\"result\":\"The payment verification result containing success status, intent hash, release amount,  payment currency and payment ID\"}}},\"title\":\"UnifiedPaymentVerifier\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"addPaymentMethod(bytes32,uint256,bytes32[])\":{\"notice\":\"ONLY OWNER: Adds a new payment method with timestamp buffer and zkTLS provider hashes\"},\"addProviderHashes(bytes32,bytes32[])\":{\"notice\":\"Batch adds provider hashes for a specific payment method\"},\"removePaymentMethod(bytes32)\":{\"notice\":\"ONLY OWNER: Removes a payment method and associated configuration\"},\"removeProviderHashes(bytes32,bytes32[])\":{\"notice\":\"Batch removes provider hashes for a specific payment method\"},\"setAttestationVerifier(address)\":{\"notice\":\"Updates the attestation verifier contract\"},\"setTimestampBuffer(bytes32,uint256)\":{\"notice\":\"Updates the timestamp buffer for a payment method\"},\"verifyPayment((bytes,address,uint256,uint256,bytes32,bytes32,uint256,bytes,bytes))\":{\"notice\":\"ONLY ORCHESTRATOR: Verifies a standardized payment attestation generated by the attestation service. \"}},\"notice\":\"Verifies payment proofs for multiple payment methods. This is a unified verifier that  replaces individual payment verifiers (VenmoVerifier, PayPalVerifier, etc.) with a single  configurable contract.  Key features: - Supports multiple payment methods, each with custom configuration - Uses AttestationVerifier to validate off-chain zkTLS proofs and transformations - Ensures trust anchor integrity for off-chain verification processes - Verifies standardized payment details against provided data\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/unifiedVerifier/UnifiedPaymentVerifier.sol\":\"UnifiedPaymentVerifier\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/Context.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * By default, the owner account will be the one that deploys the contract. This\\n * can later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the deployer as the initial owner.\\n     */\\n    constructor() {\\n        _transferOwnership(_msgSender());\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        require(owner() == _msgSender(), \\\"Ownable: caller is not the owner\\\");\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby disabling any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        require(newOwner != address(0), \\\"Ownable: new owner is the zero address\\\");\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n}\\n\",\"keccak256\":\"0xba43b97fba0d32eb4254f6a5a297b39a19a247082a02d6e69349e071e2946218\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/Context.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n}\\n\",\"keccak256\":\"0xe2e337e6dde9ef6b680e07338c493ebea1b5fd09b43424112868e9cc1706bca7\",\"license\":\"MIT\"},\"contracts/external/AddressArrayUtils.sol\":{\"content\":\"/*\\n    Copyright 2020 Set Labs Inc.\\n\\n    Licensed under the Apache License, Version 2.0 (the \\\"License\\\");\\n    you may not use this file except in compliance with the License.\\n    You may obtain a copy of the License at\\n\\n    http://www.apache.org/licenses/LICENSE-2.0\\n\\n    Unless required by applicable law or agreed to in writing, software\\n    distributed under the License is distributed on an \\\"AS IS\\\" BASIS,\\n    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\\n    See the License for the specific language governing permissions and\\n    limitations under the License.\\n\\n    SPDX-License-Identifier: MIT\\n*/\\n\\npragma solidity ^0.8.17;\\n\\n/**\\n * @title AddressArrayUtils\\n * @author Set Protocol\\n *\\n * Utility functions to handle Address Arrays\\n *\\n * CHANGELOG:\\n * - 4/21/21: Added validatePairsWithArray methods\\n */\\nlibrary AddressArrayUtils {\\n\\n    uint256 constant internal MAX_INT = 2**256 - 1;\\n\\n    /**\\n     * Finds the index of the first occurrence of the given element.\\n     * @param A The input array to search\\n     * @param a The value to find\\n     * @return Returns (index and isIn) for the first occurrence starting from index 0\\n     */\\n    function indexOf(address[] memory A, address a) internal pure returns (uint256, bool) {\\n        uint256 length = A.length;\\n        for (uint256 i = 0; i < length; i++) {\\n            if (A[i] == a) {\\n                return (i, true);\\n            }\\n        }\\n        return (MAX_INT, false);\\n    }\\n\\n    /**\\n    * Returns true if the value is present in the list. Uses indexOf internally.\\n    * @param A The input array to search\\n    * @param a The value to find\\n    * @return Returns isIn for the first occurrence starting from index 0\\n    */\\n    function contains(address[] memory A, address a) internal pure returns (bool) {\\n        (, bool isIn) = indexOf(A, a);\\n        return isIn;\\n    }\\n\\n    /**\\n    * Returns true if there are 2 elements that are the same in an array\\n    * @param A The input array to search\\n    * @return Returns boolean for the first occurrence of a duplicate\\n    */\\n    function hasDuplicate(address[] memory A) internal pure returns(bool) {\\n        require(A.length > 0, \\\"A is empty\\\");\\n\\n        for (uint256 i = 0; i < A.length - 1; i++) {\\n            address current = A[i];\\n            for (uint256 j = i + 1; j < A.length; j++) {\\n                if (current == A[j]) {\\n                    return true;\\n                }\\n            }\\n        }\\n        return false;\\n    }\\n\\n    /**\\n     * @param A The input array to search\\n     * @param a The address to remove\\n     * @return Returns the array with the object removed.\\n     */\\n    function remove(address[] memory A, address a)\\n        internal\\n        pure\\n        returns (address[] memory)\\n    {\\n        (uint256 index, bool isIn) = indexOf(A, a);\\n        if (!isIn) {\\n            revert(\\\"Address not in array.\\\");\\n        } else {\\n            (address[] memory _A,) = pop(A, index);\\n            return _A;\\n        }\\n    }\\n\\n    /**\\n     * @param A The input array to search\\n     * @param a The address to remove\\n     */\\n    function removeStorage(address[] storage A, address a)\\n        internal\\n    {\\n        (uint256 index, bool isIn) = indexOf(A, a);\\n        if (!isIn) {\\n            revert(\\\"Address not in array.\\\");\\n        } else {\\n            uint256 lastIndex = A.length - 1; // If the array would be empty, the previous line would throw, so no underflow here\\n            if (index != lastIndex) { A[index] = A[lastIndex]; }\\n            A.pop();\\n        }\\n    }\\n\\n    /**\\n    * Removes specified index from array\\n    * @param A The input array to search\\n    * @param index The index to remove\\n    * @return Returns the new array and the removed entry\\n    */\\n    function pop(address[] memory A, uint256 index)\\n        internal\\n        pure\\n        returns (address[] memory, address)\\n    {\\n        uint256 length = A.length;\\n        require(index < A.length, \\\"Index must be < A length\\\");\\n        address[] memory newAddresses = new address[](length - 1);\\n        for (uint256 i = 0; i < index; i++) {\\n            newAddresses[i] = A[i];\\n        }\\n        for (uint256 j = index + 1; j < length; j++) {\\n            newAddresses[j - 1] = A[j];\\n        }\\n        return (newAddresses, A[index]);\\n    }\\n}\\n\",\"keccak256\":\"0x486f1a373f33aa167227600ac2d0bf95b37685413d98a3e745107188f00ae405\",\"license\":\"MIT\"},\"contracts/external/Bytes32ArrayUtils.sol\":{\"content\":\"//SPDX-License-Identifier: MIT\\n\\npragma solidity ^0.8.17;\\n\\n/**\\n * @title Bytes32ArrayUtils\\n * @author ZKP2P\\n *\\n * Fork of Set Protocol's AddressArrayUtils library adapted for usage with bytes32 arrays.\\n */\\nlibrary Bytes32ArrayUtils {\\n\\n    uint256 constant internal MAX_INT = 2**256 - 1;\\n\\n    /**\\n     * Finds the index of the first occurrence of the given element.\\n     * @param A The input array to search\\n     * @param a The value to find\\n     * @return Returns (index and isIn) for the first occurrence starting from index 0\\n     */\\n    function indexOf(bytes32[] memory A, bytes32 a) internal pure returns (uint256, bool) {\\n        uint256 length = A.length;\\n        for (uint256 i = 0; i < length; i++) {\\n            if (A[i] == a) {\\n                return (i, true);\\n            }\\n        }\\n        return (MAX_INT, false);\\n    }\\n\\n    /**\\n    * Returns true if the value is present in the list. Uses indexOf internally.\\n    * @param A The input array to search\\n    * @param a The value to find\\n    * @return Returns isIn for the first occurrence starting from index 0\\n    */\\n    function contains(bytes32[] memory A, bytes32 a) internal pure returns (bool) {\\n        (, bool isIn) = indexOf(A, a);\\n        return isIn;\\n    }\\n\\n    /**\\n    * Returns true if there are 2 elements that are the same in an array\\n    * @param A The input array to search\\n    * @return Returns boolean for the first occurrence of a duplicate\\n    */\\n    function hasDuplicate(bytes32[] memory A) internal pure returns(bool) {\\n        require(A.length > 0, \\\"A is empty\\\");\\n\\n        for (uint256 i = 0; i < A.length - 1; i++) {\\n            bytes32 current = A[i];\\n            for (uint256 j = i + 1; j < A.length; j++) {\\n                if (current == A[j]) {\\n                    return true;\\n                }\\n            }\\n        }\\n        return false;\\n    }\\n\\n    /**\\n     * @param A The input array to search\\n     * @param a The bytes32 to remove\\n     * @return Returns the array with the object removed.\\n     */\\n    function remove(bytes32[] memory A, bytes32 a)\\n        internal\\n        pure\\n        returns (bytes32[] memory)\\n    {\\n        (uint256 index, bool isIn) = indexOf(A, a);\\n        if (!isIn) {\\n            revert(\\\"bytes32 not in array.\\\");\\n        } else {\\n            (bytes32[] memory _A,) = pop(A, index);\\n            return _A;\\n        }\\n    }\\n\\n    /**\\n     * @param A The input array to search\\n     * @param a The bytes32 to remove\\n     */\\n    function removeStorage(bytes32[] storage A, bytes32 a)\\n        internal\\n    {\\n        (uint256 index, bool isIn) = indexOf(A, a);\\n        if (!isIn) {\\n            revert(\\\"bytes32 not in array.\\\");\\n        } else {\\n            uint256 lastIndex = A.length - 1; // If the array would be empty, the previous line would throw, so no underflow here\\n            if (index != lastIndex) { A[index] = A[lastIndex]; }\\n            A.pop();\\n        }\\n    }\\n\\n    /**\\n    * Removes specified index from array\\n    * @param A The input array to search\\n    * @param index The index to remove\\n    * @return Returns the new array and the removed entry\\n    */\\n    function pop(bytes32[] memory A, uint256 index)\\n        internal\\n        pure\\n        returns (bytes32[] memory, bytes32)\\n    {\\n        uint256 length = A.length;\\n        require(index < A.length, \\\"Index must be < A length\\\");\\n        bytes32[] memory newBytes = new bytes32[](length - 1);\\n        for (uint256 i = 0; i < index; i++) {\\n            newBytes[i] = A[i];\\n        }\\n        for (uint256 j = index + 1; j < length; j++) {\\n            newBytes[j - 1] = A[j];\\n        }\\n        return (newBytes, A[index]);\\n    }\\n}\\n\",\"keccak256\":\"0x14d572deda126ff812eb5ab0eed33120e13cc568fd611a4a6bff652f3e8440a8\",\"license\":\"MIT\"},\"contracts/interfaces/IAttestationVerifier.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.18;\\n\\n/**\\n * @title IAttestationVerifier\\n * @notice Interface for verifying attestations from various sources (witnesses, TEE, etc.)\\n */\\ninterface IAttestationVerifier {\\n    /**\\n     * @notice Verifies attestations for a given digest\\n     * @param _digest The message digest to verify (EIP-712 formatted)\\n     * @param _sigs Array of signatures from attestors\\n     * @param _data Verification data containing attestor identities or hints\\n     * @return isValid Returns true if the attestation is valid, false otherwise\\n     */\\n    function verify(\\n        bytes32 _digest,\\n        bytes[] calldata _sigs,\\n        bytes calldata _data\\n    ) external view returns (bool isValid);\\n}\",\"keccak256\":\"0x04c971cef71d95e252a97e1a242adda47bcf2bd63e86f7fd4a2da2a9a1828818\",\"license\":\"MIT\"},\"contracts/interfaces/INullifierRegistry.sol\":{\"content\":\"//SPDX-License-Identifier: MIT\\n\\npragma solidity ^0.8.18;\\n\\ninterface INullifierRegistry {\\n    function addNullifier(bytes32 _nullifier) external;\\n    function isNullified(bytes32 _nullifier) external view returns(bool);\\n}\\n\",\"keccak256\":\"0x107164bc9a320938b513305878163b7fa884da4cdae58d0c8e81bfbb00c97c5e\",\"license\":\"MIT\"},\"contracts/interfaces/IPaymentVerifier.sol\":{\"content\":\"//SPDX-License-Identifier: MIT\\n\\npragma solidity ^0.8.18;\\n\\n\\ninterface IPaymentVerifier {\\n\\n    /* ============ Structs ============ */\\n\\n    struct VerifyPaymentData {\\n        bytes paymentProof;                     // Payment proof\\n        address depositToken;                   // Address of deposit token locked in escrow\\n        uint256 intentAmount;                   // Amount of deposit token that offchain payer wants to take\\n        uint256 intentTimestamp;                // Timestamp at which intent was created. Offchain payment must be made after this timestamp.\\n        bytes32 payeeDetails;                   // Payee details (hash of payee's payment platform ID)\\n        bytes32 fiatCurrency;                   // Fiat currency the offchain payer paid in\\n        uint256 conversionRate;                 // Conversion rate of deposit token to fiat currency\\n        bytes depositData;                      // Additional data provided by the depositor (e.g. witness signatures)\\n        bytes data;                             // Additional data provided by the taker (e.g. currency price etc.)\\n    }\\n\\n    struct PaymentVerificationResult {\\n        bool success;                           // Whether the payment verification succeeded\\n        bytes32 intentHash;                     // The hash of the intent being fulfilled\\n        uint256 releaseAmount;                  // The amount of tokens to release\\n    }\\n\\n    /* ============ External Functions ============ */\\n\\n    function verifyPayment(\\n        VerifyPaymentData calldata _verifyPaymentData\\n    )   \\n        external\\n        returns(PaymentVerificationResult memory result);\\n\\n}\\n\",\"keccak256\":\"0x2d6c2c53c1a49e85d47ac34c57f4ec24d52592c7cf7dc028d4ac750429542ec6\",\"license\":\"MIT\"},\"contracts/unifiedVerifier/BaseUnifiedPaymentVerifier.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.18;\\n\\nimport { Ownable } from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\nimport { AddressArrayUtils } from \\\"../external/AddressArrayUtils.sol\\\";\\nimport { Bytes32ArrayUtils } from \\\"../external/Bytes32ArrayUtils.sol\\\";\\nimport { IAttestationVerifier } from \\\"../interfaces/IAttestationVerifier.sol\\\";\\nimport { INullifierRegistry } from \\\"../interfaces/INullifierRegistry.sol\\\";\\n\\n/**\\n * @title BaseUnifiedPaymentVerifier\\n * @notice Base contract for unified payment verification that manages configuration for multiple payment methods.\\n * \\n * This contract handles:\\n * - Payment method configuration (timestamp buffers, zkTLS provider hashes)\\n * - zkTLS attestation verification through pluggable attestation verifiers\\n * - Support for multiple zkTLS proofs per payment method\\n * \\n * @dev This is an abstract contract that must be inherited by concrete implementations.\\n *      It replaces the previous BaseReclaimVerifier with a more flexible architecture.\\n */\\nabstract contract BaseUnifiedPaymentVerifier is Ownable {\\n    \\n    using AddressArrayUtils for address[];\\n    using Bytes32ArrayUtils for bytes32[];\\n    \\n    /* ============ Constants ============ */\\n\\n    uint256 internal constant PRECISE_UNIT = 1e18;\\n\\n    /* ============ Structs ============ */\\n\\n    struct PaymentMethodStore {\\n        bool initialized;\\n        uint256 timestampBuffer;\\n        mapping(bytes32 => bool) isProviderHash;\\n        bytes32[] providerHashes;\\n    }\\n\\n    /* ============ Events ============ */\\n    \\n    event PaymentMethodAdded(bytes32 indexed paymentMethod, uint256 timestampBuffer);\\n    event PaymentMethodRemoved(bytes32 indexed paymentMethod);\\n    event TimestampBufferUpdated(bytes32 indexed paymentMethod, uint256 oldBuffer, uint256 newBuffer);\\n    event ProviderHashAdded(bytes32 indexed paymentMethod, bytes32 indexed providerHash);\\n    event ProviderHashRemoved(bytes32 indexed paymentMethod, bytes32 indexed providerHash);\\n    event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);\\n\\n    /* ============ State Variables ============ */\\n    \\n    address public immutable orchestrator;\\n    INullifierRegistry public immutable nullifierRegistry;\\n    IAttestationVerifier public attestationVerifier;\\n\\n    bytes32[] public paymentMethods;\\n    mapping(bytes32 => PaymentMethodStore) public store;\\n    \\n    /* ============ Modifiers ============ */\\n\\n    /**\\n     * Modifier to ensure only escrow can call\\n     */\\n    modifier onlyOrchestrator() {\\n        require(msg.sender == orchestrator, \\\"Only orchestrator can call\\\");\\n        _;\\n    }\\n\\n    /* ============ Constructor ============ */\\n    \\n    /**\\n     * @notice Initializes base payment verifier\\n     * @param _orchestrator The orchestrator contract address that will be used to verify payments\\n     * @param _nullifierRegistry The nullifier registry contract that will be used to prevent double-spends\\n     * @param _attestationVerifier The attestation verifier contract that will be used to verify attestation by the\\n     * offchain / ZK attestation service\\n     */\\n    constructor(\\n        address _orchestrator,\\n        INullifierRegistry _nullifierRegistry,\\n        IAttestationVerifier _attestationVerifier\\n    ) Ownable() {\\n        orchestrator = _orchestrator;\\n        nullifierRegistry = _nullifierRegistry;\\n        attestationVerifier = _attestationVerifier;\\n    }\\n    \\n    /* ============ External Functions ============ */\\n    \\n    /**\\n     * ONLY OWNER: Adds a new payment method with timestamp buffer and zkTLS provider hashes\\n     * @param _paymentMethod The payment method hash; Hash the payment method name in lowercase\\n     * @param _timestampBuffer Payment method-specific timestamp buffer in seconds\\n     * @param _providerHashes Array of zkTLS provider hashes to store\\n     */\\n    function addPaymentMethod(\\n        bytes32 _paymentMethod,\\n        uint256 _timestampBuffer,\\n        bytes32[] calldata _providerHashes\\n    ) external onlyOwner {\\n        require(!store[_paymentMethod].initialized, \\\"UPV: Payment method already exists\\\");\\n        require(_providerHashes.length > 0, \\\"UPV: Invalid length\\\");\\n        \\n        store[_paymentMethod].initialized = true;\\n        store[_paymentMethod].timestampBuffer = _timestampBuffer;\\n        paymentMethods.push(_paymentMethod);\\n        \\n        addProviderHashes(_paymentMethod, _providerHashes);\\n        \\n        emit PaymentMethodAdded(_paymentMethod, _timestampBuffer);\\n    }\\n    \\n    /**\\n     * ONLY OWNER: Removes a payment method and associated configuration\\n     * @param _paymentMethod The payment method to remove\\n     * @dev Only callable by owner\\n     */\\n    function removePaymentMethod(bytes32 _paymentMethod) external onlyOwner {\\n        require(store[_paymentMethod].initialized, \\\"UPV: Payment method does not exist\\\");\\n        \\n        // Remove all provider hashes\\n        bytes32[] memory providerHashes = store[_paymentMethod].providerHashes;\\n        for (uint256 i = 0; i < providerHashes.length; i++) {\\n            _removeProviderHash(_paymentMethod, providerHashes[i]);\\n        }\\n        \\n        // Remove payment method config\\n        delete store[_paymentMethod];\\n        \\n        // Remove from paymentMethods array\\n        paymentMethods.removeStorage(_paymentMethod);\\n        \\n        emit PaymentMethodRemoved(_paymentMethod);\\n    }\\n    \\n    /**\\n     * @notice Updates the attestation verifier contract\\n     * @param _newVerifier The new attestation verifier address\\n     * @dev Only callable by owner\\n     */\\n    function setAttestationVerifier(address _newVerifier) external onlyOwner {\\n        address oldVerifier = address(attestationVerifier);\\n        require(_newVerifier != address(0), \\\"UPV: Invalid attestation verifier\\\");\\n        require(_newVerifier != oldVerifier, \\\"UPV: Same verifier\\\");\\n        \\n        attestationVerifier = IAttestationVerifier(_newVerifier);\\n        emit AttestationVerifierUpdated(oldVerifier, _newVerifier);\\n    }\\n\\n    /**\\n     * Updates the timestamp buffer for a payment method\\n     * @param _paymentMethod The payment method hash\\n     * @param _newTimestampBuffer The new timestamp buffer in seconds\\n     */\\n    function setTimestampBuffer(bytes32 _paymentMethod, uint256 _newTimestampBuffer) external onlyOwner {\\n        require(store[_paymentMethod].initialized, \\\"UPV: Payment method does not exist\\\");\\n        \\n        uint256 oldBuffer = store[_paymentMethod].timestampBuffer;\\n        store[_paymentMethod].timestampBuffer = _newTimestampBuffer;\\n        \\n        emit TimestampBufferUpdated(_paymentMethod, oldBuffer, _newTimestampBuffer);\\n    }\\n                                                                                                               \\n    /**\\n     * Batch adds provider hashes for a specific payment method\\n     * @param _paymentMethod The payment method hash\\n     * @param _providerHashes Array of provider hashes to add\\n     */\\n    function addProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) public onlyOwner {\\n        require(store[_paymentMethod].initialized, \\\"UPV: Payment method does not exist\\\");\\n        require(_providerHashes.length > 0, \\\"UPV: Invalid length\\\");\\n        \\n        for (uint256 i = 0; i < _providerHashes.length; i++) {\\n            _addProviderHash(_paymentMethod, _providerHashes[i]);\\n        }\\n    }\\n    \\n    /**\\n     * Batch removes provider hashes for a specific payment method\\n     * @param _paymentMethod The payment method hash\\n     * @param _providerHashes Array of provider hashes to remove\\n     */\\n    function removeProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) external onlyOwner {\\n        require(_providerHashes.length > 0, \\\"UPV: Invalid length\\\");\\n        \\n        for (uint256 i = 0; i < _providerHashes.length; i++) {\\n            _removeProviderHash(_paymentMethod, _providerHashes[i]);\\n        }\\n    }\\n    \\n    /* ============ View Functions ============ */\\n    \\n    function getPaymentMethods() external view returns (bytes32[] memory) {\\n        return paymentMethods;\\n    }\\n    \\n    function isProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) external view returns (bool) {\\n        return store[_paymentMethod].isProviderHash[_providerHash];\\n    }\\n\\n    function getTimestampBuffer(bytes32 _paymentMethod) external view returns (uint256) {\\n        require(store[_paymentMethod].initialized, \\\"UPV: Payment method does not exist\\\");\\n        return store[_paymentMethod].timestampBuffer;\\n    }\\n    \\n    function getProviderHashes(bytes32 _paymentMethod) external view returns (bytes32[] memory) {\\n        require(store[_paymentMethod].initialized, \\\"UPV: Payment method does not exist\\\");\\n        return store[_paymentMethod].providerHashes;\\n    }\\n    \\n    /* ============ Internal Functions ============ */\\n    \\n    /**\\n     * Validates and adds a nullifier to prevent double-spending\\n     * @param _nullifier The nullifier to add\\n     */\\n    function _validateAndAddNullifier(bytes32 _nullifier) internal {\\n        require(!nullifierRegistry.isNullified(_nullifier), \\\"Nullifier has already been used\\\");\\n        nullifierRegistry.addNullifier(_nullifier);\\n    }\\n\\n    /**\\n     * Gets the payment method store for a given payment method\\n     * @param paymentMethod The payment method to get the store for\\n     * @return _store The payment method store\\n     */\\n    function _getPaymentMethodStore(\\n        bytes32 paymentMethod\\n    ) internal view returns (PaymentMethodStore storage _store) {\\n        _store = store[paymentMethod];\\n\\n        require(_store.initialized, \\\"UPV: Payment method does not exist\\\");\\n        return _store;\\n    }\\n\\n    /**\\n     * Calculates the release amount based on the actual payment amount and conversion rate.\\n     * Caps the release amount at the intent amount.\\n     * NOTES:\\n     * - Assumes that _conversionRate is not zero and is in the same precision as PRECISE_UNIT.\\n     * - Function might overflow if _paymentAmount is very very large.\\n     * \\n     * @param _paymentAmount The actual payment amount.\\n     * @param _conversionRate The conversion rate of the deposit token to the fiat currency.\\n     * @param _intentAmount The max amount of tokens the offchain payer wants to take.\\n     * @return The release amount.\\n     */\\n    function _calculateReleaseAmount(uint256 _paymentAmount, uint256 _conversionRate, uint256 _intentAmount) internal pure returns (uint256) {\\n        // releaseAmount = paymentAmount / conversionRate\\n        uint256 releaseAmount = (_paymentAmount * PRECISE_UNIT) / _conversionRate;\\n        \\n        // Ensure release amount doesn't exceed the intent amount (cap at intent amount)\\n        if (releaseAmount > _intentAmount) {\\n            releaseAmount = _intentAmount;\\n        }\\n\\n        return releaseAmount;\\n    }\\n\\n    /* ============ Helper Internal Functions ============ */\\n\\n    function _addProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {\\n        require(_providerHash != bytes32(0), \\\"UPV: Invalid provider hash\\\");\\n        require(!store[_paymentMethod].isProviderHash[_providerHash], \\\"UPV: Provider hash already exists\\\");\\n\\n        store[_paymentMethod].isProviderHash[_providerHash] = true;\\n        store[_paymentMethod].providerHashes.push(_providerHash);\\n        emit ProviderHashAdded(_paymentMethod, _providerHash);\\n    }\\n\\n    function _removeProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {\\n        require(store[_paymentMethod].isProviderHash[_providerHash], \\\"UPV: Provider hash does not exist\\\");\\n\\n        store[_paymentMethod].isProviderHash[_providerHash] = false;\\n        store[_paymentMethod].providerHashes.removeStorage(_providerHash);\\n        emit ProviderHashRemoved(_paymentMethod, _providerHash);\\n    }\\n\\n}\",\"keccak256\":\"0x7c1302a35fb67cb6c5015995e62a8e6ecfd05d688a34c106440a0606004c1ec4\",\"license\":\"MIT\"},\"contracts/unifiedVerifier/UnifiedPaymentVerifier.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.18;\\n\\nimport { BaseUnifiedPaymentVerifier } from \\\"./BaseUnifiedPaymentVerifier.sol\\\";\\nimport { INullifierRegistry } from \\\"../interfaces/INullifierRegistry.sol\\\";\\nimport { IPaymentVerifier } from \\\"../interfaces/IPaymentVerifier.sol\\\";\\nimport { IAttestationVerifier } from \\\"../interfaces/IAttestationVerifier.sol\\\";\\n\\n/**\\n * @title UnifiedPaymentVerifier\\n * @notice Verifies payment proofs for multiple payment methods. This is a unified verifier that \\n * replaces individual payment verifiers (VenmoVerifier, PayPalVerifier, etc.) with a single \\n * configurable contract.\\n * \\n * Key features:\\n * - Supports multiple payment methods, each with custom configuration\\n * - Uses AttestationVerifier to validate off-chain zkTLS proofs and transformations\\n * - Ensures trust anchor integrity for off-chain verification processes\\n * - Verifies standardized payment details against provided data\\n * @dev The payment attestation should be signed using the EIP-712 standard\\n */\\ncontract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier {\\n\\n    /* ============ Constants ============ */\\n    \\n    // EIP-712 Domain Separator\\n    bytes32 private constant DOMAIN_TYPEHASH = keccak256(\\n        \\\"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)\\\"\\n    );\\n    \\n    // EIP-712 Type Hash for PaymentAttestation\\n    bytes32 private constant PAYMENT_ATTESTATION_TYPEHASH = keccak256(\\n        \\\"PaymentAttestation(bytes32 paymentMethod,bytes32 providerHash,bytes32 intentHash,bytes32 recipientId,uint256 amount,uint256 timestamp,bytes32 paymentId,bytes32 currency,bytes32 dataHash)\\\"\\n    );\\n    \\n    /* ============ State Variables ============ */\\n    \\n    // EIP-712 Domain Separator (computed once at deployment)\\n    bytes32 public immutable DOMAIN_SEPARATOR;\\n    \\n    /* ============ Structs ============ */\\n\\n    struct PaymentDetails {\\n        bytes32 recipientId;             // Payment recipient ID (hashed payee details to preserve privacy)\\n        uint256 amount;                  // Payment amount in smallest currency unit (i.e. cents)\\n        uint256 timestamp;               // Payment timestamp in UTC in milliseconds\\n        bytes32 paymentId;               // Hashed payment identifier from the service (e.g. hashed venmo payment ID)\\n        bytes32 currency;                // Currency hash (e.g., \\\"USD\\\", \\\"EUR\\\")\\n    }\\n\\n    struct PaymentAttestation {\\n        bytes32 paymentMethod;           // Payment method hash (e.g., \\\"venmo\\\", \\\"paypal\\\", \\\"wise\\\")\\n        bytes32 providerHash;            // Unique identifier binding processor to provider\\n        bytes32 intentHash;              // Binds the payment to the intent on Orchestrator\\n        PaymentDetails paymentDetails;   // Payment details\\n        bytes[] signatures;              // Array of signatures from witnesses\\n        bytes32 dataHash;                // Hash of verification data for integrity\\n    }\\n\\n    /* ============ Constructor ============ */\\n    \\n    constructor(\\n        address _escrow,\\n        INullifierRegistry _nullifierRegistry,\\n        IAttestationVerifier _attestationVerifier\\n    ) BaseUnifiedPaymentVerifier(\\n        _escrow,\\n        _nullifierRegistry,\\n        _attestationVerifier\\n    ) {\\n        // Compute EIP-712 domain separator\\n        DOMAIN_SEPARATOR = keccak256(\\n            abi.encode(\\n                DOMAIN_TYPEHASH,\\n                keccak256(bytes(\\\"UnifiedPaymentVerifier\\\")), // name\\n                keccak256(bytes(\\\"1\\\")),                      // version\\n                block.chainid,                              // chainId\\n                address(this)                               // verifyingContract\\n            )\\n        );\\n    }\\n\\n    /* ============ External Functions ============ */\\n    \\n    /**\\n     * ONLY ORCHESTRATOR: Verifies a standardized payment attestation generated by the attestation service.\\n     * \\n     * @param _verifyPaymentData Payment proof and intent details required for verification\\n     * @return result The payment verification result containing success status, intent hash, release amount, \\n     * payment currency and payment ID\\n     */\\n    function verifyPayment(\\n        VerifyPaymentData calldata _verifyPaymentData\\n    )\\n        external\\n        override\\n        onlyOrchestrator()\\n        returns (PaymentVerificationResult memory result)\\n    {\\n        PaymentAttestation memory attestation = abi.decode(\\n            _verifyPaymentData.paymentProof, \\n            (PaymentAttestation)\\n        );\\n        \\n        PaymentMethodStore storage store = _getPaymentMethodStore(\\n            attestation.paymentMethod\\n        );\\n        \\n        // Verify the attestation and provider hash\\n        bool isValid = _verifyAttestation(attestation, _verifyPaymentData);\\n        require(isValid, \\\"UPV: Invalid witness signatures\\\");\\n        require(store.isProviderHash[attestation.providerHash], \\\"UPV: Invalid provider hash\\\");\\n        \\n        PaymentDetails memory paymentDetails = attestation.paymentDetails;\\n        _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);\\n\\n        // Nullify the payment to prevent double-spending\\n        _nullifyPayment(attestation.paymentMethod, paymentDetails.paymentId);\\n\\n        result = _createPaymentVerificationResult(\\n            _verifyPaymentData,\\n            attestation,\\n            paymentDetails\\n        );\\n        \\n        return result;\\n    }\\n\\n    /* ============ Internal Functions ============ */\\n\\n    /**\\n     * Verifies the EIP-712 attestation using the attestation verifier. Also verifies the integrity of the \\n     * verify payment data using the data hash attached to the attestation.\\n     */\\n    function _verifyAttestation(\\n        PaymentAttestation memory attestation,\\n        VerifyPaymentData calldata _verifyPaymentData\\n    ) internal view returns (bool) {\\n        bytes32 structHash = keccak256(\\n            abi.encode(\\n                PAYMENT_ATTESTATION_TYPEHASH,\\n                attestation.paymentMethod,\\n                attestation.providerHash,\\n                attestation.intentHash,\\n                attestation.paymentDetails.recipientId,\\n                attestation.paymentDetails.amount,\\n                attestation.paymentDetails.timestamp,\\n                attestation.paymentDetails.paymentId,\\n                attestation.paymentDetails.currency,\\n                attestation.dataHash\\n            )\\n        );\\n        \\n        bytes32 digest = keccak256(\\n            abi.encodePacked(\\n                \\\"\\\\x19\\\\x01\\\",\\n                DOMAIN_SEPARATOR,\\n                structHash\\n            )\\n        );\\n\\n        // Verify data integrity - the data hash must match what was signed\\n        require(\\n            keccak256(_verifyPaymentData.data) == attestation.dataHash,\\n            \\\"UPV: Data hash mismatch\\\"\\n        );\\n\\n        bool isValid = attestationVerifier.verify(\\n            digest, \\n            attestation.signatures,\\n            _verifyPaymentData.data\\n        );\\n\\n        return isValid;\\n    }\\n\\n    /**\\n     * Verifies the payment details. Verifies the receiver ID (payee), currency and timestamp against the verify payment data.\\n     */\\n    function _verifyPaymentDetails(\\n        PaymentDetails memory paymentDetails,\\n        PaymentMethodStore storage config,\\n        VerifyPaymentData calldata _verifyPaymentData\\n    ) internal view {\\n        require(\\n            paymentDetails.recipientId == _verifyPaymentData.payeeDetails,\\n            \\\"UPV: Payee mismatch\\\"\\n        );\\n        \\n        require(\\n            paymentDetails.currency == _verifyPaymentData.fiatCurrency,\\n            \\\"UPV: Currency mismatch\\\"\\n        );\\n        \\n        // Verify timestamp is after intent creation (with payment method-specific buffer for L2 flexibility)\\n        uint256 paymentTimestampWithBuffer = paymentDetails.timestamp + config.timestampBuffer;\\n        require(\\n            paymentTimestampWithBuffer >= _verifyPaymentData.intentTimestamp,\\n            \\\"UPV: Payment before intent\\\"\\n        );\\n    }\\n\\n    /**\\n     * Nullifies a payment to prevent double-spending\\n     * @dev Creates a unique nullifier by encoding both the payment method and payment ID together.\\n     * This prevents collisions where the same payment ID could exist across different payment\\n     * methods (e.g., Venmo transaction #123 vs PayPal transaction #123).\\n     */\\n    function _nullifyPayment(bytes32 paymentMethod, bytes32 paymentId) internal {\\n        bytes32 nullifier = keccak256(abi.encodePacked(paymentMethod, paymentId));\\n        _validateAndAddNullifier(nullifier);\\n    }\\n\\n    /**\\n     * Creates the release amount and creates the payment verification result to return to the Orchestrator.\\n     */\\n    function _createPaymentVerificationResult(\\n        VerifyPaymentData calldata _verifyPaymentData,\\n        PaymentAttestation memory attestation,\\n        PaymentDetails memory paymentDetails\\n    ) internal pure returns (PaymentVerificationResult memory result) {\\n        uint256 releaseAmount = _calculateReleaseAmount(\\n            paymentDetails.amount, \\n            _verifyPaymentData.conversionRate, \\n            _verifyPaymentData.intentAmount\\n        );\\n        \\n        result = PaymentVerificationResult({\\n            success: true,\\n            intentHash: attestation.intentHash,\\n            releaseAmount: releaseAmount\\n        });\\n    }\\n}\",\"keccak256\":\"0x61b0fa1e75d13fb46dcbd56cdc3834e3e0f9081bf9b1d9ec7d249c186832660d\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60e06040523480156200001157600080fd5b5060405162001f8a38038062001f8a8339810160408190526200003491620001cf565b828282620000423362000166565b6001600160a01b03928316608090815291831660a0908152600180546001600160a01b03191692909416919091178355604080518082018252601681527f556e69666965645061796d656e7456657269666965720000000000000000000060209182015281518083018352948552603160f81b9481019490945280517f8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f948101949094527f48801cbbd53d2e054850b7bc935ecce36286f21c085367c2fb803f758141dd3a908401527fc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc660608401524691830191909152309082015260c00160408051601f19818403018152919052805160209091012060c0525062000223915050565b600080546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6001600160a01b0381168114620001cc57600080fd5b50565b600080600060608486031215620001e557600080fd5b8351620001f281620001b6565b60208501519093506200020581620001b6565b60408501519092506200021881620001b6565b809150509250925092565b60805160a05160c051611d1b6200026f6000396000818161014b01526111240152600081816102da01528181611487015261155d0152600081816102b301526109d10152611d1b6000f3fe608060405234801561001057600080fd5b506004361061012c5760003560e01c80638da5cb5b116100ad578063b870676c11610071578063b870676c146102d5578063e0d17ba7146102fc578063e17f84c81461030f578063f2fde38b14610346578063f3c657531461035957600080fd5b80638da5cb5b1461025b5780639309c05a14610280578063a1627cd014610293578063b4b3c5a01461029b578063b74795d9146102ae57600080fd5b80636e3d3845116100f45780636e3d3845146101f7578063715018a61461020a57806382f6f60814610212578063862dce54146102255780638b90cdc91461024857600080fd5b8063334c2ef3146101315780633644e515146101465780633f61594e1461018057806349e3cfdc14610193578063654cf88c146101b3575b600080fd5b61014461013f36600461162b565b61036c565b005b61016d7f000000000000000000000000000000000000000000000000000000000000000081565b6040519081526020015b60405180910390f35b61014461018e366004611689565b6104b4565b6101a66101a136600461162b565b6105e0565b60405161017791906116dc565b6101e06101c136600461162b565b6003602052600090815260409020805460019091015460ff9091169082565b604080519215158352602083019190915201610177565b610144610205366004611720565b610674565b61014461070c565b61014461022036600461176c565b610720565b61023861023336600461179c565b610836565b6040519015158152602001610177565b61016d61025636600461162b565b61085d565b6000546001600160a01b03165b6040516001600160a01b039091168152602001610177565b61014461028e36600461179c565b61087e565b6101a661090d565b600154610268906001600160a01b031681565b6102687f000000000000000000000000000000000000000000000000000000000000000081565b6102687f000000000000000000000000000000000000000000000000000000000000000081565b61016d61030a36600461162b565b610965565b61032261031d3660046117be565b6109a9565b60408051825115158152602080840151908201529181015190820152606001610177565b61014461035436600461176c565b610b64565b610144610367366004611720565b610bdd565b610374610c41565b60008181526003602052604090205460ff166103ab5760405162461bcd60e51b81526004016103a2906117fa565b60405180910390fd5b60008181526003602081815260408084209092018054835181840281018401909452808452909183018282801561040157602002820191906000526020600020905b8154815260200190600101908083116103ed575b5050505050905060005b8151811015610449576104378383838151811061042a5761042a61183c565b6020026020010151610c9b565b8061044181611868565b91505061040b565b5060008281526003602081905260408220805460ff19168155600181018390559190610477908301826115f9565b506104859050600283610d79565b60405182907f0c831f94d9f98b9753b9607b5f1d9b1758d364178abe6e854ee65e97519c576490600090a25050565b6104bc610c41565b60008481526003602052604090205460ff16156105265760405162461bcd60e51b815260206004820152602260248201527f5550563a205061796d656e74206d6574686f6420616c72656164792065786973604482015261747360f01b60648201526084016103a2565b806105435760405162461bcd60e51b81526004016103a290611881565b6000848152600360205260408120805460ff1916600190811782559081018590556002805491820181559091527f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace018490556105a0848383610674565b837f5454200739d03e8f7e5f27bfe82bf76ccd41bfff20d0a23b6841a90ddd7f3295846040516105d291815260200190565b60405180910390a250505050565b60008181526003602052604090205460609060ff166106115760405162461bcd60e51b81526004016103a2906117fa565b6000828152600360208181526040928390209091018054835181840281018401909452808452909183018282801561066857602002820191906000526020600020905b815481526020019060010190808311610654575b50505050509050919050565b61067c610c41565b60008381526003602052604090205460ff166106aa5760405162461bcd60e51b81526004016103a2906117fa565b806106c75760405162461bcd60e51b81526004016103a290611881565b60005b81811015610706576106f4848484848181106106e8576106e861183c565b90506020020135610ea1565b806106fe81611868565b9150506106ca565b50505050565b610714610c41565b61071e6000610fd4565b565b610728610c41565b6001546001600160a01b0390811690821661078f5760405162461bcd60e51b815260206004820152602160248201527f5550563a20496e76616c6964206174746573746174696f6e20766572696669656044820152603960f91b60648201526084016103a2565b806001600160a01b0316826001600160a01b0316036107e55760405162461bcd60e51b81526020600482015260126024820152712aa82b1d1029b0b6b2903b32b934b334b2b960711b60448201526064016103a2565b600180546001600160a01b0319166001600160a01b0384811691821790925560405190918316907f85c440731cd72afaddddb00cf34bebcc2b6d46def5a034a30baef899583e3d1590600090a35050565b600082815260036020908152604080832084845260020190915290205460ff165b92915050565b6002818154811061086d57600080fd5b600091825260209091200154905081565b610886610c41565b60008281526003602052604090205460ff166108b45760405162461bcd60e51b81526004016103a2906117fa565b60008281526003602090815260409182902060010180549084905582518181529182018490529184917f622fd8ca2a8a1c894e0680d1147442d25bef0c84d41c9e72b76174c02b3b546e910160405180910390a2505050565b6060600280548060200260200160405190810160405280929190818152602001828054801561095b57602002820191906000526020600020905b815481526020019060010190808311610947575b5050505050905090565b60008181526003602052604081205460ff166109935760405162461bcd60e51b81526004016103a2906117fa565b5060009081526003602052604090206001015490565b6040805160608101825260008082526020820181905291810191909152336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610a3e5760405162461bcd60e51b815260206004820152601a60248201527f4f6e6c79206f7263686573747261746f722063616e2063616c6c00000000000060448201526064016103a2565b6000610a4a83806118ae565b810190610a579190611a7d565b90506000610a688260000151611024565b90506000610a768386611053565b905080610ac55760405162461bcd60e51b815260206004820152601f60248201527f5550563a20496e76616c6964207769746e657373207369676e6174757265730060448201526064016103a2565b602080840151600090815260028401909152604090205460ff16610b2b5760405162461bcd60e51b815260206004820152601a60248201527f5550563a20496e76616c69642070726f7669646572206861736800000000000060448201526064016103a2565b6060830151610b3b818488611279565b610b4d8460000151826060015161137f565b610b588685836113b5565b9450505050505b919050565b610b6c610c41565b6001600160a01b038116610bd15760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016103a2565b610bda81610fd4565b50565b610be5610c41565b80610c025760405162461bcd60e51b81526004016103a290611881565b60005b8181101561070657610c2f84848484818110610c2357610c2361183c565b90506020020135610c9b565b80610c3981611868565b915050610c05565b6000546001600160a01b0316331461071e5760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016103a2565b600082815260036020908152604080832084845260020190915290205460ff16610d115760405162461bcd60e51b815260206004820152602160248201527f5550563a2050726f7669646572206861736820646f6573206e6f7420657869736044820152601d60fa1b60648201526084016103a2565b6000828152600360208181526040808420858552600281018352908420805460ff1916905592859052819052610d48910182610d79565b604051819083907f8fbe0e65988347f3f3e1eb33880cf7034a0f4742b41f3a8a40dbfd97e831f75390600090a35050565b600080610dd584805480602002602001604051908101604052809291908181526020018280548015610dca57602002820191906000526020600020905b815481526020019060010190808311610db6575b50505050508461140e565b9150915080610e1e5760405162461bcd60e51b8152602060048201526015602482015274313cba32b99999103737ba1034b71030b93930bc9760591b60448201526064016103a2565b8354600090610e2f90600190611b66565b9050808314610e7457848181548110610e4a57610e4a61183c565b9060005260206000200154858481548110610e6757610e6761183c565b6000918252602090912001555b84805480610e8457610e84611b79565b600190038181906000526020600020016000905590555050505050565b80610eee5760405162461bcd60e51b815260206004820152601a60248201527f5550563a20496e76616c69642070726f7669646572206861736800000000000060448201526064016103a2565b600082815260036020908152604080832084845260020190915290205460ff1615610f655760405162461bcd60e51b815260206004820152602160248201527f5550563a2050726f7669646572206861736820616c72656164792065786973746044820152607360f81b60648201526084016103a2565b6000828152600360208181526040808420858552600281018352818520805460ff19166001908117909155848452930180549384018155845290832090910183905551829184917fc05d5327dbef5f5cc2233fca2299afc0181fac01ab9c06e8d5900ea0c38336d89190a35050565b600080546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6000818152600360205260409020805460ff16610b5f5760405162461bcd60e51b81526004016103a2906117fa565b8151602080840151604080860151606080880151805181870151828601519383015160809093015160a08c0151965160009a8b9a6111009a7fac235c815dafaa4778c72f689438a2b3ce98b64215081eb41da0ac1656982a929a9299909890979094909390929101998a5260208a019890985260408901969096526060880194909452608087019290925260a086015260c085015260e08401526101008301526101208201526101400190565b60408051808303601f19018152828252805160209182012061190160f01b828501527f000000000000000000000000000000000000000000000000000000000000000060228501526042808501829052835180860390910181526062909401909252825192019190912060a0860151919250906111816101008601866118ae565b60405161118f929190611b8f565b6040518091039020146111e45760405162461bcd60e51b815260206004820152601760248201527f5550563a20446174612068617368206d69736d6174636800000000000000000060448201526064016103a2565b60015460808601516000916001600160a01b03169063522ebb0090849061120f6101008a018a6118ae565b6040518563ffffffff1660e01b815260040161122e9493929190611bc8565b602060405180830381865afa15801561124b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061126f9190611c77565b9695505050505050565b82516080820135146112c35760405162461bcd60e51b81526020600482015260136024820152720aaa0ac7440a0c2f2caca40dad2e6dac2e8c6d606b1b60448201526064016103a2565b8060a001358360800151146113135760405162461bcd60e51b81526020600482015260166024820152750aaa0ac744086eae4e4cadcc6f240dad2e6dac2e8c6d60531b60448201526064016103a2565b6000826001015484604001516113299190611c99565b905081606001358110156107065760405162461bcd60e51b815260206004820152601a60248201527f5550563a205061796d656e74206265666f726520696e74656e7400000000000060448201526064016103a2565b604080516020808201859052818301849052825180830384018152606090920190925280519101206113b081611471565b505050565b604080516060810182526000808252602082018190529181019190915260006113eb83602001518660c0013587604001356115c4565b604080516060810182526001815295810151602087015285015250919392505050565b81516000908190815b8181101561145e57848682815181106114325761143261183c565b60200260200101510361144c5792506001915061146a9050565b8061145681611868565b915050611417565b50600019600092509250505b9250929050565b60405163169394bb60e01b8152600481018290527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03169063169394bb90602401602060405180830381865afa1580156114d6573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906114fa9190611c77565b156115475760405162461bcd60e51b815260206004820152601f60248201527f4e756c6c69666965722068617320616c7265616479206265656e20757365640060448201526064016103a2565b604051632dea6f9960e11b8152600481018290527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690635bd4df3290602401600060405180830381600087803b1580156115a957600080fd5b505af11580156115bd573d6000803e3d6000fd5b5050505050565b600080836115da670de0b6b3a764000087611cac565b6115e49190611cc3565b9050828111156115f15750815b949350505050565b5080546000825590600052602060002090810190610bda91905b808211156116275760008155600101611613565b5090565b60006020828403121561163d57600080fd5b5035919050565b60008083601f84011261165657600080fd5b50813567ffffffffffffffff81111561166e57600080fd5b6020830191508360208260051b850101111561146a57600080fd5b6000806000806060858703121561169f57600080fd5b8435935060208501359250604085013567ffffffffffffffff8111156116c457600080fd5b6116d087828801611644565b95989497509550505050565b6020808252825182820181905260009190848201906040850190845b81811015611714578351835292840192918401916001016116f8565b50909695505050505050565b60008060006040848603121561173557600080fd5b83359250602084013567ffffffffffffffff81111561175357600080fd5b61175f86828701611644565b9497909650939450505050565b60006020828403121561177e57600080fd5b81356001600160a01b038116811461179557600080fd5b9392505050565b600080604083850312156117af57600080fd5b50508035926020909101359150565b6000602082840312156117d057600080fd5b813567ffffffffffffffff8111156117e757600080fd5b8201610120818503121561179557600080fd5b60208082526022908201527f5550563a205061796d656e74206d6574686f6420646f6573206e6f74206578696040820152611cdd60f21b606082015260800190565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052601160045260246000fd5b60006001820161187a5761187a611852565b5060010190565b6020808252601390820152720aaa0ac744092dcecc2d8d2c840d8cadccee8d606b1b604082015260600190565b6000808335601e198436030181126118c557600080fd5b83018035915067ffffffffffffffff8211156118e057600080fd5b60200191503681900382131561146a57600080fd5b634e487b7160e01b600052604160045260246000fd5b60405160c0810167ffffffffffffffff8111828210171561192e5761192e6118f5565b60405290565b60405160a0810167ffffffffffffffff8111828210171561192e5761192e6118f5565b604051601f8201601f1916810167ffffffffffffffff81118282101715611980576119806118f5565b604052919050565b6000601f838184011261199a57600080fd5b8235602067ffffffffffffffff808311156119b7576119b76118f5565b8260051b6119c6838201611957565b93845286810183019383810190898611156119e057600080fd5b84890192505b85831015611a70578235848111156119fe5760008081fd5b8901603f81018b13611a105760008081fd5b85810135604086821115611a2657611a266118f5565b611a37828b01601f19168901611957565b8281528d82848601011115611a4c5760008081fd5b828285018a83013760009281018901929092525083525091840191908401906119e6565b9998505050505050505050565b600060208284031215611a8f57600080fd5b813567ffffffffffffffff80821115611aa757600080fd5b90830190818503610140811215611abd57600080fd5b611ac561190b565b83358152602084013560208201526040840135604082015260a0605f1983011215611aef57600080fd5b611af7611934565b6060858101358252608080870135602084015260a0870135604084015260c08701358284015260e087013590830152820152610100840135915082821115611b3e57600080fd5b611b4a87838601611988565b6080820152610120939093013560a08401525090949350505050565b8181038181111561085757610857611852565b634e487b7160e01b600052603160045260246000fd5b8183823760009101908152919050565b81835281816020850137506000828201602090810191909152601f909101601f19169091010190565b600060608201868352602060608185015281875180845260808601915060808160051b87010193508289016000805b83811015611c5357888703607f1901855282518051808952835b81811015611c2c578281018901518a82018a01528801611c11565b508881018801849052601f01601f1916909701860196509385019391850191600101611bf7565b5050505050508281036040840152611c6c818587611b9f565b979650505050505050565b600060208284031215611c8957600080fd5b8151801515811461179557600080fd5b8082018082111561085757610857611852565b808202811582820484141761085757610857611852565b600082611ce057634e487b7160e01b600052601260045260246000fd5b50049056fea2646970667358221220801ece4fc19c04bbd4c12a451935ccfe7fc1cd09d4bc47cb21ed689361f097cf64736f6c63430008120033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061012c5760003560e01c80638da5cb5b116100ad578063b870676c11610071578063b870676c146102d5578063e0d17ba7146102fc578063e17f84c81461030f578063f2fde38b14610346578063f3c657531461035957600080fd5b80638da5cb5b1461025b5780639309c05a14610280578063a1627cd014610293578063b4b3c5a01461029b578063b74795d9146102ae57600080fd5b80636e3d3845116100f45780636e3d3845146101f7578063715018a61461020a57806382f6f60814610212578063862dce54146102255780638b90cdc91461024857600080fd5b8063334c2ef3146101315780633644e515146101465780633f61594e1461018057806349e3cfdc14610193578063654cf88c146101b3575b600080fd5b61014461013f36600461162b565b61036c565b005b61016d7f000000000000000000000000000000000000000000000000000000000000000081565b6040519081526020015b60405180910390f35b61014461018e366004611689565b6104b4565b6101a66101a136600461162b565b6105e0565b60405161017791906116dc565b6101e06101c136600461162b565b6003602052600090815260409020805460019091015460ff9091169082565b604080519215158352602083019190915201610177565b610144610205366004611720565b610674565b61014461070c565b61014461022036600461176c565b610720565b61023861023336600461179c565b610836565b6040519015158152602001610177565b61016d61025636600461162b565b61085d565b6000546001600160a01b03165b6040516001600160a01b039091168152602001610177565b61014461028e36600461179c565b61087e565b6101a661090d565b600154610268906001600160a01b031681565b6102687f000000000000000000000000000000000000000000000000000000000000000081565b6102687f000000000000000000000000000000000000000000000000000000000000000081565b61016d61030a36600461162b565b610965565b61032261031d3660046117be565b6109a9565b60408051825115158152602080840151908201529181015190820152606001610177565b61014461035436600461176c565b610b64565b610144610367366004611720565b610bdd565b610374610c41565b60008181526003602052604090205460ff166103ab5760405162461bcd60e51b81526004016103a2906117fa565b60405180910390fd5b60008181526003602081815260408084209092018054835181840281018401909452808452909183018282801561040157602002820191906000526020600020905b8154815260200190600101908083116103ed575b5050505050905060005b8151811015610449576104378383838151811061042a5761042a61183c565b6020026020010151610c9b565b8061044181611868565b91505061040b565b5060008281526003602081905260408220805460ff19168155600181018390559190610477908301826115f9565b506104859050600283610d79565b60405182907f0c831f94d9f98b9753b9607b5f1d9b1758d364178abe6e854ee65e97519c576490600090a25050565b6104bc610c41565b60008481526003602052604090205460ff16156105265760405162461bcd60e51b815260206004820152602260248201527f5550563a205061796d656e74206d6574686f6420616c72656164792065786973604482015261747360f01b60648201526084016103a2565b806105435760405162461bcd60e51b81526004016103a290611881565b6000848152600360205260408120805460ff1916600190811782559081018590556002805491820181559091527f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace018490556105a0848383610674565b837f5454200739d03e8f7e5f27bfe82bf76ccd41bfff20d0a23b6841a90ddd7f3295846040516105d291815260200190565b60405180910390a250505050565b60008181526003602052604090205460609060ff166106115760405162461bcd60e51b81526004016103a2906117fa565b6000828152600360208181526040928390209091018054835181840281018401909452808452909183018282801561066857602002820191906000526020600020905b815481526020019060010190808311610654575b50505050509050919050565b61067c610c41565b60008381526003602052604090205460ff166106aa5760405162461bcd60e51b81526004016103a2906117fa565b806106c75760405162461bcd60e51b81526004016103a290611881565b60005b81811015610706576106f4848484848181106106e8576106e861183c565b90506020020135610ea1565b806106fe81611868565b9150506106ca565b50505050565b610714610c41565b61071e6000610fd4565b565b610728610c41565b6001546001600160a01b0390811690821661078f5760405162461bcd60e51b815260206004820152602160248201527f5550563a20496e76616c6964206174746573746174696f6e20766572696669656044820152603960f91b60648201526084016103a2565b806001600160a01b0316826001600160a01b0316036107e55760405162461bcd60e51b81526020600482015260126024820152712aa82b1d1029b0b6b2903b32b934b334b2b960711b60448201526064016103a2565b600180546001600160a01b0319166001600160a01b0384811691821790925560405190918316907f85c440731cd72afaddddb00cf34bebcc2b6d46def5a034a30baef899583e3d1590600090a35050565b600082815260036020908152604080832084845260020190915290205460ff165b92915050565b6002818154811061086d57600080fd5b600091825260209091200154905081565b610886610c41565b60008281526003602052604090205460ff166108b45760405162461bcd60e51b81526004016103a2906117fa565b60008281526003602090815260409182902060010180549084905582518181529182018490529184917f622fd8ca2a8a1c894e0680d1147442d25bef0c84d41c9e72b76174c02b3b546e910160405180910390a2505050565b6060600280548060200260200160405190810160405280929190818152602001828054801561095b57602002820191906000526020600020905b815481526020019060010190808311610947575b5050505050905090565b60008181526003602052604081205460ff166109935760405162461bcd60e51b81526004016103a2906117fa565b5060009081526003602052604090206001015490565b6040805160608101825260008082526020820181905291810191909152336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610a3e5760405162461bcd60e51b815260206004820152601a60248201527f4f6e6c79206f7263686573747261746f722063616e2063616c6c00000000000060448201526064016103a2565b6000610a4a83806118ae565b810190610a579190611a7d565b90506000610a688260000151611024565b90506000610a768386611053565b905080610ac55760405162461bcd60e51b815260206004820152601f60248201527f5550563a20496e76616c6964207769746e657373207369676e6174757265730060448201526064016103a2565b602080840151600090815260028401909152604090205460ff16610b2b5760405162461bcd60e51b815260206004820152601a60248201527f5550563a20496e76616c69642070726f7669646572206861736800000000000060448201526064016103a2565b6060830151610b3b818488611279565b610b4d8460000151826060015161137f565b610b588685836113b5565b9450505050505b919050565b610b6c610c41565b6001600160a01b038116610bd15760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016103a2565b610bda81610fd4565b50565b610be5610c41565b80610c025760405162461bcd60e51b81526004016103a290611881565b60005b8181101561070657610c2f84848484818110610c2357610c2361183c565b90506020020135610c9b565b80610c3981611868565b915050610c05565b6000546001600160a01b0316331461071e5760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016103a2565b600082815260036020908152604080832084845260020190915290205460ff16610d115760405162461bcd60e51b815260206004820152602160248201527f5550563a2050726f7669646572206861736820646f6573206e6f7420657869736044820152601d60fa1b60648201526084016103a2565b6000828152600360208181526040808420858552600281018352908420805460ff1916905592859052819052610d48910182610d79565b604051819083907f8fbe0e65988347f3f3e1eb33880cf7034a0f4742b41f3a8a40dbfd97e831f75390600090a35050565b600080610dd584805480602002602001604051908101604052809291908181526020018280548015610dca57602002820191906000526020600020905b815481526020019060010190808311610db6575b50505050508461140e565b9150915080610e1e5760405162461bcd60e51b8152602060048201526015602482015274313cba32b99999103737ba1034b71030b93930bc9760591b60448201526064016103a2565b8354600090610e2f90600190611b66565b9050808314610e7457848181548110610e4a57610e4a61183c565b9060005260206000200154858481548110610e6757610e6761183c565b6000918252602090912001555b84805480610e8457610e84611b79565b600190038181906000526020600020016000905590555050505050565b80610eee5760405162461bcd60e51b815260206004820152601a60248201527f5550563a20496e76616c69642070726f7669646572206861736800000000000060448201526064016103a2565b600082815260036020908152604080832084845260020190915290205460ff1615610f655760405162461bcd60e51b815260206004820152602160248201527f5550563a2050726f7669646572206861736820616c72656164792065786973746044820152607360f81b60648201526084016103a2565b6000828152600360208181526040808420858552600281018352818520805460ff19166001908117909155848452930180549384018155845290832090910183905551829184917fc05d5327dbef5f5cc2233fca2299afc0181fac01ab9c06e8d5900ea0c38336d89190a35050565b600080546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6000818152600360205260409020805460ff16610b5f5760405162461bcd60e51b81526004016103a2906117fa565b8151602080840151604080860151606080880151805181870151828601519383015160809093015160a08c0151965160009a8b9a6111009a7fac235c815dafaa4778c72f689438a2b3ce98b64215081eb41da0ac1656982a929a9299909890979094909390929101998a5260208a019890985260408901969096526060880194909452608087019290925260a086015260c085015260e08401526101008301526101208201526101400190565b60408051808303601f19018152828252805160209182012061190160f01b828501527f000000000000000000000000000000000000000000000000000000000000000060228501526042808501829052835180860390910181526062909401909252825192019190912060a0860151919250906111816101008601866118ae565b60405161118f929190611b8f565b6040518091039020146111e45760405162461bcd60e51b815260206004820152601760248201527f5550563a20446174612068617368206d69736d6174636800000000000000000060448201526064016103a2565b60015460808601516000916001600160a01b03169063522ebb0090849061120f6101008a018a6118ae565b6040518563ffffffff1660e01b815260040161122e9493929190611bc8565b602060405180830381865afa15801561124b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061126f9190611c77565b9695505050505050565b82516080820135146112c35760405162461bcd60e51b81526020600482015260136024820152720aaa0ac7440a0c2f2caca40dad2e6dac2e8c6d606b1b60448201526064016103a2565b8060a001358360800151146113135760405162461bcd60e51b81526020600482015260166024820152750aaa0ac744086eae4e4cadcc6f240dad2e6dac2e8c6d60531b60448201526064016103a2565b6000826001015484604001516113299190611c99565b905081606001358110156107065760405162461bcd60e51b815260206004820152601a60248201527f5550563a205061796d656e74206265666f726520696e74656e7400000000000060448201526064016103a2565b604080516020808201859052818301849052825180830384018152606090920190925280519101206113b081611471565b505050565b604080516060810182526000808252602082018190529181019190915260006113eb83602001518660c0013587604001356115c4565b604080516060810182526001815295810151602087015285015250919392505050565b81516000908190815b8181101561145e57848682815181106114325761143261183c565b60200260200101510361144c5792506001915061146a9050565b8061145681611868565b915050611417565b50600019600092509250505b9250929050565b60405163169394bb60e01b8152600481018290527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03169063169394bb90602401602060405180830381865afa1580156114d6573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906114fa9190611c77565b156115475760405162461bcd60e51b815260206004820152601f60248201527f4e756c6c69666965722068617320616c7265616479206265656e20757365640060448201526064016103a2565b604051632dea6f9960e11b8152600481018290527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690635bd4df3290602401600060405180830381600087803b1580156115a957600080fd5b505af11580156115bd573d6000803e3d6000fd5b5050505050565b600080836115da670de0b6b3a764000087611cac565b6115e49190611cc3565b9050828111156115f15750815b949350505050565b5080546000825590600052602060002090810190610bda91905b808211156116275760008155600101611613565b5090565b60006020828403121561163d57600080fd5b5035919050565b60008083601f84011261165657600080fd5b50813567ffffffffffffffff81111561166e57600080fd5b6020830191508360208260051b850101111561146a57600080fd5b6000806000806060858703121561169f57600080fd5b8435935060208501359250604085013567ffffffffffffffff8111156116c457600080fd5b6116d087828801611644565b95989497509550505050565b6020808252825182820181905260009190848201906040850190845b81811015611714578351835292840192918401916001016116f8565b50909695505050505050565b60008060006040848603121561173557600080fd5b83359250602084013567ffffffffffffffff81111561175357600080fd5b61175f86828701611644565b9497909650939450505050565b60006020828403121561177e57600080fd5b81356001600160a01b038116811461179557600080fd5b9392505050565b600080604083850312156117af57600080fd5b50508035926020909101359150565b6000602082840312156117d057600080fd5b813567ffffffffffffffff8111156117e757600080fd5b8201610120818503121561179557600080fd5b60208082526022908201527f5550563a205061796d656e74206d6574686f6420646f6573206e6f74206578696040820152611cdd60f21b606082015260800190565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052601160045260246000fd5b60006001820161187a5761187a611852565b5060010190565b6020808252601390820152720aaa0ac744092dcecc2d8d2c840d8cadccee8d606b1b604082015260600190565b6000808335601e198436030181126118c557600080fd5b83018035915067ffffffffffffffff8211156118e057600080fd5b60200191503681900382131561146a57600080fd5b634e487b7160e01b600052604160045260246000fd5b60405160c0810167ffffffffffffffff8111828210171561192e5761192e6118f5565b60405290565b60405160a0810167ffffffffffffffff8111828210171561192e5761192e6118f5565b604051601f8201601f1916810167ffffffffffffffff81118282101715611980576119806118f5565b604052919050565b6000601f838184011261199a57600080fd5b8235602067ffffffffffffffff808311156119b7576119b76118f5565b8260051b6119c6838201611957565b93845286810183019383810190898611156119e057600080fd5b84890192505b85831015611a70578235848111156119fe5760008081fd5b8901603f81018b13611a105760008081fd5b85810135604086821115611a2657611a266118f5565b611a37828b01601f19168901611957565b8281528d82848601011115611a4c5760008081fd5b828285018a83013760009281018901929092525083525091840191908401906119e6565b9998505050505050505050565b600060208284031215611a8f57600080fd5b813567ffffffffffffffff80821115611aa757600080fd5b90830190818503610140811215611abd57600080fd5b611ac561190b565b83358152602084013560208201526040840135604082015260a0605f1983011215611aef57600080fd5b611af7611934565b6060858101358252608080870135602084015260a0870135604084015260c08701358284015260e087013590830152820152610100840135915082821115611b3e57600080fd5b611b4a87838601611988565b6080820152610120939093013560a08401525090949350505050565b8181038181111561085757610857611852565b634e487b7160e01b600052603160045260246000fd5b8183823760009101908152919050565b81835281816020850137506000828201602090810191909152601f909101601f19169091010190565b600060608201868352602060608185015281875180845260808601915060808160051b87010193508289016000805b83811015611c5357888703607f1901855282518051808952835b81811015611c2c578281018901518a82018a01528801611c11565b508881018801849052601f01601f1916909701860196509385019391850191600101611bf7565b5050505050508281036040840152611c6c818587611b9f565b979650505050505050565b600060208284031215611c8957600080fd5b8151801515811461179557600080fd5b8082018082111561085757610857611852565b808202811582820484141761085757610857611852565b600082611ce057634e487b7160e01b600052601260045260246000fd5b50049056fea2646970667358221220801ece4fc19c04bbd4c12a451935ccfe7fc1cd09d4bc47cb21ed689361f097cf64736f6c63430008120033",
+  "devdoc": {
+    "details": "The payment attestation should be signed using the EIP-712 standard",
+    "kind": "dev",
+    "methods": {
+      "addPaymentMethod(bytes32,uint256,bytes32[])": {
+        "params": {
+          "_paymentMethod": "The payment method hash; Hash the payment method name in lowercase",
+          "_providerHashes": "Array of zkTLS provider hashes to store",
+          "_timestampBuffer": "Payment method-specific timestamp buffer in seconds"
+        }
+      },
+      "addProviderHashes(bytes32,bytes32[])": {
+        "params": {
+          "_paymentMethod": "The payment method hash",
+          "_providerHashes": "Array of provider hashes to add"
+        }
+      },
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "removePaymentMethod(bytes32)": {
+        "details": "Only callable by owner",
+        "params": {
+          "_paymentMethod": "The payment method to remove"
+        }
+      },
+      "removeProviderHashes(bytes32,bytes32[])": {
+        "params": {
+          "_paymentMethod": "The payment method hash",
+          "_providerHashes": "Array of provider hashes to remove"
+        }
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+      },
+      "setAttestationVerifier(address)": {
+        "details": "Only callable by owner",
+        "params": {
+          "_newVerifier": "The new attestation verifier address"
+        }
+      },
+      "setTimestampBuffer(bytes32,uint256)": {
+        "params": {
+          "_newTimestampBuffer": "The new timestamp buffer in seconds",
+          "_paymentMethod": "The payment method hash"
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+      },
+      "verifyPayment((bytes,address,uint256,uint256,bytes32,bytes32,uint256,bytes,bytes))": {
+        "params": {
+          "_verifyPaymentData": "Payment proof and intent details required for verification"
+        },
+        "returns": {
+          "result": "The payment verification result containing success status, intent hash, release amount,  payment currency and payment ID"
+        }
+      }
+    },
+    "title": "UnifiedPaymentVerifier",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "addPaymentMethod(bytes32,uint256,bytes32[])": {
+        "notice": "ONLY OWNER: Adds a new payment method with timestamp buffer and zkTLS provider hashes"
+      },
+      "addProviderHashes(bytes32,bytes32[])": {
+        "notice": "Batch adds provider hashes for a specific payment method"
+      },
+      "removePaymentMethod(bytes32)": {
+        "notice": "ONLY OWNER: Removes a payment method and associated configuration"
+      },
+      "removeProviderHashes(bytes32,bytes32[])": {
+        "notice": "Batch removes provider hashes for a specific payment method"
+      },
+      "setAttestationVerifier(address)": {
+        "notice": "Updates the attestation verifier contract"
+      },
+      "setTimestampBuffer(bytes32,uint256)": {
+        "notice": "Updates the timestamp buffer for a payment method"
+      },
+      "verifyPayment((bytes,address,uint256,uint256,bytes32,bytes32,uint256,bytes,bytes))": {
+        "notice": "ONLY ORCHESTRATOR: Verifies a standardized payment attestation generated by the attestation service. "
+      }
+    },
+    "notice": "Verifies payment proofs for multiple payment methods. This is a unified verifier that  replaces individual payment verifiers (VenmoVerifier, PayPalVerifier, etc.) with a single  configurable contract.  Key features: - Supports multiple payment methods, each with custom configuration - Uses AttestationVerifier to validate off-chain zkTLS proofs and transformations - Ensures trust anchor integrity for off-chain verification processes - Verifies standardized payment details against provided data",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 7,
+        "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 14782,
+        "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+        "label": "attestationVerifier",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_contract(IAttestationVerifier)10298"
+      },
+      {
+        "astId": 14785,
+        "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+        "label": "paymentMethods",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_array(t_bytes32)dyn_storage"
+      },
+      {
+        "astId": 14790,
+        "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+        "label": "store",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_bytes32,t_struct(PaymentMethodStore)14738_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_bytes32)dyn_storage": {
+        "base": "t_bytes32",
+        "encoding": "dynamic_array",
+        "label": "bytes32[]",
+        "numberOfBytes": "32"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_contract(IAttestationVerifier)10298": {
+        "encoding": "inplace",
+        "label": "contract IAttestationVerifier",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_bytes32,t_struct(PaymentMethodStore)14738_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct BaseUnifiedPaymentVerifier.PaymentMethodStore)",
+        "numberOfBytes": "32",
+        "value": "t_struct(PaymentMethodStore)14738_storage"
+      },
+      "t_struct(PaymentMethodStore)14738_storage": {
+        "encoding": "inplace",
+        "label": "struct BaseUnifiedPaymentVerifier.PaymentMethodStore",
+        "members": [
+          {
+            "astId": 14728,
+            "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+            "label": "initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_bool"
+          },
+          {
+            "astId": 14730,
+            "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+            "label": "timestampBuffer",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 14734,
+            "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+            "label": "isProviderHash",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_bytes32,t_bool)"
+          },
+          {
+            "astId": 14737,
+            "contract": "contracts/unifiedVerifier/UnifiedPaymentVerifier.sol:UnifiedPaymentVerifier",
+            "label": "providerHashes",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_array(t_bytes32)dyn_storage"
+          }
+        ],
+        "numberOfBytes": "128"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

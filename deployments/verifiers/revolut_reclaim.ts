@@ -9,6 +9,7 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
       {
         url: "https://app.revolut.com/api/retail/user/current/transactions/last?count=20",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",
@@ -33,7 +34,6 @@ export const getRevolutReclaimProviderHashes = async (length: number) => {
           {
             "type": "regex",
             "value": `"username":"(?<username>[^"]+)"`,
-            "hash": true
           },
         ],
         responseRedactions: [
