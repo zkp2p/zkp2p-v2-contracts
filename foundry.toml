@@ -1,0 +1,26 @@
+[profile.default]
+src = 'contracts'
+out = 'out'
+libs = ['node_modules', 'lib']
+test = 'test-foundry'
+cache_path = 'cache_forge'
+optimizer = true
+optimizer_runs = 800
+solc_version = '0.8.18'
+
+# Remappings for cleaner imports
+remappings = [
+    '@openzeppelin/=node_modules/@openzeppelin/',
+    'contracts/=contracts/',
+    'forge-std/=lib/forge-std/src/'
+]
+
+# Fuzzing configuration
+[fuzz]
+runs = 256
+max_test_rejects = 65536
+
+[invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
