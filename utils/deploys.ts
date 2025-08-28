@@ -11,8 +11,6 @@ import {
   Orchestrator,
   PaymentVerifierMock,
   NullifierRegistry,
-  StringConversionUtilsMock,
-  ClaimVerifierMock,
   PostIntentHookMock,
   PaymentVerifierRegistry,
   PostIntentHookRegistry,
@@ -25,9 +23,7 @@ import {
   ReentrantPostIntentHook
 } from "./contracts";
 import {
-  StringConversionUtilsMock__factory,
   USDCMock__factory,
-  ClaimVerifierMock__factory,
   PostIntentHookMock__factory,
   OrchestratorMock__factory,
   ReentrantPostIntentHook__factory
@@ -111,10 +107,6 @@ export default class DeployHelper {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployStringConversionUtilsMock(): Promise<StringConversionUtilsMock> {
-    return await new StringConversionUtilsMock__factory(this._deployerSigner).deploy();
-  }
-
   public async deployPaymentVerifierMock(
     ramp: Address,
     nullifierRegistry: Address,
@@ -127,10 +119,6 @@ export default class DeployHelper {
       timestampBuffer,
       acceptedCurrencies
     );
-  }
-
-  public async deployClaimVerifierMock(): Promise<ClaimVerifierMock> {
-    return await new ClaimVerifierMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployPostIntentHookMock(
