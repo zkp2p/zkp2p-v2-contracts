@@ -391,10 +391,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@bufbuild/protobuf@npm:^2.2.0":
-  version: 2.2.3
-  resolution: "@bufbuild/protobuf@npm:2.2.3"
-  checksum: 10c0/546c38b924c4a8dd79ec457928cfb99a5aab2945d11f15f4f06894bdc148ea37a1ae8b78cf17de9bb5354cbb896f6af4099073690b5b2089e1b196cec963d6ec
+"@bufbuild/protobuf@npm:^2.2.2":
+  version: 2.7.0
+  resolution: "@bufbuild/protobuf@npm:2.7.0"
+  checksum: 10c0/9ae9b9ef7f8fd5cc0fdf8c45650c9cbd4324b61ca289feb2e7a28dabda755f025241ce58a88ae269821fd719302a6fc6709bcdb2175b7311ba4feb8af73ed560
   languageName: node
   linkType: hard
 
@@ -2413,11 +2413,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reclaimprotocol/zk-symmetric-crypto@npm:^2.0.0":
-  version: 2.0.5
-  resolution: "@reclaimprotocol/zk-symmetric-crypto@npm:2.0.5"
+"@reclaimprotocol/zk-symmetric-crypto@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@reclaimprotocol/zk-symmetric-crypto@npm:3.0.5"
   dependencies:
+    "@stablelib/chacha20poly1305": "npm:^1.0.0"
     js-base64: "npm:^3.7.7"
+    p-queue: "npm:^6.0.0"
   peerDependencies:
     koffi: "*"
     snarkjs: "*"
@@ -2426,7 +2428,7 @@ __metadata:
       optional: true
     snarkjs:
       optional: true
-  checksum: 10c0/df5bef821e15c1ed88a975e0cae1e3eeb018f2ecd98524fd7ccc6aafd4f9c3e83b44cc0d29d20fb8627b5f1f5ca406493244dd5526e87361e297756671bcb2d0
+  checksum: 10c0/9b5ca159001cb3284a50802ba808cab69c5c2ad02ca3c4b9fb235ddff0245de76a3c8dcf1b36bd4a622e403221302f14e2fac3e71f336ae62af56d2986f1647b
   languageName: node
   linkType: hard
 
@@ -2691,7 +2693,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stablelib/chacha20poly1305@npm:^1.0.1":
+"@stablelib/chacha20poly1305@npm:^1.0.0, @stablelib/chacha20poly1305@npm:^1.0.1":
   version: 1.0.1
   resolution: "@stablelib/chacha20poly1305@npm:1.0.1"
   dependencies:
@@ -3100,36 +3102,37 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@zkp2p/reclaim-witness-sdk@npm:^0.0.2-rc5":
-  version: 0.0.2-rc5
-  resolution: "@zkp2p/reclaim-witness-sdk@npm:0.0.2-rc5"
+"@zkp2p/reclaim-witness-sdk@npm:^4.0.1-reclaim":
+  version: 4.0.1-reclaim
+  resolution: "@zkp2p/reclaim-witness-sdk@npm:4.0.1-reclaim"
   dependencies:
-    "@bufbuild/protobuf": "npm:^2.2.0"
+    "@bufbuild/protobuf": "npm:^2.2.2"
     "@commitlint/cli": "npm:^17.8.1"
     "@commitlint/config-conventional": "npm:^17.8.1"
     "@reclaimprotocol/tls": "github:reclaimprotocol/tls"
-    "@reclaimprotocol/zk-symmetric-crypto": "npm:^2.0.0"
+    "@reclaimprotocol/zk-symmetric-crypto": "npm:^3.0.5"
     ajv: "npm:^8.17.1"
     canonicalize: "npm:^2.0.0"
-    dotenv: "npm:^16.4.5"
-    elastic-apm-node: "npm:^4.8.0"
+    dotenv: "npm:^16.4.6"
+    elastic-apm-node: "npm:^4.8.1"
     esprima-next: "npm:^5.8.4"
     ethers: "npm:^5.7.2"
     https-proxy-agent: "npm:^7.0.5"
+    ip-cidr: "npm:^3.0.0"
     jsdom: "npm:^24.1.3"
-    jsonpath-plus: "npm:^10.0.0"
-    koffi: "npm:^2.9.1"
+    jsonpath-plus: "npm:^10.2.0"
+    koffi: "npm:^2.9.2"
     p-queue: "npm:^6.6.2"
-    pino: "npm:^9.4.0"
+    pino: "npm:^9.5.0"
     protobufjs: "npm:^7.4.0"
     re2: "npm:^1.21.4"
     serve-static: "npm:^1.16.2"
-    snarkjs: "npm:^0.7.4"
+    snarkjs: "npm:^0.7.5"
     ws: "npm:^8.18.0"
   dependenciesMeta:
     koffi:
       optional: true
-  checksum: 10c0/80cb1ac8cb9f56b7c010e1490a2c9adf559a0ef62729fe8c445d7e4e96b4b2a0b58119e6f4a60b4fa882f48d85b547f1d61e0a1d9c72c80ba822c9a17f30f968
+  checksum: 10c0/eac33cc4394eb4d6d6db2a633a0193a8d049d9a4300f156a273d32efcbb11e6ef2169b44fae031e24cde801c0120ccafa29cca0e0fb459724a59912852140441
   languageName: node
   linkType: hard
 
@@ -3239,7 +3242,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn@npm:^8.4.1, acorn@npm:^8.8.2":
+"acorn@npm:^8.14.0":
+  version: 8.15.0
+  resolution: "acorn@npm:8.15.0"
+  bin:
+    acorn: bin/acorn
+  checksum: 10c0/dec73ff59b7d6628a01eebaece7f2bdb8bb62b9b5926dcad0f8931f2b8b79c2be21f6c68ac095592adb5adb15831a3635d9343e6a91d028bbe85d564875ec3ec
+  languageName: node
+  linkType: hard
+
+"acorn@npm:^8.4.1":
   version: 8.14.0
   resolution: "acorn@npm:8.14.0"
   bin:
@@ -5119,10 +5131,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv@npm:^16.3.1, dotenv@npm:^16.4.5":
+"dotenv@npm:^16.3.1":
   version: 16.4.7
   resolution: "dotenv@npm:16.4.7"
   checksum: 10c0/be9f597e36a8daf834452daa1f4cc30e5375a5968f98f46d89b16b983c567398a330580c88395069a77473943c06b877d1ca25b4afafcdd6d4adb549e8293462
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^16.4.6":
+  version: 16.6.1
+  resolution: "dotenv@npm:16.6.1"
+  checksum: 10c0/15ce56608326ea0d1d9414a5c8ee6dcf0fffc79d2c16422b4ac2268e7e2d76ff5a572d37ffe747c377de12005f14b3cc22361e79fc7f1061cce81f77d2c973dc
   languageName: node
   linkType: hard
 
@@ -5172,9 +5191,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"elastic-apm-node@npm:^4.8.0":
-  version: 4.10.0
-  resolution: "elastic-apm-node@npm:4.10.0"
+"elastic-apm-node@npm:^4.8.1":
+  version: 4.13.0
+  resolution: "elastic-apm-node@npm:4.13.0"
   dependencies:
     "@elastic/ecs-pino-format": "npm:^1.5.0"
     "@opentelemetry/api": "npm:^1.4.1"
@@ -5194,7 +5213,7 @@ __metadata:
     fast-safe-stringify: "npm:^2.0.7"
     fast-stream-to-buffer: "npm:^1.0.0"
     http-headers: "npm:^3.0.2"
-    import-in-the-middle: "npm:1.11.3"
+    import-in-the-middle: "npm:1.13.1"
     json-bigint: "npm:^1.0.0"
     lru-cache: "npm:10.2.0"
     measured-reporting: "npm:^1.51.1"
@@ -5213,7 +5232,7 @@ __metadata:
     sql-summary: "npm:^1.0.1"
     stream-chopper: "npm:^3.0.1"
     unicode-byte-truncate: "npm:^1.0.0"
-  checksum: 10c0/64225d942b2f899bc9cc41a8454330c3243e1e8184e0b7eb396dcfffd0fcd4617e686778931f80f7c2857063a5a75708a35c13a0eb0b219dd96ce8e91aaa0e95
+  checksum: 10c0/d53812382f96f74c55376d2d96af39c25418189b9f22272b6d1b9d2d4b75ad47bb2fd6d26c3be5a35a0b5172de4f1bf3853c3d284de8744f4984f393261d5dd5
   languageName: node
   linkType: hard
 
@@ -7098,15 +7117,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"import-in-the-middle@npm:1.11.3":
-  version: 1.11.3
-  resolution: "import-in-the-middle@npm:1.11.3"
+"import-in-the-middle@npm:1.13.1":
+  version: 1.13.1
+  resolution: "import-in-the-middle@npm:1.13.1"
   dependencies:
-    acorn: "npm:^8.8.2"
+    acorn: "npm:^8.14.0"
     acorn-import-attributes: "npm:^1.9.5"
     cjs-module-lexer: "npm:^1.2.2"
     module-details-from-path: "npm:^1.0.3"
-  checksum: 10c0/1eac3b485dfa747224fd0542ade60197d2af5e76c1dc2e3628f41066c90ccd3f02cc0f0115a2741e2bd6f12456dcea270853954c54a04626b5bf5fb1cfd035d6
+  checksum: 10c0/4ef05a924c37ff718dd08654927c90d470d92fd9425d646b0d423aaddc89655848debd14761bcb6efa4f57870d63ff38109bab31ca8a1d9d5df2e7d84d2649cf
   languageName: node
   linkType: hard
 
@@ -7204,6 +7223,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ip-address@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "ip-address@npm:7.1.0"
+  dependencies:
+    jsbn: "npm:1.1.0"
+    sprintf-js: "npm:1.1.2"
+  checksum: 10c0/138b0f7a3b0ee0cf6703c226749ee5d047047dae6274c3ffaa881068277915d681dbc37e30a5d4935e14aa8a4c3fbfd23c271ca58163c2d56675cd66c7a81a17
+  languageName: node
+  linkType: hard
+
 "ip-address@npm:^9.0.5":
   version: 9.0.5
   resolution: "ip-address@npm:9.0.5"
@@ -7211,6 +7240,16 @@ __metadata:
     jsbn: "npm:1.1.0"
     sprintf-js: "npm:^1.1.3"
   checksum: 10c0/331cd07fafcb3b24100613e4b53e1a2b4feab11e671e655d46dc09ee233da5011284d09ca40c4ecbdfe1d0004f462958675c224a804259f2f78d2465a87824bc
+  languageName: node
+  linkType: hard
+
+"ip-cidr@npm:^3.0.0":
+  version: 3.1.0
+  resolution: "ip-cidr@npm:3.1.0"
+  dependencies:
+    ip-address: "npm:^7.1.0"
+    jsbn: "npm:^1.1.0"
+  checksum: 10c0/4308d55e31f7649ec7c2b56278b7ec62e69bf2f7a54ffa778eca53aa95b16125a8287ebe20fcdcd45339373c95089e292d18d14b1216c3e030f84fb1cf9fc980
   languageName: node
   linkType: hard
 
@@ -8130,7 +8169,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsbn@npm:1.1.0":
+"jsbn@npm:1.1.0, jsbn@npm:^1.1.0":
   version: 1.1.0
   resolution: "jsbn@npm:1.1.0"
   checksum: 10c0/4f907fb78d7b712e11dea8c165fe0921f81a657d3443dde75359ed52eb2b5d33ce6773d97985a089f09a65edd80b11cb75c767b57ba47391fee4c969f7215c96
@@ -8286,9 +8325,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsonpath-plus@npm:^10.0.0":
-  version: 10.2.0
-  resolution: "jsonpath-plus@npm:10.2.0"
+"jsonpath-plus@npm:^10.2.0":
+  version: 10.3.0
+  resolution: "jsonpath-plus@npm:10.3.0"
   dependencies:
     "@jsep-plugin/assignment": "npm:^1.3.0"
     "@jsep-plugin/regex": "npm:^1.0.4"
@@ -8296,7 +8335,7 @@ __metadata:
   bin:
     jsonpath: bin/jsonpath-cli.js
     jsonpath-plus: bin/jsonpath-cli.js
-  checksum: 10c0/46480781a0a0b5347dc592fd69ef7ff0fa5a5e322a3f1f23997319e77ee937762366d722facafcc5e8d16101e9cdf1ae14df1f1777b2933990aadd0cdb20d8f5
+  checksum: 10c0/f5ff53078ecab98e8afd1dcdb4488e528653fa5a03a32d671f52db1ae9c3236e6e072d75e1949a80929fd21b07603924a586f829b40ad35993fa0247fa4f7506
   languageName: node
   linkType: hard
 
@@ -8386,10 +8425,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"koffi@npm:^2.9.1":
-  version: 2.10.0
-  resolution: "koffi@npm:2.10.0"
-  checksum: 10c0/93ad6faf92c96dcb2b68327a12404da1d10eceab3afffb97caa4053ea8e6e44fa3fe543a4faca393b1cfc37a11816f4e31a632facd852c48c79014541c06b401
+"koffi@npm:^2.9.2":
+  version: 2.14.0
+  resolution: "koffi@npm:2.14.0"
+  checksum: 10c0/f8cd86eaa20c50d6b1aa71ccc37a262085d4ed04f3c127ac9e74670911889f03477a1cb1358e1e973479028b33fed3150718dc8c43cafa97839b6ac742d7147c
   languageName: node
   linkType: hard
 
@@ -9968,7 +10007,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-queue@npm:^6.6.2":
+"p-queue@npm:^6.0.0, p-queue@npm:^6.6.2":
   version: 6.6.2
   resolution: "p-queue@npm:6.6.2"
   dependencies:
@@ -10206,16 +10245,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pino@npm:^9.4.0":
-  version: 9.6.0
-  resolution: "pino@npm:9.6.0"
+"pino@npm:^9.5.0":
+  version: 9.9.0
+  resolution: "pino@npm:9.9.0"
   dependencies:
     atomic-sleep: "npm:^1.0.0"
     fast-redact: "npm:^3.1.1"
     on-exit-leak-free: "npm:^2.1.0"
     pino-abstract-transport: "npm:^2.0.0"
     pino-std-serializers: "npm:^7.0.0"
-    process-warning: "npm:^4.0.0"
+    process-warning: "npm:^5.0.0"
     quick-format-unescaped: "npm:^4.0.3"
     real-require: "npm:^0.2.0"
     safe-stable-stringify: "npm:^2.3.1"
@@ -10223,7 +10262,7 @@ __metadata:
     thread-stream: "npm:^3.0.0"
   bin:
     pino: bin.js
-  checksum: 10c0/bcd1e9d9b301bea13b95689ca9ad7105ae9451928fb6c0b67b3e58c5fe37cea1d40665f3d6641e3da00be0bbc17b89031e67abbc8ea6aac6164f399309fd78e7
+  checksum: 10c0/e2b05d4b1cf73447648ec98d247fd0f1f8020a819ebc2c97fab7fa8b9efe2d1a82ebf674ed2489bb7a1d3a75350c044c776f124e9c29c004bfb133b9e2ac0871
   languageName: node
   linkType: hard
 
@@ -10291,10 +10330,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"process-warning@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "process-warning@npm:4.0.0"
-  checksum: 10c0/5312a72b69d37a1b82ad03f3dfa0090dab3804a8fd995d06c28e3c002852bd82f5584217d9f4a3f197892bb2afc22d57e2c662c7e906b5abb48c0380c7b0880d
+"process-warning@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "process-warning@npm:5.0.0"
+  checksum: 10c0/941f48863d368ec161e0b5890ba0c6af94170078f3d6b5e915c19b36fb59edb0dc2f8e834d25e0d375a8bf368a49d490f080508842168832b93489d17843ec29
   languageName: node
   linkType: hard
 
@@ -11309,7 +11348,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"snarkjs@npm:^0.7.4":
+"snarkjs@npm:^0.7.5":
   version: 0.7.5
   resolution: "snarkjs@npm:0.7.5"
   dependencies:
@@ -11526,6 +11565,13 @@ __metadata:
   version: 4.2.0
   resolution: "split2@npm:4.2.0"
   checksum: 10c0/b292beb8ce9215f8c642bb68be6249c5a4c7f332fc8ecadae7be5cbdf1ea95addc95f0459ef2e7ad9d45fd1064698a097e4eb211c83e772b49bc0ee423e91534
+  languageName: node
+  linkType: hard
+
+"sprintf-js@npm:1.1.2":
+  version: 1.1.2
+  resolution: "sprintf-js@npm:1.1.2"
+  checksum: 10c0/6cc8382f746348bd64b31bc5c99d8ebda7efff716025c41bf501e0e8be4f6744a9fa507e18513554753553d0bcb57fd5fc8dc8c42f94f8008127a52a2c544d21
   languageName: node
   linkType: hard
 
@@ -13127,7 +13173,7 @@ __metadata:
     "@types/chai": "npm:^4.2.0"
     "@types/mocha": "npm:>=9.1.0"
     "@types/node": "npm:>=12.0.0"
-    "@zkp2p/reclaim-witness-sdk": "npm:^0.0.2-rc5"
+    "@zkp2p/reclaim-witness-sdk": "npm:^4.0.1-reclaim"
     canonicalize: "npm:^2.0.0"
     chai: "npm:^4.2.0"
     circomlibjs: "npm:^0.1.7"
