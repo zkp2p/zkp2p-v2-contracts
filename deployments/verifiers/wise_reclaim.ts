@@ -6,6 +6,7 @@ export const getWiseReclaimProviderHashes = async (length: number) => {
   const hashed = hashProviderParams({
     url: "https://wise.com/gateway/v3/profiles/{{PROFILE_ID}}/transfers/{{TRANSACTION_ID}}",
     method: "GET",
+    body: "",
     responseMatches: [
       {
         "type": "regex",

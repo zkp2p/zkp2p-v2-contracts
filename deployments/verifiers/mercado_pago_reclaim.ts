@@ -9,6 +9,7 @@ export const getMercadoReclaimProviderHashes = async (length: number) => {
       {
         url: "https://www.mercadopago.com.ar/activities/detail/{{PAYMENT_ID}}?from={{URL_PARAMS_FROM}}",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",

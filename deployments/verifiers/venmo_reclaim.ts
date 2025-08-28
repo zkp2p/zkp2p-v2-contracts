@@ -9,6 +9,7 @@ export const getVenmoReclaimProviderHashes = async (length: number) => {
       {
         url: "https://account.venmo.com/api/stories?feedType=me&externalId={{SENDER_ID}}",
         method: "GET",
+        body: "",
         responseMatches: [
           {
             "type": "regex",

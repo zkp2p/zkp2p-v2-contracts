@@ -9,6 +9,7 @@ export const getCashappReclaimProviderHashes = async (length: number) => {
       {
         url: "https://cash.app/cash-app/activity/v1.0/page",
         method: "POST",
+        body: "{\"activity_token\":{\"activity_token_type\":\"CUSTOMER_TOKEN\",\"token\":\"{{SENDER_ID}}\"},\"activity_scope\":\"MY_ACTIVITY_WEB_V2\",\"page_size\":15,\"request_context\":{}}",
         responseMatches: [
           {
             "type": "regex",
