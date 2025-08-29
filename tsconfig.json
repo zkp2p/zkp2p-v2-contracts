@@ -22,7 +22,7 @@
     "index.ts",
     "./test/**/*.ts",
     "./utils/**/*.ts",
-    "./typechain/**/*.ts", "archive/test/libs/stringConversionUtils.spec.ts",
+    "./typechain/**/*.ts"
   ],
   "files": [
     "hardhat.config.ts",
