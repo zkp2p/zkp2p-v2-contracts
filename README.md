@@ -125,17 +125,6 @@ deployments/                  # Network deployment artifacts
 typechain/                    # Generated TypeScript bindings
 ```
 
-## Documentation
-
-Detailed documentation is available in CLAUDE.md files throughout the project:
-
-- **[Project Overview](./CLAUDE.md)** - Complete project documentation and architecture
-- **[Contract Architecture](./contracts/CLAUDE.md)** - Smart contract implementation details
-- **[Unified Verifier](./contracts/unifiedVerifier/CLAUDE.md)** - Payment verification system
-- **[Registry System](./contracts/registries/CLAUDE.md)** - Permission management
-- **[Deployment Guide](./deploy/CLAUDE.md)** - Deployment procedures and configuration
-- **[Testing Framework](./test/CLAUDE.md)** - Testing strategies and patterns
-
 ## Integration Examples
 
 ### Creating a Deposit (Maker)
@@ -187,7 +176,6 @@ The project includes comprehensive test coverage:
 - **Integration Tests**: End-to-end user flow validation
 - **Fuzz Tests**: Property-based testing with Foundry
 - **Invariant Tests**: Protocol invariant verification
-- **Gas Tests**: Gas optimization benchmarks
 
 ### Running Tests
 ```bash
