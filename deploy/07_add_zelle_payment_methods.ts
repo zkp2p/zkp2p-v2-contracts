@@ -10,7 +10,8 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  saveProviderHashesSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -56,6 +57,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const citiProviderHashes = await getZelleCitiReclaimProviderHashes(20);
   console.log("zelle citi extension provider hashes", citiProviderHashes);
 
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'zelle-citi', {
+    paymentMethodHash: ZELLE_CITI_PAYMENT_METHOD_HASH,
+    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.citi,
+    providerHashes: citiProviderHashes
+  });
+
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
@@ -78,6 +86,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const chaseProviderHashes = await getZelleChaseReclaimProviderHashes(10);
   console.log("zelle chase extension provider hashes", chaseProviderHashes);
 
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'zelle-chase', {
+    paymentMethodHash: ZELLE_CHASE_PAYMENT_METHOD_HASH,
+    providerHashes: chaseProviderHashes
+  });
+
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
@@ -99,6 +113,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const boaProviderHashes = await getZelleBoAReclaimProviderHashes(10);
   console.log("zelle bofa extension provider hashes", boaProviderHashes);
+
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'zelle-bofa', {
+    paymentMethodHash: ZELLE_BOFA_PAYMENT_METHOD_HASH,
+    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.bofa,
+    providerHashes: boaProviderHashes
+  });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,

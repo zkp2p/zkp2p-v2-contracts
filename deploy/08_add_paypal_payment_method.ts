@@ -10,7 +10,8 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  saveProviderHashesSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -48,6 +49,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // PayPal returns single payment details
   const providerHashes = await getPaypalReclaimProviderHashes();
   console.log("paypal extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'paypal', {
+    paymentMethodHash: PAYPAL_PAYMENT_METHOD_HASH,
+    providerHashes
+  });
 
   // Add PayPal to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

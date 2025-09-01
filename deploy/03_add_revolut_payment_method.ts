@@ -10,7 +10,8 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  saveProviderHashesSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -48,6 +49,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Revolut returns 20 transactions at a time
   const providerHashes = await getRevolutReclaimProviderHashes(20);
   console.log("revolut extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'revolut', {
+    paymentMethodHash: REVOLUT_PAYMENT_METHOD_HASH,
+    providerHashes
+  });
 
   // Add Revolut to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

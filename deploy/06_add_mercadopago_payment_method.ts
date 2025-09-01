@@ -10,7 +10,8 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  saveProviderHashesSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -32,7 +33,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
 
-
   // Add MercadoPago to payment method registry
   const paymentVerifierRegistryContract = await ethers.getContractAt(
     "PaymentVerifierRegistry", paymentVerifierRegistryAddress
@@ -49,6 +49,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get MercadoPago provider hashes
   const providerHashes = await getMercadoReclaimProviderHashes(1);
   console.log("mercadopago extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'mercadopago', {
+    paymentMethodHash: MERCADOPAGO_PAYMENT_METHOD_HASH,
+    providerHashes
+  });
 
   // Add MercadoPago to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

@@ -10,7 +10,8 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  saveProviderHashesSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -49,6 +50,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Venmo only returns 10 stories at a time
   const providerHashes = await getVenmoReclaimProviderHashes(10);
   console.log("venmo extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  saveProviderHashesSnapshot(network, 'venmo', {
+    paymentMethodHash: VENMO_PAYMENT_METHOD_HASH,
+    providerHashes
+  });
 
   // Add Venmo to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(
