@@ -6,6 +6,8 @@
   "author": "0xsachink <0xsachink@gmail.com>",
   "license": "MIT",
   "scripts": {
+    "package:extract": "yarn build && node -r ts-node/register/transpile-only packages/contracts/scripts/extract-all.ts",
+    "package:clean": "cd packages/contracts && rm -rf dist abis addresses constants paymentMethods types utils",
     "build": "yarn clean && yarn compile && yarn build:ts:latest",
     "build:ts:latest": "yarn typechain && yarn transpile",
     "chain": "npx hardhat node --no-deploy",

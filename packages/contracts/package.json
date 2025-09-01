@@ -1,0 +1,110 @@
+{
+  "name": "@zkp2p/contracts",
+  "version": "2.1.0",
+  "description": "ZKP2P smart contract interfaces and utilities",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "addresses",
+    "abis",
+    "constants",
+    "paymentMethods",
+    "types",
+    "utils"
+  ],
+  "scripts": {
+    "build": "yarn clean && yarn extract && yarn compile && yarn bundle",
+    "clean": "rimraf dist abis addresses constants paymentMethods types utils",
+    "extract": "ts-node scripts/extract-all.ts",
+    "compile": "tsc && tsc -p tsconfig.esm.json",
+    "bundle": "rollup -c",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "prepublishOnly": "yarn build && yarn test"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.esm.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./addresses": {
+      "require": "./addresses/index.js",
+      "types": "./addresses/index.ts"
+    },
+    "./addresses/*": {
+      "require": "./addresses/*.js",
+      "types": "./addresses/*.ts"
+    },
+    "./abis/*": {
+      "require": "./abis/*/index.js",
+      "types": "./abis/*/index.ts"
+    },
+    "./constants": {
+      "require": "./constants/index.js",
+      "types": "./constants/index.ts"
+    },
+    "./constants/*": {
+      "require": "./constants/*.json",
+      "types": "./constants/*.json"
+    },
+    "./paymentMethods": {
+      "require": "./paymentMethods/index.js",
+      "types": "./paymentMethods/index.ts"
+    },
+    "./paymentMethods/*": {
+      "require": "./paymentMethods/*.json",
+      "types": "./paymentMethods/*.json"
+    },
+    "./types": {
+      "types": "./types/index.ts"
+    },
+    "./utils": {
+      "require": "./utils/index.js",
+      "types": "./utils/index.ts"
+    }
+  },
+  "sideEffects": false,
+  "peerDependencies": {
+    "ethers": "^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^6.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "ethers": "^5.7.2",
+    "jest": "^29.0.0",
+    "rimraf": "^5.0.0",
+    "rollup": "^3.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zkp2p/zkp2p-v2-contracts.git",
+    "directory": "packages/contracts"
+  },
+  "keywords": [
+    "zkp2p",
+    "ethereum",
+    "smart-contracts",
+    "defi",
+    "p2p",
+    "fiat",
+    "onramp",
+    "offramp"
+  ],
+  "author": "ZKP2P",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zkp2p/zkp2p-v2-contracts/issues"
+  },
+  "homepage": "https://zkp2p.xyz"
+}

@@ -1,6 +1,5 @@
 import { ethers } from "ethers";
 import { BigNumber } from "ethers";
-import { AbiCoder } from "ethers/lib/utils";
 
 const CIRCOM_FIELD = BigNumber.from("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 
