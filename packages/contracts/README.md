@@ -12,19 +12,14 @@ yarn add @zkp2p/contracts-v2
 pnpm add @zkp2p/contracts-v2
 ```
 
-## Quick Start
+## Quick Start (subpath imports)
 
 ```typescript
-import { addresses, abis, constants, paymentMethods } from '@zkp2p/contracts-v2';
+import baseAddresses from '@zkp2p/contracts-v2/addresses/base.json';
+import * as baseAbis from '@zkp2p/contracts-v2/abis/base';
+import { base as baseConstants } from '@zkp2p/contracts-v2/constants';
+import { base as basePaymentMethods } from '@zkp2p/contracts-v2/paymentMethods';
 import { ethers } from 'ethers';
-
-// Get contract addresses for Base mainnet
-const baseAddresses = addresses.base;
-console.log('Orchestrator:', baseAddresses.Orchestrator);
-console.log('Escrow:', baseAddresses.Escrow);
-
-// Get ABIs for Base mainnet
-const baseAbis = abis.base;
 
 // Create contract instance
 const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
@@ -34,12 +29,7 @@ const orchestrator = new ethers.Contract(
   provider
 );
 
-// Use network-specific constants
-const baseConstants = constants.base;
 console.log('Intent expiration:', baseConstants.INTENT_EXPIRATION_PERIOD);
-
-// Access payment methods with provider hashes
-const basePaymentMethods = paymentMethods.base;
 console.log('Venmo config:', basePaymentMethods.venmo);
 ```
 
@@ -50,17 +40,11 @@ console.log('Venmo config:', basePaymentMethods.venmo);
 Pre-configured addresses for all deployed networks, exported per-network:
 
 ```typescript
-import { addresses } from '@zkp2p/contracts-v2';
-
-// Network-specific addresses
-const baseAddresses = addresses.base;
-const baseSepoliaAddresses = addresses.baseSepolia;
-
-// Access individual contracts
-console.log(baseAddresses.Orchestrator);
-console.log(baseAddresses.Escrow);
-console.log(baseAddresses.UnifiedPaymentVerifier);
-console.log(baseAddresses.SimpleAttestationVerifier);
+import base from '@zkp2p/contracts-v2/addresses/base.json';
+import baseSepolia from '@zkp2p/contracts-v2/addresses/baseSepolia.json';
+console.log(base.Orchestrator);
+console.log(base.Escrow);
+console.log(baseSepolia.UnifiedPaymentVerifier);
 ```
 
 Supported networks:
@@ -72,13 +56,7 @@ Supported networks:
 Minimal ABIs extracted from on-chain deployments:
 
 ```typescript
-import { abis } from '@zkp2p/contracts-v2';
-
-// Network-specific ABIs
-const baseAbis = abis.base;
-const baseSepoliaAbis = abis.baseSepolia;
-
-// Individual contract ABIs
+import * as baseAbis from '@zkp2p/contracts-v2/abis/base';
 const orchestratorABI = baseAbis.Orchestrator;
 const escrowABI = baseAbis.Escrow;
 ```
@@ -88,18 +66,8 @@ const escrowABI = baseAbis.Escrow;
 All protocol parameters and configurations per network:
 
 ```typescript
-import { constants } from '@zkp2p/contracts-v2';
-
-// Network-specific constants
-const baseConstants = constants.base;
-
-// Protocol parameters
-const {
-  INTENT_EXPIRATION_PERIOD,
-  MAX_INTENTS_PER_DEPOSIT,
-  DUST_THRESHOLD,
-  PARTIAL_MANUAL_RELEASE_DELAY
-} = baseConstants;
+import { base as baseConstants } from '@zkp2p/contracts-v2/constants';
+const { INTENT_EXPIRATION_PERIOD, MAX_INTENTS_PER_DEPOSIT, DUST_THRESHOLD } = baseConstants;
 ```
 
 ### 💳 Payment Methods with Provider Hashes
@@ -107,15 +75,10 @@ const {
 Unified payment method configurations including provider hashes from deployment:
 
 ```typescript
-import { paymentMethods } from '@zkp2p/contracts-v2';
-
-// Network-specific payment methods
-const basePaymentMethods = paymentMethods.base;
-
-// Access payment method configuration
+import { base as basePaymentMethods } from '@zkp2p/contracts-v2/paymentMethods';
 const venmoConfig = basePaymentMethods.venmo;
-console.log('Payment ID:', venmoConfig.paymentId);
-console.log('Provider Hash:', venmoConfig.providerHash);
+console.log('Payment Method Hash:', venmoConfig.paymentMethodHash);
+console.log('Provider Hashes:', venmoConfig.providerHashes);
 console.log('Currencies:', venmoConfig.currencies);
 console.log('Timestamp Buffer:', venmoConfig.timestampBuffer);
 ```
@@ -125,68 +88,35 @@ console.log('Timestamp Buffer:', venmoConfig.timestampBuffer);
 Protocol utility functions:
 
 ```typescript
-import { utils } from '@zkp2p/contracts-v2';
-import { Currency, getCurrencyInfo, getPaymentMethodId } from '@zkp2p/contracts-v2';
-
-// Currency utilities
-const usdInfo = getCurrencyInfo(Currency.USD);
+import * as utils from '@zkp2p/contracts-v2/utils';
+const usdInfo = utils.getCurrencyInfo(utils.Currency.USD);
 console.log('Currency code:', usdInfo.code);
 console.log('Decimals:', usdInfo.decimals);
-
-// Payment method utilities
-const venmoId = getPaymentMethodId('venmo');
 ```
 
 
 ## API Reference
 
-### Main Exports
+### Imports
 
-| Export | Type | Description |
-|--------|------|-------------|
-| `addresses` | Object | Network-specific contract addresses |
-| `abis` | Object | Network-specific contract ABIs |
-| `constants` | Object | Network-specific protocol constants |
-| `paymentMethods` | Object | Network-specific payment method configs |
-| `utils` | Object | Protocol utility functions |
-| `Currency` | Enum | Currency enumeration |
-| `getCurrencyInfo` | Function | Get currency details |
-| `getPaymentMethodId` | Function | Get payment method identifier |
-
-### Package Exports
-
-The package provides multiple entry points:
-
-```json
-{
-  "@zkp2p/contracts-v2": "Main package exports",
-  "@zkp2p/contracts-v2/addresses": "Address exports only",
-  "@zkp2p/contracts-v2/addresses/*": "Network-specific addresses",
-  "@zkp2p/contracts-v2/abis/*": "Network-specific ABIs", 
-  "@zkp2p/contracts-v2/constants": "Constants exports",
-  "@zkp2p/contracts-v2/constants/*": "Network-specific constants",
-  "@zkp2p/contracts-v2/paymentMethods": "Payment method configs",
-  "@zkp2p/contracts-v2/paymentMethods/*": "Network-specific payment methods",
-  "@zkp2p/contracts-v2/types": "TypeChain types",
-  "@zkp2p/contracts-v2/utils": "Utility functions"
-}
-```
+- Prefer subpaths for clarity and smaller bundles:
+  - `@zkp2p/contracts-v2/addresses` and `@zkp2p/contracts-v2/addresses/*.json`
+  - `@zkp2p/contracts-v2/abis/<network>`
+  - `@zkp2p/contracts-v2/constants`
+  - `@zkp2p/contracts-v2/paymentMethods`
+  - `@zkp2p/contracts-v2/utils`
+  - `@zkp2p/contracts-v2/types`
 
 ## Development
 
-### Package Scripts
+### Build & Publish
 
-From the root directory:
-- `yarn package:extract` - Extract addresses, ABIs, and constants from deployments
-- `yarn package:build` - Build the package for distribution
+From `packages/contracts`:
+- `yarn build` – Clean, extract, and bundle to `dist/`
+- `npm pack` – Preview tarball contents
+- `npm publish --access public` – Publish (runs prepublishOnly)
 
-From the package directory (`packages/contracts`):
-- `yarn extract` - Extract data from deployments
-- `yarn build` - Build package for distribution
-- `yarn clean` - Clean generated files
-- `yarn test` - Run package tests
-
-This ensures the package always reflects the actual deployed state of the protocol.
+Note: The package publishes `dist/` only. Tests and config files are excluded.
 
 ## License
 
