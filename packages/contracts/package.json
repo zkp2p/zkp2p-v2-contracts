@@ -32,24 +32,24 @@
     },
     "./addresses": {
       "default": "./addresses/index.json",
-      "types": "./addresses/index.ts"
+      "types": "./addresses/index.d.ts"
     },
     "./addresses/*.json": {
       "default": "./addresses/*.json"
     },
     "./abis/*/": {
       "default": "./abis/*/*.json",
-      "types": "./abis/*/index.ts"
+      "types": "./abis/*/index.d.ts"
     },
     "./constants": {
-      "types": "./constants/index.ts"
+      "types": "./constants/index.d.ts"
     },
     "./constants/*.json": {
       "default": "./constants/*.json"
     },
     "./paymentMethods": {
       "default": "./paymentMethods/index.json",
-      "types": "./paymentMethods/index.ts"
+      "types": "./paymentMethods/index.d.ts"
     },
     "./paymentMethods/*.json": {
       "default": "./paymentMethods/*.json"
@@ -58,10 +58,10 @@
       "types": "./types/index.ts"
     },
     "./utils": {
-      "types": "./utils/index.ts"
+      "types": "./utils/index.d.ts"
     },
     "./utils/protocolUtils": {
-      "types": "./utils/protocolUtils.ts"
+      "types": "./utils/protocolUtils.d.ts"
     }
   },
   "sideEffects": false,
