@@ -4,7 +4,8 @@ import * as path from 'path';
 
 const ROOT = path.resolve(__dirname, '../../../../');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const UTILS_DIR = path.join(PKG_ROOT, 'utils');
+const OUT_ROOT = path.join(PKG_ROOT, 'dist');
+const UTILS_DIR = path.join(OUT_ROOT, 'utils');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

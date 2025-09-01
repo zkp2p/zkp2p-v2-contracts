@@ -7,7 +7,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDirs": ["./src", "./addresses", "./abis", "./constants", "./paymentMethods", "./types", "./utils"],
+    "rootDir": ".",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -33,13 +33,7 @@
     }
   },
   "include": [
-    "src/**/*",
-    "addresses/**/*",
-    "abis/**/*", 
-    "constants/**/*",
-    "paymentMethods/**/*",
-    "types/**/*",
-    "utils/**/*"
+    "src/**/*"
   ],
   "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
 }

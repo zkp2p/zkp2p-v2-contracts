@@ -5,7 +5,8 @@ import * as path from 'path';
 const ROOT = path.resolve(__dirname, '../../../../');
 const TYPECHAIN_SRC = path.join(ROOT, 'typechain');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const TYPECHAIN_DEST = path.join(PKG_ROOT, 'types');
+const OUT_ROOT = path.join(PKG_ROOT, 'dist');
+const TYPECHAIN_DEST = path.join(OUT_ROOT, 'types');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -74,6 +75,25 @@ export async function extractTypes(): Promise<void> {
   const contractsSrc = path.join(TYPECHAIN_SRC, 'contracts');
   if (fs.existsSync(contractsSrc)) {
     copyRecursive(contractsSrc, path.join(TYPECHAIN_DEST, 'contracts'));
+    
+    // Clean up the contracts/index.ts to remove mock references
+    const contractsIndexPath = path.join(TYPECHAIN_DEST, 'contracts', 'index.ts');
+    if (fs.existsSync(contractsIndexPath)) {
+      let indexContent = fs.readFileSync(contractsIndexPath, 'utf8');
+      // Remove all lines containing mock imports or exports
+      const lines = indexContent.split('\n');
+      const filteredLines = lines.filter(line => {
+        const trimmedLine = line.trim().toLowerCase();
+        // Remove any line that imports or exports mocks
+        if (trimmedLine.includes('mock')) {
+          return false;
+        }
+        return true;
+      });
+      indexContent = filteredLines.join('\n');
+      fs.writeFileSync(contractsIndexPath, indexContent, 'utf8');
+      console.log('✅ Cleaned mock imports from types/contracts/index.ts');
+    }
   }
 
   // Write curated index that avoids re-exporting OpenZeppelin

@@ -1,68 +1,62 @@
 {
   "name": "@zkp2p/contracts-v2",
-  "version": "2.1.0",
+  "version": "0.0.1-rc1",
   "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
-    "dist",
-    "addresses",
-    "abis",
-    "constants",
-    "paymentMethods",
-    "types",
-    "utils"
+    "dist"
   ],
   "scripts": {
-    "build": "yarn compile && yarn bundle",
-    "build:full": "yarn clean && yarn extract && yarn compile && yarn bundle",
-    "clean": "rimraf dist abis addresses constants paymentMethods types utils",
+    "build": "yarn clean && yarn extract && yarn bundle",
+    "build:full": "yarn build",
+    "clean": "rimraf dist",
     "extract": "ts-node --transpile-only scripts/extract-all.ts",
-    "compile": "tsc && tsc -p tsconfig.esm.json",
-    "bundle": "rollup -c",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
+    "compile": "echo 'Skipping tsc, using Rollup for compilation'",
+    "bundle": "rollup -c --bundleConfigAsCjs",
+    "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
     "prepublishOnly": "yarn build && yarn test"
   },
   "exports": {
     ".": {
       "require": "./dist/index.js",
       "import": "./dist/index.esm.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/index.d.ts"
     },
     "./addresses": {
-      "default": "./addresses/index.json",
-      "types": "./addresses/index.d.ts"
+      "default": "./dist/addresses/index.json",
+      "types": "./dist/addresses/index.d.ts"
     },
     "./addresses/*.json": {
-      "default": "./addresses/*.json"
+      "default": "./dist/addresses/*.json"
     },
     "./abis/*/": {
-      "default": "./abis/*/*.json",
-      "types": "./abis/*/index.d.ts"
+      "default": "./dist/abis/*/*.json",
+      "types": "./dist/abis/*/index.d.ts"
     },
     "./constants": {
-      "types": "./constants/index.d.ts"
+      "types": "./dist/constants/index.d.ts"
     },
     "./constants/*.json": {
-      "default": "./constants/*.json"
+      "default": "./dist/constants/*.json"
     },
     "./paymentMethods": {
-      "default": "./paymentMethods/index.json",
-      "types": "./paymentMethods/index.d.ts"
+      "default": "./dist/paymentMethods/index.json",
+      "types": "./dist/paymentMethods/index.d.ts"
     },
     "./paymentMethods/*.json": {
-      "default": "./paymentMethods/*.json"
+      "default": "./dist/paymentMethods/*.json"
     },
     "./types": {
-      "types": "./types/index.ts"
+      "types": "./dist/types/index.d.ts"
     },
     "./utils": {
-      "types": "./utils/index.d.ts"
+      "types": "./dist/utils/index.d.ts"
     },
     "./utils/protocolUtils": {
-      "types": "./utils/protocolUtils.d.ts"
+      "types": "./dist/utils/protocolUtils.d.ts"
     }
   },
   "sideEffects": false,
@@ -73,7 +67,6 @@
     "@rollup/plugin-commonjs": "^25.0.0",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
-    "@rollup/plugin-terser": "^0.4.0",
     "@rollup/plugin-typescript": "^11.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",

@@ -9,7 +9,8 @@ moduleAlias.addAlias('hardhat', 'ethers');
 
 const ROOT = path.resolve(__dirname, '../../../../');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const PAYMENT_METHODS_DIR = path.join(PKG_ROOT, 'paymentMethods');
+const OUT_ROOT = path.join(PKG_ROOT, 'dist');
+const PAYMENT_METHODS_DIR = path.join(OUT_ROOT, 'paymentMethods');
 
 // TypeScript interface for payment method configuration
 export interface PaymentMethodConfig {

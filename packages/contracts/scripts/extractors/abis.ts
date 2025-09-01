@@ -16,7 +16,8 @@ type OutputsFileShape = {
 const ROOT = path.resolve(__dirname, '../../../../');
 const OUTPUTS_DIR = path.join(ROOT, 'deployments', 'outputs');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const ABIS_DIR = path.join(PKG_ROOT, 'abis');
+const OUT_ROOT = path.join(PKG_ROOT, 'dist');
+const ABIS_DIR = path.join(OUT_ROOT, 'abis');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

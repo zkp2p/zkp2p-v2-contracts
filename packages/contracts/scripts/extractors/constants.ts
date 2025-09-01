@@ -11,7 +11,8 @@ moduleAlias.addAlias('hardhat', 'ethers');
 
 const ROOT = path.resolve(__dirname, '../../../../');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const CONSTANTS_DIR = path.join(PKG_ROOT, 'constants');
+const OUT_ROOT = path.join(PKG_ROOT, 'dist');
+const CONSTANTS_DIR = path.join(OUT_ROOT, 'constants');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

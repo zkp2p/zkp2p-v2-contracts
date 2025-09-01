@@ -6,31 +6,14 @@
  * @packageDocumentation
  */
 
-// Network-specific contract addresses
-export * as addresses from '../addresses';
-
-// Network-specific ABIs
-export * as abis from '../abis';
-
-// Network-specific constants
-export * as constants from '../constants';
-
-// Network-specific payment methods (verifiers + provider hashes)
-export * as paymentMethods from '../paymentMethods';
-
-// TypeChain types
-export * from '../types';
-
-// Utility functions
-export * as utils from '../utils';
-
 // Re-export version from package.json
 export { version } from '../package.json';
-
-// Helper functions for common operations
-export { 
-  Currency,
-  getKeccak256Hash,
-  getCurrencyCodeFromHash,
-  calculateIntentHash
-} from '../utils/protocolUtils';
+// Note: All data modules (addresses, abis, constants, paymentMethods, types, utils)
+// are exposed via package subpath exports under the `dist/` directory.
+// Import them as:
+//   - @zkp2p/contracts-v2/addresses
+//   - @zkp2p/contracts-v2/abis/<network>
+//   - @zkp2p/contracts-v2/constants
+//   - @zkp2p/contracts-v2/paymentMethods
+//   - @zkp2p/contracts-v2/types
+//   - @zkp2p/contracts-v2/utils

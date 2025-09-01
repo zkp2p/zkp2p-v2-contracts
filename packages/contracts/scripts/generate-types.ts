@@ -4,7 +4,8 @@ import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const PACKAGE_ROOT = path.resolve(__dirname, '..');
+// Generate declarations inside the built package directory
+const PACKAGE_ROOT = path.resolve(__dirname, '..', 'dist');
 
 // Directories to process
 const DIRECTORIES_TO_PROCESS = [
@@ -12,7 +13,8 @@ const DIRECTORIES_TO_PROCESS = [
   'constants', 
   'paymentMethods',
   'utils',
-  'abis'
+  'abis',
+  'types'
 ];
 
 /**

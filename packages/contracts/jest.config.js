@@ -25,5 +25,7 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
   testTimeout: 30000,
-  verbose: true
+  verbose: true,
+  // Disable Watchman to avoid sandbox permission issues in CI/sandboxes
+  watchman: false
 };
