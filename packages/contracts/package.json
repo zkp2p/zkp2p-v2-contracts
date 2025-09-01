@@ -4,7 +4,7 @@
   "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/src/index.d.ts",
   "files": [
     "dist",
     "addresses",
@@ -15,7 +15,8 @@
     "utils"
   ],
   "scripts": {
-    "build": "yarn clean && yarn extract && yarn compile && yarn bundle",
+    "build": "yarn compile && yarn bundle",
+    "build:full": "yarn clean && yarn extract && yarn compile && yarn bundle",
     "clean": "rimraf dist abis addresses constants paymentMethods types utils",
     "extract": "ts-node --transpile-only scripts/extract-all.ts",
     "compile": "tsc && tsc -p tsconfig.esm.json",
@@ -28,7 +29,7 @@
     ".": {
       "require": "./dist/index.js",
       "import": "./dist/index.esm.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/src/index.d.ts"
     },
     "./addresses": {
       "default": "./addresses/index.json",

@@ -8,6 +8,7 @@
 
 # Build output
 /dist/
+/dist-esm/
 /lib/
 
 # TypeScript build info

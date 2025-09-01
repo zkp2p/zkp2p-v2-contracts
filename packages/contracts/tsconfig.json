@@ -7,7 +7,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDirs": ["./src", "./addresses", "./abis", "./constants", "./paymentMethods", "./types", "./utils"],
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -32,6 +32,14 @@
       "@typechain/*": ["typechain-types/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "addresses/**/*",
+    "abis/**/*", 
+    "constants/**/*",
+    "paymentMethods/**/*",
+    "types/**/*",
+    "utils/**/*"
+  ],
   "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
 }

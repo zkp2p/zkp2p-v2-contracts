@@ -30,6 +30,7 @@ export { version } from '../package.json';
 // Helper functions for common operations
 export { 
   Currency,
-  getCurrencyInfo,
-  getPaymentMethodId
+  getKeccak256Hash,
+  getCurrencyCodeFromHash,
+  calculateIntentHash
 } from '../utils/protocolUtils';
