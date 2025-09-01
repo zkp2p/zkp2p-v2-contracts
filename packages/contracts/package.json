@@ -1,7 +1,7 @@
 {
-  "name": "@zkp2p/contracts",
+  "name": "@zkp2p/contracts-v2",
   "version": "2.1.0",
-  "description": "ZKP2P smart contract interfaces and utilities",
+  "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -31,39 +31,37 @@
       "types": "./dist/index.d.ts"
     },
     "./addresses": {
-      "require": "./addresses/index.js",
+      "default": "./addresses/index.json",
       "types": "./addresses/index.ts"
     },
-    "./addresses/*": {
-      "require": "./addresses/*.js",
-      "types": "./addresses/*.ts"
+    "./addresses/*.json": {
+      "default": "./addresses/*.json"
     },
-    "./abis/*": {
-      "require": "./abis/*/index.js",
+    "./abis/*/": {
+      "default": "./abis/*/*.json",
       "types": "./abis/*/index.ts"
     },
     "./constants": {
-      "require": "./constants/index.js",
       "types": "./constants/index.ts"
     },
-    "./constants/*": {
-      "require": "./constants/*.json",
-      "types": "./constants/*.json"
+    "./constants/*.json": {
+      "default": "./constants/*.json"
     },
     "./paymentMethods": {
-      "require": "./paymentMethods/index.js",
+      "default": "./paymentMethods/index.json",
       "types": "./paymentMethods/index.ts"
     },
-    "./paymentMethods/*": {
-      "require": "./paymentMethods/*.json",
-      "types": "./paymentMethods/*.json"
+    "./paymentMethods/*.json": {
+      "default": "./paymentMethods/*.json"
     },
     "./types": {
       "types": "./types/index.ts"
     },
     "./utils": {
-      "require": "./utils/index.js",
       "types": "./utils/index.ts"
+    },
+    "./utils/protocolUtils": {
+      "types": "./utils/protocolUtils.ts"
     }
   },
   "sideEffects": false,
@@ -106,5 +104,9 @@
   "bugs": {
     "url": "https://github.com/zkp2p/zkp2p-v2-contracts/issues"
   },
-  "homepage": "https://zkp2p.xyz"
+  "homepage": "https://zkp2p.xyz",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
 }

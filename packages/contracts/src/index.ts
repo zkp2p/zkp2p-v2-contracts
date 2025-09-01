@@ -1,5 +1,5 @@
 /**
- * @zkp2p/contracts
+ * @zkp2p/contracts-v2
  * 
  * ZKP2P V2 smart contract addresses, ABIs, and utilities
  * 
