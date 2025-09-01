@@ -42,8 +42,7 @@ import {
   PROTOCOL_MAKER_FEE,
   PROTOCOL_MAKER_FEE_RECIPIENT,
   DUST_THRESHOLD,
-  MAX_INTENTS_PER_DEPOSIT,
-  PARTIAL_MANUAL_RELEASE_DELAY,
+  MAX_INTENTS_PER_DEPOSIT
 } from "../../deployments/parameters";
 
 const expect = getWaffleExpect();
