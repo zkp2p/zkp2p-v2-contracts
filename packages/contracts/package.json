@@ -17,7 +17,7 @@
   "scripts": {
     "build": "yarn clean && yarn extract && yarn compile && yarn bundle",
     "clean": "rimraf dist abis addresses constants paymentMethods types utils",
-    "extract": "ts-node scripts/extract-all.ts",
+    "extract": "ts-node --transpile-only scripts/extract-all.ts",
     "compile": "tsc && tsc -p tsconfig.esm.json",
     "bundle": "rollup -c",
     "test": "jest",
@@ -72,6 +72,7 @@
     "@rollup/plugin-commonjs": "^25.0.0",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
     "@rollup/plugin-typescript": "^11.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
@@ -79,7 +80,6 @@
     "jest": "^29.0.0",
     "rimraf": "^5.0.0",
     "rollup": "^3.0.0",
-    "@rollup/plugin-terser": "^0.4.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.0"
