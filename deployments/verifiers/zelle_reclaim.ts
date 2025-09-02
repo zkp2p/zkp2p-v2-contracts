@@ -208,6 +208,3 @@ export const ZELLE_CITI_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.util
 export const ZELLE_CHASE_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("zelle-chase"));
 // 0x4bc42b322a3ad413b91b2fde30549ca70d6ee900eded1681de91aaf32ffd7ab5
 export const ZELLE_BOFA_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("zelle-bofa"));
-
-
-

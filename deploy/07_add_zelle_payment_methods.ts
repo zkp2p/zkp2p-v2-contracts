@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   ZELLE_RECLAIM_CURRENCIES,
   ZELLE_RECLAIM_TIMESTAMP_BUFFER,
@@ -56,6 +56,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const citiProviderHashes = await getZelleCitiReclaimProviderHashes(20);
   console.log("zelle citi extension provider hashes", citiProviderHashes);
 
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'zelle-citi', {
+    paymentMethodHash: ZELLE_CITI_PAYMENT_METHOD_HASH,
+    providerHashes: citiProviderHashes,
+    currencies: ZELLE_RECLAIM_CURRENCIES,
+    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.citi
+  });
+
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
@@ -78,6 +86,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const chaseProviderHashes = await getZelleChaseReclaimProviderHashes(10);
   console.log("zelle chase extension provider hashes", chaseProviderHashes);
 
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'zelle-chase', {
+    paymentMethodHash: ZELLE_CHASE_PAYMENT_METHOD_HASH,
+    providerHashes: chaseProviderHashes,
+    currencies: ZELLE_RECLAIM_CURRENCIES,
+    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.chase
+  });
+
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
@@ -99,6 +115,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const boaProviderHashes = await getZelleBoAReclaimProviderHashes(10);
   console.log("zelle bofa extension provider hashes", boaProviderHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'zelle-bofa', {
+    paymentMethodHash: ZELLE_BOFA_PAYMENT_METHOD_HASH,
+    providerHashes: boaProviderHashes,
+    currencies: ZELLE_RECLAIM_CURRENCIES,
+    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.bofa
+  });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,

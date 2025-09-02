@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getPaypalReclaimProviderHashes,
   PAYPAL_RECLAIM_CURRENCIES,
@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.PaypalReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
@@ -48,6 +47,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // PayPal returns single payment details
   const providerHashes = await getPaypalReclaimProviderHashes();
   console.log("paypal extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'paypal', {
+    paymentMethodHash: PAYPAL_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: PAYPAL_RECLAIM_CURRENCIES,
+    timestampBuffer: PAYPAL_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add PayPal to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

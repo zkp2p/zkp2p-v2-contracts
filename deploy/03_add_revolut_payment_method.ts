@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getRevolutReclaimProviderHashes,
   REVOLUT_RECLAIM_CURRENCIES,
@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.RevolutReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
@@ -48,6 +47,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Revolut returns 20 transactions at a time
   const providerHashes = await getRevolutReclaimProviderHashes(20);
   console.log("revolut extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'revolut', {
+    paymentMethodHash: REVOLUT_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: REVOLUT_RECLAIM_CURRENCIES,
+    timestampBuffer: REVOLUT_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add Revolut to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

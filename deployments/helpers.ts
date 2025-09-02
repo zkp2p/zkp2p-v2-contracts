@@ -1,6 +1,8 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Address } from "../utils/types";
 import { BigNumber } from "ethers";
+import * as fs from "fs";
+import * as path from "path";
 
 export function getDeployedContractAddress(network: string, contractName: string): string {
   return require(`./${network}/${contractName}.json`).address;
@@ -260,4 +262,52 @@ export async function addPaymentMethodToUnifiedVerifier(
   } else {
     console.log(`Payment method ${paymentMethodHash} already exists in unified verifier`);
   }
+}
+
+// Persist payment method snapshots per network to avoid drift between code and configured on-chain state
+export function savePaymentMethodSnapshot(
+  network: string,
+  methodKey: string,
+  data: {
+    paymentMethodHash: string;
+    providerHashes: string[];
+    currencies?: string[];
+    timestampBuffer?: any; // Can be BigNumber or number
+  }
+): void {
+  const providersDir = path.join(__dirname, "outputs", "platforms");
+  if (!fs.existsSync(providersDir)) fs.mkdirSync(providersDir, { recursive: true });
+
+  const filePath = path.join(providersDir, `${network}.json`);
+  let current: any = { methods: {} };
+  try {
+    if (fs.existsSync(filePath)) {
+      current = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    }
+  } catch { }
+
+  const normalizeHex = (h: string) => (h.startsWith("0x") ? h.toLowerCase() : `0x${h.toLowerCase()}`);
+  const hashes = Array.from(new Set((data.providerHashes || []).map(normalizeHex))).sort();
+
+  // Convert BigNumber to number if needed
+  let timestampBuffer = 30; // default
+  if (data.timestampBuffer) {
+    if (typeof data.timestampBuffer === 'object' && data.timestampBuffer._isBigNumber) {
+      timestampBuffer = parseInt(data.timestampBuffer.toString());
+    } else if (typeof data.timestampBuffer === 'number') {
+      timestampBuffer = data.timestampBuffer;
+    } else if (typeof data.timestampBuffer === 'string') {
+      timestampBuffer = parseInt(data.timestampBuffer);
+    }
+  }
+
+  current.methods[methodKey] = {
+    paymentMethodHash: normalizeHex(data.paymentMethodHash),
+    currencies: data.currencies || [],
+    timestampBuffer,
+    hashes,
+    updatedAt: new Date().toISOString()
+  };
+
+  fs.writeFileSync(filePath, JSON.stringify(current, null, 2));
 }

@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getMercadoReclaimProviderHashes,
   MERCADO_RECLAIM_CURRENCIES,
@@ -27,11 +27,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.MercadoReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
-
 
   // Add MercadoPago to payment method registry
   const paymentVerifierRegistryContract = await ethers.getContractAt(
@@ -49,6 +47,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get MercadoPago provider hashes
   const providerHashes = await getMercadoReclaimProviderHashes(1);
   console.log("mercadopago extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'mercadopago', {
+    paymentMethodHash: MERCADOPAGO_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: MERCADO_RECLAIM_CURRENCIES,
+    timestampBuffer: MERCADO_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add MercadoPago to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

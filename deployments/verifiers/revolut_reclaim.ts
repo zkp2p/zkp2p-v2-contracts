@@ -77,7 +77,7 @@ export const REVOLUT_RECLAIM_CURRENCIES: any = [
   Currency.NZD,
   Currency.AUD,
   Currency.CAD,
-  // Currency.JPY,    // Does not has 2 decimal places parsing; hence removed
+  Currency.JPY,    // Does not has 2 decimal places parsing; but unified verifier handles it
   Currency.HKD,
   Currency.MXN,
   Currency.SAR,

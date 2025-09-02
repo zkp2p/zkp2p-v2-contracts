@@ -16,6 +16,25 @@ import "./tasks/etherscanVerifyWithDelay";
 
 dotenv.config();
 
+// Skip non-deploy script files (e.g., Markdown notes, CLAUDE.md etc.) in the deploy/ folder
+// by registering no-op require handlers that instruct hardhat-deploy to skip them.
+// This prevents ts-node from trying to compile arbitrary extensions like .md.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(require as any).extensions = (require as any).extensions || {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const skipModule: any = (module: any, filename: string) => {
+  // Export a skip function that always returns true so hardhat-deploy ignores the file
+  module._compile('module.exports = { skip: async () => true }', filename);
+};
+// Common non-code extensions to ignore under deploy/
+// Add more here if needed (e.g., .mdx, .txt)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(require as any).extensions['.md'] = skipModule;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(require as any).extensions['.mdx'] = skipModule;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(require as any).extensions['.txt'] = skipModule;
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [

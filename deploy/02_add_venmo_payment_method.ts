@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_CURRENCIES,
@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.VenmoReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
@@ -49,6 +48,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Venmo only returns 10 stories at a time
   const providerHashes = await getVenmoReclaimProviderHashes(10);
   console.log("venmo extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'venmo', {
+    paymentMethodHash: VENMO_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: VENMO_RECLAIM_CURRENCIES,
+    timestampBuffer: VENMO_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add Venmo to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

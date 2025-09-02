@@ -31,7 +31,3 @@ export interface SignedClaim {
   claim: CompleteClaimData;
   signatures: string[];
 }
-
-export enum PaymentService {
-  VenmoReclaim = "venmo_reclaim",
-}

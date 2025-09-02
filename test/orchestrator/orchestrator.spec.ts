@@ -31,7 +31,7 @@ import {
 import { Blockchain, ether, usdc } from "@utils/common";
 import { BigNumber } from "ethers";
 import { ZERO, ZERO_BYTES32, ADDRESS_ZERO, ONE, ONE_DAY_IN_SECONDS, ONE_HOUR_IN_SECONDS } from "@utils/constants";
-import { calculateIntentHash, calculateRevolutIdHash, calculateRevolutIdHashBN } from "@utils/protocolUtils";
+import { calculateIntentHash } from "@utils/protocolUtils";
 import { Currency } from "@utils/protocolUtils";
 import { generateGatingServiceSignature, createSignalIntentParams } from "@utils/test/helpers";
 

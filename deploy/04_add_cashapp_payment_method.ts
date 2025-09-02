@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getCashappReclaimProviderHashes,
   CASHAPP_RECLAIM_CURRENCIES,
@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.CashappReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
@@ -49,6 +48,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // CashApp returns 20 activities at a time
   const providerHashes = await getCashappReclaimProviderHashes(20);
   console.log("cashapp extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'cashapp', {
+    paymentMethodHash: CASHAPP_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: CASHAPP_RECLAIM_CURRENCIES,
+    timestampBuffer: CASHAPP_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add CashApp to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

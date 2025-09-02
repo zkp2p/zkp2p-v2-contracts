@@ -10,9 +10,9 @@ import {
 import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
-  addPaymentMethodToUnifiedVerifier
+  addPaymentMethodToUnifiedVerifier,
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getWiseReclaimProviderHashes,
   WISE_RECLAIM_CURRENCIES,
@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.WiseReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");
@@ -49,6 +48,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get Wise provider hashes
   const providerHashes = await getWiseReclaimProviderHashes(1);
   console.log("wise extension provider hashes", providerHashes);
+
+  // Snapshot provider hashes
+  savePaymentMethodSnapshot(network, 'wise', {
+    paymentMethodHash: WISE_PAYMENT_METHOD_HASH,
+    providerHashes,
+    currencies: WISE_RECLAIM_CURRENCIES,
+    timestampBuffer: WISE_RECLAIM_TIMESTAMP_BUFFER
+  });
 
   // Add Wise to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(

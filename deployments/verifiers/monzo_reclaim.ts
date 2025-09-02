@@ -71,11 +71,6 @@ export const MONZO_RECLAIM_CURRENCIES: any = [
   Currency.GBP,
 ];
 
-// July 26 2025
-export const MONZO_OLD_EXTENSION_PROVIDER_HASHES = [
-  '0x84ddc30f67565667fb6a68855d19905e30624601b9d584736c6befaf2217077b'
-];
-
 export const MONZO_RECLAIM_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
 export const MONZO_PAYMENT_METHOD_HASH = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("monzo"));
