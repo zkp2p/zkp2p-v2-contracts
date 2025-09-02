@@ -2,6 +2,10 @@
   "methods": {
     "venmo": {
       "paymentMethodHash": "0x90262a3db0edd0be2369c6b28f9e8511ec0bac7136cefbada0880602f87e7268",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0x00a39e74fa194d329b16196bfbc266e6a964af41c07a1fede4545bde3f27406a",
         "0x3249621feba4dd2a48514afcf0a12fa2023273cf256f435ebdfa8ec6e0b7f305",
@@ -14,10 +18,30 @@
         "0xcbc6bd56ca029ffb58fb4294238d9012aceffe9979cd71935fb8775e8459d721",
         "0xd74079613d095eff94370b13e9bc73ecc17f08248943bff7963768f5f601310e"
       ],
-      "updatedAt": "2025-09-01T07:43:42.950Z"
+      "updatedAt": "2025-09-02T16:07:42.430Z"
     },
     "revolut": {
       "paymentMethodHash": "0x617f88ab82b5c1b014c539f7e75121427f0bb50a4c58b187a238531e7d58605d",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e",
+        "0xfff16d60be267153303bbfa66e593fb8d06e24ea5ef24b6acca5224c2ca6b907",
+        "0x90832e2dc3221e4d56977c1aa8f6a6706b9ad6542fbbdaac13097d0fa5e42e67",
+        "0xc241cc1f9752d2d53d1ab67189223a3f330e48b75f73ebf86f50b2c78fe8df88",
+        "0xdbd9d34f382e9f6ae078447a655e0816927c7c3edec70bd107de1d34cb15172e",
+        "0xcb83cbb58eaa5007af6cad99939e4581c1e1b50d65609c30f303983301524ef3",
+        "0x221012e06ebf59a20b82e3003cf5d6ee973d9008bdb6e2f604faa89a27235522",
+        "0xfe13aafd831cb225dfce3f6431b34b5b17426b6bff4fccabe4bbe0fe4adc0452",
+        "0xa156dad863111eeb529c4b3a2a30ad40e6dcff3b27d8f282f82996e58eee7e7d",
+        "0xa94b0702860cb929d0ee0c60504dd565775a058bf1d2a2df074c1db0a66ad582",
+        "0xf998cbeba8b7a7e91d4c469e5fb370cdfa16bd50aea760435dc346008d78ed1f",
+        "0x4dab77a640748de8588de6834d814a344372b205265984b969f3e97060955bfa",
+        "0x326a6608c2a353275bd8d64db53a9d772c1d9a5bc8bfd19dfc8242274d1e9dd4",
+        "0x128d6c262d1afe2351c6e93ceea68e00992708cfcbc0688408b9a23c0c543db2",
+        "0x9a788fb083188ba1dfb938605bc4ce3579d2e085989490aca8f73b23214b7c1d",
+        "0xc9d84274fd58aa177cabff54611546051b74ad658b939babaad6282500300d36",
+        "0x53611f0b3535a2cfc4b8deb57fa961ca36c7b2c272dfe4cb239a29c48e549361"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0x04e9ac052b26ff3be7bb93de26130f66bb7332a205b5964d793da153964a8568",
         "0x083a28f2e91b4e72fdb40e86acadf8cbc6643644b67dd1cb0d77fe5792c9df0e",
@@ -40,10 +64,14 @@
         "0xee520d28c9492f7f874cacc70df08d12ad6bea550a35d97fc94ac28098a08c5d",
         "0xfc29d0f952afcdc500a33ea0f3d828368eec497e68806b637378671ef459a2d7"
       ],
-      "updatedAt": "2025-09-01T07:43:48.084Z"
+      "updatedAt": "2025-09-02T16:07:59.227Z"
     },
     "cashapp": {
       "paymentMethodHash": "0x10940ee67cfb3c6c064569ec92c0ee934cd7afa18dd2ca2d6a2254fcb009c17d",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0x031519b5852becca2238065df96ce065edea1f00a427dc56527a56388d1a1e86",
         "0x396de8f08706d157f9f7b2a54f40f36c26445b7829846e0f26ad5c3d9e9896de",
@@ -66,24 +94,57 @@
         "0xff01ffecba402f0d922c6b06dc0674eb067356f90df936a61ce3caa3ae39cad2",
         "0xffbd239b8bff6027b3955a8b51f66b0e20d042bf49f9838651aee55d6c6dc086"
       ],
-      "updatedAt": "2025-09-01T07:43:54.063Z"
+      "updatedAt": "2025-09-02T16:08:12.541Z"
     },
     "wise": {
       "paymentMethodHash": "0x554a007c2217df766b977723b276671aee5ebb4adaea0edb6433c88b3e61dac5",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e",
+        "0xfaaa9c7b2f09d6a1b0971574d43ca62c3e40723167c09830ec33f06cec921381",
+        "0xfff16d60be267153303bbfa66e593fb8d06e24ea5ef24b6acca5224c2ca6b907",
+        "0x90832e2dc3221e4d56977c1aa8f6a6706b9ad6542fbbdaac13097d0fa5e42e67",
+        "0xcb83cbb58eaa5007af6cad99939e4581c1e1b50d65609c30f303983301524ef3",
+        "0xdbd9d34f382e9f6ae078447a655e0816927c7c3edec70bd107de1d34cb15172e",
+        "0x221012e06ebf59a20b82e3003cf5d6ee973d9008bdb6e2f604faa89a27235522",
+        "0x4dab77a640748de8588de6834d814a344372b205265984b969f3e97060955bfa",
+        "0xc9d84274fd58aa177cabff54611546051b74ad658b939babaad6282500300d36",
+        "0x53611f0b3535a2cfc4b8deb57fa961ca36c7b2c272dfe4cb239a29c48e549361",
+        "0xc241cc1f9752d2d53d1ab67189223a3f330e48b75f73ebf86f50b2c78fe8df88",
+        "0x313eda7ae1b79890307d32a78ed869290aeb24cc0e8605157d7e7f5a69fea425",
+        "0xa156dad863111eeb529c4b3a2a30ad40e6dcff3b27d8f282f82996e58eee7e7d",
+        "0xfe13aafd831cb225dfce3f6431b34b5b17426b6bff4fccabe4bbe0fe4adc0452",
+        "0x9a788fb083188ba1dfb938605bc4ce3579d2e085989490aca8f73b23214b7c1d",
+        "0x128d6c262d1afe2351c6e93ceea68e00992708cfcbc0688408b9a23c0c543db2",
+        "0xc681c4652bae8bd4b59bec1cdb90f868d93cc9896af9862b196843f54bf254b3",
+        "0x589be49821419c9c2fbb26087748bf3420a5c13b45349828f5cac24c58bbaa7b",
+        "0xf20379023279e1d79243d2c491be8632c07cfb116be9d8194013fb4739461b84",
+        "0xa94b0702860cb929d0ee0c60504dd565775a058bf1d2a2df074c1db0a66ad582",
+        "0x326a6608c2a353275bd8d64db53a9d772c1d9a5bc8bfd19dfc8242274d1e9dd4",
+        "0xe85548baf0a6732cfcc7fc016ce4fd35ce0a1877057cfec6e166af4f106a3728"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0x28a5a382e010f26b6a21bce3ef8e363ec5bf41aeec4bec70b0911365ee4f5a2e"
       ],
-      "updatedAt": "2025-09-01T07:44:01.817Z"
+      "updatedAt": "2025-09-02T16:08:25.178Z"
     },
     "mercadopago": {
       "paymentMethodHash": "0xa5418819c024239299ea32e09defae8ec412c03e58f5c75f1b2fe84c857f5483",
+      "currencies": [
+        "0x8fd50654b7dd2dc839f7cab32800ba0c6f7f66e1ccf89b21c09405469c2175ec"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0xdf4a4bf85a7816d306181c7081cd611dc73cbbf3f63ff8feee680efb8056dce6"
       ],
-      "updatedAt": "2025-09-01T07:44:05.402Z"
+      "updatedAt": "2025-09-02T16:08:29.865Z"
     },
     "zelle-citi": {
       "paymentMethodHash": "0x817260692b75e93c7fbc51c71637d4075a975e221e1ebc1abeddfabd731fd90d",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"
+      ],
+      "timestampBuffer": 86400,
       "hashes": [
         "0x0456fea327b2a9256abfbd771cb9c255c9275a4f73dfe0805dc147c91d610872",
         "0x23be21130f161db846232707f63d8697f8e8ac12d491e25bba7a7dec97ae265f",
@@ -106,10 +167,14 @@
         "0xde1f2c5848d0ee62d947646f5c4c50738a1266932ac5b1aacd0d249512414e41",
         "0xf909c04d2435514745b8e0fca1d3847e8556760df60a9d503225ff400a9aba87"
       ],
-      "updatedAt": "2025-09-01T07:44:16.130Z"
+      "updatedAt": "2025-09-02T16:08:38.706Z"
     },
     "zelle-chase": {
       "paymentMethodHash": "0x6aa1d1401e79ad0549dced8b1b96fb72c41cd02b32a7d9ea1fed54ba9e17152e",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"
+      ],
+      "timestampBuffer": 86400,
       "hashes": [
         "0x06d02c5575893856dbdced4ee58901fff35123005ac423f90e50ae04b0f16bc9",
         "0x172716832e5c499a5ff2938299a708d2fa82c0b57e350bd65bd14172cdc7b8cf",
@@ -123,10 +188,14 @@
         "0xa582d927563c0ca2751d6148f541675174981f8b7cc8213ae4174e8547248c27",
         "0xff129387e22500857b0a6b94f39fd453a41dddb9d8b557d7545e7e5a82ec8eeb"
       ],
-      "updatedAt": "2025-09-01T07:44:20.778Z"
+      "updatedAt": "2025-09-02T16:08:46.308Z"
     },
     "zelle-bofa": {
       "paymentMethodHash": "0x4bc42b322a3ad413b91b2fde30549ca70d6ee900eded1681de91aaf32ffd7ab5",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"
+      ],
+      "timestampBuffer": 86400,
       "hashes": [
         "0x026ee87836ccd49550f89610000548510351c9269f0e7ee2d742e4ea84887d1f",
         "0x18f8935be02bd9cb250236276e408a2120b4eb7816689fc2e0762b93f8cc8037",
@@ -139,21 +208,35 @@
         "0xb3f1bdc2753210118bdeb32f1b300b75a7094c8361856dffd487e61ee7a7280c",
         "0xdbda2c1be1a7e120237942e92cbcef4441107c75bd4fc762649ed7ea5dc46cce"
       ],
-      "updatedAt": "2025-09-01T07:44:26.816Z"
+      "updatedAt": "2025-09-02T16:08:53.797Z"
     },
     "paypal": {
       "paymentMethodHash": "0x3ccc3d4d5e769b1f82dc4988485551dc0cd3c7a3926d7d8a4dde91507199490f",
+      "currencies": [
+        "0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e",
+        "0xfff16d60be267153303bbfa66e593fb8d06e24ea5ef24b6acca5224c2ca6b907",
+        "0x90832e2dc3221e4d56977c1aa8f6a6706b9ad6542fbbdaac13097d0fa5e42e67",
+        "0xc241cc1f9752d2d53d1ab67189223a3f330e48b75f73ebf86f50b2c78fe8df88",
+        "0xdbd9d34f382e9f6ae078447a655e0816927c7c3edec70bd107de1d34cb15172e",
+        "0xcb83cbb58eaa5007af6cad99939e4581c1e1b50d65609c30f303983301524ef3",
+        "0x221012e06ebf59a20b82e3003cf5d6ee973d9008bdb6e2f604faa89a27235522"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0xbf9ec395d69f6b89372bc37ed934f9922edf20e3174fb96fc8094ccf78ac9b7d"
       ],
-      "updatedAt": "2025-09-01T07:44:32.113Z"
+      "updatedAt": "2025-09-02T16:09:01.134Z"
     },
     "monzo": {
       "paymentMethodHash": "0x62c7ed738ad3e7618111348af32691b5767777fbaf46a2d8943237625552645c",
+      "currencies": [
+        "0x90832e2dc3221e4d56977c1aa8f6a6706b9ad6542fbbdaac13097d0fa5e42e67"
+      ],
+      "timestampBuffer": 30,
       "hashes": [
         "0xde587ffc4efa0ada533e2bfbcf348ac870d3881d006d2af677fbac64b8d3a8fe"
       ],
-      "updatedAt": "2025-09-01T07:44:37.258Z"
+      "updatedAt": "2025-09-02T16:09:13.399Z"
     }
   }
 }
