@@ -275,7 +275,7 @@ export function savePaymentMethodSnapshot(
     timestampBuffer?: any; // Can be BigNumber or number
   }
 ): void {
-  const providersDir = path.join(__dirname, "outputs", "providers");
+  const providersDir = path.join(__dirname, "outputs", "platforms");
   if (!fs.existsSync(providersDir)) fs.mkdirSync(providersDir, { recursive: true });
 
   const filePath = path.join(providersDir, `${network}.json`);
