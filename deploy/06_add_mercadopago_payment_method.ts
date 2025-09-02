@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -51,9 +51,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("mercadopago extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'mercadopago', {
+  savePaymentMethodSnapshot(network, 'mercadopago', {
     paymentMethodHash: MERCADOPAGO_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: MERCADO_RECLAIM_CURRENCIES,
+    timestampBuffer: MERCADO_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add MercadoPago to unified verifier

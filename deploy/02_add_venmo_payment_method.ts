@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -52,9 +52,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("venmo extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'venmo', {
+  savePaymentMethodSnapshot(network, 'venmo', {
     paymentMethodHash: VENMO_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: VENMO_RECLAIM_CURRENCIES,
+    timestampBuffer: VENMO_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add Venmo to unified verifier

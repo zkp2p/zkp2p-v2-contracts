@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -52,9 +52,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("cashapp extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'cashapp', {
+  savePaymentMethodSnapshot(network, 'cashapp', {
     paymentMethodHash: CASHAPP_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: CASHAPP_RECLAIM_CURRENCIES,
+    timestampBuffer: CASHAPP_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add CashApp to unified verifier

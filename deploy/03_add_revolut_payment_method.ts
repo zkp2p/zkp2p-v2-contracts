@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -51,9 +51,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("revolut extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'revolut', {
+  savePaymentMethodSnapshot(network, 'revolut', {
     paymentMethodHash: REVOLUT_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: REVOLUT_RECLAIM_CURRENCIES,
+    timestampBuffer: REVOLUT_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add Revolut to unified verifier

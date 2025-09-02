@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -51,9 +51,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("monzo extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'monzo', {
+  savePaymentMethodSnapshot(network, 'monzo', {
     paymentMethodHash: MONZO_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: MONZO_RECLAIM_CURRENCIES,
+    timestampBuffer: MONZO_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add Monzo to unified verifier

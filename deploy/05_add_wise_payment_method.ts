@@ -11,7 +11,7 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  saveProviderHashesSnapshot
+  savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import { PaymentService } from "../utils/types";
 import {
@@ -52,9 +52,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("wise extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
-  saveProviderHashesSnapshot(network, 'wise', {
+  savePaymentMethodSnapshot(network, 'wise', {
     paymentMethodHash: WISE_PAYMENT_METHOD_HASH,
-    providerHashes
+    providerHashes,
+    currencies: WISE_RECLAIM_CURRENCIES,
+    timestampBuffer: WISE_RECLAIM_TIMESTAMP_BUFFER
   });
 
   // Add Wise to unified verifier

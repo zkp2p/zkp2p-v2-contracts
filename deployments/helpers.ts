@@ -264,13 +264,15 @@ export async function addPaymentMethodToUnifiedVerifier(
   }
 }
 
-// Persist provider hash snapshots per network to avoid drift between code and configured on-chain state
-export function saveProviderHashesSnapshot(
+// Persist payment method snapshots per network to avoid drift between code and configured on-chain state
+export function savePaymentMethodSnapshot(
   network: string,
   methodKey: string,
   data: {
     paymentMethodHash: string;
     providerHashes: string[];
+    currencies?: string[];
+    timestampBuffer?: any; // Can be BigNumber or number
   }
 ): void {
   const providersDir = path.join(__dirname, "outputs", "providers");
@@ -287,8 +289,22 @@ export function saveProviderHashesSnapshot(
   const normalizeHex = (h: string) => (h.startsWith("0x") ? h.toLowerCase() : `0x${h.toLowerCase()}`);
   const hashes = Array.from(new Set((data.providerHashes || []).map(normalizeHex))).sort();
 
+  // Convert BigNumber to number if needed
+  let timestampBuffer = 30; // default
+  if (data.timestampBuffer) {
+    if (typeof data.timestampBuffer === 'object' && data.timestampBuffer._isBigNumber) {
+      timestampBuffer = parseInt(data.timestampBuffer.toString());
+    } else if (typeof data.timestampBuffer === 'number') {
+      timestampBuffer = data.timestampBuffer;
+    } else if (typeof data.timestampBuffer === 'string') {
+      timestampBuffer = parseInt(data.timestampBuffer);
+    }
+  }
+
   current.methods[methodKey] = {
     paymentMethodHash: normalizeHex(data.paymentMethodHash),
+    currencies: data.currencies || [],
+    timestampBuffer,
     hashes,
     updatedAt: new Date().toISOString()
   };
