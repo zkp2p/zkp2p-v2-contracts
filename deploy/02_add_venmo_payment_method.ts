@@ -13,7 +13,6 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   getVenmoReclaimProviderHashes,
   VENMO_RECLAIM_CURRENCIES,
@@ -28,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const [deployer] = await hre.getUnnamedAccounts();
   const multiSig = MULTI_SIG[network] ? MULTI_SIG[network] : deployer;
-  const paymentService = PaymentService.VenmoReclaim;
 
   const paymentVerifierRegistryAddress = getDeployedContractAddress(network, "PaymentVerifierRegistry");
   const unifiedVerifierAddress = getDeployedContractAddress(network, "UnifiedPaymentVerifier");

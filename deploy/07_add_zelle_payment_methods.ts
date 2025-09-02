@@ -13,7 +13,6 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import { PaymentService } from "../utils/types";
 import {
   ZELLE_RECLAIM_CURRENCIES,
   ZELLE_RECLAIM_TIMESTAMP_BUFFER,
