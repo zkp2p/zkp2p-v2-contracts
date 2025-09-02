@@ -12,36 +12,50 @@ yarn add @zkp2p/contracts-v2
 pnpm add @zkp2p/contracts-v2
 ```
 
-## Quick Start (subpath imports)
+## Quick Start
 
 ```typescript
-import baseAddresses from '@zkp2p/contracts-v2/addresses/base.json';
-import * as baseAbis from '@zkp2p/contracts-v2/abis/base';
-import { base as baseConstants } from '@zkp2p/contracts-v2/constants';
-import { base as basePaymentMethods } from '@zkp2p/contracts-v2/paymentMethods';
+// Import addresses for specific networks
+import { base, baseSepolia } from "@zkp2p/contracts-v2/addresses"
+
+// Import specific contract ABIs
+import { Escrow, Orchestrator } from "@zkp2p/contracts-v2/abis/base"
+
+// Import constants
+import { USDC, INTENT_EXPIRATION_PERIOD } from "@zkp2p/contracts-v2/constants/base"
+
+// Import payment method configurations
+import { baseSepolia as paymentMethods } from "@zkp2p/contracts-v2/paymentMethods"
+
+// Import TypeScript types
+import type { Escrow, Orchestrator } from "@zkp2p/contracts-v2/types"
+
+// Import utility functions
+import { getKeccak256Hash, calculateIntentHash } from "@zkp2p/contracts-v2/utils/protocolUtils"
+
+// Example: Create contract instance with ethers
 import { ethers } from 'ethers';
 
-// Create contract instance
 const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
 const orchestrator = new ethers.Contract(
-  baseAddresses.Orchestrator,
-  baseAbis.Orchestrator,
+  base.Orchestrator,
+  Orchestrator,
   provider
 );
 
-console.log('Intent expiration:', baseConstants.INTENT_EXPIRATION_PERIOD);
-console.log('Venmo config:', basePaymentMethods.venmo);
+console.log('Intent expiration:', INTENT_EXPIRATION_PERIOD);
+console.log('Venmo config:', paymentMethods.venmo);
 ```
 
 ## Features
 
 ### 📍 Network-Specific Contract Addresses
 
-Pre-configured addresses for all deployed networks, exported per-network:
+Pre-configured addresses for all deployed networks:
 
 ```typescript
-import base from '@zkp2p/contracts-v2/addresses/base.json';
-import baseSepolia from '@zkp2p/contracts-v2/addresses/baseSepolia.json';
+import { base, baseSepolia } from "@zkp2p/contracts-v2/addresses"
+
 console.log(base.Orchestrator);
 console.log(base.Escrow);
 console.log(baseSepolia.UnifiedPaymentVerifier);
@@ -56,9 +70,15 @@ Supported networks:
 Minimal ABIs extracted from on-chain deployments:
 
 ```typescript
-import * as baseAbis from '@zkp2p/contracts-v2/abis/base';
-const orchestratorABI = baseAbis.Orchestrator;
-const escrowABI = baseAbis.Escrow;
+import { Orchestrator, Escrow } from "@zkp2p/contracts-v2/abis/base"
+import * as baseSepoliaAbis from "@zkp2p/contracts-v2/abis/baseSepolia"
+
+// Use the ABIs directly
+const orchestratorABI = Orchestrator;
+const escrowABI = Escrow;
+
+// Or access all ABIs for a network
+const unifiedVerifierABI = baseSepoliaAbis.UnifiedPaymentVerifier;
 ```
 
 ### 🔧 Network-Specific Protocol Constants
@@ -66,8 +86,15 @@ const escrowABI = baseAbis.Escrow;
 All protocol parameters and configurations per network:
 
 ```typescript
-import { base as baseConstants } from '@zkp2p/contracts-v2/constants';
-const { INTENT_EXPIRATION_PERIOD, MAX_INTENTS_PER_DEPOSIT, DUST_THRESHOLD } = baseConstants;
+import { INTENT_EXPIRATION_PERIOD, MAX_INTENTS_PER_DEPOSIT, DUST_THRESHOLD } from "@zkp2p/contracts-v2/constants/base"
+import * as baseSepoliaConstants from "@zkp2p/contracts-v2/constants/baseSepolia"
+
+// Use specific constants
+console.log('Intent expiration:', INTENT_EXPIRATION_PERIOD);
+console.log('Max intents:', MAX_INTENTS_PER_DEPOSIT);
+
+// Or access all constants for a network
+console.log('USDC address:', baseSepoliaConstants.USDC);
 ```
 
 ### 💳 Payment Methods with Provider Hashes
@@ -75,12 +102,18 @@ const { INTENT_EXPIRATION_PERIOD, MAX_INTENTS_PER_DEPOSIT, DUST_THRESHOLD } = ba
 Unified payment method configurations including provider hashes from deployment:
 
 ```typescript
-import { base as basePaymentMethods } from '@zkp2p/contracts-v2/paymentMethods';
-const venmoConfig = basePaymentMethods.venmo;
+import { base, baseSepolia } from "@zkp2p/contracts-v2/paymentMethods"
+
+// Access payment method configurations
+const venmoConfig = base.venmo;
 console.log('Payment Method Hash:', venmoConfig.paymentMethodHash);
 console.log('Provider Hashes:', venmoConfig.providerHashes);
 console.log('Currencies:', venmoConfig.currencies);
 console.log('Timestamp Buffer:', venmoConfig.timestampBuffer);
+
+// Or use testnet configurations
+const testnetPaymentMethods = baseSepolia;
+console.log('Available methods:', Object.keys(testnetPaymentMethods));
 ```
 
 ### 🛠️ Utility Functions
@@ -88,8 +121,16 @@ console.log('Timestamp Buffer:', venmoConfig.timestampBuffer);
 Protocol utility functions:
 
 ```typescript
-import * as utils from '@zkp2p/contracts-v2/utils';
-const usdInfo = utils.getCurrencyInfo(utils.Currency.USD);
+// Import protocol utilities
+import { getKeccak256Hash, calculateIntentHash, getCurrencyInfo } from "@zkp2p/contracts-v2/utils/protocolUtils"
+import { Currency } from "@zkp2p/contracts-v2/utils/types"
+
+// Use utility functions
+const paymentMethodHash = getKeccak256Hash("venmo");
+const intentHash = calculateIntentHash(depositor, depositId, signalIntentParams);
+
+// Get currency information
+const usdInfo = getCurrencyInfo(Currency.USD);
 console.log('Currency code:', usdInfo.code);
 console.log('Decimals:', usdInfo.decimals);
 ```
@@ -97,26 +138,45 @@ console.log('Decimals:', usdInfo.decimals);
 
 ## API Reference
 
-### Imports
+### Package Structure
 
-- Prefer subpaths for clarity and smaller bundles:
-  - `@zkp2p/contracts-v2/addresses` and `@zkp2p/contracts-v2/addresses/*.json`
-  - `@zkp2p/contracts-v2/abis/<network>`
-  - `@zkp2p/contracts-v2/constants`
-  - `@zkp2p/contracts-v2/paymentMethods`
-  - `@zkp2p/contracts-v2/utils`
-  - `@zkp2p/contracts-v2/types`
+The package follows modern ESM/CJS patterns with clean subpath exports:
+
+```
+@zkp2p/contracts-v2/
+├── addresses/          # Network-specific contract addresses
+├── abis/              # Network-specific contract ABIs  
+├── constants/         # Protocol constants per network
+├── paymentMethods/    # Payment method configurations
+├── types/             # TypeScript type definitions
+└── utils/             # Utility functions
+```
+
+### Import Patterns
+
+All modules are directly accessible via subpath exports:
+
+- `@zkp2p/contracts-v2/addresses` - Contract addresses
+- `@zkp2p/contracts-v2/abis/<network>` - Contract ABIs per network
+- `@zkp2p/contracts-v2/constants/<network>` - Constants per network
+- `@zkp2p/contracts-v2/paymentMethods` - Payment method configs
+- `@zkp2p/contracts-v2/utils/protocolUtils` - Protocol utilities
+- `@zkp2p/contracts-v2/types` - TypeScript types
+
+## Version
+
+Current version: `0.0.1-rc5`
 
 ## Development
 
 ### Build & Publish
 
 From `packages/contracts`:
-- `yarn build` – Clean, extract, and bundle to `dist/`
+- `yarn build` – Clean, extract, and bundle package
 - `npm pack` – Preview tarball contents
 - `npm publish --access public` – Publish (runs prepublishOnly)
 
-Note: The package publishes `dist/` only. Tests and config files are excluded.
+Note: The package uses modern module patterns with _esm/, _cjs/, and _types/ folders for optimal compatibility.
 
 ## License
 
