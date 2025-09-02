@@ -5,8 +5,7 @@ import * as path from 'path';
 const ROOT = path.resolve(__dirname, '../../../../');
 const TYPECHAIN_SRC = path.join(ROOT, 'typechain');
 const PKG_ROOT = path.resolve(__dirname, '../..');
-const OUT_ROOT = path.join(PKG_ROOT, 'dist');
-const TYPECHAIN_DEST = path.join(OUT_ROOT, 'types');
+const TYPECHAIN_DEST = path.join(PKG_ROOT, 'types');
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

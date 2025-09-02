@@ -6,18 +6,10 @@
  * @packageDocumentation
  */
 
-/**
- * @zkp2p/contracts-v2
- *
- * Root entry intentionally minimal. All data modules are exposed via
- * package subpath exports for optimal tree-shaking and compatibility:
- *   - @zkp2p/contracts-v2/addresses
- *   - @zkp2p/contracts-v2/abis/<network>
- *   - @zkp2p/contracts-v2/constants
- *   - @zkp2p/contracts-v2/paymentMethods
- *   - @zkp2p/contracts-v2/types
- *   - @zkp2p/contracts-v2/utils
- */
+// This is the main entry point that just exports types
+// The actual modules are exported via package.json exports field
 
-// Re-export version from package.json
+export type { PaymentMethodConfig, NetworkPaymentMethods } from '../paymentMethods/types';
+
+// Re-export version
 export { version } from '../package.json';

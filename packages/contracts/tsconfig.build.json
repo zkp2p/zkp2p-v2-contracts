@@ -1,10 +1,13 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "./dist",
+    "rootDir": "./src",
+    "outDir": "./_types",
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts", "scripts", "rollup.config.js"]
+  "exclude": ["node_modules", "_types", "_cjs", "_esm", "test", "**/*.test.ts", "**/*.spec.ts", "scripts", "rollup.config.js"]
 }

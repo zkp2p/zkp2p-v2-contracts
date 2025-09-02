@@ -10,7 +10,7 @@ export default [
   {
     input: 'src/index.ts',
     output: {
-      file: 'dist/index.esm.js',
+      file: '_esm/index.js',
       format: 'es',
       sourcemap: true
     },
@@ -29,7 +29,7 @@ export default [
   {
     input: 'src/index.ts',
     output: {
-      file: 'dist/index.js',
+      file: '_cjs/index.js',
       format: 'cjs',
       sourcemap: true
     },
@@ -37,7 +37,9 @@ export default [
     plugins: [
       typescript({ 
         tsconfig: './tsconfig.build.json',
-        declaration: false
+        declaration: true,
+        declarationDir: './_types',
+        rootDir: './src'
       }),
       nodeResolve({ preferBuiltins: true }),
       commonjs(),

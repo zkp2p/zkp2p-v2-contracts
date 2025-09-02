@@ -7,6 +7,9 @@
 /utils/
 
 # Build output
+_cjs/
+_esm/
+_types/
 /dist/
 /dist-esm/
 /lib/
