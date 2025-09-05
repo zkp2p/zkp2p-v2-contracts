@@ -17,46 +17,57 @@ function compileModule(moduleName: string, format: 'esm' | 'cjs') {
   const inputDir = path.join(PKG_ROOT, moduleName);
   const outputDir = path.join(PKG_ROOT, format === 'esm' ? '_esm' : '_cjs', moduleName);
   
-  ensureDir(outputDir);
-  
-  // Copy JSON files directly
-  const files = fs.readdirSync(inputDir);
-  for (const file of files) {
-    const inputPath = path.join(inputDir, file);
-    const outputPath = path.join(outputDir, file);
+  function processDirectory(currentInputDir: string, currentOutputDir: string, relativePath: string = '') {
+    ensureDir(currentOutputDir);
     
-    if (file.endsWith('.json')) {
-      fs.copyFileSync(inputPath, outputPath);
-    } else if (file.endsWith('.ts') && !file.endsWith('.d.ts')) {
-      // Compile TypeScript files
-      const source = fs.readFileSync(inputPath, 'utf8');
+    const entries = fs.readdirSync(currentInputDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const inputPath = path.join(currentInputDir, entry.name);
+      const outputPath = path.join(currentOutputDir, entry.name);
       
-      // Simple transformation for imports/exports
-      let transformed = source;
-      
-      if (format === 'cjs') {
-        // Convert ES modules to CommonJS
-        transformed = transformed
-          .replace(/export \{ default as (\w+) \} from '\.\/(.+)\.json'/g, 
-                  "exports.$1 = require('./$2.json')")
-          .replace(/export \* as (\w+) from '\.\/(.+)'/g, 
-                  "exports.$1 = require('./$2')")
-          .replace(/export \{([^}]+)\} from '\.\/(.+)'/g, 
-                  "Object.assign(exports, require('./$2'))")
-          .replace(/import type \{([^}]+)\} from '\.\/(.+)'/g, '')
-          .replace(/export type \{([^}]+)\}/g, '');
+      if (entry.isDirectory()) {
+        // Recursively process subdirectories
+        processDirectory(inputPath, outputPath, path.join(relativePath, entry.name));
+      } else if (entry.name.endsWith('.json')) {
+        // Copy JSON files directly
+        fs.copyFileSync(inputPath, outputPath);
+      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+        // Compile TypeScript files
+        const source = fs.readFileSync(inputPath, 'utf8');
+        
+        // Simple transformation for imports/exports
+        let transformed = source;
+        
+        if (format === 'cjs') {
+          // Convert ES modules to CommonJS
+          transformed = transformed
+            .replace(/export \{ default as (\w+) \} from '\.\/(.+)\.json'/g, 
+                    "exports.$1 = require('./$2.json')")
+            .replace(/export \* as (\w+) from '\.\/(.+)'/g, 
+                    "exports.$1 = require('./$2')")
+            .replace(/export \{([^}]+)\} from '\.\/(.+)'/g, 
+                    "Object.assign(exports, require('./$2'))")
+            .replace(/import type \{([^}]+)\} from '\.\/(.+)'/g, '')
+            .replace(/export type \{([^}]+)\}/g, '');
+        }
+        
+        // Write the output file with .js extension
+        const jsPath = outputPath.replace(/\.ts$/, '.js');
+        fs.writeFileSync(jsPath, transformed);
+      } else if (entry.name.endsWith('.d.ts')) {
+        // Copy declaration files to _types
+        const typesDir = path.join(PKG_ROOT, '_types', moduleName, relativePath);
+        ensureDir(typesDir);
+        fs.copyFileSync(inputPath, path.join(typesDir, entry.name));
+      } else if (entry.name.endsWith('.cjs') || entry.name.endsWith('.mjs')) {
+        // Copy generated wrapper files to output directory
+        fs.copyFileSync(inputPath, outputPath);
       }
-      
-      // Write the output file with .js extension
-      const jsPath = outputPath.replace(/\.ts$/, '.js');
-      fs.writeFileSync(jsPath, transformed);
-    } else if (file.endsWith('.d.ts')) {
-      // Copy declaration files to _types
-      const typesDir = path.join(PKG_ROOT, '_types', moduleName);
-      ensureDir(typesDir);
-      fs.copyFileSync(inputPath, path.join(typesDir, file));
     }
   }
+  
+  processDirectory(inputDir, outputDir);
 }
 
 function buildMainIndex() {

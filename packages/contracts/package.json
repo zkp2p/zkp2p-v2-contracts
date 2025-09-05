@@ -1,6 +1,6 @@
 {
   "name": "@zkp2p/contracts-v2",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "./_cjs/index.js",
   "module": "./_esm/index.js",
@@ -17,10 +17,11 @@
     "utils"
   ],
   "scripts": {
-    "build": "yarn clean && yarn extract && yarn bundle",
+    "build": "yarn clean && yarn extract && yarn generate:wrappers && yarn bundle",
     "build:full": "yarn build",
     "clean": "rimraf _cjs _esm _types addresses abis constants paymentMethods types utils",
     "extract": "ts-node --transpile-only scripts/extract-all.ts",
+    "generate:wrappers": "ts-node --transpile-only scripts/generate-abi-wrappers.ts",
     "compile": "echo 'Skipping tsc, using Rollup for compilation'",
     "bundle": "ts-node --transpile-only scripts/build-modules.ts",
     "test": "jest --passWithNoTests",
@@ -39,10 +40,6 @@
     },
     "./addresses/*": {
       "default": "./addresses/*.json"
-    },
-    "./abis/*": {
-      "types": "./abis/*/index.d.ts",
-      "default": "./abis/*/*.json"
     },
     "./constants": {
       "types": "./constants/index.d.ts",
@@ -68,6 +65,26 @@
     "./utils/protocolUtils": {
       "types": "./utils/protocolUtils.d.ts",
       "default": "./utils/protocolUtils.ts"
+    },
+    "./abis/base": {
+      "types": "./abis/base.d.ts",
+      "import": "./abis/base.mjs",
+      "require": "./abis/base.cjs",
+      "default": "./abis/base.cjs"
+    },
+    "./abis/base/*.json": "./abis/base/*.json",
+    "./abis/baseSepolia": {
+      "types": "./abis/baseSepolia.d.ts",
+      "import": "./abis/baseSepolia.mjs",
+      "require": "./abis/baseSepolia.cjs",
+      "default": "./abis/baseSepolia.cjs"
+    },
+    "./abis/baseSepolia/*.json": "./abis/baseSepolia/*.json",
+    "./abis": {
+      "types": "./abis/index.ts",
+      "import": "./abis/index.ts",
+      "require": "./abis/index.ts",
+      "default": "./abis/index.ts"
     }
   },
   "sideEffects": false,

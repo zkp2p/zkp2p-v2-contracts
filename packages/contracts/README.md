@@ -18,8 +18,8 @@ pnpm add @zkp2p/contracts-v2
 // Import addresses for specific networks
 import { base, baseSepolia } from "@zkp2p/contracts-v2/addresses"
 
-// Import specific contract ABIs
-import { Escrow, Orchestrator } from "@zkp2p/contracts-v2/abis/base"
+// Import specific contract ABIs from a network
+import { Escrow, Orchestrator } from "@zkp2p/contracts-v2/abis/baseSepolia"
 
 // Import constants
 import { USDC, INTENT_EXPIRATION_PERIOD } from "@zkp2p/contracts-v2/constants/base"
@@ -70,15 +70,19 @@ Supported networks:
 Minimal ABIs extracted from on-chain deployments:
 
 ```typescript
-import { Orchestrator, Escrow } from "@zkp2p/contracts-v2/abis/base"
-import * as baseSepoliaAbis from "@zkp2p/contracts-v2/abis/baseSepolia"
+// Import specific contracts from a network
+import { Orchestrator, Escrow } from "@zkp2p/contracts-v2/abis/baseSepolia"
 
-// Use the ABIs directly
+// Use the ABIs directly with ethers or viem
 const orchestratorABI = Orchestrator;
 const escrowABI = Escrow;
 
-// Or access all ABIs for a network
+// Alternative: Import all ABIs for a network
+import * as baseSepoliaAbis from "@zkp2p/contracts-v2/abis/baseSepolia"
 const unifiedVerifierABI = baseSepoliaAbis.UnifiedPaymentVerifier;
+
+// Also supports direct JSON imports for bundle optimization
+import EscrowABI from "@zkp2p/contracts-v2/abis/baseSepolia/Escrow.json"
 ```
 
 ### 🔧 Network-Specific Protocol Constants
@@ -156,12 +160,34 @@ The package follows modern ESM/CJS patterns with clean subpath exports:
 
 All modules are directly accessible via subpath exports:
 
-- `@zkp2p/contracts-v2/addresses` - Contract addresses
-- `@zkp2p/contracts-v2/abis/<network>` - Contract ABIs per network
+- `@zkp2p/contracts-v2/addresses` - Contract addresses for all networks
+- `@zkp2p/contracts-v2/abis/<network>` - Contract ABIs per network (e.g., `/abis/baseSepolia`)
+- `@zkp2p/contracts-v2/abis/<network>/<contract>.json` - Direct JSON import for specific contracts
 - `@zkp2p/contracts-v2/constants/<network>` - Constants per network
 - `@zkp2p/contracts-v2/paymentMethods` - Payment method configs
 - `@zkp2p/contracts-v2/utils/protocolUtils` - Protocol utilities
 - `@zkp2p/contracts-v2/types` - TypeScript types
+
+### Export Format Details
+
+The package now uses explicit wrapper modules for each network to ensure reliable imports across all environments:
+
+```typescript
+// Recommended: Import from network-specific wrappers
+import { Escrow, Orchestrator } from "@zkp2p/contracts-v2/abis/baseSepolia"
+
+// Alternative: Direct JSON imports for bundle size optimization
+import EscrowABI from "@zkp2p/contracts-v2/abis/baseSepolia/Escrow.json"
+
+// CommonJS compatibility
+const { Escrow } = require("@zkp2p/contracts-v2/abis/baseSepolia")
+```
+
+Each network export provides:
+- CommonJS support (`.cjs`)
+- ESM support (`.mjs`)
+- TypeScript definitions (`.d.ts`)
+- Direct JSON file access
 
 ## Version
 
