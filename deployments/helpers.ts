@@ -303,21 +303,17 @@ export function savePaymentMethodSnapshot(
 
   // For production networks (base_sepolia, base_staging, base), save with timestamp
   const productionNetworks = ['base_sepolia', 'base_staging', 'base'];
-  
+
   if (productionNetworks.includes(network)) {
     // Save timestamped snapshot for production networks
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: YYYY-MM-DDTHH-MM-SS
     const timestampedDir = path.join(providersDir, 'snapshots', network);
     if (!fs.existsSync(timestampedDir)) fs.mkdirSync(timestampedDir, { recursive: true });
-    
+
     const timestampedFilePath = path.join(timestampedDir, `${methodKey}_${timestamp}.json`);
     fs.writeFileSync(timestampedFilePath, JSON.stringify(snapshotData, null, 2));
     console.log(`Saved timestamped snapshot to: ${timestampedFilePath}`);
-    
-    // Also update the latest file for easy reference
-    const latestFilePath = path.join(timestampedDir, `${methodKey}_latest.json`);
-    fs.writeFileSync(latestFilePath, JSON.stringify(snapshotData, null, 2));
-    
+
     // Update the main network file with the latest data
     const mainFilePath = path.join(providersDir, `${network}.json`);
     let current: any = { methods: {} };
@@ -326,7 +322,7 @@ export function savePaymentMethodSnapshot(
         current = JSON.parse(fs.readFileSync(mainFilePath, "utf8"));
       }
     } catch { }
-    
+
     current.methods[methodKey] = snapshotData;
     fs.writeFileSync(mainFilePath, JSON.stringify(current, null, 2));
   } else {
