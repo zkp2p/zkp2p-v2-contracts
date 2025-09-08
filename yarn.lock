@@ -3250,10 +3250,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@zkp2p/providers@npm:^2.0.0-rc1":
-  version: 2.0.0-rc1
-  resolution: "@zkp2p/providers@npm:2.0.0-rc1"
-  checksum: 10c0/e08e55d1fb3957f3354f476af76d9bad4debcf28d4b0cf9e3f4342cd3aff9359fdacf6955b1d9acf88656623020089f8ca2639bcd20674e0e3857a82c76dc440
+"@zkp2p/providers@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@zkp2p/providers@npm:2.0.0"
+  checksum: 10c0/c7f8009a61a1013193e00f1ae37409c12181cc1ced06852217af834f4fd10215b99542e547e20f6a47021e7167d69cb065d93b95392620046baa620b4108b335
   languageName: node
   linkType: hard
 
@@ -13549,7 +13549,7 @@ __metadata:
     "@types/chai": "npm:^4.2.0"
     "@types/mocha": "npm:>=9.1.0"
     "@types/node": "npm:>=12.0.0"
-    "@zkp2p/providers": "npm:^2.0.0-rc1"
+    "@zkp2p/providers": "npm:^2.0.0"
     "@zkp2p/reclaim-witness-sdk": "npm:^4.0.1-reclaim"
     canonicalize: "npm:^2.0.0"
     chai: "npm:^4.2.0"
