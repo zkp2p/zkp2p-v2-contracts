@@ -14,9 +14,17 @@ type ResponseRedaction = {
   [k: string]: any;
 };
 
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH";
+
+function toHttpMethod(m: string): HttpMethod {
+  const u = (m || "").toUpperCase();
+  if (u === "GET" || u === "POST" || u === "PUT" || u === "PATCH") return u as HttpMethod;
+  throw new Error(`Unsupported HTTP method '${m}' in provider template`);
+}
+
 export type ProviderTemplateSubset = {
   url: string;
-  method: string;
+  method: HttpMethod;
   body?: string;
   responseMatches: ResponseMatch[];
   responseRedactions: ResponseRedaction[];
@@ -27,7 +35,7 @@ export type ProviderTemplateSubset = {
 export function toSubset(template: any): ProviderTemplateSubset {
   const subset: ProviderTemplateSubset = {
     url: template.url,
-    method: template.method,
+    method: toHttpMethod(template.method),
     body: template.body || "",
     responseMatches: Array.isArray(template.responseMatches) ? template.responseMatches : [],
     responseRedactions: Array.isArray(template.responseRedactions) ? template.responseRedactions : [],
@@ -65,7 +73,8 @@ function buildHashInput(template: ProviderTemplateSubset, index?: number) {
 }
 
 export function hashSingle(template: ProviderTemplateSubset, index?: number): string {
-  return hashProviderParams(buildHashInput(template, index));
+  // Cast to any to avoid over-constraining types vs SDK's ProviderParams<'http'>
+  return hashProviderParams(buildHashInput(template, index) as any);
 }
 
 export type HashListOptions = {
