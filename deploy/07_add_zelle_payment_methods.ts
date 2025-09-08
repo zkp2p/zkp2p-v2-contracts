@@ -14,15 +14,10 @@ import {
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import {
-  ZELLE_RECLAIM_CURRENCIES,
-  ZELLE_RECLAIM_TIMESTAMP_BUFFER,
-  getZelleCitiReclaimProviderHashes,
-  getZelleBoAReclaimProviderHashes,
-  getZelleChaseReclaimProviderHashes,
-  ZELLE_CITI_PAYMENT_METHOD_HASH,
-  ZELLE_CHASE_PAYMENT_METHOD_HASH,
-  ZELLE_BOFA_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/zelle_reclaim";
+  ZELLE_CITI_PROVIDER_CONFIG,
+  ZELLE_CHASE_PROVIDER_CONFIG,
+  ZELLE_BOFA_PROVIDER_CONFIG,
+} from "../deployments/verifiers/zelle";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -47,28 +42,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    ZELLE_CITI_PAYMENT_METHOD_HASH,
+    ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    ZELLE_RECLAIM_CURRENCIES
+    ZELLE_CITI_PROVIDER_CONFIG.currencies
   );
   console.log("Zelle Citi added to payment method registry...");
 
-  const citiProviderHashes = await getZelleCitiReclaimProviderHashes(20);
+  const citiProviderHashes = ZELLE_CITI_PROVIDER_CONFIG.providerHashes;
   console.log("zelle citi extension provider hashes", citiProviderHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'zelle-citi', {
-    paymentMethodHash: ZELLE_CITI_PAYMENT_METHOD_HASH,
+    paymentMethodHash: ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes: citiProviderHashes,
-    currencies: ZELLE_RECLAIM_CURRENCIES,
-    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.citi
+    currencies: ZELLE_CITI_PROVIDER_CONFIG.currencies,
+    timestampBuffer: ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer
   });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    ZELLE_CITI_PAYMENT_METHOD_HASH,
-    ZELLE_RECLAIM_TIMESTAMP_BUFFER['citi'],
+    ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
+    ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer,
     citiProviderHashes
   );
   console.log("Zelle Citi added to unified verifier...");
@@ -77,28 +72,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    ZELLE_CHASE_PAYMENT_METHOD_HASH,
+    ZELLE_CHASE_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    ZELLE_RECLAIM_CURRENCIES
+    ZELLE_CHASE_PROVIDER_CONFIG.currencies
   );
   console.log("Zelle Chase added to payment method registry...");
 
-  const chaseProviderHashes = await getZelleChaseReclaimProviderHashes(10);
+  const chaseProviderHashes = ZELLE_CHASE_PROVIDER_CONFIG.providerHashes;
   console.log("zelle chase extension provider hashes", chaseProviderHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'zelle-chase', {
-    paymentMethodHash: ZELLE_CHASE_PAYMENT_METHOD_HASH,
+    paymentMethodHash: ZELLE_CHASE_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes: chaseProviderHashes,
-    currencies: ZELLE_RECLAIM_CURRENCIES,
-    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.chase
+    currencies: ZELLE_CHASE_PROVIDER_CONFIG.currencies,
+    timestampBuffer: ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer
   });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    ZELLE_CHASE_PAYMENT_METHOD_HASH,
-    ZELLE_RECLAIM_TIMESTAMP_BUFFER['chase'],
+    ZELLE_CHASE_PROVIDER_CONFIG.paymentMethodHash,
+    ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer,
     chaseProviderHashes
   );
   console.log("Zelle Chase added to unified verifier...");
@@ -107,28 +102,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    ZELLE_BOFA_PAYMENT_METHOD_HASH,
+    ZELLE_BOFA_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    ZELLE_RECLAIM_CURRENCIES
+    ZELLE_BOFA_PROVIDER_CONFIG.currencies
   );
   console.log("Zelle BofA added to payment method registry...");
 
-  const boaProviderHashes = await getZelleBoAReclaimProviderHashes(10);
+  const boaProviderHashes = ZELLE_BOFA_PROVIDER_CONFIG.providerHashes;
   console.log("zelle bofa extension provider hashes", boaProviderHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'zelle-bofa', {
-    paymentMethodHash: ZELLE_BOFA_PAYMENT_METHOD_HASH,
+    paymentMethodHash: ZELLE_BOFA_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes: boaProviderHashes,
-    currencies: ZELLE_RECLAIM_CURRENCIES,
-    timestampBuffer: ZELLE_RECLAIM_TIMESTAMP_BUFFER.bofa
+    currencies: ZELLE_BOFA_PROVIDER_CONFIG.currencies,
+    timestampBuffer: ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer
   });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    ZELLE_BOFA_PAYMENT_METHOD_HASH,
-    ZELLE_RECLAIM_TIMESTAMP_BUFFER['bofa'],
+    ZELLE_BOFA_PROVIDER_CONFIG.paymentMethodHash,
+    ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer,
     boaProviderHashes
   );
   console.log("Zelle BofA added to unified verifier...");

@@ -55,3 +55,8 @@ export const calculateIntentHash = (
 
   return ethers.utils.hexZeroPad(BigNumber.from(intermediateHash).mod(CIRCOM_FIELD).toHexString(), 32);
 };
+
+
+export const calculatePaymentMethodHash = (paymentMethod: string): string => {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(paymentMethod));
+}

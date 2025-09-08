@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getPaypalReclaimProviderHashes,
-  PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
-  PAYPAL_RECLAIM_CURRENCIES,
-  PAYPAL_PAYMENT_METHOD_HASH
-} from "../../deployments/verifiers/paypal_reclaim";
+import { PAYPAL_PROVIDER_CONFIG } from "../../deployments/verifiers/paypal";
+import { PAYPAL_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/paypal";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +72,7 @@ describe("PayPal Payment Method Configuration", () => {
 
     it("should add PayPal currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(PAYPAL_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(PAYPAL_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(PAYPAL_PROVIDER_CONFIG.currencies);
     });
 
     it("should support all expected PayPal currencies", async () => {
@@ -94,12 +90,12 @@ describe("PayPal Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for PayPal", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(PAYPAL_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(PAYPAL_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(PAYPAL_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for PayPal", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(PAYPAL_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getPaypalReclaimProviderHashes();
+      const expectedHashes = PAYPAL_PROVIDER_CONFIG.providerHashes;
       expect(providerHashes).to.deep.eq(expectedHashes);
     });
 

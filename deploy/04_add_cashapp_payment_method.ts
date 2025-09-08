@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getCashappReclaimProviderHashes,
-  CASHAPP_RECLAIM_CURRENCIES,
-  CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
-  CASHAPP_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/cashapp_reclaim";
+import { CASHAPP_PROVIDER_CONFIG } from "../deployments/verifiers/cashapp";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -39,22 +34,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    CASHAPP_PAYMENT_METHOD_HASH,
+    CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    CASHAPP_RECLAIM_CURRENCIES
+    CASHAPP_PROVIDER_CONFIG.currencies
   );
   console.log("CashApp added to payment method registry...");
 
   // CashApp returns 20 activities at a time
-  const providerHashes = await getCashappReclaimProviderHashes(20);
+  const providerHashes = CASHAPP_PROVIDER_CONFIG.providerHashes;
   console.log("cashapp extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'cashapp', {
-    paymentMethodHash: CASHAPP_PAYMENT_METHOD_HASH,
+    paymentMethodHash: CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: CASHAPP_RECLAIM_CURRENCIES,
-    timestampBuffer: CASHAPP_RECLAIM_TIMESTAMP_BUFFER
+    currencies: CASHAPP_PROVIDER_CONFIG.currencies,
+    timestampBuffer: CASHAPP_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add CashApp to unified verifier
@@ -64,8 +59,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    CASHAPP_PAYMENT_METHOD_HASH,
-    CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
+    CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
+    CASHAPP_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("CashApp added to unified verifier...");

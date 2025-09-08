@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getRevolutReclaimProviderHashes,
-  REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
-  REVOLUT_RECLAIM_CURRENCIES,
-  REVOLUT_PAYMENT_METHOD_HASH,
-} from "../../deployments/verifiers/revolut_reclaim";
+import { REVOLUT_PROVIDER_CONFIG } from "../../deployments/verifiers/revolut";
+import { REVOLUT_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/revolut";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +72,7 @@ describe("Revolut Payment Method Configuration", () => {
 
     it("should add Revolut currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(REVOLUT_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(REVOLUT_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(REVOLUT_PROVIDER_CONFIG.currencies);
     });
   });
 
@@ -88,12 +84,12 @@ describe("Revolut Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for Revolut", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(REVOLUT_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(REVOLUT_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(REVOLUT_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for Revolut", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(REVOLUT_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getRevolutReclaimProviderHashes(20);
+      const expectedHashes = REVOLUT_PROVIDER_CONFIG.providerHashes;
       expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
     });
   });

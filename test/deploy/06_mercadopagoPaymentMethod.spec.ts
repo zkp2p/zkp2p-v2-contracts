@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getMercadoReclaimProviderHashes,
-  MERCADO_RECLAIM_TIMESTAMP_BUFFER,
-  MERCADO_RECLAIM_CURRENCIES,
-  MERCADOPAGO_PAYMENT_METHOD_HASH,
-} from "../../deployments/verifiers/mercado_pago_reclaim";
+import { MERCADOPAGO_PROVIDER_CONFIG } from "../../deployments/verifiers/mercadopago";
+import { MERCADOPAGO_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/mercadopago";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +72,7 @@ describe("MercadoPago Payment Method Configuration", () => {
 
     it("should add MercadoPago currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(MERCADOPAGO_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(MERCADO_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(MERCADOPAGO_PROVIDER_CONFIG.currencies);
     });
   });
 
@@ -88,12 +84,12 @@ describe("MercadoPago Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for MercadoPago", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MERCADOPAGO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(MERCADO_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for MercadoPago", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MERCADOPAGO_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getMercadoReclaimProviderHashes(1);
+      const expectedHashes = MERCADOPAGO_PROVIDER_CONFIG.providerHashes;
       expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
     });
   });

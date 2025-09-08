@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getCashappReclaimProviderHashes,
-  CASHAPP_RECLAIM_TIMESTAMP_BUFFER,
-  CASHAPP_RECLAIM_CURRENCIES,
-  CASHAPP_PAYMENT_METHOD_HASH,
-} from "../../deployments/verifiers/cashapp_reclaim";
+import { CASHAPP_PROVIDER_CONFIG } from "../../deployments/verifiers/cashapp";
+import { CASHAPP_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/cashapp";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +72,7 @@ describe("CashApp Payment Method Configuration", () => {
 
     it("should add CashApp currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(CASHAPP_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(CASHAPP_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(CASHAPP_PROVIDER_CONFIG.currencies);
     });
   });
 
@@ -88,12 +84,12 @@ describe("CashApp Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for CashApp", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(CASHAPP_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(CASHAPP_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(CASHAPP_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for CashApp", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(CASHAPP_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getCashappReclaimProviderHashes(20);
+      const expectedHashes = CASHAPP_PROVIDER_CONFIG.providerHashes;
       expect(providerHashes).to.deep.eq(expectedHashes);
     });
   });

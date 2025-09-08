@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getMonzoReclaimProviderHashes,
-  MONZO_RECLAIM_TIMESTAMP_BUFFER,
-  MONZO_RECLAIM_CURRENCIES,
-  MONZO_PAYMENT_METHOD_HASH
-} from "../../deployments/verifiers/monzo_reclaim";
+import { MONZO_PROVIDER_CONFIG } from "../../deployments/verifiers/monzo";
+import { MONZO_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/monzo";
 
 const expect = getWaffleExpect();
 
@@ -76,14 +72,14 @@ describe("Monzo Payment Method Configuration", () => {
 
     it("should add Monzo currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(MONZO_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(MONZO_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(MONZO_PROVIDER_CONFIG.currencies);
     });
 
     it("should only support GBP currency for Monzo", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(MONZO_PAYMENT_METHOD_HASH);
       // Monzo only supports GBP
       expect(currencies.length).to.eq(1);
-      expect(currencies[0]).to.eq(MONZO_RECLAIM_CURRENCIES[0]);
+      expect(currencies[0]).to.eq(MONZO_PROVIDER_CONFIG.currencies[0]);
     });
   });
 
@@ -95,12 +91,12 @@ describe("Monzo Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for Monzo", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MONZO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(MONZO_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(MONZO_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for Monzo", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MONZO_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getMonzoReclaimProviderHashes();
+      const expectedHashes = MONZO_PROVIDER_CONFIG.providerHashes;
       expect(providerHashes).to.deep.eq(expectedHashes);
     });
 
