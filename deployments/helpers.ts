@@ -278,14 +278,6 @@ export function savePaymentMethodSnapshot(
   const providersDir = path.join(__dirname, "outputs", "platforms");
   if (!fs.existsSync(providersDir)) fs.mkdirSync(providersDir, { recursive: true });
 
-  const filePath = path.join(providersDir, `${network}.json`);
-  let current: any = { methods: {} };
-  try {
-    if (fs.existsSync(filePath)) {
-      current = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    }
-  } catch { }
-
   const normalizeHex = (h: string) => (h.startsWith("0x") ? h.toLowerCase() : `0x${h.toLowerCase()}`);
   const hashes = Array.from(new Set((data.providerHashes || []).map(normalizeHex))).sort();
 
@@ -301,7 +293,7 @@ export function savePaymentMethodSnapshot(
     }
   }
 
-  current.methods[methodKey] = {
+  const snapshotData = {
     paymentMethodHash: normalizeHex(data.paymentMethodHash),
     currencies: data.currencies || [],
     timestampBuffer,
@@ -309,5 +301,41 @@ export function savePaymentMethodSnapshot(
     updatedAt: new Date().toISOString()
   };
 
-  fs.writeFileSync(filePath, JSON.stringify(current, null, 2));
+  // For production networks (base_sepolia, base_staging, base), save with timestamp
+  const productionNetworks = ['base_sepolia', 'base_staging', 'base'];
+
+  if (productionNetworks.includes(network)) {
+    // Save timestamped snapshot for production networks
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: YYYY-MM-DDTHH-MM-SS
+    const timestampedDir = path.join(providersDir, 'snapshots', network);
+    if (!fs.existsSync(timestampedDir)) fs.mkdirSync(timestampedDir, { recursive: true });
+
+    const timestampedFilePath = path.join(timestampedDir, `${methodKey}_${timestamp}.json`);
+    fs.writeFileSync(timestampedFilePath, JSON.stringify(snapshotData, null, 2));
+    console.log(`Saved timestamped snapshot to: ${timestampedFilePath}`);
+
+    // Update the main network file with the latest data
+    const mainFilePath = path.join(providersDir, `${network}.json`);
+    let current: any = { methods: {} };
+    try {
+      if (fs.existsSync(mainFilePath)) {
+        current = JSON.parse(fs.readFileSync(mainFilePath, "utf8"));
+      }
+    } catch { }
+
+    current.methods[methodKey] = snapshotData;
+    fs.writeFileSync(mainFilePath, JSON.stringify(current, null, 2));
+  } else {
+    // For non-production networks, use the original behavior
+    const filePath = path.join(providersDir, `${network}.json`);
+    let current: any = { methods: {} };
+    try {
+      if (fs.existsSync(filePath)) {
+        current = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      }
+    } catch { }
+
+    current.methods[methodKey] = snapshotData;
+    fs.writeFileSync(filePath, JSON.stringify(current, null, 2));
+  }
 }
