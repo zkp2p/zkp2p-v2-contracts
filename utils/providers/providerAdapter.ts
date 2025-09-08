@@ -1,17 +1,15 @@
 import { hashProviderParams } from "@zkp2p/reclaim-witness-sdk";
 
 type ResponseMatch = {
-  type: string;
+  type: "regex" | "contains";
   value: string;
-  // Some templates include extra keys like `hash`; keep them permissive
-  [k: string]: any;
+  invert?: boolean;
 };
 
 type ResponseRedaction = {
   jsonPath?: string;
   xPath?: string;
   regex?: string;
-  [k: string]: any;
 };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH";
