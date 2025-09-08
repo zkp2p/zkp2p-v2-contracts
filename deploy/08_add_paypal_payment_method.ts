@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getPaypalReclaimProviderHashes,
-  PAYPAL_RECLAIM_CURRENCIES,
-  PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
-  PAYPAL_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/paypal_reclaim";
+import { PAYPAL_PROVIDER_CONFIG } from "../deployments/verifiers/paypal";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -38,22 +33,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    PAYPAL_PAYMENT_METHOD_HASH,
+    PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    PAYPAL_RECLAIM_CURRENCIES
+    PAYPAL_PROVIDER_CONFIG.currencies
   );
   console.log("PayPal added to payment method registry...");
 
   // PayPal returns single payment details
-  const providerHashes = await getPaypalReclaimProviderHashes();
+  const providerHashes = PAYPAL_PROVIDER_CONFIG.providerHashes;
   console.log("paypal extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'paypal', {
-    paymentMethodHash: PAYPAL_PAYMENT_METHOD_HASH,
+    paymentMethodHash: PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: PAYPAL_RECLAIM_CURRENCIES,
-    timestampBuffer: PAYPAL_RECLAIM_TIMESTAMP_BUFFER
+    currencies: PAYPAL_PROVIDER_CONFIG.currencies,
+    timestampBuffer: PAYPAL_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add PayPal to unified verifier
@@ -63,8 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    PAYPAL_PAYMENT_METHOD_HASH,
-    PAYPAL_RECLAIM_TIMESTAMP_BUFFER,
+    PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
+    PAYPAL_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("PayPal added to unified verifier...");

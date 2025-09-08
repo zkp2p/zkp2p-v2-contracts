@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getRevolutReclaimProviderHashes,
-  REVOLUT_RECLAIM_CURRENCIES,
-  REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
-  REVOLUT_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/revolut_reclaim";
+import { REVOLUT_PROVIDER_CONFIG } from "../deployments/verifiers/revolut";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -38,22 +33,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    REVOLUT_PAYMENT_METHOD_HASH,
+    REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    REVOLUT_RECLAIM_CURRENCIES
+    REVOLUT_PROVIDER_CONFIG.currencies
   );
   console.log("Revolut added to payment method registry...");
 
   // Revolut returns 20 transactions at a time
-  const providerHashes = await getRevolutReclaimProviderHashes(20);
+  const providerHashes = REVOLUT_PROVIDER_CONFIG.providerHashes;
   console.log("revolut extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'revolut', {
-    paymentMethodHash: REVOLUT_PAYMENT_METHOD_HASH,
+    paymentMethodHash: REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: REVOLUT_RECLAIM_CURRENCIES,
-    timestampBuffer: REVOLUT_RECLAIM_TIMESTAMP_BUFFER
+    currencies: REVOLUT_PROVIDER_CONFIG.currencies,
+    timestampBuffer: REVOLUT_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add Revolut to unified verifier
@@ -63,8 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    REVOLUT_PAYMENT_METHOD_HASH,
-    REVOLUT_RECLAIM_TIMESTAMP_BUFFER,
+    REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
+    REVOLUT_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("Revolut added to unified verifier...");

@@ -22,15 +22,15 @@ import { Address } from "../../utils/types";
 
 import { MULTI_SIG } from "../../deployments/parameters";
 import {
-  getZelleChaseReclaimProviderHashes,
-  getZelleCitiReclaimProviderHashes,
-  getZelleBoAReclaimProviderHashes,
-  ZELLE_RECLAIM_TIMESTAMP_BUFFER,
-  ZELLE_RECLAIM_CURRENCIES,
+  ZELLE_CITI_PROVIDER_CONFIG,
+  ZELLE_CHASE_PROVIDER_CONFIG,
+  ZELLE_BOFA_PROVIDER_CONFIG,
+} from "../../deployments/verifiers/zelle";
+import {
   ZELLE_CITI_PAYMENT_METHOD_HASH,
   ZELLE_CHASE_PAYMENT_METHOD_HASH,
   ZELLE_BOFA_PAYMENT_METHOD_HASH,
-} from "../../deployments/verifiers/zelle_reclaim";
+} from "../../deployments/verifiers/zelle";
 
 const expect = getWaffleExpect();
 
@@ -72,7 +72,7 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should add Zelle Citi currencies to the registry", async () => {
         const currencies = await paymentVerifierRegistry.getCurrencies(ZELLE_CITI_PAYMENT_METHOD_HASH);
-        expect(currencies).to.deep.eq(ZELLE_RECLAIM_CURRENCIES);
+        expect(currencies).to.deep.eq(ZELLE_CITI_PROVIDER_CONFIG.currencies);
       });
     });
 
@@ -84,12 +84,12 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should set the correct timestamp buffer for Zelle Citi", async () => {
         const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_CITI_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER['citi']);
+        expect(timestampBuffer).to.eq(ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer);
       });
 
       it("should set the correct provider hashes for Zelle Citi", async () => {
         const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_CITI_PAYMENT_METHOD_HASH);
-        const expectedHashes = await getZelleCitiReclaimProviderHashes(20);
+        const expectedHashes = ZELLE_CITI_PROVIDER_CONFIG.providerHashes;
         expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
       });
     });
@@ -104,7 +104,7 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should add Zelle Chase currencies to the registry", async () => {
         const currencies = await paymentVerifierRegistry.getCurrencies(ZELLE_CHASE_PAYMENT_METHOD_HASH);
-        expect(currencies).to.deep.eq(ZELLE_RECLAIM_CURRENCIES);
+        expect(currencies).to.deep.eq(ZELLE_CHASE_PROVIDER_CONFIG.currencies);
       });
     });
 
@@ -116,12 +116,12 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should set the correct timestamp buffer for Zelle Chase", async () => {
         const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_CHASE_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER['chase']);
+        expect(timestampBuffer).to.eq(ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer);
       });
 
       it("should set the correct provider hashes for Zelle Chase", async () => {
         const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_CHASE_PAYMENT_METHOD_HASH);
-        const expectedHashes = await getZelleChaseReclaimProviderHashes(10);
+        const expectedHashes = ZELLE_CHASE_PROVIDER_CONFIG.providerHashes;
         expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
       });
     });
@@ -136,7 +136,7 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should add Zelle BofA currencies to the registry", async () => {
         const currencies = await paymentVerifierRegistry.getCurrencies(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-        expect(currencies).to.deep.eq(ZELLE_RECLAIM_CURRENCIES);
+        expect(currencies).to.deep.eq(ZELLE_BOFA_PROVIDER_CONFIG.currencies);
       });
     });
 
@@ -148,12 +148,12 @@ describe("Zelle Payment Methods Configuration", () => {
 
       it("should set the correct timestamp buffer for Zelle BofA", async () => {
         const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_RECLAIM_TIMESTAMP_BUFFER['bofa']);
+        expect(timestampBuffer).to.eq(ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer);
       });
 
       it("should set the correct provider hashes for Zelle BofA", async () => {
         const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-        const expectedHashes = await getZelleBoAReclaimProviderHashes(10);
+        const expectedHashes = ZELLE_BOFA_PROVIDER_CONFIG.providerHashes;
         expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
       });
     });

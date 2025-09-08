@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getWiseReclaimProviderHashes,
-  WISE_RECLAIM_CURRENCIES,
-  WISE_RECLAIM_TIMESTAMP_BUFFER,
-  WISE_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/wise_reclaim";
+import { WISE_PROVIDER_CONFIG } from "../deployments/verifiers/wise";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -39,22 +34,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    WISE_PAYMENT_METHOD_HASH,
+    WISE_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    WISE_RECLAIM_CURRENCIES
+    WISE_PROVIDER_CONFIG.currencies
   );
   console.log("Wise added to payment method registry...");
 
   // Get Wise provider hashes
-  const providerHashes = await getWiseReclaimProviderHashes(1);
+  const providerHashes = WISE_PROVIDER_CONFIG.providerHashes;
   console.log("wise extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'wise', {
-    paymentMethodHash: WISE_PAYMENT_METHOD_HASH,
+    paymentMethodHash: WISE_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: WISE_RECLAIM_CURRENCIES,
-    timestampBuffer: WISE_RECLAIM_TIMESTAMP_BUFFER
+    currencies: WISE_PROVIDER_CONFIG.currencies,
+    timestampBuffer: WISE_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add Wise to unified verifier
@@ -64,8 +59,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    WISE_PAYMENT_METHOD_HASH,
-    WISE_RECLAIM_TIMESTAMP_BUFFER,
+    WISE_PROVIDER_CONFIG.paymentMethodHash,
+    WISE_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("Wise added to unified verifier...");

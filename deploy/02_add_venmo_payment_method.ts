@@ -14,11 +14,8 @@ import {
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
 import {
-  getVenmoReclaimProviderHashes,
-  VENMO_RECLAIM_CURRENCIES,
-  VENMO_RECLAIM_TIMESTAMP_BUFFER,
-  VENMO_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/venmo_reclaim";
+  VENMO_PROVIDER_CONFIG
+} from "../deployments/verifiers/venmo";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -39,22 +36,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    VENMO_PAYMENT_METHOD_HASH,
+    VENMO_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    VENMO_RECLAIM_CURRENCIES
+    VENMO_PROVIDER_CONFIG.currencies
   );
   console.log("Venmo added to payment method registry...");
 
   // Venmo only returns 10 stories at a time
-  const providerHashes = await getVenmoReclaimProviderHashes(10);
+  const providerHashes = VENMO_PROVIDER_CONFIG.providerHashes;
   console.log("venmo extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'venmo', {
-    paymentMethodHash: VENMO_PAYMENT_METHOD_HASH,
+    paymentMethodHash: VENMO_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: VENMO_RECLAIM_CURRENCIES,
-    timestampBuffer: VENMO_RECLAIM_TIMESTAMP_BUFFER
+    currencies: VENMO_PROVIDER_CONFIG.currencies,
+    timestampBuffer: VENMO_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add Venmo to unified verifier
@@ -64,8 +61,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    VENMO_PAYMENT_METHOD_HASH,
-    VENMO_RECLAIM_TIMESTAMP_BUFFER,
+    VENMO_PROVIDER_CONFIG.paymentMethodHash,
+    VENMO_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("Venmo added to unified verifier...");

@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getMonzoReclaimProviderHashes,
-  MONZO_RECLAIM_CURRENCIES,
-  MONZO_RECLAIM_TIMESTAMP_BUFFER,
-  MONZO_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/monzo_reclaim";
+import { MONZO_PROVIDER_CONFIG } from "../deployments/verifiers/monzo";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -38,22 +33,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    MONZO_PAYMENT_METHOD_HASH,
+    MONZO_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    MONZO_RECLAIM_CURRENCIES
+    MONZO_PROVIDER_CONFIG.currencies
   );
   console.log("Monzo added to payment method registry...");
 
   // Monzo returns single transaction details
-  const providerHashes = await getMonzoReclaimProviderHashes();
+  const providerHashes = MONZO_PROVIDER_CONFIG.providerHashes;
   console.log("monzo extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'monzo', {
-    paymentMethodHash: MONZO_PAYMENT_METHOD_HASH,
+    paymentMethodHash: MONZO_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: MONZO_RECLAIM_CURRENCIES,
-    timestampBuffer: MONZO_RECLAIM_TIMESTAMP_BUFFER
+    currencies: MONZO_PROVIDER_CONFIG.currencies,
+    timestampBuffer: MONZO_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add Monzo to unified verifier
@@ -63,8 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    MONZO_PAYMENT_METHOD_HASH,
-    MONZO_RECLAIM_TIMESTAMP_BUFFER,
+    MONZO_PROVIDER_CONFIG.paymentMethodHash,
+    MONZO_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("Monzo added to unified verifier...");

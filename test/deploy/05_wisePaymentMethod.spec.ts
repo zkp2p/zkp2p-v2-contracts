@@ -27,12 +27,8 @@ import {
 import {
   MULTI_SIG,
 } from "../../deployments/parameters";
-import {
-  getWiseReclaimProviderHashes,
-  WISE_RECLAIM_TIMESTAMP_BUFFER,
-  WISE_RECLAIM_CURRENCIES,
-  WISE_PAYMENT_METHOD_HASH,
-} from "../../deployments/verifiers/wise_reclaim";
+import { WISE_PROVIDER_CONFIG } from "../../deployments/verifiers/wise";
+import { WISE_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/wise";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +72,7 @@ describe("Wise Payment Method Configuration", () => {
 
     it("should add Wise currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(WISE_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(WISE_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(WISE_PROVIDER_CONFIG.currencies);
     });
   });
 
@@ -88,12 +84,12 @@ describe("Wise Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for Wise", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(WISE_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(WISE_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(WISE_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for Wise", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(WISE_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getWiseReclaimProviderHashes(10);
+      const expectedHashes = WISE_PROVIDER_CONFIG.providerHashes;
       expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
     });
   });

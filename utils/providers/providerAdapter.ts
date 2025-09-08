@@ -99,3 +99,10 @@ export function computeProviderHashesFromJson(templateJson: any, count: number, 
   return hashListProvider(toSubset(templateJson), count, options);
 }
 
+// Shared config shape some callers may use
+export type ProviderConfig = {
+  paymentMethodHash: string;
+  currencies: string[];
+  timestampBuffer: any; // BigNumber | number
+  providerHashes: string[];
+};

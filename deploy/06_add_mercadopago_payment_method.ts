@@ -13,12 +13,7 @@ import {
   addPaymentMethodToUnifiedVerifier,
   savePaymentMethodSnapshot
 } from "../deployments/helpers";
-import {
-  getMercadoReclaimProviderHashes,
-  MERCADO_RECLAIM_CURRENCIES,
-  MERCADO_RECLAIM_TIMESTAMP_BUFFER,
-  MERCADOPAGO_PAYMENT_METHOD_HASH,
-} from "../deployments/verifiers/mercado_pago_reclaim";
+import { MERCADOPAGO_PROVIDER_CONFIG } from "../deployments/verifiers/mercadopago";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -38,22 +33,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToRegistry(
     hre,
     paymentVerifierRegistryContract,
-    MERCADOPAGO_PAYMENT_METHOD_HASH,
+    MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
     unifiedVerifierAddress,
-    MERCADO_RECLAIM_CURRENCIES
+    MERCADOPAGO_PROVIDER_CONFIG.currencies
   );
   console.log("MercadoPago added to payment method registry...");
 
   // Get MercadoPago provider hashes
-  const providerHashes = await getMercadoReclaimProviderHashes(1);
+  const providerHashes = MERCADOPAGO_PROVIDER_CONFIG.providerHashes;
   console.log("mercadopago extension provider hashes", providerHashes);
 
   // Snapshot provider hashes
   savePaymentMethodSnapshot(network, 'mercadopago', {
-    paymentMethodHash: MERCADOPAGO_PAYMENT_METHOD_HASH,
+    paymentMethodHash: MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
     providerHashes,
-    currencies: MERCADO_RECLAIM_CURRENCIES,
-    timestampBuffer: MERCADO_RECLAIM_TIMESTAMP_BUFFER
+    currencies: MERCADOPAGO_PROVIDER_CONFIG.currencies,
+    timestampBuffer: MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer
   });
 
   // Add MercadoPago to unified verifier
@@ -63,8 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    MERCADOPAGO_PAYMENT_METHOD_HASH,
-    MERCADO_RECLAIM_TIMESTAMP_BUFFER,
+    MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
+    MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer,
     providerHashes
   );
   console.log("MercadoPago added to unified verifier...");

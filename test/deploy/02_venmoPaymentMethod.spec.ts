@@ -28,11 +28,9 @@ import {
   MULTI_SIG,
 } from "../../deployments/parameters";
 import {
-  getVenmoReclaimProviderHashes,
-  VENMO_RECLAIM_TIMESTAMP_BUFFER,
-  VENMO_RECLAIM_CURRENCIES,
-  VENMO_PAYMENT_METHOD_HASH
-} from "../../deployments/verifiers/venmo_reclaim";
+  VENMO_PROVIDER_CONFIG,
+} from "../../deployments/verifiers/venmo";
+import { VENMO_PAYMENT_METHOD_HASH } from "../../deployments/verifiers/venmo";
 
 const expect = getWaffleExpect();
 
@@ -76,7 +74,7 @@ describe("Venmo Payment Method Configuration", () => {
 
     it("should add Venmo currencies to the registry", async () => {
       const currencies = await paymentVerifierRegistry.getCurrencies(VENMO_PAYMENT_METHOD_HASH);
-      expect(currencies).to.deep.eq(VENMO_RECLAIM_CURRENCIES);
+      expect(currencies).to.deep.eq(VENMO_PROVIDER_CONFIG.currencies);
     });
   });
 
@@ -88,12 +86,12 @@ describe("Venmo Payment Method Configuration", () => {
 
     it("should set the correct timestamp buffer for Venmo", async () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(VENMO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(VENMO_RECLAIM_TIMESTAMP_BUFFER);
+      expect(timestampBuffer).to.eq(VENMO_PROVIDER_CONFIG.timestampBuffer);
     });
 
     it("should set the correct provider hashes for Venmo", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(VENMO_PAYMENT_METHOD_HASH);
-      const expectedHashes = await getVenmoReclaimProviderHashes(10);
+      const expectedHashes = VENMO_PROVIDER_CONFIG.providerHashes;
       expect(providerHashes).to.deep.eq(expectedHashes);
     });
   });
