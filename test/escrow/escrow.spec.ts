@@ -352,13 +352,13 @@ describe("Escrow", () => {
       expect(events[0].args.depositId).to.equal(0);
       expect(events[0].args.paymentMethod).to.equal(subjectPaymentMethods[0]);
       expect(events[0].args.currency).to.equal(subjectCurrencies[0][0].code);
-      expect(events[0].args.conversionRate).to.equal(subjectCurrencies[0][0].minConversionRate);
+      expect(events[0].args.minConversionRate).to.equal(subjectCurrencies[0][0].minConversionRate);
 
       // Second event  
       expect(events[1].args.depositId).to.equal(0);
       expect(events[1].args.paymentMethod).to.equal(subjectPaymentMethods[0]);
       expect(events[1].args.currency).to.equal(subjectCurrencies[0][1].code);
-      expect(events[1].args.conversionRate).to.equal(subjectCurrencies[0][1].minConversionRate);
+      expect(events[1].args.minConversionRate).to.equal(subjectCurrencies[0][1].minConversionRate);
     });
 
     describe("when there are multiple payment methods", async () => {
