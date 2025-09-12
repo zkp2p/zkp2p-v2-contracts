@@ -88,8 +88,5 @@ describe("Venmo Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(VENMO_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(VENMO_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes enforced off-chain in attestation service
   });
-
 });

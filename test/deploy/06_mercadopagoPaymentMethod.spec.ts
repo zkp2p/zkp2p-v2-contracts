@@ -86,8 +86,6 @@ describe("MercadoPago Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MERCADOPAGO_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes verified off-chain; no on-chain assertion
   });
 
 });

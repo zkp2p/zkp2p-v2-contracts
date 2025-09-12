@@ -93,14 +93,5 @@ describe("Monzo Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MONZO_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(MONZO_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes enforced off-chain
-
-    it("should have exactly one provider hash for Monzo", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MONZO_PAYMENT_METHOD_HASH);
-      // Monzo returns single transaction details, not an array
-      expect(providerHashes.length).to.eq(1);
-    });
   });
-
 });

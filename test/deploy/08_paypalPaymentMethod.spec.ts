@@ -92,8 +92,5 @@ describe("PayPal Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(PAYPAL_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(PAYPAL_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes enforced off-chain; only timestamp/currencies are on-chain
   });
-
 });

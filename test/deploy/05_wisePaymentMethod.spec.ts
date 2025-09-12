@@ -86,8 +86,6 @@ describe("Wise Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(WISE_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(WISE_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes verified off-chain; no on-chain assertion
   });
 
 });

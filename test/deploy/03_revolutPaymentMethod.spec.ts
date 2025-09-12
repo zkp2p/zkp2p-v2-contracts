@@ -86,8 +86,5 @@ describe("Revolut Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(REVOLUT_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(REVOLUT_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes are verified off-chain; no on-chain list to compare
   });
-
 });

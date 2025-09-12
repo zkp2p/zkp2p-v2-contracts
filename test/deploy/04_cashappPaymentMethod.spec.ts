@@ -86,8 +86,6 @@ describe("CashApp Payment Method Configuration", () => {
       const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(CASHAPP_PAYMENT_METHOD_HASH);
       expect(timestampBuffer).to.eq(CASHAPP_PROVIDER_CONFIG.timestampBuffer);
     });
-
-    // provider hashes are enforced off-chain in the attestation service
   });
 
 });

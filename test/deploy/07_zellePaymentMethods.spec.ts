@@ -87,7 +87,7 @@ describe("Zelle Payment Methods Configuration", () => {
         expect(timestampBuffer).to.eq(ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer);
       });
 
-      // provider hashes verified off-chain; no on-chain list
+
     });
   });
 
@@ -115,7 +115,7 @@ describe("Zelle Payment Methods Configuration", () => {
         expect(timestampBuffer).to.eq(ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer);
       });
 
-      // provider hashes verified off-chain; no on-chain list
+
     });
   });
 
@@ -142,8 +142,6 @@ describe("Zelle Payment Methods Configuration", () => {
         const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_BOFA_PAYMENT_METHOD_HASH);
         expect(timestampBuffer).to.eq(ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer);
       });
-
-      // provider hashes verified off-chain; no on-chain list
     });
   });
 });
