@@ -87,11 +87,7 @@ describe("MercadoPago Payment Method Configuration", () => {
       expect(timestampBuffer).to.eq(MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer);
     });
 
-    it("should set the correct provider hashes for MercadoPago", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MERCADOPAGO_PAYMENT_METHOD_HASH);
-      const expectedHashes = MERCADOPAGO_PROVIDER_CONFIG.providerHashes;
-      expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-    });
+    // provider hashes verified off-chain; no on-chain assertion
   });
 
 });

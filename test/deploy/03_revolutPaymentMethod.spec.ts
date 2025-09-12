@@ -87,11 +87,7 @@ describe("Revolut Payment Method Configuration", () => {
       expect(timestampBuffer).to.eq(REVOLUT_PROVIDER_CONFIG.timestampBuffer);
     });
 
-    it("should set the correct provider hashes for Revolut", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(REVOLUT_PAYMENT_METHOD_HASH);
-      const expectedHashes = REVOLUT_PROVIDER_CONFIG.providerHashes;
-      expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-    });
+    // provider hashes are verified off-chain; no on-chain list to compare
   });
 
 });

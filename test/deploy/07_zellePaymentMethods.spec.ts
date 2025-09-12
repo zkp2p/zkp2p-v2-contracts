@@ -87,11 +87,7 @@ describe("Zelle Payment Methods Configuration", () => {
         expect(timestampBuffer).to.eq(ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer);
       });
 
-      it("should set the correct provider hashes for Zelle Citi", async () => {
-        const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_CITI_PAYMENT_METHOD_HASH);
-        const expectedHashes = ZELLE_CITI_PROVIDER_CONFIG.providerHashes;
-        expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-      });
+      // provider hashes verified off-chain; no on-chain list
     });
   });
 
@@ -119,11 +115,7 @@ describe("Zelle Payment Methods Configuration", () => {
         expect(timestampBuffer).to.eq(ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer);
       });
 
-      it("should set the correct provider hashes for Zelle Chase", async () => {
-        const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_CHASE_PAYMENT_METHOD_HASH);
-        const expectedHashes = ZELLE_CHASE_PROVIDER_CONFIG.providerHashes;
-        expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-      });
+      // provider hashes verified off-chain; no on-chain list
     });
   });
 
@@ -151,11 +143,7 @@ describe("Zelle Payment Methods Configuration", () => {
         expect(timestampBuffer).to.eq(ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer);
       });
 
-      it("should set the correct provider hashes for Zelle BofA", async () => {
-        const providerHashes = await unifiedPaymentVerifier.getProviderHashes(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-        const expectedHashes = ZELLE_BOFA_PROVIDER_CONFIG.providerHashes;
-        expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-      });
+      // provider hashes verified off-chain; no on-chain list
     });
   });
 });

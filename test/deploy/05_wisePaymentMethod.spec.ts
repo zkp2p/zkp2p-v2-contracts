@@ -87,11 +87,7 @@ describe("Wise Payment Method Configuration", () => {
       expect(timestampBuffer).to.eq(WISE_PROVIDER_CONFIG.timestampBuffer);
     });
 
-    it("should set the correct provider hashes for Wise", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(WISE_PAYMENT_METHOD_HASH);
-      const expectedHashes = WISE_PROVIDER_CONFIG.providerHashes;
-      expect([...providerHashes].sort()).to.deep.eq([...expectedHashes].sort());
-    });
+    // provider hashes verified off-chain; no on-chain assertion
   });
 
 });

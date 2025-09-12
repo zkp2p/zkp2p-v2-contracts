@@ -94,11 +94,7 @@ describe("Monzo Payment Method Configuration", () => {
       expect(timestampBuffer).to.eq(MONZO_PROVIDER_CONFIG.timestampBuffer);
     });
 
-    it("should set the correct provider hashes for Monzo", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MONZO_PAYMENT_METHOD_HASH);
-      const expectedHashes = MONZO_PROVIDER_CONFIG.providerHashes;
-      expect(providerHashes).to.deep.eq(expectedHashes);
-    });
+    // provider hashes enforced off-chain
 
     it("should have exactly one provider hash for Monzo", async () => {
       const providerHashes = await unifiedPaymentVerifier.getProviderHashes(MONZO_PAYMENT_METHOD_HASH);

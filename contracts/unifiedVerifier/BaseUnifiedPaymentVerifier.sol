@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AddressArrayUtils } from "../external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
@@ -12,7 +11,7 @@ import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
  * @notice Base contract for unified payment verification that manages configuration for multiple payment methods.
  * 
  * This contract handles:
- * - Payment method configuration (timestamp buffers, zkTLS provider hashes)
+ * - Payment method configuration (timestamp buffers)
  * - zkTLS attestation verification through pluggable attestation verifiers
  * - Support for multiple zkTLS proofs per payment method
  * 
@@ -21,7 +20,6 @@ import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
  */
 abstract contract BaseUnifiedPaymentVerifier is Ownable {
     
-    using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
     
     /* ============ Constants ============ */
@@ -33,8 +31,6 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     struct PaymentMethodStore {
         bool initialized;
         uint256 timestampBuffer;
-        mapping(bytes32 => bool) isProviderHash;
-        bytes32[] providerHashes;
     }
 
     /* ============ Events ============ */
@@ -42,8 +38,6 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     event PaymentMethodAdded(bytes32 indexed paymentMethod, uint256 timestampBuffer);
     event PaymentMethodRemoved(bytes32 indexed paymentMethod);
     event TimestampBufferUpdated(bytes32 indexed paymentMethod, uint256 oldBuffer, uint256 newBuffer);
-    event ProviderHashAdded(bytes32 indexed paymentMethod, bytes32 indexed providerHash);
-    event ProviderHashRemoved(bytes32 indexed paymentMethod, bytes32 indexed providerHash);
     event AttestationVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
 
     /* ============ State Variables ============ */
@@ -87,24 +81,19 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     /* ============ External Functions ============ */
     
     /**
-     * ONLY OWNER: Adds a new payment method with timestamp buffer and zkTLS provider hashes
+     * ONLY OWNER: Adds a new payment method with timestamp buffer
      * @param _paymentMethod The payment method hash; Hash the payment method name in lowercase
      * @param _timestampBuffer Payment method-specific timestamp buffer in seconds
-     * @param _providerHashes Array of zkTLS provider hashes to store
      */
     function addPaymentMethod(
         bytes32 _paymentMethod,
-        uint256 _timestampBuffer,
-        bytes32[] calldata _providerHashes
+        uint256 _timestampBuffer
     ) external onlyOwner {
         require(!store[_paymentMethod].initialized, "UPV: Payment method already exists");
-        require(_providerHashes.length > 0, "UPV: Invalid length");
         
         store[_paymentMethod].initialized = true;
         store[_paymentMethod].timestampBuffer = _timestampBuffer;
         paymentMethods.push(_paymentMethod);
-        
-        addProviderHashes(_paymentMethod, _providerHashes);
         
         emit PaymentMethodAdded(_paymentMethod, _timestampBuffer);
     }
@@ -116,12 +105,6 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
      */
     function removePaymentMethod(bytes32 _paymentMethod) external onlyOwner {
         require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
-        
-        // Remove all provider hashes
-        bytes32[] memory providerHashes = store[_paymentMethod].providerHashes;
-        for (uint256 i = 0; i < providerHashes.length; i++) {
-            _removeProviderHash(_paymentMethod, providerHashes[i]);
-        }
         
         // Remove payment method config
         delete store[_paymentMethod];
@@ -160,32 +143,6 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
         emit TimestampBufferUpdated(_paymentMethod, oldBuffer, _newTimestampBuffer);
     }
                                                                                                                
-    /**
-     * Batch adds provider hashes for a specific payment method
-     * @param _paymentMethod The payment method hash
-     * @param _providerHashes Array of provider hashes to add
-     */
-    function addProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) public onlyOwner {
-        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
-        require(_providerHashes.length > 0, "UPV: Invalid length");
-        
-        for (uint256 i = 0; i < _providerHashes.length; i++) {
-            _addProviderHash(_paymentMethod, _providerHashes[i]);
-        }
-    }
-    
-    /**
-     * Batch removes provider hashes for a specific payment method
-     * @param _paymentMethod The payment method hash
-     * @param _providerHashes Array of provider hashes to remove
-     */
-    function removeProviderHashes(bytes32 _paymentMethod, bytes32[] calldata _providerHashes) external onlyOwner {
-        require(_providerHashes.length > 0, "UPV: Invalid length");
-        
-        for (uint256 i = 0; i < _providerHashes.length; i++) {
-            _removeProviderHash(_paymentMethod, _providerHashes[i]);
-        }
-    }
     
     /* ============ View Functions ============ */
     
@@ -193,18 +150,9 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
         return paymentMethods;
     }
     
-    function isProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) external view returns (bool) {
-        return store[_paymentMethod].isProviderHash[_providerHash];
-    }
-
     function getTimestampBuffer(bytes32 _paymentMethod) external view returns (uint256) {
         require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
         return store[_paymentMethod].timestampBuffer;
-    }
-    
-    function getProviderHashes(bytes32 _paymentMethod) external view returns (bytes32[] memory) {
-        require(store[_paymentMethod].initialized, "UPV: Payment method does not exist");
-        return store[_paymentMethod].providerHashes;
     }
     
     /* ============ Internal Functions ============ */
@@ -257,22 +205,5 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
     }
 
     /* ============ Helper Internal Functions ============ */
-
-    function _addProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {
-        require(_providerHash != bytes32(0), "UPV: Invalid provider hash");
-        require(!store[_paymentMethod].isProviderHash[_providerHash], "UPV: Provider hash already exists");
-
-        store[_paymentMethod].isProviderHash[_providerHash] = true;
-        store[_paymentMethod].providerHashes.push(_providerHash);
-        emit ProviderHashAdded(_paymentMethod, _providerHash);
-    }
-
-    function _removeProviderHash(bytes32 _paymentMethod, bytes32 _providerHash) internal {
-        require(store[_paymentMethod].isProviderHash[_providerHash], "UPV: Provider hash does not exist");
-
-        store[_paymentMethod].isProviderHash[_providerHash] = false;
-        store[_paymentMethod].providerHashes.removeStorage(_providerHash);
-        emit ProviderHashRemoved(_paymentMethod, _providerHash);
-    }
 
 }

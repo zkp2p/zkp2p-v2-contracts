@@ -93,17 +93,7 @@ describe("PayPal Payment Method Configuration", () => {
       expect(timestampBuffer).to.eq(PAYPAL_PROVIDER_CONFIG.timestampBuffer);
     });
 
-    it("should set the correct provider hashes for PayPal", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(PAYPAL_PAYMENT_METHOD_HASH);
-      const expectedHashes = PAYPAL_PROVIDER_CONFIG.providerHashes;
-      expect(providerHashes).to.deep.eq(expectedHashes);
-    });
-
-    it("should have exactly one provider hash for PayPal", async () => {
-      const providerHashes = await unifiedPaymentVerifier.getProviderHashes(PAYPAL_PAYMENT_METHOD_HASH);
-      // PayPal returns single payment details, not an array
-      expect(providerHashes.length).to.eq(1);
-    });
+    // provider hashes enforced off-chain; only timestamp/currencies are on-chain
   });
 
 });
