@@ -39,18 +39,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Monzo added to payment method registry...");
 
-  // Monzo returns single transaction details
-  const providerHashes = MONZO_PROVIDER_CONFIG.providerHashes;
-  console.log("monzo extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot Monzo
   savePaymentMethodSnapshot(network, 'monzo', {
     paymentMethodHash: MONZO_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: MONZO_PROVIDER_CONFIG.currencies,
     timestampBuffer: MONZO_PROVIDER_CONFIG.timestampBuffer
   });
 
+  // Monzo returns single transaction details
   // Add Monzo to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(
     "UnifiedPaymentVerifier", unifiedVerifierAddress
@@ -59,8 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     MONZO_PROVIDER_CONFIG.paymentMethodHash,
-    MONZO_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    MONZO_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Monzo added to unified verifier...");
 };

@@ -42,14 +42,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Venmo added to payment method registry...");
 
-  // Venmo only returns 10 stories at a time
-  const providerHashes = VENMO_PROVIDER_CONFIG.providerHashes;
-  console.log("venmo extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot currencies and timestamp buffer (no provider hashes on-chain)
   savePaymentMethodSnapshot(network, 'venmo', {
     paymentMethodHash: VENMO_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: VENMO_PROVIDER_CONFIG.currencies,
     timestampBuffer: VENMO_PROVIDER_CONFIG.timestampBuffer
   });
@@ -62,8 +57,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     VENMO_PROVIDER_CONFIG.paymentMethodHash,
-    VENMO_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    VENMO_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Venmo added to unified verifier...");
 };

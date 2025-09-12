@@ -106,10 +106,9 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             attestation.paymentMethod
         );
         
-        // Verify the attestation and provider hash
+        // Verify the attestation
         bool isValid = _verifyAttestation(attestation, _verifyPaymentData);
         require(isValid, "UPV: Invalid witness signatures");
-        require(store.isProviderHash[attestation.providerHash], "UPV: Invalid provider hash");
         
         PaymentDetails memory paymentDetails = attestation.paymentDetails;
         _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);

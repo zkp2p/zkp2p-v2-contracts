@@ -40,18 +40,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("CashApp added to payment method registry...");
 
-  // CashApp returns 20 activities at a time
-  const providerHashes = CASHAPP_PROVIDER_CONFIG.providerHashes;
-  console.log("cashapp extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'cashapp', {
     paymentMethodHash: CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: CASHAPP_PROVIDER_CONFIG.currencies,
     timestampBuffer: CASHAPP_PROVIDER_CONFIG.timestampBuffer
   });
 
+  // CashApp returns 20 activities at a time
   // Add CashApp to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(
     "UnifiedPaymentVerifier", unifiedVerifierAddress
@@ -60,8 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
-    CASHAPP_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    CASHAPP_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("CashApp added to unified verifier...");
 };

@@ -48,13 +48,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Zelle Citi added to payment method registry...");
 
-  const citiProviderHashes = ZELLE_CITI_PROVIDER_CONFIG.providerHashes;
-  console.log("zelle citi extension provider hashes", citiProviderHashes);
-
-  // Snapshot provider hashes
+  // Snapshot Zelle Citi
   savePaymentMethodSnapshot(network, 'zelle-citi', {
     paymentMethodHash: ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes: citiProviderHashes,
     currencies: ZELLE_CITI_PROVIDER_CONFIG.currencies,
     timestampBuffer: ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer
   });
@@ -63,8 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
-    ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer,
-    citiProviderHashes
+    ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Zelle Citi added to unified verifier...");
 
@@ -78,13 +73,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Zelle Chase added to payment method registry...");
 
-  const chaseProviderHashes = ZELLE_CHASE_PROVIDER_CONFIG.providerHashes;
-  console.log("zelle chase extension provider hashes", chaseProviderHashes);
-
-  // Snapshot provider hashes
+  // Snapshot Zelle Chase
   savePaymentMethodSnapshot(network, 'zelle-chase', {
     paymentMethodHash: ZELLE_CHASE_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes: chaseProviderHashes,
     currencies: ZELLE_CHASE_PROVIDER_CONFIG.currencies,
     timestampBuffer: ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer
   });
@@ -93,8 +84,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     ZELLE_CHASE_PROVIDER_CONFIG.paymentMethodHash,
-    ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer,
-    chaseProviderHashes
+    ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Zelle Chase added to unified verifier...");
 
@@ -108,13 +98,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Zelle BofA added to payment method registry...");
 
-  const boaProviderHashes = ZELLE_BOFA_PROVIDER_CONFIG.providerHashes;
-  console.log("zelle bofa extension provider hashes", boaProviderHashes);
-
-  // Snapshot provider hashes
+  // Snapshot Zelle BofA
   savePaymentMethodSnapshot(network, 'zelle-bofa', {
     paymentMethodHash: ZELLE_BOFA_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes: boaProviderHashes,
     currencies: ZELLE_BOFA_PROVIDER_CONFIG.currencies,
     timestampBuffer: ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer
   });
@@ -123,8 +109,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     ZELLE_BOFA_PROVIDER_CONFIG.paymentMethodHash,
-    ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer,
-    boaProviderHashes
+    ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Zelle BofA added to unified verifier...");
 };

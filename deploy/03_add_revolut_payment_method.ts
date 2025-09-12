@@ -39,14 +39,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Revolut added to payment method registry...");
 
-  // Revolut returns 20 transactions at a time
-  const providerHashes = REVOLUT_PROVIDER_CONFIG.providerHashes;
-  console.log("revolut extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'revolut', {
     paymentMethodHash: REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: REVOLUT_PROVIDER_CONFIG.currencies,
     timestampBuffer: REVOLUT_PROVIDER_CONFIG.timestampBuffer
   });
@@ -59,8 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
-    REVOLUT_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    REVOLUT_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Revolut added to unified verifier...");
 };

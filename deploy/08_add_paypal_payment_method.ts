@@ -39,18 +39,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("PayPal added to payment method registry...");
 
-  // PayPal returns single payment details
-  const providerHashes = PAYPAL_PROVIDER_CONFIG.providerHashes;
-  console.log("paypal extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot PayPal
   savePaymentMethodSnapshot(network, 'paypal', {
     paymentMethodHash: PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: PAYPAL_PROVIDER_CONFIG.currencies,
     timestampBuffer: PAYPAL_PROVIDER_CONFIG.timestampBuffer
   });
 
+  // PayPal returns single payment details
   // Add PayPal to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(
     "UnifiedPaymentVerifier", unifiedVerifierAddress
@@ -59,8 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
-    PAYPAL_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    PAYPAL_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("PayPal added to unified verifier...");
 };

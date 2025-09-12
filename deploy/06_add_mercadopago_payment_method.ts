@@ -39,14 +39,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("MercadoPago added to payment method registry...");
 
-  // Get MercadoPago provider hashes
-  const providerHashes = MERCADOPAGO_PROVIDER_CONFIG.providerHashes;
-  console.log("mercadopago extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'mercadopago', {
     paymentMethodHash: MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: MERCADOPAGO_PROVIDER_CONFIG.currencies,
     timestampBuffer: MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer
   });
@@ -59,8 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
-    MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("MercadoPago added to unified verifier...");
 };

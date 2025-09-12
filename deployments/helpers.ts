@@ -130,59 +130,7 @@ export async function addCurrency(
 }
 
 
-export async function removeProviderHash(
-  hre: HardhatRuntimeEnvironment,
-  contract: any,
-  providerHash: string
-): Promise<void> {
-  const currentOwner = await contract.owner();
-  const data = contract.interface.encodeFunctionData("removeProviderHash", [providerHash]);
-  if (await contract.isProviderHash(providerHash)) {
-    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      console.log("Removing provider hash ", providerHash, "from", contract.address);
-      await hre.deployments.rawTx({
-        from: currentOwner,
-        to: contract.address,
-        data
-      });
-    } else {
-      console.log(
-        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
-        ${contract.interface.encodeFunctionData("removeProviderHash", [providerHash])}
-        contract address: ${contract.address}
-        `
-      );
-    }
-  }
-}
-
-export async function addProviderHash(
-  hre: HardhatRuntimeEnvironment,
-  contract: any,
-  providerHash: string
-): Promise<void> {
-  const currentOwner = await contract.owner();
-  const data = contract.interface.encodeFunctionData("addProviderHash", [providerHash]);
-  if (!(await contract.isProviderHash(providerHash))) {
-    if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      console.log("Adding provider hash ", providerHash, "to", contract.address);
-      await hre.deployments.rawTx({
-        from: currentOwner,
-        to: contract.address,
-        data
-      });
-    } else {
-      console.log(
-        `Contract owner is not in the list of accounts, must be manually added with the following calldata:
-        ${contract.interface.encodeFunctionData("addProviderHash", [providerHash])}
-        contract address: ${contract.address}
-        `
-      );
-    }
-  } else {
-    console.log("Provider hash", providerHash, "already exists in", contract.address);
-  }
-}
+// Provider hash helpers removed: enforcement is off-chain now
 
 export async function addPaymentMethodToRegistry(
   hre: HardhatRuntimeEnvironment,
@@ -228,19 +176,17 @@ export async function addPaymentMethodToUnifiedVerifier(
   hre: HardhatRuntimeEnvironment,
   unifiedVerifierContract: any,
   paymentMethodHash: string,
-  timestampBuffer: any,
-  providerHashes: string[]
+  timestampBuffer: any
 ): Promise<void> {
   const currentOwner = await unifiedVerifierContract.owner();
   const paymentMethods = await unifiedVerifierContract.getPaymentMethods();
 
   if (!paymentMethods.includes(paymentMethodHash)) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
-      console.log(`Adding payment method ${paymentMethodHash} to unified verifier with ${providerHashes.length} provider hashes`);
+      console.log(`Adding payment method ${paymentMethodHash} to unified verifier`);
       const data = unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
         paymentMethodHash,
-        timestampBuffer,
-        providerHashes
+        timestampBuffer
       ]);
       await hre.deployments.rawTx({
         from: currentOwner,
@@ -252,8 +198,7 @@ export async function addPaymentMethodToUnifiedVerifier(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
         ${unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
           paymentMethodHash,
-          timestampBuffer,
-          providerHashes
+          timestampBuffer
         ])}
         contract address: ${unifiedVerifierContract.address}
         `
@@ -270,8 +215,7 @@ export function savePaymentMethodSnapshot(
   methodKey: string,
   data: {
     paymentMethodHash: string;
-    providerHashes: string[];
-    currencies?: string[];
+    currencies: string[];
     timestampBuffer?: any; // Can be BigNumber or number
   }
 ): void {
@@ -279,13 +223,13 @@ export function savePaymentMethodSnapshot(
   if (!fs.existsSync(providersDir)) fs.mkdirSync(providersDir, { recursive: true });
 
   const normalizeHex = (h: string) => (h.startsWith("0x") ? h.toLowerCase() : `0x${h.toLowerCase()}`);
-  const hashes = Array.from(new Set((data.providerHashes || []).map(normalizeHex))).sort();
 
   // Convert BigNumber to number if needed
   let timestampBuffer = 30; // default
   if (data.timestampBuffer) {
-    if (typeof data.timestampBuffer === 'object' && data.timestampBuffer._isBigNumber) {
-      timestampBuffer = parseInt(data.timestampBuffer.toString());
+    // ethers v5 BigNumber shape
+    if (typeof data.timestampBuffer === 'object' && (data.timestampBuffer as any)._isBigNumber) {
+      timestampBuffer = parseInt((data.timestampBuffer as any).toString());
     } else if (typeof data.timestampBuffer === 'number') {
       timestampBuffer = data.timestampBuffer;
     } else if (typeof data.timestampBuffer === 'string') {
@@ -297,16 +241,14 @@ export function savePaymentMethodSnapshot(
     paymentMethodHash: normalizeHex(data.paymentMethodHash),
     currencies: data.currencies || [],
     timestampBuffer,
-    hashes,
     updatedAt: new Date().toISOString()
   };
 
-  // For production networks (base_sepolia, base_staging, base), save with timestamp
+  // For production networks (base_sepolia, base_staging, base), save with timestamp and maintain latest
   const productionNetworks = ['base_sepolia', 'base_staging', 'base'];
 
   if (productionNetworks.includes(network)) {
-    // Save timestamped snapshot for production networks
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: YYYY-MM-DDTHH-MM-SS
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const timestampedDir = path.join(providersDir, 'snapshots', network);
     if (!fs.existsSync(timestampedDir)) fs.mkdirSync(timestampedDir, { recursive: true });
 
@@ -314,26 +256,24 @@ export function savePaymentMethodSnapshot(
     fs.writeFileSync(timestampedFilePath, JSON.stringify(snapshotData, null, 2));
     console.log(`Saved timestamped snapshot to: ${timestampedFilePath}`);
 
-    // Update the main network file with the latest data
     const mainFilePath = path.join(providersDir, `${network}.json`);
     let current: any = { methods: {} };
     try {
       if (fs.existsSync(mainFilePath)) {
         current = JSON.parse(fs.readFileSync(mainFilePath, "utf8"));
       }
-    } catch { }
+    } catch {}
 
     current.methods[methodKey] = snapshotData;
     fs.writeFileSync(mainFilePath, JSON.stringify(current, null, 2));
   } else {
-    // For non-production networks, use the original behavior
     const filePath = path.join(providersDir, `${network}.json`);
     let current: any = { methods: {} };
     try {
       if (fs.existsSync(filePath)) {
         current = JSON.parse(fs.readFileSync(filePath, "utf8"));
       }
-    } catch { }
+    } catch {}
 
     current.methods[methodKey] = snapshotData;
     fs.writeFileSync(filePath, JSON.stringify(current, null, 2));
