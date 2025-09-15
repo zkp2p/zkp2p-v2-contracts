@@ -40,18 +40,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   console.log("Wise added to payment method registry...");
 
-  // Get Wise provider hashes
-  const providerHashes = WISE_PROVIDER_CONFIG.providerHashes;
-  console.log("wise extension provider hashes", providerHashes);
-
-  // Snapshot provider hashes
+  // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'wise', {
     paymentMethodHash: WISE_PROVIDER_CONFIG.paymentMethodHash,
-    providerHashes,
     currencies: WISE_PROVIDER_CONFIG.currencies,
     timestampBuffer: WISE_PROVIDER_CONFIG.timestampBuffer
   });
 
+  // Get Wise provider hashes
   // Add Wise to unified verifier
   const unifiedVerifierContract = await ethers.getContractAt(
     "UnifiedPaymentVerifier", unifiedVerifierAddress
@@ -60,8 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     unifiedVerifierContract,
     WISE_PROVIDER_CONFIG.paymentMethodHash,
-    WISE_PROVIDER_CONFIG.timestampBuffer,
-    providerHashes
+    WISE_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Wise added to unified verifier...");
 };

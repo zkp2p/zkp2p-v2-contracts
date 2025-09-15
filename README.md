@@ -67,7 +67,6 @@ ZKP2P is a decentralized protocol enabling trustless peer-to-peer exchanges betw
 **Unified Payment Verifier**
 - Single contract supporting all payment methods via configuration
 - Validates EIP-712 signed attestations from off-chain services
-- Verifies provider hashes (trust anchors) for each payment method
 - Enforces timestamp buffers for L2 flexibility
 - Nullifies payments in registry to prevent double-spending
 

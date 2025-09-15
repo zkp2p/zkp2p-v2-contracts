@@ -70,8 +70,7 @@ describe("UnifiedPaymentVerifier", () => {
 
     await verifier.connect(owner.wallet).addPaymentMethod(
       venmoPaymentMethodHash,
-      BigNumber.from(30000), // 30 second timestamp buffer (in milliseconds)
-      [venmoProviderHash]
+      BigNumber.from(30000) // 30 second timestamp buffer (in milliseconds)
     );
   });
 
@@ -227,25 +226,7 @@ describe("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("when provider hash is not correct", async () => {
-      beforeEach(async () => {
-        const paymentDetailsWithInvalidProviderHash = {
-          ...paymentDetails,
-          providerHash: "0xd46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a9", // Different hash
-        };
-
-        // Sign with EIP-712
-        subjectProof = await createAttestation(
-          witness1,
-          paymentDetailsWithInvalidProviderHash,
-          verifier.address
-        );
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Invalid provider hash");
-      });
-    });
+    // provider hash check removed from contracts
 
     describe("when witness signature is invalid", async () => {
       beforeEach(async () => {

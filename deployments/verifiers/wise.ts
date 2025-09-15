@@ -1,12 +1,5 @@
 import { BigNumber } from "ethers";
-import wiseTemplate from "@zkp2p/providers/wise/transfer_wise.json";
-
 import { calculatePaymentMethodHash, Currency } from "@utils/protocolUtils";
-import { computeProviderHashesFromJson, ProviderConfig } from "@utils/providers/providerAdapter";
-
-export const getWiseProviderHashes = (length: number) => {
-  return computeProviderHashesFromJson(wiseTemplate as any, length);
-}
 
 // 0x554a007c2217df766b977723b276671aee5ebb4adaea0edb6433c88b3e61dac5
 export const WISE_PAYMENT_METHOD_HASH = calculatePaymentMethodHash("wise");
@@ -38,10 +31,8 @@ export const WISE_CURRENCIES: any = [
 
 export const WISE_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
 
-export const WISE_PROVIDER_CONFIG: ProviderConfig = {
+export const WISE_PROVIDER_CONFIG = {
   paymentMethodHash: WISE_PAYMENT_METHOD_HASH,
   currencies: WISE_CURRENCIES,
-  timestampBuffer: WISE_TIMESTAMP_BUFFER,
-  providerHashes: getWiseProviderHashes(1)
+  timestampBuffer: WISE_TIMESTAMP_BUFFER
 };
-
