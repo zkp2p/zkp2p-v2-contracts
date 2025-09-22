@@ -78,7 +78,7 @@ interface IEscrow {
     event DepositCurrencyAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 minConversionRate);
     event DepositCurrencyRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currencyCode);        
 
-    event DepositFundsAdded(uint256 indexed depositId, address indexed depositor, uint256 amount);
+    event DepositFundsAdded(uint256 indexed depositId, address indexed depositor, uint256 amount, uint256 netAdditionalAmount);
     event DepositWithdrawn(uint256 indexed depositId, address indexed depositor, uint256 amount, bool acceptingIntents);
     event DepositClosed(uint256 depositId, address depositor);
 

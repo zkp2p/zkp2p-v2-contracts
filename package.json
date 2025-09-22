@@ -77,4 +77,4 @@
     "@typechain": "typechain"
   },
   "packageManager": "yarn@4.9.1"
-  }
+}
