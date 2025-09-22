@@ -229,7 +229,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.remainingDeposits += netAdditionalAmount;
         deposit.reservedMakerFees += totalFees;
         
-        emit DepositFundsAdded(_depositId, msg.sender, _amount);
+        emit DepositFundsAdded(_depositId, msg.sender, _amount, netAdditionalAmount);
         
         // Interactions
         deposit.token.safeTransferFrom(msg.sender, address(this), _amount);

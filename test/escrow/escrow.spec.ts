@@ -881,10 +881,12 @@ describe("Escrow", () => {
     });
 
     it("should emit a DepositFundsAdded event", async () => {
+      const netAdditionalAmount = subjectAmount;
       await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
         subjectDepositId,
         offRamper.address,
-        subjectAmount
+        subjectAmount,
+        netAdditionalAmount
       );
     });
 
@@ -1084,6 +1086,17 @@ describe("Escrow", () => {
         expect(rampPostBalance.sub(rampPreBalance)).to.eq(subjectAmount);
       });
 
+      it("should emit a DepositFundsAdded event", async () => {
+        const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
+        const netAdditionalAmount = subjectAmount.sub(expectedReferrerFees);
+        await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
+          subjectDepositId,
+          offRamper.address,
+          subjectAmount,
+          netAdditionalAmount
+        );
+      });
+
       describe("when both maker and referrer fees are enabled", async () => {
         let makerFeeRate: BigNumber;
 
@@ -1140,6 +1153,19 @@ describe("Escrow", () => {
           const wouldBeWithNewRate = subjectAmount.mul(newGlobalMakerFee).div(ether(1));
           const wouldBeTotalWithNewRate = wouldBeWithNewRate.add(expectedReferrerFees);
           expect(deposit.reservedMakerFees).to.not.eq(initialDeposit.reservedMakerFees.add(wouldBeTotalWithNewRate));
+        });
+
+        it("should emit a DepositFundsAdded event", async () => {
+          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
+          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
+          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
+          const netAdditionalAmount = subjectAmount.sub(totalFees);
+          await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
+            subjectDepositId,
+            offRamper.address,
+            subjectAmount,
+            netAdditionalAmount
+          );
         });
       });
 
