@@ -70,7 +70,7 @@ interface IEscrow {
 
     /* ============ Events ============ */
 
-    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
+    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, uint256 netDepositAmount, Range intentAmountRange, address delegate, address intentGuardian);
 
     event DepositPaymentMethodAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed payeeDetails, address intentGatingService);
     event DepositPaymentMethodRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod);

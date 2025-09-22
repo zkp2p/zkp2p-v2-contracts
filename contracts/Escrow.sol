@@ -182,8 +182,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositReceived(
             depositId, 
             msg.sender, 
-            _params.token, 
-            _params.amount, 
+            _params.token,
+            netDepositAmount,
+            _params.amount,
             _params.intentAmountRange, 
             _params.delegate, 
             _params.intentGuardian

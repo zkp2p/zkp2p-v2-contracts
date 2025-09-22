@@ -326,6 +326,7 @@ describe("Escrow", () => {
         offRamper.address,
         subjectToken,
         subjectAmount,
+        subjectAmount,
         subjectIntentAmountRange,
         subjectDelegate,
         subjectIntentGuardian
@@ -451,6 +452,20 @@ describe("Escrow", () => {
         const deposit = await ramp.getDeposit(ZERO);
         expect(deposit.referrer).to.eq(referrer.address);
         expect(deposit.referrerFee).to.eq(ether(0.02));
+      });
+
+      it("should emit a DepositReceived event with the correct net deposit amount", async () => {
+        const expectedNetDepositAmount = subjectAmount.mul(ether(0.98));
+        await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
+          ZERO, // depositId starts at 0
+          offRamper.address,
+          subjectToken,
+          subjectAmount,
+          expectedNetDepositAmount,
+          subjectIntentAmountRange,
+          subjectDelegate,
+          subjectIntentGuardian
+        );
       });
 
       it("should transfer the tokens to the Escrow contract", async () => {
