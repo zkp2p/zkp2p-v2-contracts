@@ -1088,7 +1088,7 @@ describe("Escrow", () => {
 
       it("should emit a DepositFundsAdded event", async () => {
         const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-        const netAdditionalAmount = subjectAmount - expectedReferrerFees;
+        const netAdditionalAmount = subjectAmount.sub(expectedReferrerFees);
         await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
           subjectDepositId,
           offRamper.address,
@@ -1159,7 +1159,7 @@ describe("Escrow", () => {
           const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
           const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
           const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
-          const netAdditionalAmount = subjectAmount - totalFees;
+          const netAdditionalAmount = subjectAmount.sub(totalFees);
           await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
             subjectDepositId,
             offRamper.address,
