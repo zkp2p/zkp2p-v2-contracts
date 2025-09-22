@@ -455,12 +455,13 @@ describe("Escrow", () => {
       });
 
       it("should emit a DepositReceived event with the correct net deposit amount", async () => {
-        const expectedNetDepositAmount = subjectAmount.mul(ether(0.98));
+        const depositAmount = usdc(1000);
+        const expectedNetDepositAmount = depositAmount.mul(ether(0.98));
         await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
           ZERO, // depositId starts at 0
           offRamper.address,
           subjectToken,
-          subjectAmount,
+          depositAmount,
           expectedNetDepositAmount,
           subjectIntentAmountRange,
           subjectDelegate,
