@@ -423,7 +423,7 @@ describe("Escrow", () => {
         subjectDepositParams = {
           token: usdcToken.address,
           amount: usdc(1000),
-          intentAmountRange: { min: usdc(10), max: usdc(100) },
+          intentAmountRange: { min: subjectIntentAmountRange.min, max: subjectIntentAmountRange.max },
           paymentMethods: [venmoPaymentMethodHash],
           paymentMethodData: [{
             intentGatingService: gatingService.address,
@@ -456,13 +456,13 @@ describe("Escrow", () => {
 
       it("should emit a DepositReceived event with the correct net deposit amount", async () => {
         const depositAmount = usdc(1000);
-        const expectedNetDepositAmount = depositAmount.mul(ether(0.98));
+        const expectedNetDepositAmount = usdc(980); // 2% referrer fee
         await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
           ZERO, // depositId starts at 0
           offRamper.address,
           subjectToken,
           depositAmount,
-          expectedNetDepositAmount,
+          expectedNetDepositAmount.toString(),
           subjectIntentAmountRange,
           subjectDelegate,
           subjectIntentGuardian
