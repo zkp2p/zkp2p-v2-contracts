@@ -3,7 +3,7 @@ export default {
   "chainId": "84532",
   "contracts": {
     "Escrow": {
-      "address": "0x2CE748dd6fCB8bcCD0837E1bb42dC6DE91213203",
+      "address": "0x3128BadC46Dbe2E37BDd2d64F33fB3B3a639570E",
       "abi": [
         {
           "inputs": [
@@ -469,7 +469,7 @@ export default {
             {
               "indexed": false,
               "internalType": "uint256",
-              "name": "conversionRate",
+              "name": "minConversionRate",
               "type": "uint256"
             }
           ],
@@ -564,6 +564,12 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "netAdditionalAmount",
               "type": "uint256"
             }
           ],
@@ -707,6 +713,12 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "netDepositAmount",
               "type": "uint256"
             },
             {
@@ -2228,7 +2240,7 @@ export default {
       ]
     },
     "EscrowRegistry": {
-      "address": "0x7CB207d5A97Fc6663786BAaC39E0DB3763b4Bc21",
+      "address": "0x431a078A5029146aAB239c768A615CD484519aF7",
       "abi": [
         {
           "inputs": [],
@@ -2445,7 +2457,7 @@ export default {
       ]
     },
     "NullifierRegistry": {
-      "address": "0xcb217d660D44EFFD050e6BC0614afB55eB287134",
+      "address": "0x5eC9a353d4a1a8F2e986CfDDDA94Eb522F0BC630",
       "abi": [
         {
           "inputs": [],
@@ -2661,7 +2673,7 @@ export default {
       ]
     },
     "Orchestrator": {
-      "address": "0x52603a0980AfCC84722db18369768E2e1c906AB8",
+      "address": "0xBcD7C6BBcA5869fBefe3E322263EE1090221D7A9",
       "abi": [
         {
           "inputs": [
@@ -3785,7 +3797,7 @@ export default {
       ]
     },
     "PaymentVerifierRegistry": {
-      "address": "0xFC9FF90C16e73143e7AF9DB7c4BA96F2367ebE26",
+      "address": "0x9F330945807658Ba0735a1115beF37c6D2dCc8A9",
       "abi": [
         {
           "inputs": [],
@@ -4120,7 +4132,7 @@ export default {
       ]
     },
     "PostIntentHookRegistry": {
-      "address": "0xf6d3BC4D383EFD9014ea29bA4E2039979a300bcd",
+      "address": "0x33063186842ED0b24D21715ec3493bE7A4262418",
       "abi": [
         {
           "inputs": [],
@@ -4304,7 +4316,7 @@ export default {
       ]
     },
     "ProtocolViewer": {
-      "address": "0xf2AC5be14F32Cbe6A613CFF8931d95460D6c33A3",
+      "address": "0x37d96BFA80D99a363a0e16225629B7211A165e03",
       "abi": [
         {
           "inputs": [
@@ -5689,7 +5701,7 @@ export default {
       ]
     },
     "RelayerRegistry": {
-      "address": "0x00D003C73EAB8fEaec04bab976235915fE7641e3",
+      "address": "0xA499191749b0f05DEdBd20EBB29b8DC6FA597680",
       "abi": [
         {
           "inputs": [],
@@ -5854,7 +5866,7 @@ export default {
       ]
     },
     "SimpleAttestationVerifier": {
-      "address": "0xc7e5c933f0eE8A616d15129f3E582bC1910cEf8A",
+      "address": "0x399487A5e602Af42a87043E77fFC408d072C41C9",
       "abi": [
         {
           "inputs": [
@@ -6072,7 +6084,7 @@ export default {
       ]
     },
     "USDCMock": {
-      "address": "0x816433610FbfbF517f51Cf5f514E8110aB5cFeAE",
+      "address": "0x5057d7b0E6C427336aB037547B3490A623C69611",
       "abi": [
         {
           "inputs": [
@@ -6368,7 +6380,7 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+      "address": "0x83ff2FE3E2AF8B5eC8b35b0127047B338B02ccc0",
       "abi": [
         {
           "inputs": [
@@ -6471,44 +6483,6 @@ export default {
               "type": "bytes32"
             },
             {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "ProviderHashAdded",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "ProviderHashRemoved",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "paymentMethod",
-              "type": "bytes32"
-            },
-            {
               "indexed": false,
               "internalType": "uint256",
               "name": "oldBuffer",
@@ -6548,32 +6522,9 @@ export default {
               "internalType": "uint256",
               "name": "_timestampBuffer",
               "type": "uint256"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
             }
           ],
           "name": "addPaymentMethod",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
-            }
-          ],
-          "name": "addProviderHashes",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -6612,55 +6563,12 @@ export default {
               "type": "bytes32"
             }
           ],
-          "name": "getProviderHashes",
-          "outputs": [
-            {
-              "internalType": "bytes32[]",
-              "name": "",
-              "type": "bytes32[]"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            }
-          ],
           "name": "getTimestampBuffer",
           "outputs": [
             {
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "isProviderHash",
-          "outputs": [
-            {
-              "internalType": "bool",
-              "name": "",
-              "type": "bool"
             }
           ],
           "stateMutability": "view",
@@ -6733,24 +6641,6 @@ export default {
             }
           ],
           "name": "removePaymentMethod",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
-            }
-          ],
-          "name": "removeProviderHashes",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
