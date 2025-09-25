@@ -9,10 +9,7 @@ export const VENMO_CURRENCIES: any = [
   Currency.USD,
 ];
 
-export const VENMO_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
-
 export const VENMO_PROVIDER_CONFIG = {
   paymentMethodHash: VENMO_PAYMENT_METHOD_HASH,
-  currencies: VENMO_CURRENCIES,
-  timestampBuffer: VENMO_TIMESTAMP_BUFFER
+  currencies: VENMO_CURRENCIES
 };

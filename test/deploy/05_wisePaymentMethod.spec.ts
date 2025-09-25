@@ -81,11 +81,5 @@ describe("Wise Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(WISE_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for Wise", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(WISE_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(WISE_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
-
 });

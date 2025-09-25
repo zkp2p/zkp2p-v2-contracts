@@ -87,10 +87,5 @@ describe("PayPal Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(PAYPAL_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for PayPal", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(PAYPAL_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(PAYPAL_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
 });
