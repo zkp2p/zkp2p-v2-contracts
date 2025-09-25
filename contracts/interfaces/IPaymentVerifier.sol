@@ -23,7 +23,6 @@ interface IPaymentVerifier {
         bool success;                           // Whether the payment verification succeeded
         bytes32 intentHash;                     // The hash of the intent being fulfilled
         uint256 releaseAmount;                  // The amount of tokens to release
-        bytes32 paymentCurrency;                // Currency hash associated with the offchain payment
     }
 
     /* ============ External Functions ============ */

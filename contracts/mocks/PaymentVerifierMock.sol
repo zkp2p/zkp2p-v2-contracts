@@ -74,8 +74,7 @@ contract PaymentVerifierMock is IPaymentVerifier {
             return PaymentVerificationResult({
                 success: false,
                 intentHash: bytes32(0),
-                releaseAmount: 0,
-                paymentCurrency: bytes32(0)
+                releaseAmount: 0
             });
         }
 
@@ -90,8 +89,7 @@ contract PaymentVerifierMock is IPaymentVerifier {
         return PaymentVerificationResult({
             success: true,
             intentHash: paymentDetails.intentHash,
-            releaseAmount: releaseAmount,
-            paymentCurrency: paymentDetails.fiatCurrency
+            releaseAmount: releaseAmount
         });
     }
 
