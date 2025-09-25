@@ -261,8 +261,11 @@ describe("UnifiedPaymentVerifier", () => {
         subjectFiatCurrency = Currency.EUR; // Different from USD in payment details
       });
 
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Currency mismatch");
+      it("should not revert", async () => {
+        const result = await subjectCallStatic();
+
+        expect(result.success).to.be.true;
+        expect(result.paymentCurrency).to.eq(Currency.USD); // the currency returned in the proof
       });
     });
 

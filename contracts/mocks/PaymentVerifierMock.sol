@@ -68,14 +68,14 @@ contract PaymentVerifierMock is IPaymentVerifier {
             require(paymentDetails.timestamp >= _verifyPaymentData.intentTimestamp, "Payment timestamp is before intent timestamp");
             require(paymentDetails.amount >= 0, "Payment amount cannot be zero");
             require(paymentDetails.offRamperId == _verifyPaymentData.payeeDetails, "Payment offramper does not match intent relayer");
-            require(paymentDetails.fiatCurrency == _verifyPaymentData.fiatCurrency, "Payment fiat currency does not match intent fiat currency");
         }
         
         if (shouldReturnFalse) {
             return PaymentVerificationResult({
                 success: false,
                 intentHash: bytes32(0),
-                releaseAmount: 0
+                releaseAmount: 0,
+                paymentCurrency: bytes32(0)
             });
         }
 
@@ -90,7 +90,8 @@ contract PaymentVerifierMock is IPaymentVerifier {
         return PaymentVerificationResult({
             success: true,
             intentHash: paymentDetails.intentHash,
-            releaseAmount: releaseAmount
+            releaseAmount: releaseAmount,
+            paymentCurrency: paymentDetails.fiatCurrency
         });
     }
 

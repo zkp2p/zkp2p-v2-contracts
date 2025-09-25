@@ -87,7 +87,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
      * 
      * @param _verifyPaymentData Payment proof and intent details required for verification
      * @return result The payment verification result containing success status, intent hash, release amount, 
-     * payment currency and payment ID
+     * and the attested payment currency
      */
     function verifyPayment(
         VerifyPaymentData calldata _verifyPaymentData
@@ -186,11 +186,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             "UPV: Payee mismatch"
         );
         
-        require(
-            paymentDetails.currency == _verifyPaymentData.fiatCurrency,
-            "UPV: Currency mismatch"
-        );
-        
         // Verify timestamp is after intent creation (with payment method-specific buffer for L2 flexibility)
         uint256 paymentTimestampWithBuffer = paymentDetails.timestamp + config.timestampBuffer;
         require(
@@ -227,7 +222,8 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         result = PaymentVerificationResult({
             success: true,
             intentHash: attestation.intentHash,
-            releaseAmount: releaseAmount
+            releaseAmount: releaseAmount,
+            paymentCurrency: paymentDetails.currency
         });
     }
 }
