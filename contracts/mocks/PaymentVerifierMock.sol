@@ -16,6 +16,7 @@ contract PaymentVerifierMock is IPaymentVerifier {
         bytes32 offRamperId;
         bytes32 fiatCurrency;
         bytes32 intentHash;
+        uint256 releaseAmount;
     }
 
     uint256 internal constant PRECISE_UNIT = 1e18;
@@ -102,6 +103,6 @@ contract PaymentVerifierMock is IPaymentVerifier {
             bytes32 intentHash
         ) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32, bytes32));
 
-        return PaymentDetails(amount, timestamp, offRamperId, fiatCurrency, intentHash);
+        return PaymentDetails(amount, timestamp, offRamperId, fiatCurrency, intentHash, amount);
     }
 }

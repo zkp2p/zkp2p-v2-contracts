@@ -44,7 +44,7 @@ interface IOrchestrator {
     struct FulfillIntentParams {
         bytes paymentProof;                         // Payment proof. Can be Groth16 Proof, TLSNotary proof, TLSProxy proof, attestation etc.
         bytes32 intentHash;                         // Identifier of intent being fulfilled
-        bytes verificationData;                     // Additional data for payment verifier (e.g. currency resolution data)
+        bytes verificationData;                     // Additional data for payment verifier
         bytes postIntentHookData;                   // Additional data for post intent hook
     }
 
