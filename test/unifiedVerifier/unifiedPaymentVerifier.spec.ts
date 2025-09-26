@@ -218,6 +218,18 @@ describe("UnifiedPaymentVerifier", () => {
       });
     });
 
+    describe("when attestation verifier returns false", () => {
+      beforeEach(async () => {
+        const failingFactory = await ethers.getContractFactory("FailingAttestationVerifier", owner.wallet);
+        const failingVerifier = await failingFactory.deploy();
+        await verifier.connect(owner.wallet).setAttestationVerifier(failingVerifier.address);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("UPV: Invalid attestation");
+      });
+    });
+
     describe("when release amount exceeds intent amount", async () => {
       beforeEach(async () => {
         const largeRelease = builtProof.attestation.releaseAmount.mul(2);
