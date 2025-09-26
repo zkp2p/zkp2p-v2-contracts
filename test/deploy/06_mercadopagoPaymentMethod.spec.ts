@@ -81,11 +81,5 @@ describe("MercadoPago Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(MERCADOPAGO_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for MercadoPago", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MERCADOPAGO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
-
 });

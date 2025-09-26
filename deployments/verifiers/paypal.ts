@@ -13,10 +13,7 @@ export const PAYPAL_CURRENCIES: any = [
   Currency.CAD
 ];
 
-export const PAYPAL_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
-
 export const PAYPAL_PROVIDER_CONFIG = {
   paymentMethodHash: PAYPAL_PAYMENT_METHOD_HASH,
-  currencies: PAYPAL_CURRENCIES,
-  timestampBuffer: PAYPAL_TIMESTAMP_BUFFER
+  currencies: PAYPAL_CURRENCIES
 };

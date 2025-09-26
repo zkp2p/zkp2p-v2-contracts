@@ -42,8 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot Monzo
   savePaymentMethodSnapshot(network, 'monzo', {
     paymentMethodHash: MONZO_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: MONZO_PROVIDER_CONFIG.currencies,
-    timestampBuffer: MONZO_PROVIDER_CONFIG.timestampBuffer
+    currencies: MONZO_PROVIDER_CONFIG.currencies
   });
 
   // Monzo returns single transaction details
@@ -54,8 +53,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    MONZO_PROVIDER_CONFIG.paymentMethodHash,
-    MONZO_PROVIDER_CONFIG.timestampBuffer
+    MONZO_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Monzo added to unified verifier...");
 };

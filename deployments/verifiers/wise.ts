@@ -29,10 +29,7 @@ export const WISE_CURRENCIES: any = [
   Currency.VND,
 ];
 
-export const WISE_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
-
 export const WISE_PROVIDER_CONFIG = {
   paymentMethodHash: WISE_PAYMENT_METHOD_HASH,
-  currencies: WISE_CURRENCIES,
-  timestampBuffer: WISE_TIMESTAMP_BUFFER
+  currencies: WISE_CURRENCIES
 };

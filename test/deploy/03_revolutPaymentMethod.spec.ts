@@ -81,10 +81,5 @@ describe("Revolut Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(REVOLUT_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for Revolut", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(REVOLUT_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(REVOLUT_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
 });

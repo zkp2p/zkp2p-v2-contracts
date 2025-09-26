@@ -45,8 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot currencies and timestamp buffer (no provider hashes on-chain)
   savePaymentMethodSnapshot(network, 'venmo', {
     paymentMethodHash: VENMO_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: VENMO_PROVIDER_CONFIG.currencies,
-    timestampBuffer: VENMO_PROVIDER_CONFIG.timestampBuffer
+    currencies: VENMO_PROVIDER_CONFIG.currencies
   });
 
   // Add Venmo to unified verifier
@@ -56,8 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    VENMO_PROVIDER_CONFIG.paymentMethodHash,
-    VENMO_PROVIDER_CONFIG.timestampBuffer
+    VENMO_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Venmo added to unified verifier...");
 };

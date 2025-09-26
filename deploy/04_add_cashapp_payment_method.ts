@@ -43,8 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'cashapp', {
     paymentMethodHash: CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: CASHAPP_PROVIDER_CONFIG.currencies,
-    timestampBuffer: CASHAPP_PROVIDER_CONFIG.timestampBuffer
+    currencies: CASHAPP_PROVIDER_CONFIG.currencies
   });
 
   // CashApp returns 20 activities at a time
@@ -55,8 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    CASHAPP_PROVIDER_CONFIG.paymentMethodHash,
-    CASHAPP_PROVIDER_CONFIG.timestampBuffer
+    CASHAPP_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("CashApp added to unified verifier...");
 };

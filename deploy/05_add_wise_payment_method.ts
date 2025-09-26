@@ -43,8 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'wise', {
     paymentMethodHash: WISE_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: WISE_PROVIDER_CONFIG.currencies,
-    timestampBuffer: WISE_PROVIDER_CONFIG.timestampBuffer
+    currencies: WISE_PROVIDER_CONFIG.currencies
   });
 
   // Get Wise provider hashes
@@ -55,8 +54,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    WISE_PROVIDER_CONFIG.paymentMethodHash,
-    WISE_PROVIDER_CONFIG.timestampBuffer
+    WISE_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Wise added to unified verifier...");
 };

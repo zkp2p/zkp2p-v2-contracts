@@ -88,10 +88,5 @@ describe("Monzo Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(MONZO_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for Monzo", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(MONZO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(MONZO_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
 });

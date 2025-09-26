@@ -81,13 +81,6 @@ describe("Zelle Payment Methods Configuration", () => {
         const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
         expect(paymentMethods).to.include(ZELLE_CITI_PAYMENT_METHOD_HASH);
       });
-
-      it("should set the correct timestamp buffer for Zelle Citi", async () => {
-        const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_CITI_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer);
-      });
-
-
     });
   });
 
@@ -109,13 +102,6 @@ describe("Zelle Payment Methods Configuration", () => {
         const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
         expect(paymentMethods).to.include(ZELLE_CHASE_PAYMENT_METHOD_HASH);
       });
-
-      it("should set the correct timestamp buffer for Zelle Chase", async () => {
-        const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_CHASE_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_CHASE_PROVIDER_CONFIG.timestampBuffer);
-      });
-
-
     });
   });
 
@@ -136,11 +122,6 @@ describe("Zelle Payment Methods Configuration", () => {
       it("should add Zelle BofA payment method to unified verifier", async () => {
         const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
         expect(paymentMethods).to.include(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-      });
-
-      it("should set the correct timestamp buffer for Zelle BofA", async () => {
-        const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(ZELLE_BOFA_PAYMENT_METHOD_HASH);
-        expect(timestampBuffer).to.eq(ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer);
       });
     });
   });

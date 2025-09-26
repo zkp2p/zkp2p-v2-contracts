@@ -81,11 +81,5 @@ describe("CashApp Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(CASHAPP_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for CashApp", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(CASHAPP_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(CASHAPP_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
-
 });

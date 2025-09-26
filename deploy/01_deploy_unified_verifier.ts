@@ -12,7 +12,7 @@ import {
   getDeployedContractAddress,
   setNewOwner
 } from "../deployments/helpers";
-import { WITNESS_ADDRESS, ZKTLS_ATTESTOR_ADDRESS } from "../deployments/parameters";
+import { WITNESS_ADDRESS } from "../deployments/parameters";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -29,8 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const simpleAttestationVerifier = await deploy("SimpleAttestationVerifier", {
     from: deployer,
     args: [
-      WITNESS_ADDRESS[network],
-      ZKTLS_ATTESTOR_ADDRESS[network],
+      WITNESS_ADDRESS[network]
     ],
   });
   console.log("SimpleAttestationVerifier deployed at", simpleAttestationVerifier.address);

@@ -164,12 +164,10 @@ export default class DeployHelper {
   }
 
   public async deploySimpleAttestationVerifier(
-    witness: Address,
-    zktlsAttestor: Address
+    witness: Address
   ): Promise<SimpleAttestationVerifier> {
     return await new SimpleAttestationVerifier__factory(this._deployerSigner).deploy(
-      witness,
-      zktlsAttestor
+      witness
     );
   }
 

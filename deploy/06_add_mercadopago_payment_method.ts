@@ -42,8 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'mercadopago', {
     paymentMethodHash: MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: MERCADOPAGO_PROVIDER_CONFIG.currencies,
-    timestampBuffer: MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer
+    currencies: MERCADOPAGO_PROVIDER_CONFIG.currencies
   });
 
   // Add MercadoPago to unified verifier
@@ -53,8 +52,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash,
-    MERCADOPAGO_PROVIDER_CONFIG.timestampBuffer
+    MERCADOPAGO_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("MercadoPago added to unified verifier...");
 };

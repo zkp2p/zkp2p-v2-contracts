@@ -1,13 +1,11 @@
 import "module-alias/register";
 
 import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
 
-import { BaseUnifiedPaymentVerifier, IAttestationVerifier, NullifierRegistry, SimpleAttestationVerifier } from "@utils/contracts";
+import { BaseUnifiedPaymentVerifier, NullifierRegistry, SimpleAttestationVerifier } from "@utils/contracts";
 import { Account } from "@utils/test/types";
 import { Address } from "@utils/types";
 import DeployHelper from "@utils/deploys";
-import { Currency } from "@utils/protocolUtils";
 
 import {
   getWaffleExpect,
@@ -21,7 +19,7 @@ describe("BaseUnifiedPaymentVerifier", () => {
   let attacker: Account;
   let escrow: Account;
   let witness1: Account;
-  let zktlsAttestor: Account;
+  let _unused: Account;
 
   let BaseUnifiedPaymentVerifier: BaseUnifiedPaymentVerifier;
   let attestationVerifier: SimpleAttestationVerifier;
@@ -32,9 +30,6 @@ describe("BaseUnifiedPaymentVerifier", () => {
   const venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
   const paypalPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("paypal"));
 
-  const usdCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USD"));
-  const eurCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("EUR"));
-  const gbpCurrencyHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GBP"));
 
   beforeEach(async () => {
     [
@@ -42,7 +37,7 @@ describe("BaseUnifiedPaymentVerifier", () => {
       attacker,
       escrow,
       witness1,
-      zktlsAttestor
+      _unused
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -51,8 +46,7 @@ describe("BaseUnifiedPaymentVerifier", () => {
     nullifierRegistry = await deployer.deployNullifierRegistry();
 
     attestationVerifier = await deployer.deploySimpleAttestationVerifier(
-      witness1.address,
-      zktlsAttestor.address
+      witness1.address
     );
 
     // Deploy the UnifiedPaymentVerifier (which inherits BaseUnifiedPaymentVerifier functionality)
@@ -93,8 +87,7 @@ describe("BaseUnifiedPaymentVerifier", () => {
 
     beforeEach(async () => {
       newAttestationVerifier = await deployer.deploySimpleAttestationVerifier(
-        witness1.address,
-        zktlsAttestor.address
+        witness1.address
       );
 
       subjectAttestationVerifier = newAttestationVerifier.address;
@@ -150,19 +143,16 @@ describe("BaseUnifiedPaymentVerifier", () => {
 
   describe("#addPaymentMethod", async () => {
     let subjectPaymentMethod: string;
-    let subjectTimestampBuffer: BigNumber;
     let subjectCaller: Account;
 
     beforeEach(async () => {
       subjectPaymentMethod = venmoPaymentMethodHash;
-      subjectTimestampBuffer = BigNumber.from(60);
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
       return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).addPaymentMethod(
         subjectPaymentMethod,
-        subjectTimestampBuffer
       );
     }
 
@@ -170,18 +160,17 @@ describe("BaseUnifiedPaymentVerifier", () => {
       await subject();
 
       const paymentMethods = await BaseUnifiedPaymentVerifier.getPaymentMethods();
-      expect(paymentMethods).to.contain(subjectPaymentMethod);
+      const isPaymentMethod = await BaseUnifiedPaymentVerifier.isPaymentMethod(subjectPaymentMethod);
 
-      const timestampBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
-      expect(timestampBuffer).to.eq(subjectTimestampBuffer);
+      expect(paymentMethods).to.contain(subjectPaymentMethod);
+      expect(isPaymentMethod).to.be.true;
     });
 
 
     it("should emit the PaymentMethodAdded event", async () => {
       await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "PaymentMethodAdded")
-        .withArgs(subjectPaymentMethod, subjectTimestampBuffer);
+        .withArgs(subjectPaymentMethod);
     });
-
 
     describe("when payment method already exists", async () => {
       beforeEach(async () => {
@@ -190,61 +179,6 @@ describe("BaseUnifiedPaymentVerifier", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWith("UPV: Payment method already exists");
-      });
-    });
-
-
-
-    describe("when the caller is not the owner", async () => {
-      beforeEach(async () => {
-        subjectCaller = attacker;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-  });
-
-  describe("#setTimestampBuffer", async () => {
-    let subjectPaymentMethod: string;
-    let subjectNewBuffer: BigNumber;
-    let subjectCaller: Account;
-
-    beforeEach(async () => {
-      // Add a payment method first
-      await BaseUnifiedPaymentVerifier.addPaymentMethod(
-        venmoPaymentMethodHash,
-        BigNumber.from(30)
-      );
-
-      subjectPaymentMethod = venmoPaymentMethodHash;
-      subjectNewBuffer = BigNumber.from(120);
-      subjectCaller = owner;
-    });
-
-    async function subject(): Promise<any> {
-      return await BaseUnifiedPaymentVerifier.connect(subjectCaller.wallet).setTimestampBuffer(subjectPaymentMethod, subjectNewBuffer);
-    }
-
-    it("should update the timestamp buffer", async () => {
-      await subject();
-      const buffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod);
-      expect(buffer).to.eq(subjectNewBuffer);
-    });
-
-    it("should emit the TimestampBufferUpdated event", async () => {
-      await expect(subject()).to.emit(BaseUnifiedPaymentVerifier, "TimestampBufferUpdated")
-        .withArgs(subjectPaymentMethod, BigNumber.from(30), subjectNewBuffer);
-    });
-
-    describe("when payment method does not exist", async () => {
-      beforeEach(async () => {
-        subjectPaymentMethod = paypalPaymentMethodHash;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Payment method does not exist");
       });
     });
 
@@ -267,7 +201,6 @@ describe("BaseUnifiedPaymentVerifier", () => {
       // Add a payment method with multiple processors
       await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
-        BigNumber.from(30)
       );
 
       subjectPaymentMethod = venmoPaymentMethodHash;
@@ -284,9 +217,8 @@ describe("BaseUnifiedPaymentVerifier", () => {
       const paymentMethods = await BaseUnifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.not.contain(subjectPaymentMethod);
 
-      // Should revert when trying to access removed payment method
-      await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(subjectPaymentMethod))
-        .to.be.revertedWith("UPV: Payment method does not exist");
+      const isPaymentMethod = await BaseUnifiedPaymentVerifier.isPaymentMethod(subjectPaymentMethod);
+      expect(isPaymentMethod).to.be.false;
     });
 
     it("should emit the PaymentMethodRemoved event", async () => {
@@ -320,12 +252,10 @@ describe("BaseUnifiedPaymentVerifier", () => {
       // Add multiple payment methods for testing
       await BaseUnifiedPaymentVerifier.addPaymentMethod(
         venmoPaymentMethodHash,
-        BigNumber.from(30)
       );
 
       await BaseUnifiedPaymentVerifier.addPaymentMethod(
         paypalPaymentMethodHash,
-        BigNumber.from(60)
       );
     });
 
@@ -338,25 +268,11 @@ describe("BaseUnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("#getTimestampBuffer", async () => {
-      it("should return the correct timestamp buffer", async () => {
-        const venmoBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(venmoPaymentMethodHash);
-        const paypalBuffer = await BaseUnifiedPaymentVerifier.getTimestampBuffer(paypalPaymentMethodHash);
-
-        expect(venmoBuffer).to.eq(BigNumber.from(30));
-        expect(paypalBuffer).to.eq(BigNumber.from(60));
-      });
-
-      describe("when payment method does not exist", async () => {
-        it("should revert", async () => {
-          const nonExistentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("nonexistent"));
-          await expect(BaseUnifiedPaymentVerifier.getTimestampBuffer(nonExistentMethod))
-            .to.be.revertedWith("UPV: Payment method does not exist");
-        });
+    describe("#isPaymentMethod", async () => {
+      it("should return true for existing payment method", async () => {
+        const isPaymentMethod = await BaseUnifiedPaymentVerifier.isPaymentMethod(venmoPaymentMethodHash);
+        expect(isPaymentMethod).to.be.true;
       });
     });
-
-    // getProviderHashes removed from contracts
-
   });
 });

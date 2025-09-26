@@ -83,10 +83,5 @@ describe("Venmo Payment Method Configuration", () => {
       const paymentMethods = await unifiedPaymentVerifier.getPaymentMethods();
       expect(paymentMethods).to.include(VENMO_PAYMENT_METHOD_HASH);
     });
-
-    it("should set the correct timestamp buffer for Venmo", async () => {
-      const timestampBuffer = await unifiedPaymentVerifier.getTimestampBuffer(VENMO_PAYMENT_METHOD_HASH);
-      expect(timestampBuffer).to.eq(VENMO_PROVIDER_CONFIG.timestampBuffer);
-    });
   });
 });

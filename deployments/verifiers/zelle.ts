@@ -1,5 +1,4 @@
 import { calculatePaymentMethodHash, Currency } from "@utils/protocolUtils";
-import { ONE_DAY_IN_SECONDS } from "@utils/constants";
 // Provider hashes are verified off-chain in the attestation service
 
 export const ZELLE_CURRENCIES: any = [
@@ -13,18 +12,15 @@ export const ZELLE_BOFA_PAYMENT_METHOD_HASH = calculatePaymentMethodHash("zelle-
 
 export const ZELLE_CITI_PROVIDER_CONFIG = {
   paymentMethodHash: ZELLE_CITI_PAYMENT_METHOD_HASH,
-  currencies: ZELLE_CURRENCIES,
-  timestampBuffer: ONE_DAY_IN_SECONDS
+  currencies: ZELLE_CURRENCIES
 };
 
 export const ZELLE_CHASE_PROVIDER_CONFIG = {
   paymentMethodHash: ZELLE_CHASE_PAYMENT_METHOD_HASH,
-  currencies: ZELLE_CURRENCIES,
-  timestampBuffer: ONE_DAY_IN_SECONDS
+  currencies: ZELLE_CURRENCIES
 };
 
 export const ZELLE_BOFA_PROVIDER_CONFIG = {
   paymentMethodHash: ZELLE_BOFA_PAYMENT_METHOD_HASH,
-  currencies: ZELLE_CURRENCIES,
-  timestampBuffer: ONE_DAY_IN_SECONDS
+  currencies: ZELLE_CURRENCIES
 };
