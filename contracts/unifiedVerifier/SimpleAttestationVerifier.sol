@@ -51,13 +51,12 @@ contract SimpleAttestationVerifier is IAttestationVerifier, Ownable {
      * @notice Verifies attestations and trust anchor from off-chain verification service
      * @param _digest The message digest to verify (EIP-712 formatted)
      * @param _sigs Array with single signature from the witness
-     * @param _data Verification metadata that stores trust anchors that are verified on-chain
      * @return isValid True if attestation and trust anchor are valid
      */
     function verify(
         bytes32 _digest,
         bytes[] calldata _sigs,
-        bytes calldata _data
+        bytes calldata
     ) external view override returns (bool isValid) {
         address[] memory witnesses = new address[](1);
         witnesses[0] = witness;
