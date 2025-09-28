@@ -5,8 +5,6 @@ export {
   PostIntentHookMock,
   ReentrantPostIntentHook,
   OrchestratorMock,
-  UnifiedVerifierEscrowMock,
-  UnifiedVerifierOrchestratorMock,
   Escrow,
   ProtocolViewer,
   Orchestrator,
