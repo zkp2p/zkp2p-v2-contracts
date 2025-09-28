@@ -915,7 +915,6 @@ describe("Orchestrator", () => {
   describe("#fulfillIntent", async () => {
     let subjectProof: string;
     let subjectIntentHash: string;
-    let subjectVerificationData: string;
     let subjectPostIntentDataData: string;
     let subjectCaller: Account;
 
@@ -990,16 +989,28 @@ describe("Orchestrator", () => {
         [usdc(50), currentTimestamp, payeeDetails, Currency.USD, intentHash]
       );
       subjectIntentHash = intentHash;
-      subjectVerificationData = "0x";
       subjectPostIntentDataData = "0x";
       subjectCaller = onRamper;
     });
 
+    const buildVerificationDataForIntent = async (hash: string): Promise<string> => {
+      const intent = await orchestrator.getIntent(hash);
+      if (intent.owner === ADDRESS_ZERO) {
+        return "0x";
+      }
+      const methodData = await escrow.getDepositPaymentMethodData(intent.depositId, intent.paymentMethod);
+      return ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256", "uint256", "bytes32"],
+        [intent.amount, intent.conversionRate, intent.timestamp, methodData.payeeDetails]
+      );
+    };
+
     async function subject(): Promise<any> {
+      const verificationData = await buildVerificationDataForIntent(subjectIntentHash);
       return orchestrator.connect(subjectCaller.wallet).fulfillIntent({
         paymentProof: subjectProof,
         intentHash: subjectIntentHash,
-        verificationData: subjectVerificationData,
+        verificationData,
         postIntentHookData: subjectPostIntentDataData
       });
     }
@@ -1084,10 +1095,11 @@ describe("Orchestrator", () => {
         );
 
         // Release 60 / 1.08 = 55.56 USDC > 50 USDC intent amount; so release full $50 to the payer
+        const verificationData = await buildVerificationDataForIntent(intentHash);
         await orchestrator.connect(onRamper.wallet).fulfillIntent({
           paymentProof: proof1,
           intentHash: intentHash,
-          verificationData: "0x",
+          verificationData,
           postIntentHookData: "0x"
         });
 
