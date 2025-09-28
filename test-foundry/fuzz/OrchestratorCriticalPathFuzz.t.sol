@@ -526,15 +526,17 @@ contract OrchestratorCriticalPathFuzz is Test {
             releaseAmount,
             block.timestamp,
             keccak256(abi.encodePacked("venmo:", depositor)),
-            USD,  // fiatCurrency
+            USD,
             intentHash
         );
-        
+
+        bytes memory verificationData = _buildVerificationData(intentHash);
+
         vm.prank(taker);
         orchestrator.fulfillIntent(IOrchestrator.FulfillIntentParams({
             paymentProof: paymentProof,
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: verificationData,
             postIntentHookData: ""
         }));
         
@@ -798,7 +800,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         IOrchestrator.FulfillIntentParams memory fulfillParams = IOrchestrator.FulfillIntentParams({
             paymentProof: abi.encode(intentHash),
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: _buildVerificationData(intentHash),
             postIntentHookData: ""
         });
         
@@ -881,7 +883,7 @@ contract OrchestratorCriticalPathFuzz is Test {
                 intentHash  // intentHash
             ),
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: _buildVerificationData(intentHash),
             postIntentHookData: ""
         });
         
@@ -989,7 +991,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         IOrchestrator.FulfillIntentParams memory fulfillParams = IOrchestrator.FulfillIntentParams({
             paymentProof: paymentProof,
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: _buildVerificationData(intentHash),
             postIntentHookData: hookData
         });
         
@@ -1092,6 +1094,14 @@ contract OrchestratorCriticalPathFuzz is Test {
     }
     
     // ============ Helper Functions ============
+    function _buildVerificationData(bytes32 intentHash) internal view returns (bytes memory) {
+        IOrchestrator.Intent memory intentData = orchestrator.getIntent(intentHash);
+        IEscrow.DepositPaymentMethodData memory methodData = escrow.getDepositPaymentMethodData(
+            intentData.depositId, intentData.paymentMethod
+        );
+        return abi.encode(intentData.amount, intentData.conversionRate, intentData.timestamp, methodData.payeeDetails);
+    }
+    
     
     function _calculateIntentHash(uint256 counter) internal view returns (bytes32) {
         // Intent hash is calculated using orchestrator address and counter, then modulo CIRCOM_PRIME_FIELD
