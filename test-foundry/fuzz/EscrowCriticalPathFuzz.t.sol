@@ -118,7 +118,7 @@ contract EscrowCriticalPathFuzz is Test {
         
         venmoVerifier = new PaymentVerifierMock(
             address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
+            address(nullifierRegistry),
             3600,
             currencies
         );
@@ -126,7 +126,7 @@ contract EscrowCriticalPathFuzz is Test {
         
         paypalVerifier = new PaymentVerifierMock(
             address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
+            address(nullifierRegistry),
             3600,
             currencies
         );

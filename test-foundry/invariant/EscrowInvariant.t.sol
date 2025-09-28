@@ -460,7 +460,7 @@ contract EscrowInvariantTest is Test {
         
         verifier = new PaymentVerifierMock(
             address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
+            address(nullifierRegistry),
             3600,
             currencies
         );
