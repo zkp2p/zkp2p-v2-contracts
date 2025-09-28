@@ -16,6 +16,8 @@ import {
   PostIntentHookRegistry,
   RelayerRegistry,
   OrchestratorMock,
+  UnifiedVerifierEscrowMock,
+  UnifiedVerifierOrchestratorMock,
   EscrowRegistry,
   UnifiedPaymentVerifier,
   ThresholdSigVerifierUtilsMock,
@@ -28,7 +30,7 @@ import {
   OrchestratorMock__factory,
   ReentrantPostIntentHook__factory
 } from "../typechain/factories/contracts/mocks";
-import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks"
+import { PaymentVerifierMock__factory, UnifiedVerifierEscrowMock__factory, UnifiedVerifierOrchestratorMock__factory } from "../typechain/factories/contracts/mocks";
 import {
   ThresholdSigVerifierUtilsMock__factory
 } from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock__factory";
@@ -132,6 +134,14 @@ export default class DeployHelper {
     escrow: Address
   ): Promise<OrchestratorMock> {
     return await new OrchestratorMock__factory(this._deployerSigner).deploy(escrow);
+  }
+
+  public async deployUnifiedVerifierEscrowMock(): Promise<UnifiedVerifierEscrowMock> {
+    return await new UnifiedVerifierEscrowMock__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployUnifiedVerifierOrchestratorMock(): Promise<UnifiedVerifierOrchestratorMock> {
+    return await new UnifiedVerifierOrchestratorMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployPaymentVerifierRegistry(): Promise<PaymentVerifierRegistry> {

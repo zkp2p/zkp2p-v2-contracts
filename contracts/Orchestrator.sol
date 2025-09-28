@@ -181,23 +181,14 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         if (intent.paymentMethod == bytes32(0)) revert IntentNotFound(_params.intentHash);
         
         IEscrow.Deposit memory deposit = IEscrow(intent.escrow).getDeposit(intent.depositId);
-        IEscrow.DepositPaymentMethodData memory depositData = IEscrow(intent.escrow).getDepositPaymentMethodData(
-            intent.depositId, intent.paymentMethod
-        );
         
         address verifier = paymentVerifierRegistry.getVerifier(intent.paymentMethod);
         if (verifier == address(0)) revert PaymentMethodDoesNotExist(intent.paymentMethod);
         
         IPaymentVerifier.PaymentVerificationResult memory verificationResult = IPaymentVerifier(verifier).verifyPayment(
             IPaymentVerifier.VerifyPaymentData({
+                intentHash: _params.intentHash,
                 paymentProof: _params.paymentProof,
-                depositToken: address(deposit.token),
-                intentAmount: intent.amount,
-                intentTimestamp: intent.timestamp,
-                payeeDetails: depositData.payeeDetails,
-                fiatCurrency: intent.fiatCurrency,
-                conversionRate: intent.conversionRate,
-                depositData: depositData.data,
                 data: _params.verificationData
             })
         );

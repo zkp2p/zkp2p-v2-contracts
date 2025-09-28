@@ -112,6 +112,23 @@ export interface UnifiedPaymentDetails {
   paymentId: BytesLike;
 }
 
+export interface UnifiedIntentSnapshot {
+  intentHash: BytesLike;
+  amount: BigNumber;
+  paymentMethod: BytesLike;
+  fiatCurrency: BytesLike;
+  payeeDetails: BytesLike;
+  conversionRate: BigNumber;
+  signalTimestamp: BigNumber;
+  timestampBuffer: BigNumber;
+}
+
+export interface UnifiedIntentContext {
+  depositId: BigNumber;
+  escrow: Address;
+  to: Address;
+}
+
 export interface UnifiedPaymentAttestationParams {
   intentHash: BytesLike;
   releaseAmount: BigNumber;
@@ -130,6 +147,8 @@ export interface BuiltUnifiedPaymentProof {
   attestation: UnifiedPaymentAttestation;
   paymentDetails: UnifiedPaymentDetails;
   encodedPaymentDetails: BytesLike;
+  intentSnapshot: UnifiedIntentSnapshot;
+  intentContext: UnifiedIntentContext;
 }
 
 export interface BuildPaymentProofOverrides {
@@ -144,6 +163,14 @@ export interface BuildPaymentProofOverrides {
   metadata?: BytesLike;
   signer?: Account;
   attestationDataOverride?: BytesLike;
+  intentAmountOverride?: BigNumber;
+  intentConversionRate?: BigNumber;
+  intentSignalTimestamp?: BigNumber;
+  intentPayeeDetails?: BytesLike;
+  intentTimestampBuffer?: BigNumber;
+  intentDepositId?: BigNumber;
+  intentEscrow?: Address;
+  intentTo?: Address;
 }
 
 export interface BuildPaymentProofParams extends BuildPaymentProofOverrides {
@@ -152,9 +179,15 @@ export interface BuildPaymentProofParams extends BuildPaymentProofOverrides {
   chainId?: number;
 }
 
-export function encodeUnifiedPaymentDetails(details: UnifiedPaymentDetails): BytesLike {
+export function encodeUnifiedPaymentPayload(
+  details: UnifiedPaymentDetails,
+  snapshot: UnifiedIntentSnapshot
+): BytesLike {
   return ethers.utils.defaultAbiCoder.encode(
-    ["tuple(bytes32,bytes32,uint256,bytes32,uint256,bytes32)"],
+    [
+      "tuple(bytes32,bytes32,uint256,bytes32,uint256,bytes32)",
+      "tuple(bytes32,uint256,bytes32,bytes32,bytes32,uint256,uint256,uint256)",
+    ],
     [[
       details.method,
       details.payeeId,
@@ -162,6 +195,15 @@ export function encodeUnifiedPaymentDetails(details: UnifiedPaymentDetails): Byt
       details.currency,
       details.timestamp,
       details.paymentId,
+    ], [
+      snapshot.intentHash,
+      snapshot.amount,
+      snapshot.paymentMethod,
+      snapshot.fiatCurrency,
+      snapshot.payeeDetails,
+      snapshot.conversionRate,
+      snapshot.signalTimestamp,
+      snapshot.timestampBuffer,
     ]],
   );
 }
@@ -208,6 +250,14 @@ export async function buildUnifiedPaymentProof({
   metadata,
   signer,
   attestationDataOverride,
+  intentAmountOverride,
+  intentConversionRate,
+  intentSignalTimestamp,
+  intentPayeeDetails,
+  intentTimestampBuffer,
+  intentDepositId,
+  intentEscrow,
+  intentTo,
 }: BuildPaymentProofParams): Promise<BuiltUnifiedPaymentProof> {
   const paymentDetails: UnifiedPaymentDetails = {
     method: method ?? ethers.constants.HashZero,
@@ -217,8 +267,24 @@ export async function buildUnifiedPaymentProof({
     timestamp: timestamp ?? BigNumber.from(0),
     paymentId: paymentId ?? ethers.constants.HashZero,
   };
+  const snapshot: UnifiedIntentSnapshot = {
+    intentHash: intentHash ?? ethers.constants.HashZero,
+    amount: intentAmountOverride ?? paymentDetails.amount,
+    paymentMethod: paymentDetails.method,
+    fiatCurrency: paymentDetails.currency,
+    payeeDetails: intentPayeeDetails ?? paymentDetails.payeeId,
+    conversionRate: intentConversionRate ?? BigNumber.from(0),
+    signalTimestamp: intentSignalTimestamp ?? paymentDetails.timestamp.div(1000),
+    timestampBuffer: intentTimestampBuffer ?? BigNumber.from(0),
+  };
 
-  const encodedPaymentDetails = encodeUnifiedPaymentDetails(paymentDetails);
+  const intentContext: UnifiedIntentContext = {
+    depositId: intentDepositId ?? BigNumber.from(1),
+    escrow: intentEscrow ?? ethers.constants.AddressZero,
+    to: intentTo ?? ethers.constants.AddressZero,
+  };
+
+  const encodedPaymentDetails = encodeUnifiedPaymentPayload(paymentDetails, snapshot);
   const dataHash = ethers.utils.keccak256(encodedPaymentDetails);
 
   const attestationIntentHash = intentHash ?? ethers.constants.HashZero;
@@ -253,5 +319,7 @@ export async function buildUnifiedPaymentProof({
     },
     paymentDetails,
     encodedPaymentDetails,
+    intentSnapshot: snapshot,
+    intentContext,
   };
 }

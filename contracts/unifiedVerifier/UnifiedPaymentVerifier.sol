@@ -5,6 +5,8 @@ import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
+import { IOrchestrator } from "../interfaces/IOrchestrator.sol";
+import { IEscrow } from "../interfaces/IEscrow.sol";
 
 /**
  * @title UnifiedPaymentVerifier
@@ -23,6 +25,9 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
 
     /* ============ Constants ============ */
     
+    // Max timestamp buffer
+    uint256 private constant MAX_TIMESTAMP_BUFFER = 24 * 60 * 60 * 1000; // 24 hours
+
     // EIP-712 Domain Separator
     bytes32 private constant DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
@@ -32,7 +37,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     bytes32 private constant PAYMENT_ATTESTATION_TYPEHASH = keccak256(
         "PaymentAttestation(bytes32 intentHash,uint256 releaseAmount,bytes32 dataHash)"
     );
-    
+
     /* ============ State Variables ============ */
 
     // EIP-712 Domain Separator (computed once at deployment)
@@ -62,6 +67,17 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         bytes32 currency;         // Payment currency hash (e.g., "USD", "EUR")
         uint256 timestamp;        // Payment timestamp in UTC in milliseconds
         bytes32 paymentId;        // Hashed payment identifier from the service (e.g. hashed venmo payment ID to preserve privacy)
+    }
+
+    struct IntentSnapshot {
+        bytes32 intentHash;
+        uint256 amount;
+        bytes32 paymentMethod;
+        bytes32 fiatCurrency;
+        bytes32 payeeDetails;
+        uint256 conversionRate;
+        uint256 signalTimestamp;
+        uint256 timestampBuffer;
     }
 
     struct PaymentAttestation {
@@ -113,8 +129,14 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         returns (PaymentVerificationResult memory result)
     {
         PaymentAttestation memory attestation = _decodeAttestation(_verifyPaymentData.paymentProof);
-        PaymentDetails memory paymentDetails = _decodePaymentDetails(attestation.data);
+        
+        (
+            PaymentDetails memory paymentDetails, 
+            IntentSnapshot memory intentSnapshot
+        ) = _decodeAttestationPayload(attestation.data);
         require(isPaymentMethod[paymentDetails.method], "UPV: Invalid payment method");
+        
+        _validateIntentSnapshot(_verifyPaymentData.intentHash, intentSnapshot);
         
         // Nullify the payment to prevent double-spending
         _nullifyPayment(paymentDetails.method, paymentDetails.paymentId);
@@ -124,7 +146,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         
         _emitPaymentDetails(attestation.intentHash, paymentDetails);
     
-        uint256 releaseAmount = _calculateReleaseAmount(attestation.releaseAmount, _verifyPaymentData.intentAmount);
+        uint256 releaseAmount = _calculateReleaseAmount(attestation.releaseAmount, intentSnapshot.amount);
 
         result = PaymentVerificationResult({
             success: true,
@@ -141,8 +163,12 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         return abi.decode(paymentProof, (PaymentAttestation));
     }
 
-    function _decodePaymentDetails(bytes memory paymentProof) internal pure returns (PaymentDetails memory) {
-        return abi.decode(paymentProof, (PaymentDetails));
+    function _decodeAttestationPayload(bytes memory paymentData)
+        internal
+        pure
+        returns (PaymentDetails memory paymentDetails, IntentSnapshot memory intentSnapshot)
+    {
+        (paymentDetails, intentSnapshot) = abi.decode(paymentData, (PaymentDetails, IntentSnapshot));
     }
 
     /**
@@ -182,6 +208,28 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         return isValid;
     }
 
+    function _validateIntentSnapshot(
+        bytes32 intentHash,
+        IntentSnapshot memory snapshot
+    ) internal view {
+        require(snapshot.intentHash == intentHash, "UPV: Snapshot hash mismatch");
+
+        IOrchestrator.Intent memory intent = IOrchestrator(orchestrator).getIntent(intentHash);
+        require(intent.owner != address(0), "UPV: Unknown intent");
+
+        require(snapshot.amount == intent.amount, "UPV: Snapshot amount mismatch");
+        require(snapshot.paymentMethod == intent.paymentMethod, "UPV: Snapshot method mismatch");
+        require(snapshot.fiatCurrency == intent.fiatCurrency, "UPV: Snapshot currency mismatch");
+        require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot rate mismatch");
+        require(snapshot.signalTimestamp == intent.timestamp, "UPV: Snapshot timestamp mismatch");
+        require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot conversion rate mismatch");
+        require(snapshot.timestampBuffer <= MAX_TIMESTAMP_BUFFER, "UPV: Snapshot timestamp buffer exceeds maximum");
+
+        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(intent.escrow)
+            .getDepositPaymentMethodData(intent.depositId, snapshot.paymentMethod);
+        require(snapshot.payeeDetails == paymentMethodData.payeeDetails, "UPV: Snapshot payee mismatch");
+    }
+
     /**
      * Nullifies a payment to prevent double-spending
      * @dev Creates a unique nullifier by encoding both the payment method and payment ID together.
@@ -217,5 +265,4 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
             paymentDetails.payeeId
         );
     }
-
 }
