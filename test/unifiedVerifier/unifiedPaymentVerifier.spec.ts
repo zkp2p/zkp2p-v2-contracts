@@ -376,23 +376,6 @@ describe("UnifiedPaymentVerifier", () => {
         });
       });
 
-      // describe("when intent is unknown", () => {
-      //   beforeEach(async () => {
-      //     await orchestrator.connect(intentOwner.wallet).cancelIntent(intentHash);
-      //   });
-
-      //   it("should revert", async () => {
-      //     const verificationData = await buildVerificationDataForIntent(intentHash);
-      //     await expect(
-      //       verifier.connect(orchestrator.wallet).callStatic.verifyPayment({
-      //         intentHash,
-      //         paymentProof: subjectProof,
-      //         data: verificationData,
-      //       }),
-      //     ).to.be.revertedWith("UPV: Unknown intent");
-      //   });
-      // });
-
       describe("when snapshot amount mismatches", () => {
         beforeEach(async () => {
           await setSnapshotOverride({ snapshotIntentAmount: builtProof.intentSnapshot.amount.add(1) });

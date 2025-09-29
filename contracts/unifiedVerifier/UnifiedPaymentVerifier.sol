@@ -119,6 +119,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
      * 
      * @param _verifyPaymentData Payment proof and intent details required for verification
      * @return result The payment verification result containing success status, intent hash, and release amount
+     * @dev Ensure the orchestrator verifies the intent exists before calling this function
      */
     function verifyPayment(
         VerifyPaymentData calldata _verifyPaymentData
@@ -137,12 +138,12 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         require(isPaymentMethod[paymentDetails.method], "UPV: Invalid payment method");
         
         _validateIntentSnapshot(_verifyPaymentData.intentHash, intentSnapshot);
-        
-        // Nullify the payment to prevent double-spending
-        _nullifyPayment(paymentDetails.method, paymentDetails.paymentId);
 
         bool isValid = _verifyAttestation(attestation);
         require(isValid, "UPV: Invalid attestation");
+                
+        // Nullify the payment to prevent double-spending
+        _nullifyPayment(paymentDetails.method, paymentDetails.paymentId);
         
         _emitPaymentDetails(attestation.intentHash, paymentDetails);
     
@@ -215,8 +216,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         require(snapshot.intentHash == intentHash, "UPV: Snapshot hash mismatch");
 
         IOrchestrator.Intent memory intent = IOrchestrator(orchestrator).getIntent(intentHash);
-        require(intent.owner != address(0), "UPV: Unknown intent");
-
         require(snapshot.amount == intent.amount, "UPV: Snapshot amount mismatch");
         require(snapshot.paymentMethod == intent.paymentMethod, "UPV: Snapshot method mismatch");
         require(snapshot.fiatCurrency == intent.fiatCurrency, "UPV: Snapshot currency mismatch");
