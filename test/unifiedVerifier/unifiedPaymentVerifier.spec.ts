@@ -27,6 +27,7 @@ import {
 } from "@utils/unifiedVerifierUtils";
 import { Currency, calculateIntentHash } from "@utils/protocolUtils";
 import { ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
+import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
 
@@ -496,9 +497,92 @@ describe("UnifiedPaymentVerifier", () => {
     });
 
     describe("when payment has already been verified", () => {
-      it("should revert on second verification", async () => {
+      let secondIntentHash: BytesLike;
+      let secondIntent: IOrchestrator.IntentStructOutput;
+      let secondProof: BytesLike;
+
+      beforeEach(async () => {
+        // Fulfil the first intent
         await subject();
-        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "IntentNotFound");
+
+        // Signal a new intent that reuses the same deposit context
+        const secondIntentAmount = intent.amount;
+        const signatureExpiration = BigNumber.from(
+          (await ethers.provider.getBlock("latest")).timestamp,
+        ).add(ONE_DAY_IN_SECONDS);
+        const secondSignature = await generateGatingServiceSignature(
+          gatingService,
+          orchestrator.address,
+          escrow.address,
+          depositId,
+          secondIntentAmount,
+          receiver.address,
+          venmoPaymentMethodHash,
+          defaultCurrency.toString(),
+          intent.conversionRate,
+          chainId.toString(),
+          signatureExpiration,
+        )
+
+        const counterBefore = await orchestrator.intentCounter();
+        await orchestrator.connect(intentOwner.wallet).signalIntent({
+          escrow: escrow.address,
+          depositId,
+          amount: secondIntentAmount,
+          to: receiver.address,
+          paymentMethod: venmoPaymentMethodHash,
+          fiatCurrency: defaultCurrency,
+          conversionRate: intent.conversionRate,
+          referrer: ethers.constants.AddressZero,
+          referrerFee: ZERO,
+          gatingServiceSignature: secondSignature,
+          signatureExpiration,
+          postIntentHook: ethers.constants.AddressZero,
+          data: ZERO_BYTES,
+        });
+
+        secondIntentHash = calculateIntentHash(orchestrator.address, counterBefore);
+        secondIntent = await orchestrator.getIntent(secondIntentHash);
+
+        const secondTimestampMs = BigNumber.from(secondIntent.timestamp).mul(1000);
+        const proof = await buildUnifiedPaymentProof({
+          verifier: verifier.address,
+          witness,
+          chainId,
+          paymentPaymentMethod: venmoPaymentMethodHash,
+          paymentPayeeId: defaultPayeeId,
+          paymentAmount: secondIntent.amount,
+          paymentCurrency: defaultCurrency,
+          paymentTimestamp: secondTimestampMs,
+          paymentPaymentId: builtProof.paymentDetails.paymentId,
+          attestationIntentHash: secondIntentHash,
+          attestationReleaseAmount: secondIntent.amount,
+          snapshotIntentHash: secondIntentHash,
+          snapshotIntentAmount: secondIntent.amount,
+          snapshotIntentPaymentMethod: secondIntent.paymentMethod,
+          snapshotIntentFiatCurrency: secondIntent.fiatCurrency,
+          snapshotIntentPayeeDetails: defaultPayeeId,
+          snapshotIntentConversionRate: secondIntent.conversionRate,
+          snapshotIntentSignalTimestamp: secondIntent.timestamp,
+          snapshotIntentTimestampBuffer: BigNumber.from(0),
+          intentDepositId: depositId,
+          intentEscrow: escrow.address,
+          intentTo: receiver.address,
+        });
+
+        secondProof = proof.paymentProof;
+      });
+
+      it("should revert when reusing the payment proof", async () => {
+        const verificationData = await buildVerificationDataForIntent(secondIntentHash);
+        await expect(
+          orchestrator.connect(attacker.wallet).fulfillIntent({
+            paymentProof: secondProof,
+            intentHash: secondIntentHash,
+            verificationData,
+            postIntentHookData: ZERO_BYTES,
+          }),
+        ).to.be.revertedWith("Nullifier has already been used");
       });
     });
 
