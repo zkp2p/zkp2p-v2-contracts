@@ -221,7 +221,6 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         require(snapshot.fiatCurrency == intent.fiatCurrency, "UPV: Snapshot currency mismatch");
         require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot rate mismatch");
         require(snapshot.signalTimestamp == intent.timestamp, "UPV: Snapshot timestamp mismatch");
-        require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot conversion rate mismatch");
         require(snapshot.timestampBuffer <= MAX_TIMESTAMP_BUFFER, "UPV: Snapshot timestamp buffer exceeds maximum");
 
         IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(intent.escrow)
