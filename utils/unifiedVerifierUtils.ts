@@ -152,22 +152,26 @@ export interface BuiltUnifiedPaymentProof {
 }
 
 export interface BuildPaymentProofOverrides {
-  intentHash?: BytesLike;
-  releaseAmount?: BigNumber;
-  method?: BytesLike;
-  payeeId?: BytesLike;
-  amount?: BigNumber;
-  currency?: BytesLike;
-  timestamp?: BigNumber;
-  paymentId?: BytesLike;
-  metadata?: BytesLike;
-  signer?: Account;
-  attestationDataOverride?: BytesLike;
-  intentAmountOverride?: BigNumber;
-  intentConversionRate?: BigNumber;
-  intentSignalTimestamp?: BigNumber;
-  intentPayeeDetails?: BytesLike;
-  intentTimestampBuffer?: BigNumber;
+  paymentPaymentMethod?: BytesLike;
+  paymentPayeeId?: BytesLike;
+  paymentAmount?: BigNumber;
+  paymentCurrency?: BytesLike;
+  paymentTimestamp?: BigNumber;
+  paymentPaymentId?: BytesLike;
+  attestationIntentHash?: BytesLike;
+  attestationReleaseAmount?: BigNumber;
+  attestationDataHash?: BytesLike;
+  attestationData?: BytesLike;
+  attestationMetadata?: BytesLike;
+  attestationSigner?: Account;
+  snapshotIntentHash?: BytesLike;
+  snapshotIntentAmount?: BigNumber;
+  snapshotIntentPaymentMethod?: BytesLike;
+  snapshotIntentFiatCurrency?: BytesLike;
+  snapshotIntentPayeeDetails?: BytesLike;
+  snapshotIntentConversionRate?: BigNumber;
+  snapshotIntentSignalTimestamp?: BigNumber;
+  snapshotIntentTimestampBuffer?: BigNumber;
   intentDepositId?: BigNumber;
   intentEscrow?: Address;
   intentTo?: Address;
@@ -239,43 +243,47 @@ export async function buildUnifiedPaymentProof({
   verifier,
   witness,
   chainId = 31337,
-  intentHash,
-  releaseAmount,
-  method,
-  payeeId,
-  amount,
-  currency,
-  timestamp,
-  paymentId,
-  metadata,
-  signer,
-  attestationDataOverride,
-  intentAmountOverride,
-  intentConversionRate,
-  intentSignalTimestamp,
-  intentPayeeDetails,
-  intentTimestampBuffer,
+  paymentPaymentMethod,
+  paymentPayeeId,
+  paymentAmount,
+  paymentCurrency,
+  paymentTimestamp,
+  paymentPaymentId,
+  attestationSigner,
+  attestationIntentHash,
+  attestationReleaseAmount,
+  attestationDataHash,
+  attestationData,
+  attestationMetadata,
+  snapshotIntentHash,
+  snapshotIntentAmount,
+  snapshotIntentPaymentMethod,
+  snapshotIntentFiatCurrency,
+  snapshotIntentPayeeDetails,
+  snapshotIntentConversionRate,
+  snapshotIntentSignalTimestamp,
+  snapshotIntentTimestampBuffer,
   intentDepositId,
   intentEscrow,
   intentTo,
 }: BuildPaymentProofParams): Promise<BuiltUnifiedPaymentProof> {
   const paymentDetails: UnifiedPaymentDetails = {
-    method: method ?? ethers.constants.HashZero,
-    payeeId: payeeId ?? ethers.constants.HashZero,
-    amount: amount ?? BigNumber.from(0),
-    currency: currency ?? ethers.constants.HashZero,
-    timestamp: timestamp ?? BigNumber.from(0),
-    paymentId: paymentId ?? ethers.constants.HashZero,
+    method: paymentPaymentMethod ?? ethers.constants.HashZero,
+    payeeId: paymentPayeeId ?? ethers.constants.HashZero,
+    amount: paymentAmount ?? BigNumber.from(0),
+    currency: paymentCurrency ?? ethers.constants.HashZero,
+    timestamp: paymentTimestamp ?? BigNumber.from(0),
+    paymentId: paymentPaymentId ?? ethers.constants.HashZero,
   };
   const snapshot: UnifiedIntentSnapshot = {
-    intentHash: intentHash ?? ethers.constants.HashZero,
-    amount: intentAmountOverride ?? paymentDetails.amount,
-    paymentMethod: paymentDetails.method,
-    fiatCurrency: paymentDetails.currency,
-    payeeDetails: intentPayeeDetails ?? paymentDetails.payeeId,
-    conversionRate: intentConversionRate ?? BigNumber.from(0),
-    signalTimestamp: intentSignalTimestamp ?? paymentDetails.timestamp.div(1000),
-    timestampBuffer: intentTimestampBuffer ?? BigNumber.from(0),
+    intentHash: snapshotIntentHash ?? ethers.constants.HashZero,
+    amount: snapshotIntentAmount ?? paymentDetails.amount,
+    paymentMethod: snapshotIntentPaymentMethod ?? paymentDetails.method,
+    fiatCurrency: snapshotIntentFiatCurrency ?? paymentDetails.currency,
+    payeeDetails: snapshotIntentPayeeDetails ?? paymentDetails.payeeId,
+    conversionRate: snapshotIntentConversionRate ?? BigNumber.from(0),
+    signalTimestamp: snapshotIntentSignalTimestamp ?? paymentDetails.timestamp.div(1000),
+    timestampBuffer: snapshotIntentTimestampBuffer ?? BigNumber.from(0),
   };
 
   const intentContext: UnifiedIntentContext = {
@@ -287,16 +295,17 @@ export async function buildUnifiedPaymentProof({
   const encodedPaymentDetails = encodeUnifiedPaymentPayload(paymentDetails, snapshot);
   const dataHash = ethers.utils.keccak256(encodedPaymentDetails);
 
-  const attestationIntentHash = intentHash ?? ethers.constants.HashZero;
-  const attestationReleaseAmount = releaseAmount ?? paymentDetails.amount;
-  const attestationMetadata = metadata ?? ZERO_BYTES;
-  const signerAccount = signer ?? witness;
-  const attestationData = attestationDataOverride ?? encodedPaymentDetails;
+  const attIntentHash = attestationIntentHash ?? ethers.constants.HashZero;
+  const attReleaseAmount = attestationReleaseAmount ?? paymentDetails.amount;
+  const attDataHash = attestationDataHash ?? dataHash;
+  const attMetadata = attestationMetadata ?? ZERO_BYTES;
+  const signerAccount = attestationSigner ?? witness;
+  const attData = attestationData ?? encodedPaymentDetails;
 
   const signature = await signUnifiedPaymentAttestation(signerAccount, verifier, {
-    intentHash: attestationIntentHash,
-    releaseAmount: attestationReleaseAmount,
-    dataHash,
+    intentHash: attIntentHash,
+    releaseAmount: attReleaseAmount,
+    dataHash: attDataHash,
     chainId,
   });
 
@@ -304,18 +313,18 @@ export async function buildUnifiedPaymentProof({
 
   const paymentProof = ethers.utils.defaultAbiCoder.encode(
     ["tuple(bytes32,uint256,bytes32,bytes[],bytes,bytes)"],
-    [[attestationIntentHash, attestationReleaseAmount, dataHash, signatures, attestationData, attestationMetadata]],
+    [[attIntentHash, attReleaseAmount, attDataHash, signatures, attData, attMetadata]],
   );
 
   return {
     paymentProof,
     attestation: {
-      intentHash: attestationIntentHash,
-      releaseAmount: attestationReleaseAmount,
-      dataHash,
+      intentHash: attIntentHash,
+      releaseAmount: attReleaseAmount,
+      dataHash: attDataHash,
       signatures,
-      data: attestationData,
-      metadata: attestationMetadata,
+      data: attData,
+      metadata: attMetadata,
     },
     paymentDetails,
     encodedPaymentDetails,

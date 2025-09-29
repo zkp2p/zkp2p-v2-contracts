@@ -31,6 +31,7 @@ import { ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
 const expect = getWaffleExpect();
 
 const ZERO_BYTES = "0x";
+const MAX_TIMESTAMP_BUFFER_MS = 24 * 60 * 60 * 1000;
 
 
 describe("UnifiedPaymentVerifier", () => {
@@ -230,22 +231,25 @@ describe("UnifiedPaymentVerifier", () => {
       verifier: verifier.address,
       witness,
       chainId,
-      method: overrides.method ?? venmoPaymentMethodHash,
-      payeeId: overrides.payeeId ?? defaultPayeeId,
-      amount: overrides.amount ?? intent.amount,
-      currency: overrides.currency ?? defaultCurrency,
-      timestamp: overrides.timestamp ?? defaultTimestamp,
-      paymentId: overrides.paymentId ?? defaultPaymentId,
-      intentHash: overrides.intentHash ?? intentHash,
-      releaseAmount: overrides.releaseAmount ?? intent.amount,
-      metadata: overrides.metadata ?? ZERO_BYTES,
-      signer: overrides.signer,
-      attestationDataOverride: overrides.attestationDataOverride,
-      intentAmountOverride: overrides.intentAmountOverride ?? intent.amount,
-      intentConversionRate: overrides.intentConversionRate ?? intent.conversionRate,
-      intentSignalTimestamp: overrides.intentSignalTimestamp ?? intent.timestamp,
-      intentPayeeDetails: overrides.intentPayeeDetails ?? defaultPayeeId,
-      intentTimestampBuffer: overrides.intentTimestampBuffer ?? BigNumber.from(0),
+      paymentPaymentMethod: overrides.paymentPaymentMethod ?? venmoPaymentMethodHash,
+      paymentPayeeId: overrides.paymentPayeeId ?? defaultPayeeId,
+      paymentAmount: overrides.paymentAmount ?? intent.amount,
+      paymentCurrency: overrides.paymentCurrency ?? defaultCurrency,
+      paymentTimestamp: overrides.paymentTimestamp ?? defaultTimestamp,
+      paymentPaymentId: overrides.paymentPaymentId ?? defaultPaymentId,
+      attestationIntentHash: overrides.attestationIntentHash ?? intentHash,
+      attestationReleaseAmount: overrides.attestationReleaseAmount ?? intent.amount,
+      attestationMetadata: overrides.attestationMetadata ?? ZERO_BYTES,
+      attestationSigner: overrides.attestationSigner,
+      attestationData: overrides.attestationData,
+      snapshotIntentHash: overrides.snapshotIntentHash ?? intentHash,
+      snapshotIntentAmount: overrides.snapshotIntentAmount ?? intent.amount,
+      snapshotIntentPaymentMethod: overrides.snapshotIntentPaymentMethod ?? venmoPaymentMethodHash,
+      snapshotIntentFiatCurrency: overrides.snapshotIntentFiatCurrency ?? defaultCurrency,
+      snapshotIntentPayeeDetails: overrides.snapshotIntentPayeeDetails ?? defaultPayeeId,
+      snapshotIntentConversionRate: overrides.snapshotIntentConversionRate ?? intent.conversionRate,
+      snapshotIntentSignalTimestamp: overrides.snapshotIntentSignalTimestamp ?? intent.timestamp,
+      snapshotIntentTimestampBuffer: overrides.snapshotIntentTimestampBuffer ?? BigNumber.from(0),
       intentDepositId: overrides.intentDepositId ?? depositId,
       intentEscrow: overrides.intentEscrow ?? escrow.address,
       intentTo: overrides.intentTo ?? receiver.address,
@@ -356,9 +360,113 @@ describe("UnifiedPaymentVerifier", () => {
       expect(await nullifierRegistry.isNullified(expectedNullifier)).to.be.true;
     });
 
+    describe("snapshot validation failures", () => {
+      const setSnapshotOverride = async (overrides: BuildPaymentProofOverrides) => {
+        builtProof = await buildProof(overrides);
+        subjectProof = builtProof.paymentProof;
+      };
+
+      describe("when snapshot hash mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentHash: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot hash mismatch");
+        });
+      });
+
+      // describe("when intent is unknown", () => {
+      //   beforeEach(async () => {
+      //     await orchestrator.connect(intentOwner.wallet).cancelIntent(intentHash);
+      //   });
+
+      //   it("should revert", async () => {
+      //     const verificationData = await buildVerificationDataForIntent(intentHash);
+      //     await expect(
+      //       verifier.connect(orchestrator.wallet).callStatic.verifyPayment({
+      //         intentHash,
+      //         paymentProof: subjectProof,
+      //         data: verificationData,
+      //       }),
+      //     ).to.be.revertedWith("UPV: Unknown intent");
+      //   });
+      // });
+
+      describe("when snapshot amount mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentAmount: builtProof.intentSnapshot.amount.add(1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot amount mismatch");
+        });
+      });
+
+      describe("when snapshot method mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentPaymentMethod: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot method mismatch");
+        });
+      });
+
+      describe("when snapshot currency mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentFiatCurrency: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot currency mismatch");
+        });
+      });
+
+      describe("when snapshot rate mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentConversionRate: builtProof.intentSnapshot.conversionRate.add(1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot rate mismatch");
+        });
+      });
+
+      describe("when snapshot timestamp mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentSignalTimestamp: builtProof.intentSnapshot.signalTimestamp.add(1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot timestamp mismatch");
+        });
+      });
+
+      describe("when snapshot timestamp buffer exceeds maximum", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentTimestampBuffer: BigNumber.from(MAX_TIMESTAMP_BUFFER_MS + 1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot timestamp buffer exceeds maximum");
+        });
+      });
+
+      describe("when snapshot payee mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentPayeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tampered")) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot payee mismatch");
+        });
+      });
+    });
+
     describe("when payment method is not registered", () => {
       beforeEach(async () => {
-        builtProof = await buildProof({ method: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid")) });
+        builtProof = await buildProof({ paymentPaymentMethod: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid")) });
         subjectProof = builtProof.paymentProof;
       });
 
@@ -369,7 +477,7 @@ describe("UnifiedPaymentVerifier", () => {
 
     describe("when witness signature is not from the configured witness", () => {
       beforeEach(async () => {
-        builtProof = await buildProof({ signer: attacker });
+        builtProof = await buildProof({ attestationSigner: attacker });
         subjectProof = builtProof.paymentProof;
       });
 
@@ -394,7 +502,7 @@ describe("UnifiedPaymentVerifier", () => {
 
     describe("when release amount exceeds intent amount", () => {
       beforeEach(async () => {
-        builtProof = await buildProof({ releaseAmount: builtProof.attestation.releaseAmount.mul(2) });
+        builtProof = await buildProof({ attestationReleaseAmount: builtProof.attestation.releaseAmount.mul(2) });
         subjectProof = builtProof.paymentProof;
       });
 
