@@ -140,18 +140,11 @@ describe("Escrow", () => {
 
     const nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    verifier = await deployer.deployPaymentVerifierMock(
-      ramp.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD, Currency.EUR]
-    );
-    otherVerifier = await deployer.deployPaymentVerifierMock(
-      ramp.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD]
-    );
+    verifier = await deployer.deployPaymentVerifierMock();
+    otherVerifier = await deployer.deployPaymentVerifierMock();
+
+    await verifier.connect(owner.wallet).setVerificationContext(orchestrator.address, ramp.address);
+    await otherVerifier.connect(owner.wallet).setVerificationContext(orchestrator.address, ramp.address);
 
     // Register payment methods with their verifiers and supported currencies
     await paymentVerifierRegistry.addPaymentMethod(

@@ -126,18 +126,11 @@ describe("ProtocolViewer", () => {
 
     const nullifierRegistry = await deployer.deployNullifierRegistry();
 
-    verifier = await deployer.deployPaymentVerifierMock(
-      escrow.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD, Currency.EUR]
-    );
-    otherVerifier = await deployer.deployPaymentVerifierMock(
-      escrow.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD]
-    );
+    verifier = await deployer.deployPaymentVerifierMock();
+    otherVerifier = await deployer.deployPaymentVerifierMock();
+
+    await verifier.connect(owner.wallet).setVerificationContext(orchestrator.address, escrow.address);
+    await otherVerifier.connect(owner.wallet).setVerificationContext(orchestrator.address, escrow.address);
 
     venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
     await paymentVerifierRegistry.addPaymentMethod(

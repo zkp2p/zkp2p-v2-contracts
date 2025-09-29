@@ -92,11 +92,11 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     /* ============ Constructor ============ */
     
     constructor(
-        address _escrow,
+        IOrchestrator _orchestrator,
         INullifierRegistry _nullifierRegistry,
         IAttestationVerifier _attestationVerifier
     ) BaseUnifiedPaymentVerifier(
-        _escrow,
+        _orchestrator,
         _nullifierRegistry,
         _attestationVerifier
     ) {

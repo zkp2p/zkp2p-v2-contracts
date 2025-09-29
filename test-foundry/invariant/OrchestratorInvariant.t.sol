@@ -541,13 +541,9 @@ contract OrchestratorInvariantTest is Test {
         bytes32[] memory currencies = new bytes32[](1);
         currencies[0] = CURRENCY;
         
-        verifier = new PaymentVerifierMock(
-            address(escrow),
-            address(nullifierRegistry),
-            3600,
-            currencies
-        );
+        verifier = new PaymentVerifierMock();
         verifier.setShouldVerifyPayment(true);
+        verifier.setVerificationContext(address(orchestrator), address(escrow));
         
         // Register contracts
         paymentVerifierRegistry.addPaymentMethod(PAYMENT_METHOD, address(verifier), currencies);

@@ -138,19 +138,11 @@ describe("Orchestrator", () => {
     // Set orchestrator in escrow
     await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);
 
-    verifier = await deployer.deployPaymentVerifierMock(
-      escrow.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD, Currency.EUR]
-    );
+    verifier = await deployer.deployPaymentVerifierMock();
+    otherVerifier = await deployer.deployPaymentVerifierMock();
 
-    otherVerifier = await deployer.deployPaymentVerifierMock(
-      escrow.address,
-      nullifierRegistry.address,
-      ZERO,
-      [Currency.USD]
-    );
+    await verifier.connect(owner.wallet).setVerificationContext(orchestrator.address, escrow.address);
+    await otherVerifier.connect(owner.wallet).setVerificationContext(orchestrator.address, escrow.address);
 
     postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, orchestrator.address);
 
@@ -1340,6 +1332,8 @@ describe("Orchestrator", () => {
           ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
           [usdc(50), currentTimestamp, payeeDetails, Currency.USD, ZERO_BYTES32]
         );
+
+        await verifier.setShouldVerifyPayment(false);
       });
 
       it("should revert", async () => {

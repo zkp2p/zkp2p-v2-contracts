@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.18;
 
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
+import { IOrchestrator } from "../interfaces/IOrchestrator.sol";
+import { IEscrow } from "../interfaces/IEscrow.sol";
 
 contract PaymentVerifierMock is IPaymentVerifier {
 
@@ -14,60 +15,59 @@ contract PaymentVerifierMock is IPaymentVerifier {
         bytes32 intentHash;
     }
 
+    struct Snapshot {
+        uint256 amount;
+        uint256 conversionRate;
+        uint256 signalTimestamp;
+        bytes32 payeeDetails;
+        bool found;
+    }
+
     uint256 internal constant PRECISE_UNIT = 1e18;
 
     bool public shouldVerifyPayment;
     bool public shouldReturnFalse;
-
-    constructor(
-        address,
-        address,
-        uint256,
-        bytes32[] memory
-    ) {}
+    address public orchestratorAddress;
+    address public escrowAddress;
 
     function setShouldVerifyPayment(bool _shouldVerifyPayment) external {
-      shouldVerifyPayment = _shouldVerifyPayment;
+        shouldVerifyPayment = _shouldVerifyPayment;
     }
 
     function setShouldReturnFalse(bool _shouldReturnFalse) external {
-      shouldReturnFalse = _shouldReturnFalse;
+        shouldReturnFalse = _shouldReturnFalse;
+    }
+
+    function setVerificationContext(address _orchestrator, address _escrow) external {
+        orchestratorAddress = _orchestrator;
+        escrowAddress = _escrow;
     }
 
     function extractIntentHash(bytes calldata _proof) external pure returns (bytes32) {
-      (, , , bytes32 intentHash) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32));
-      return intentHash;
+        (, , , , bytes32 intentHash) = abi.decode(_proof, (uint256, uint256, bytes32, bytes32, bytes32));
+        return intentHash;
     }
 
     function verifyPayment(
         IPaymentVerifier.VerifyPaymentData calldata _verifyPaymentData
-    )
-        external
-        view
-        override
-        returns (PaymentVerificationResult memory)
-    {
+    ) external view override returns (PaymentVerificationResult memory) {
         PaymentDetails memory paymentDetails = _extractPaymentDetails(_verifyPaymentData.paymentProof);
 
-        uint256 intentAmount;
-        uint256 conversionRate;
-        uint256 intentTimestamp;
-        bytes32 expectedPayeeDetails;
-
-        if (_verifyPaymentData.data.length > 0) {
-            (intentAmount, conversionRate, intentTimestamp, expectedPayeeDetails) = abi.decode(
-                _verifyPaymentData.data,
-                (uint256, uint256, uint256, bytes32)
-            );
-        }
+        Snapshot memory snapshot = _fetchSnapshot(paymentDetails.intentHash);
 
         if (shouldVerifyPayment) {
-            require(intentTimestamp == 0 || paymentDetails.timestamp >= intentTimestamp, "Payment timestamp is before intent timestamp");
-            require(conversionRate > 0, "Conversion rate must be positive");
+            require(snapshot.found, "UPV: Unknown intent");
+            require(snapshot.conversionRate != 0, "UPV: Snapshot rate mismatch");
             require(
-                expectedPayeeDetails == bytes32(0) || paymentDetails.payeeDetails == expectedPayeeDetails,
-                "Payment payee mismatch"
+                snapshot.payeeDetails == bytes32(0) || paymentDetails.payeeDetails == snapshot.payeeDetails,
+                "UPV: Snapshot payee mismatch"
             );
+            if (snapshot.signalTimestamp != 0) {
+                require(
+                    paymentDetails.timestamp >= snapshot.signalTimestamp,
+                    "UPV: Snapshot timestamp mismatch"
+                );
+            }
         }
 
         if (shouldReturnFalse) {
@@ -75,18 +75,40 @@ contract PaymentVerifierMock is IPaymentVerifier {
         }
 
         uint256 releaseAmount = paymentDetails.amount;
-        if (conversionRate > 0) {
-            releaseAmount = (paymentDetails.amount * PRECISE_UNIT) / conversionRate;
+        if (snapshot.conversionRate > 0) {
+            releaseAmount = (paymentDetails.amount * PRECISE_UNIT) / snapshot.conversionRate;
         }
 
-        if (intentAmount > 0 && releaseAmount > intentAmount) {
-            releaseAmount = intentAmount;
+        if (snapshot.amount > 0 && releaseAmount > snapshot.amount) {
+            releaseAmount = snapshot.amount;
         }
 
         return PaymentVerificationResult({
             success: true,
             intentHash: paymentDetails.intentHash,
             releaseAmount: releaseAmount
+        });
+    }
+
+    function _fetchSnapshot(bytes32 intentHash) internal view returns (Snapshot memory snapshot) {
+        if (orchestratorAddress == address(0) || escrowAddress == address(0)) {
+            return snapshot;
+        }
+
+        IOrchestrator.Intent memory intentData = IOrchestrator(orchestratorAddress).getIntent(intentHash);
+        if (intentData.owner == address(0)) {
+            return snapshot;
+        }
+
+        IEscrow.DepositPaymentMethodData memory methodData = IEscrow(escrowAddress)
+            .getDepositPaymentMethodData(intentData.depositId, intentData.paymentMethod);
+
+        snapshot = Snapshot({
+            amount: intentData.amount,
+            conversionRate: intentData.conversionRate,
+            signalTimestamp: intentData.timestamp,
+            payeeDetails: methodData.payeeDetails,
+            found: true
         });
     }
 

@@ -5,6 +5,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Bytes32ArrayUtils } from "../external/Bytes32ArrayUtils.sol";
 import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
+import { IOrchestrator } from "../interfaces/IOrchestrator.sol";
 
 /**
  * @title BaseUnifiedPaymentVerifier
@@ -33,7 +34,7 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
 
     /* ============ State Variables ============ */
     
-    address public immutable orchestrator;
+    IOrchestrator public immutable orchestrator;
     INullifierRegistry public immutable nullifierRegistry;
     IAttestationVerifier public attestationVerifier;
 
@@ -46,7 +47,7 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
      * Modifier to ensure only escrow can call
      */
     modifier onlyOrchestrator() {
-        require(msg.sender == orchestrator, "Only orchestrator can call");
+        require(msg.sender == address(orchestrator), "Only orchestrator can call");
         _;
     }
 
@@ -60,7 +61,7 @@ abstract contract BaseUnifiedPaymentVerifier is Ownable {
      * offchain / ZK attestation service
      */
     constructor(
-        address _orchestrator,
+        IOrchestrator _orchestrator,
         INullifierRegistry _nullifierRegistry,
         IAttestationVerifier _attestationVerifier
     ) Ownable() {

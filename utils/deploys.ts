@@ -107,18 +107,8 @@ export default class DeployHelper {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployPaymentVerifierMock(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    acceptedCurrencies: string[]
-  ): Promise<PaymentVerifierMock> {
-    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      acceptedCurrencies
-    );
+  public async deployPaymentVerifierMock(): Promise<PaymentVerifierMock> {
+    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployPostIntentHookMock(
