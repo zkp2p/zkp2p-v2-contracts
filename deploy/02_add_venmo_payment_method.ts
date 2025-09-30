@@ -11,7 +11,8 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  savePaymentMethodSnapshot
+  savePaymentMethodSnapshot,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import {
   VENMO_PROVIDER_CONFIG
@@ -58,6 +59,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     VENMO_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Venmo added to unified verifier...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

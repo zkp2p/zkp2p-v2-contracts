@@ -11,7 +11,8 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  savePaymentMethodSnapshot
+  savePaymentMethodSnapshot,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import {
   ZELLE_CITI_PROVIDER_CONFIG,
@@ -110,6 +111,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ZELLE_BOFA_PROVIDER_CONFIG.timestampBuffer
   );
   console.log("Zelle BofA added to unified verifier...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

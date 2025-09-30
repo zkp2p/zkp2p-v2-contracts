@@ -3,6 +3,20 @@ import { Address } from "../utils/types";
 import { BigNumber } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
+import { DEPLOY_TX_DELAY_MS } from "./parameters";
+
+const ENV_DELAY_OVERRIDE = process.env.DEPLOY_TX_DELAY_MS;
+
+export async function waitForDeploymentDelay(hre: HardhatRuntimeEnvironment): Promise<void> {
+  const network = hre.deployments.getNetworkName();
+  const overrideDelay = ENV_DELAY_OVERRIDE ? Number(ENV_DELAY_OVERRIDE) : undefined;
+  const networkDelay = DEPLOY_TX_DELAY_MS[network] ?? 0;
+  const delay = overrideDelay !== undefined && !Number.isNaN(overrideDelay) ? overrideDelay : networkDelay;
+
+  if (delay > 0) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
 
 export function getDeployedContractAddress(network: string, contractName: string): string {
   return require(`./${network}/${contractName}.json`).address;

@@ -10,7 +10,8 @@ import {
 import {
   addWritePermission,
   getDeployedContractAddress,
-  setNewOwner
+  setNewOwner,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import { WITNESS_ADDRESS } from "../deployments/parameters";
 
@@ -60,6 +61,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("UnifiedPaymentVerifier ownership transferred to", multiSig);
 
   console.log("Deploy finished...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

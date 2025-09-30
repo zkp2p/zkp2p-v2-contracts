@@ -20,7 +20,13 @@ import {
   MAX_INTENTS_PER_DEPOSIT,
   PARTIAL_MANUAL_RELEASE_DELAY,
 } from "../deployments/parameters";
-import { addEscrowToRegistry, getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
+import {
+  addEscrowToRegistry,
+  getDeployedContractAddress,
+  setNewOwner,
+  setOrchestrator,
+  waitForDeploymentDelay,
+} from "../deployments/helpers";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -156,6 +162,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await setNewOwner(hre, nullifierRegistryContract, multiSig);
 
   console.log("Deploy finished...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

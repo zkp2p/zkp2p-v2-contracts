@@ -11,7 +11,8 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  savePaymentMethodSnapshot
+  savePaymentMethodSnapshot,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import { WISE_PROVIDER_CONFIG } from "../deployments/verifiers/wise";
 
@@ -57,6 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WISE_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Wise added to unified verifier...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

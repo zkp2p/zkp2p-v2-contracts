@@ -11,7 +11,8 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  savePaymentMethodSnapshot
+  savePaymentMethodSnapshot,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import { MONZO_PROVIDER_CONFIG } from "../deployments/verifiers/monzo";
 
@@ -56,6 +57,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     MONZO_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Monzo added to unified verifier...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
