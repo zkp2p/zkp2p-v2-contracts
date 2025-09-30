@@ -65,13 +65,6 @@ export const WITNESS_ADDRESS: any = {
   "base_sepolia": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
 };
 
-export const ZKTLS_ATTESTOR_ADDRESS: any = {
-  "localhost": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "base": "",
-  "base_staging": "",
-  "base_sepolia": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-};
-
 export const USDC: any = {
   "base": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   "base_staging": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"

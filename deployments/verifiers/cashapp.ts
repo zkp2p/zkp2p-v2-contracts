@@ -8,10 +8,7 @@ export const CASHAPP_CURRENCIES: any = [
   Currency.USD,
 ];
 
-export const CASHAPP_TIMESTAMP_BUFFER = BigNumber.from(30);   // 30 seconds
-
 export const CASHAPP_PROVIDER_CONFIG = {
   paymentMethodHash: CASHAPP_PAYMENT_METHOD_HASH,
-  currencies: CASHAPP_CURRENCIES,
-  timestampBuffer: CASHAPP_TIMESTAMP_BUFFER
+  currencies: CASHAPP_CURRENCIES
 };

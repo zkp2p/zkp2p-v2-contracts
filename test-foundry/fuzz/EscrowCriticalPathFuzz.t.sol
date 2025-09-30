@@ -116,21 +116,13 @@ contract EscrowCriticalPathFuzz is Test {
         currencies[1] = EUR;
         currencies[2] = GBP;
         
-        venmoVerifier = new PaymentVerifierMock(
-            address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
-            3600,
-            currencies
-        );
+        venmoVerifier = new PaymentVerifierMock();
         venmoVerifier.setShouldVerifyPayment(true);
+        venmoVerifier.setVerificationContext(address(orchestrator), address(escrow));
         
-        paypalVerifier = new PaymentVerifierMock(
-            address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
-            3600,
-            currencies
-        );
+        paypalVerifier = new PaymentVerifierMock();
         paypalVerifier.setShouldVerifyPayment(true);
+        paypalVerifier.setVerificationContext(address(orchestrator), address(escrow));
         
         paymentVerifierRegistry.addPaymentMethod(VENMO, address(venmoVerifier), currencies);
         paymentVerifierRegistry.addPaymentMethod(PAYPAL, address(paypalVerifier), currencies);

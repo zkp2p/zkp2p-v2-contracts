@@ -42,8 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot PayPal
   savePaymentMethodSnapshot(network, 'paypal', {
     paymentMethodHash: PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: PAYPAL_PROVIDER_CONFIG.currencies,
-    timestampBuffer: PAYPAL_PROVIDER_CONFIG.timestampBuffer
+    currencies: PAYPAL_PROVIDER_CONFIG.currencies
   });
 
   // PayPal returns single payment details
@@ -54,8 +53,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    PAYPAL_PROVIDER_CONFIG.paymentMethodHash,
-    PAYPAL_PROVIDER_CONFIG.timestampBuffer
+    PAYPAL_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("PayPal added to unified verifier...");
 };

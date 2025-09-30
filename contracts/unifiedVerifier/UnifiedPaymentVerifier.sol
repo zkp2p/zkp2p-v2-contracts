@@ -5,6 +5,8 @@ import { BaseUnifiedPaymentVerifier } from "./BaseUnifiedPaymentVerifier.sol";
 import { INullifierRegistry } from "../interfaces/INullifierRegistry.sol";
 import { IPaymentVerifier } from "../interfaces/IPaymentVerifier.sol";
 import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
+import { IOrchestrator } from "../interfaces/IOrchestrator.sol";
+import { IEscrow } from "../interfaces/IEscrow.sol";
 
 /**
  * @title UnifiedPaymentVerifier
@@ -14,7 +16,7 @@ import { IAttestationVerifier } from "../interfaces/IAttestationVerifier.sol";
  * 
  * Key features:
  * - Supports multiple payment methods, each with custom configuration
- * - Uses AttestationVerifier to validate off-chain zkTLS proofs and transformations
+ * - Uses AttestationVerifier to validate offchain payment attestations   
  * - Ensures trust anchor integrity for off-chain verification processes
  * - Verifies standardized payment details against provided data
  * @dev The payment attestation should be signed using the EIP-712 standard
@@ -23,6 +25,9 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
 
     /* ============ Constants ============ */
     
+    // Max timestamp buffer
+    uint256 private constant MAX_TIMESTAMP_BUFFER = 48 * 60 * 60 * 1000; // 48 hours
+
     // EIP-712 Domain Separator
     bytes32 private constant DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
@@ -30,41 +35,68 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     
     // EIP-712 Type Hash for PaymentAttestation
     bytes32 private constant PAYMENT_ATTESTATION_TYPEHASH = keccak256(
-        "PaymentAttestation(bytes32 paymentMethod,bytes32 providerHash,bytes32 intentHash,bytes32 recipientId,uint256 amount,uint256 timestamp,bytes32 paymentId,bytes32 currency,bytes32 dataHash)"
+        "PaymentAttestation(bytes32 intentHash,uint256 releaseAmount,bytes32 dataHash)"
     );
-    
+
     /* ============ State Variables ============ */
-    
+
     // EIP-712 Domain Separator (computed once at deployment)
     bytes32 public immutable DOMAIN_SEPARATOR;
-    
+
+    /* ============ Events ============ */
+
+    /**
+     * @notice Capture and emit payment details for offchain reconciliation
+     */
+    event PaymentVerified(
+        bytes32 indexed intentHash,
+        bytes32 indexed method,
+        bytes32 indexed currency,
+        uint256 amount,
+        uint256 timestamp,
+        bytes32 paymentId,
+        bytes32 payeeId
+    );
+
     /* ============ Structs ============ */
 
     struct PaymentDetails {
-        bytes32 recipientId;             // Payment recipient ID (hashed payee details to preserve privacy)
-        uint256 amount;                  // Payment amount in smallest currency unit (i.e. cents)
-        uint256 timestamp;               // Payment timestamp in UTC in milliseconds
-        bytes32 paymentId;               // Hashed payment identifier from the service (e.g. hashed venmo payment ID)
-        bytes32 currency;                // Currency hash (e.g., "USD", "EUR")
+        bytes32 method;           // Payment method hash (e.g., "venmo", "paypal", "wise")
+        bytes32 payeeId;          // Payment recipient ID (hashed payee details to preserve privacy)
+        uint256 amount;           // Payment amount in smallest currency unit (i.e. cents)
+        bytes32 currency;         // Payment currency hash (e.g., "USD", "EUR")
+        uint256 timestamp;        // Payment timestamp in UTC in milliseconds
+        bytes32 paymentId;        // Hashed payment identifier from the service (e.g. hashed venmo payment ID to preserve privacy)
+    }
+
+    struct IntentSnapshot {
+        bytes32 intentHash;
+        uint256 amount;
+        bytes32 paymentMethod;
+        bytes32 fiatCurrency;
+        bytes32 payeeDetails;
+        uint256 conversionRate;
+        uint256 signalTimestamp;
+        uint256 timestampBuffer;
     }
 
     struct PaymentAttestation {
-        bytes32 paymentMethod;           // Payment method hash (e.g., "venmo", "paypal", "wise")
-        bytes32 providerHash;            // Unique identifier binding processor to provider
-        bytes32 intentHash;              // Binds the payment to the intent on Orchestrator
-        PaymentDetails paymentDetails;   // Payment details
-        bytes[] signatures;              // Array of signatures from witnesses
-        bytes32 dataHash;                // Hash of verification data for integrity
+        bytes32 intentHash;       // Binds the payment to the intent on Orchestrator
+        uint256 releaseAmount;    // Final token amount to release on-chain after FX
+        bytes32 dataHash;         // Hash of the additional data to verify integrity
+        bytes[] signatures;       // Array of signatures from witnesses
+        bytes data;               // Data for verification
+        bytes metadata;           // Additional metadata; isn't signed by the witnesses
     }
 
     /* ============ Constructor ============ */
     
     constructor(
-        address _escrow,
+        IOrchestrator _orchestrator,
         INullifierRegistry _nullifierRegistry,
         IAttestationVerifier _attestationVerifier
     ) BaseUnifiedPaymentVerifier(
-        _escrow,
+        _orchestrator,
         _nullifierRegistry,
         _attestationVerifier
     ) {
@@ -86,8 +118,8 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
      * ONLY ORCHESTRATOR: Verifies a standardized payment attestation generated by the attestation service.
      * 
      * @param _verifyPaymentData Payment proof and intent details required for verification
-     * @return result The payment verification result containing success status, intent hash, release amount, 
-     * payment currency and payment ID
+     * @return result The payment verification result containing success status, intent hash, and release amount
+     * @dev Ensure the orchestrator verifies the intent exists before calling this function
      */
     function verifyPayment(
         VerifyPaymentData calldata _verifyPaymentData
@@ -97,55 +129,59 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         onlyOrchestrator()
         returns (PaymentVerificationResult memory result)
     {
-        PaymentAttestation memory attestation = abi.decode(
-            _verifyPaymentData.paymentProof, 
-            (PaymentAttestation)
-        );
+        PaymentAttestation memory attestation = _decodeAttestation(_verifyPaymentData.paymentProof);
         
-        PaymentMethodStore storage store = _getPaymentMethodStore(
-            attestation.paymentMethod
-        );
+        (
+            PaymentDetails memory paymentDetails, 
+            IntentSnapshot memory intentSnapshot
+        ) = _decodeAttestationPayload(attestation.data);
+        require(isPaymentMethod[paymentDetails.method], "UPV: Invalid payment method");
         
-        // Verify the attestation
-        bool isValid = _verifyAttestation(attestation, _verifyPaymentData);
-        require(isValid, "UPV: Invalid witness signatures");
-        
-        PaymentDetails memory paymentDetails = attestation.paymentDetails;
-        _verifyPaymentDetails(paymentDetails, store, _verifyPaymentData);
+        _validateIntentSnapshot(_verifyPaymentData.intentHash, intentSnapshot);
 
+        bool isValid = _verifyAttestation(attestation);
+        require(isValid, "UPV: Invalid attestation");
+                
         // Nullify the payment to prevent double-spending
-        _nullifyPayment(attestation.paymentMethod, paymentDetails.paymentId);
-
-        result = _createPaymentVerificationResult(
-            _verifyPaymentData,
-            attestation,
-            paymentDetails
-        );
+        _nullifyPayment(paymentDetails.method, paymentDetails.paymentId);
         
+        _emitPaymentDetails(attestation.intentHash, paymentDetails);
+    
+        uint256 releaseAmount = _calculateReleaseAmount(attestation.releaseAmount, intentSnapshot.amount);
+
+        result = PaymentVerificationResult({
+            success: true,
+            intentHash: attestation.intentHash,
+            releaseAmount: releaseAmount
+        });
+
         return result;
     }
 
     /* ============ Internal Functions ============ */
 
+    function _decodeAttestation(bytes memory paymentProof) internal pure returns (PaymentAttestation memory) {
+        return abi.decode(paymentProof, (PaymentAttestation));
+    }
+
+    function _decodeAttestationPayload(bytes memory paymentData)
+        internal
+        pure
+        returns (PaymentDetails memory paymentDetails, IntentSnapshot memory intentSnapshot)
+    {
+        (paymentDetails, intentSnapshot) = abi.decode(paymentData, (PaymentDetails, IntentSnapshot));
+    }
+
     /**
      * Verifies the EIP-712 attestation using the attestation verifier. Also verifies the integrity of the 
      * verify payment data using the data hash attached to the attestation.
      */
-    function _verifyAttestation(
-        PaymentAttestation memory attestation,
-        VerifyPaymentData calldata _verifyPaymentData
-    ) internal view returns (bool) {
+    function _verifyAttestation(PaymentAttestation memory attestation) internal view returns (bool) {
         bytes32 structHash = keccak256(
             abi.encode(
                 PAYMENT_ATTESTATION_TYPEHASH,
-                attestation.paymentMethod,
-                attestation.providerHash,
                 attestation.intentHash,
-                attestation.paymentDetails.recipientId,
-                attestation.paymentDetails.amount,
-                attestation.paymentDetails.timestamp,
-                attestation.paymentDetails.paymentId,
-                attestation.paymentDetails.currency,
+                attestation.releaseAmount,
                 attestation.dataHash
             )
         );
@@ -160,43 +196,36 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
 
         // Verify data integrity - the data hash must match what was signed
         require(
-            keccak256(_verifyPaymentData.data) == attestation.dataHash,
+            keccak256(attestation.data) == attestation.dataHash,
             "UPV: Data hash mismatch"
         );
 
         bool isValid = attestationVerifier.verify(
             digest, 
             attestation.signatures,
-            _verifyPaymentData.data
+            attestation.data
         );
 
         return isValid;
     }
 
-    /**
-     * Verifies the payment details. Verifies the receiver ID (payee), currency and timestamp against the verify payment data.
-     */
-    function _verifyPaymentDetails(
-        PaymentDetails memory paymentDetails,
-        PaymentMethodStore storage config,
-        VerifyPaymentData calldata _verifyPaymentData
+    function _validateIntentSnapshot(
+        bytes32 intentHash,
+        IntentSnapshot memory snapshot
     ) internal view {
-        require(
-            paymentDetails.recipientId == _verifyPaymentData.payeeDetails,
-            "UPV: Payee mismatch"
-        );
-        
-        require(
-            paymentDetails.currency == _verifyPaymentData.fiatCurrency,
-            "UPV: Currency mismatch"
-        );
-        
-        // Verify timestamp is after intent creation (with payment method-specific buffer for L2 flexibility)
-        uint256 paymentTimestampWithBuffer = paymentDetails.timestamp + config.timestampBuffer;
-        require(
-            paymentTimestampWithBuffer >= _verifyPaymentData.intentTimestamp,
-            "UPV: Payment before intent"
-        );
+        require(snapshot.intentHash == intentHash, "UPV: Snapshot hash mismatch");
+
+        IOrchestrator.Intent memory intent = IOrchestrator(orchestrator).getIntent(intentHash);
+        require(snapshot.amount == intent.amount, "UPV: Snapshot amount mismatch");
+        require(snapshot.paymentMethod == intent.paymentMethod, "UPV: Snapshot method mismatch");
+        require(snapshot.fiatCurrency == intent.fiatCurrency, "UPV: Snapshot currency mismatch");
+        require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot rate mismatch");
+        require(snapshot.signalTimestamp == intent.timestamp, "UPV: Snapshot timestamp mismatch");
+        require(snapshot.timestampBuffer <= MAX_TIMESTAMP_BUFFER, "UPV: Snapshot timestamp buffer exceeds maximum");
+
+        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(intent.escrow)
+            .getDepositPaymentMethodData(intent.depositId, snapshot.paymentMethod);
+        require(snapshot.payeeDetails == paymentMethodData.payeeDetails, "UPV: Snapshot payee mismatch");
     }
 
     /**
@@ -211,23 +240,27 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     }
 
     /**
-     * Creates the release amount and creates the payment verification result to return to the Orchestrator.
+     * Calculates the release amount for an intent by capping the release amount to the intent amount
      */
-    function _createPaymentVerificationResult(
-        VerifyPaymentData calldata _verifyPaymentData,
-        PaymentAttestation memory attestation,
-        PaymentDetails memory paymentDetails
-    ) internal pure returns (PaymentVerificationResult memory result) {
-        uint256 releaseAmount = _calculateReleaseAmount(
-            paymentDetails.amount, 
-            _verifyPaymentData.conversionRate, 
-            _verifyPaymentData.intentAmount
+    function _calculateReleaseAmount(uint256 releaseAmount, uint256 intentAmount) internal pure returns (uint256) {
+        if (releaseAmount > intentAmount) {
+            return intentAmount;
+        }
+        return releaseAmount;
+    }
+
+    /**
+     * Emits the payment details for offchain reconciliation
+     */
+    function _emitPaymentDetails(bytes32 intentHash, PaymentDetails memory paymentDetails) internal {
+        emit PaymentVerified(
+            intentHash,                 // Tie the payment details to the intent hash
+            paymentDetails.method,
+            paymentDetails.currency,
+            paymentDetails.amount,
+            paymentDetails.timestamp,
+            paymentDetails.paymentId,
+            paymentDetails.payeeId
         );
-        
-        result = PaymentVerificationResult({
-            success: true,
-            intentHash: attestation.intentHash,
-            releaseAmount: releaseAmount
-        });
     }
 }

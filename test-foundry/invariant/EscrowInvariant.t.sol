@@ -458,13 +458,9 @@ contract EscrowInvariantTest is Test {
         bytes32[] memory currencies = new bytes32[](1);
         currencies[0] = keccak256("USD");
         
-        verifier = new PaymentVerifierMock(
-            address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
-            3600,
-            currencies
-        );
+        verifier = new PaymentVerifierMock();
         verifier.setShouldVerifyPayment(true);
+        verifier.setVerificationContext(address(orchestrator), address(escrow));
         
         paymentVerifierRegistry.addPaymentMethod(PAYMENT_METHOD, address(verifier), currencies);
         escrowRegistry.addEscrow(address(escrow));

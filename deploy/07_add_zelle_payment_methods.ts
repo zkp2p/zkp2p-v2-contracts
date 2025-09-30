@@ -51,15 +51,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot Zelle Citi
   savePaymentMethodSnapshot(network, 'zelle-citi', {
     paymentMethodHash: ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: ZELLE_CITI_PROVIDER_CONFIG.currencies,
-    timestampBuffer: ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer
+    currencies: ZELLE_CITI_PROVIDER_CONFIG.currencies
   });
 
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash,
-    ZELLE_CITI_PROVIDER_CONFIG.timestampBuffer
+    ZELLE_CITI_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Zelle Citi added to unified verifier...");
 

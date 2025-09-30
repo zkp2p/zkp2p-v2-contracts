@@ -28,7 +28,7 @@ import {
   OrchestratorMock__factory,
   ReentrantPostIntentHook__factory
 } from "../typechain/factories/contracts/mocks";
-import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks"
+import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks";
 import {
   ThresholdSigVerifierUtilsMock__factory
 } from "../typechain/factories/contracts/mocks/ThresholdSigVerifierUtilsMock__factory";
@@ -107,18 +107,8 @@ export default class DeployHelper {
     return await new NullifierRegistry__factory(this._deployerSigner).deploy();
   }
 
-  public async deployPaymentVerifierMock(
-    ramp: Address,
-    nullifierRegistry: Address,
-    timestampBuffer: BigNumber,
-    acceptedCurrencies: string[]
-  ): Promise<PaymentVerifierMock> {
-    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy(
-      ramp,
-      nullifierRegistry,
-      timestampBuffer,
-      acceptedCurrencies
-    );
+  public async deployPaymentVerifierMock(): Promise<PaymentVerifierMock> {
+    return await new PaymentVerifierMock__factory(this._deployerSigner).deploy();
   }
 
   public async deployPostIntentHookMock(
@@ -164,12 +154,10 @@ export default class DeployHelper {
   }
 
   public async deploySimpleAttestationVerifier(
-    witness: Address,
-    zktlsAttestor: Address
+    witness: Address
   ): Promise<SimpleAttestationVerifier> {
     return await new SimpleAttestationVerifier__factory(this._deployerSigner).deploy(
-      witness,
-      zktlsAttestor
+      witness
     );
   }
 

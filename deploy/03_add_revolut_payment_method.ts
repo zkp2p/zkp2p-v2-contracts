@@ -42,8 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Snapshot currencies and timestamp buffer
   savePaymentMethodSnapshot(network, 'revolut', {
     paymentMethodHash: REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
-    currencies: REVOLUT_PROVIDER_CONFIG.currencies,
-    timestampBuffer: REVOLUT_PROVIDER_CONFIG.timestampBuffer
+    currencies: REVOLUT_PROVIDER_CONFIG.currencies
   });
 
   // Add Revolut to unified verifier
@@ -53,8 +52,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addPaymentMethodToUnifiedVerifier(
     hre,
     unifiedVerifierContract,
-    REVOLUT_PROVIDER_CONFIG.paymentMethodHash,
-    REVOLUT_PROVIDER_CONFIG.timestampBuffer
+    REVOLUT_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Revolut added to unified verifier...");
 };

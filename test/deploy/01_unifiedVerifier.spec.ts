@@ -30,8 +30,7 @@ import {
 
 import {
   MULTI_SIG,
-  WITNESS_ADDRESS,
-  ZKTLS_ATTESTOR_ADDRESS,
+  WITNESS_ADDRESS
 } from "../../deployments/parameters";
 import { getDeployedContractAddress } from "../../deployments/helpers";
 
@@ -73,14 +72,11 @@ describe("UnifiedPaymentVerifier Deployment", () => {
     it("should set the correct parameters", async () => {
       const actualOwner = await simpleAttestationVerifier.owner();
       const actualWitnessAddress = await simpleAttestationVerifier.witness();
-      const actualZktlsAttestorAddress = await simpleAttestationVerifier.zktlsAttestor();
 
       const expectedWitnessAddress = WITNESS_ADDRESS[network];
-      const expectedZktlsAttestorAddress = ZKTLS_ATTESTOR_ADDRESS[network];
 
       expect(actualOwner).to.eq(multiSig);
       expect(actualWitnessAddress).to.eq(expectedWitnessAddress);
-      expect(actualZktlsAttestorAddress).to.eq(expectedZktlsAttestorAddress);
     });
   });
 

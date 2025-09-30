@@ -175,8 +175,7 @@ export async function addPaymentMethodToRegistry(
 export async function addPaymentMethodToUnifiedVerifier(
   hre: HardhatRuntimeEnvironment,
   unifiedVerifierContract: any,
-  paymentMethodHash: string,
-  timestampBuffer: any
+  paymentMethodHash: string
 ): Promise<void> {
   const currentOwner = await unifiedVerifierContract.owner();
   const paymentMethods = await unifiedVerifierContract.getPaymentMethods();
@@ -185,8 +184,7 @@ export async function addPaymentMethodToUnifiedVerifier(
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
       console.log(`Adding payment method ${paymentMethodHash} to unified verifier`);
       const data = unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
-        paymentMethodHash,
-        timestampBuffer
+        paymentMethodHash
       ]);
       await hre.deployments.rawTx({
         from: currentOwner,
@@ -197,8 +195,7 @@ export async function addPaymentMethodToUnifiedVerifier(
       console.log(
         `Contract owner is not in the list of accounts, must be manually added with the following calldata:
         ${unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
-          paymentMethodHash,
-          timestampBuffer
+          paymentMethodHash
         ])}
         contract address: ${unifiedVerifierContract.address}
         `
@@ -216,7 +213,6 @@ export function savePaymentMethodSnapshot(
   data: {
     paymentMethodHash: string;
     currencies: string[];
-    timestampBuffer?: any; // Can be BigNumber or number
   }
 ): void {
   const providersDir = path.join(__dirname, "outputs", "platforms");
@@ -224,23 +220,9 @@ export function savePaymentMethodSnapshot(
 
   const normalizeHex = (h: string) => (h.startsWith("0x") ? h.toLowerCase() : `0x${h.toLowerCase()}`);
 
-  // Convert BigNumber to number if needed
-  let timestampBuffer = 30; // default
-  if (data.timestampBuffer) {
-    // ethers v5 BigNumber shape
-    if (typeof data.timestampBuffer === 'object' && (data.timestampBuffer as any)._isBigNumber) {
-      timestampBuffer = parseInt((data.timestampBuffer as any).toString());
-    } else if (typeof data.timestampBuffer === 'number') {
-      timestampBuffer = data.timestampBuffer;
-    } else if (typeof data.timestampBuffer === 'string') {
-      timestampBuffer = parseInt(data.timestampBuffer);
-    }
-  }
-
   const snapshotData = {
     paymentMethodHash: normalizeHex(data.paymentMethodHash),
     currencies: data.currencies || [],
-    timestampBuffer,
     updatedAt: new Date().toISOString()
   };
 
@@ -262,7 +244,7 @@ export function savePaymentMethodSnapshot(
       if (fs.existsSync(mainFilePath)) {
         current = JSON.parse(fs.readFileSync(mainFilePath, "utf8"));
       }
-    } catch {}
+    } catch { }
 
     current.methods[methodKey] = snapshotData;
     fs.writeFileSync(mainFilePath, JSON.stringify(current, null, 2));
@@ -273,7 +255,7 @@ export function savePaymentMethodSnapshot(
       if (fs.existsSync(filePath)) {
         current = JSON.parse(fs.readFileSync(filePath, "utf8"));
       }
-    } catch {}
+    } catch { }
 
     current.methods[methodKey] = snapshotData;
     fs.writeFileSync(filePath, JSON.stringify(current, null, 2));

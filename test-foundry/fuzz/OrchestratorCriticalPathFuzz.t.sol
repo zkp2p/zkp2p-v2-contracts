@@ -126,21 +126,13 @@ contract OrchestratorCriticalPathFuzz is Test {
         currencies[0] = USD;
         currencies[1] = EUR;
         
-        venmoVerifier = new PaymentVerifierMock(
-            address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
-            3600,
-            currencies
-        );
+        venmoVerifier = new PaymentVerifierMock();
         venmoVerifier.setShouldVerifyPayment(true);
+        venmoVerifier.setVerificationContext(address(orchestrator), address(escrow));
         
-        paypalVerifier = new PaymentVerifierMock(
-            address(escrow),
-            INullifierRegistry(address(nullifierRegistry)),
-            3600,
-            currencies
-        );
+        paypalVerifier = new PaymentVerifierMock();
         paypalVerifier.setShouldVerifyPayment(true);
+        paypalVerifier.setVerificationContext(address(orchestrator), address(escrow));
         
         paymentVerifierRegistry.addPaymentMethod(VENMO, address(venmoVerifier), currencies);
         paymentVerifierRegistry.addPaymentMethod(PAYPAL, address(paypalVerifier), currencies);
@@ -526,15 +518,15 @@ contract OrchestratorCriticalPathFuzz is Test {
             releaseAmount,
             block.timestamp,
             keccak256(abi.encodePacked("venmo:", depositor)),
-            USD,  // fiatCurrency
+            USD,
             intentHash
         );
-        
+
         vm.prank(taker);
         orchestrator.fulfillIntent(IOrchestrator.FulfillIntentParams({
             paymentProof: paymentProof,
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: "",
             postIntentHookData: ""
         }));
         
@@ -798,7 +790,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         IOrchestrator.FulfillIntentParams memory fulfillParams = IOrchestrator.FulfillIntentParams({
             paymentProof: abi.encode(intentHash),
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: "",
             postIntentHookData: ""
         });
         
@@ -881,7 +873,7 @@ contract OrchestratorCriticalPathFuzz is Test {
                 intentHash  // intentHash
             ),
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: "",
             postIntentHookData: ""
         });
         
@@ -989,7 +981,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         IOrchestrator.FulfillIntentParams memory fulfillParams = IOrchestrator.FulfillIntentParams({
             paymentProof: paymentProof,
             intentHash: intentHash,
-            verificationData: abi.encode(USD),
+            verificationData: "",
             postIntentHookData: hookData
         });
         
@@ -1092,6 +1084,7 @@ contract OrchestratorCriticalPathFuzz is Test {
     }
     
     // ============ Helper Functions ============
+    
     
     function _calculateIntentHash(uint256 counter) internal view returns (bytes32) {
         // Intent hash is calculated using orchestrator address and counter, then modulo CIRCOM_PRIME_FIELD

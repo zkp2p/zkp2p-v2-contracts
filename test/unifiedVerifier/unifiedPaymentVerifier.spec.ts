@@ -3,321 +3,619 @@ import "module-alias/register";
 import { ethers } from "hardhat";
 import { BigNumber, BytesLike } from "ethers";
 
-import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { UnifiedPaymentVerifier, SimpleAttestationVerifier, NullifierRegistry, USDCMock } from "@utils/contracts";
+import { getAccounts, getWaffleExpect } from "@utils/test/index";
 import DeployHelper from "@utils/deploys";
-import { Currency } from "@utils/protocolUtils";
-import { Blockchain, usdc, ether } from "@utils/common";
-
 import {
-  getWaffleExpect,
-  getAccounts
-} from "@utils/test/index";
-import { createAttestation, encodePaymentDetails, signPaymentDetails } from "@utils/unifiedVerifierUtils";
-import { PaymentDetails } from "@utils/unifiedVerifierUtils";
+  Escrow,
+  EscrowRegistry,
+  IOrchestrator,
+  NullifierRegistry,
+  Orchestrator,
+  PaymentVerifierRegistry,
+  PostIntentHookRegistry,
+  RelayerRegistry,
+  SimpleAttestationVerifier,
+  UnifiedPaymentVerifier,
+  USDCMock,
+} from "@utils/contracts";
+import {
+  buildUnifiedPaymentProof,
+  BuiltUnifiedPaymentProof,
+  BuildPaymentProofOverrides,
+  encodeUnifiedPaymentPayload,
+} from "@utils/unifiedVerifierUtils";
+import { Currency, calculateIntentHash } from "@utils/protocolUtils";
+import { ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
+import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
+
+const ZERO_BYTES = "0x";
+const MAX_TIMESTAMP_BUFFER_MS = 48 * 60 * 60 * 1000;
 
 
 describe("UnifiedPaymentVerifier", () => {
   let owner: Account;
   let attacker: Account;
-  let orchestrator: Account;
-  let witness1: Account;
-
-  let nullifierRegistry: NullifierRegistry;
-  let attestationVerifier: SimpleAttestationVerifier;
-  let zktlsAttestor: Account;
-  let verifier: UnifiedPaymentVerifier;
-  let usdcToken: USDCMock;
+  let offRamper: Account;
+  let intentOwner: Account;
+  let receiver: Account;
+  let gatingService: Account;
+  let witness: Account;
+  let feeRecipient: Account;
 
   let deployer: DeployHelper;
-  let blockchain: Blockchain;
+
+  let usdcToken: USDCMock;
+  let escrowRegistry: EscrowRegistry;
+  let paymentVerifierRegistry: PaymentVerifierRegistry;
+  let postIntentHookRegistry: PostIntentHookRegistry;
+  let relayerRegistry: RelayerRegistry;
+  let nullifierRegistry: NullifierRegistry;
+  let escrow: Escrow;
+  let orchestrator: Orchestrator;
+  let attestationVerifier: SimpleAttestationVerifier;
+  let verifier: UnifiedPaymentVerifier;
 
   let venmoPaymentMethodHash: BytesLike;
-  let venmoProviderHash: BytesLike;
+  let defaultPayeeId: BytesLike;
+  let defaultPaymentId: BytesLike;
+  let defaultCurrency: BytesLike;
+  let defaultTimestamp: BigNumber;
+
+  let chainId: number;
+  let depositId: BigNumber;
+  let intentHash: BytesLike;
+  let intent: IOrchestrator.IntentStructOutput;
+
+  let builtProof: BuiltUnifiedPaymentProof;
 
   beforeEach(async () => {
     [
       owner,
       attacker,
-      orchestrator,
-      witness1,
-      zktlsAttestor
+      offRamper,
+      intentOwner,
+      receiver,
+      gatingService,
+      witness,
+      feeRecipient,
     ] = await getAccounts();
 
-    blockchain = new Blockchain(ethers.provider);
-
     deployer = new DeployHelper(owner.wallet);
-    usdcToken = await deployer.deployUSDCMock(usdc(1000000000), "USDC", "USDC");
 
-    venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
-    venmoProviderHash = "0xc46df13daeb32109c4623d5f1554823a92b84a4e837287c718605911872729a8";
+    usdcToken = await deployer.deployUSDCMock(ethers.utils.parseUnits("1000000", 6), "USDC", "USDC");
 
+    escrowRegistry = await deployer.deployEscrowRegistry();
+    paymentVerifierRegistry = await deployer.deployPaymentVerifierRegistry();
+    postIntentHookRegistry = await deployer.deployPostIntentHookRegistry();
+    relayerRegistry = await deployer.deployRelayerRegistry();
     nullifierRegistry = await deployer.deployNullifierRegistry();
-    attestationVerifier = await deployer.deploySimpleAttestationVerifier(
-      witness1.address,
-      zktlsAttestor.address
+
+    chainId = (await ethers.provider.getNetwork()).chainId;
+
+    escrow = await deployer.deployEscrow(
+      owner.address,
+      BigNumber.from(chainId),
+      paymentVerifierRegistry.address,
+      ZERO,
+      feeRecipient.address,
+      ZERO,
+      BigNumber.from(10),
+      ONE_DAY_IN_SECONDS,
     );
+
+    await escrowRegistry.addEscrow(escrow.address);
+
+    orchestrator = await deployer.deployOrchestrator(
+      owner.address,
+      BigNumber.from(chainId),
+      escrowRegistry.address,
+      paymentVerifierRegistry.address,
+      postIntentHookRegistry.address,
+      relayerRegistry.address,
+      ZERO,
+      feeRecipient.address,
+    );
+
+    await escrow.connect(owner.wallet).setOrchestrator(orchestrator.address);
+
+    attestationVerifier = await deployer.deploySimpleAttestationVerifier(witness.address);
+
     verifier = await deployer.deployUnifiedPaymentVerifier(
       orchestrator.address,
       nullifierRegistry.address,
-      attestationVerifier.address
+      attestationVerifier.address,
     );
 
     await nullifierRegistry.connect(owner.wallet).addWritePermission(verifier.address);
 
-    await verifier.connect(owner.wallet).addPaymentMethod(
+    venmoPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
+    await verifier.connect(owner.wallet).addPaymentMethod(venmoPaymentMethodHash);
+
+    await paymentVerifierRegistry.addPaymentMethod(
       venmoPaymentMethodHash,
-      BigNumber.from(30000) // 30 second timestamp buffer (in milliseconds)
+      verifier.address,
+      [Currency.USD],
     );
-  });
 
-  describe("#constructor", async () => {
-    it("should set the correct state", async () => {
-      const orchestratorAddress = await verifier.orchestrator();
-      const nullifierRegistryAddress = await verifier.nullifierRegistry();
-      const attestationVerifierAddress = await verifier.attestationVerifier();
+    const depositAmount = ethers.utils.parseUnits("100", 6);
+    await usdcToken.transfer(offRamper.address, depositAmount);
+    await usdcToken.connect(offRamper.wallet).approve(escrow.address, depositAmount);
 
-      expect(orchestratorAddress).to.eq(orchestrator.address);
-      expect(nullifierRegistryAddress).to.eq(nullifierRegistry.address);
-      expect(attestationVerifierAddress).to.eq(attestationVerifier.address);
+    defaultPayeeId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payee-123"));
+    const depositMinConversionRate = ethers.utils.parseEther("1");
+
+    await escrow.connect(offRamper.wallet).createDeposit({
+      token: usdcToken.address,
+      amount: depositAmount,
+      intentAmountRange: { min: depositAmount.div(2), max: depositAmount },
+      paymentMethods: [venmoPaymentMethodHash],
+      paymentMethodData: [{
+        intentGatingService: gatingService.address,
+        payeeDetails: defaultPayeeId,
+        data: ZERO_BYTES,
+      }],
+      currencies: [[{ code: Currency.USD, minConversionRate: depositMinConversionRate }]],
+      delegate: ethers.constants.AddressZero,
+      intentGuardian: ethers.constants.AddressZero,
+      referrer: ethers.constants.AddressZero,
+      referrerFee: ZERO,
     });
+
+    depositId = BigNumber.from(0);
+
+    const currentCounter = await orchestrator.intentCounter();
+    const conversionRate = ethers.utils.parseEther("1");
+    const intentAmount = depositAmount.div(2);
+
+    const signatureExpiration = BigNumber.from(
+      (await ethers.provider.getBlock("latest")).timestamp,
+    ).add(ONE_DAY_IN_SECONDS);
+    const messageHash = ethers.utils.solidityKeccak256(
+      [
+        "address",
+        "address",
+        "uint256",
+        "uint256",
+        "address",
+        "bytes32",
+        "bytes32",
+        "uint256",
+        "uint256",
+        "uint256",
+      ],
+      [
+        orchestrator.address,
+        escrow.address,
+        depositId,
+        intentAmount,
+        receiver.address,
+        venmoPaymentMethodHash,
+        Currency.USD,
+        conversionRate,
+        signatureExpiration,
+        chainId,
+      ],
+    );
+    const gatingServiceSignature = await gatingService.wallet.signMessage(ethers.utils.arrayify(messageHash));
+
+    await orchestrator.connect(intentOwner.wallet).signalIntent({
+      escrow: escrow.address,
+      depositId,
+      amount: intentAmount,
+      to: receiver.address,
+      paymentMethod: venmoPaymentMethodHash,
+      fiatCurrency: Currency.USD,
+      conversionRate,
+      referrer: ethers.constants.AddressZero,
+      referrerFee: ZERO,
+      gatingServiceSignature,
+      signatureExpiration,
+      postIntentHook: ethers.constants.AddressZero,
+      data: ZERO_BYTES,
+    });
+
+    intentHash = calculateIntentHash(orchestrator.address, currentCounter);
+    intent = await orchestrator.getIntent(intentHash);
+
+    defaultTimestamp = BigNumber.from(intent.timestamp).mul(1000);
+    defaultCurrency = Currency.USD;
+    defaultPaymentId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payment-abc"));
+
+    builtProof = await buildProof();
   });
 
-  describe("#verifyPayment", async () => {
-    let subjectCaller: Account;
+  const buildProof = async (overrides: BuildPaymentProofOverrides = {}) => {
+    return buildUnifiedPaymentProof({
+      verifier: verifier.address,
+      witness,
+      chainId,
+      paymentPaymentMethod: overrides.paymentPaymentMethod ?? venmoPaymentMethodHash,
+      paymentPayeeId: overrides.paymentPayeeId ?? defaultPayeeId,
+      paymentAmount: overrides.paymentAmount ?? intent.amount,
+      paymentCurrency: overrides.paymentCurrency ?? defaultCurrency,
+      paymentTimestamp: overrides.paymentTimestamp ?? defaultTimestamp,
+      paymentPaymentId: overrides.paymentPaymentId ?? defaultPaymentId,
+      attestationIntentHash: overrides.attestationIntentHash ?? intentHash,
+      attestationReleaseAmount: overrides.attestationReleaseAmount ?? intent.amount,
+      attestationMetadata: overrides.attestationMetadata ?? ZERO_BYTES,
+      attestationSigner: overrides.attestationSigner,
+      attestationData: overrides.attestationData,
+      snapshotIntentHash: overrides.snapshotIntentHash ?? intentHash,
+      snapshotIntentAmount: overrides.snapshotIntentAmount ?? intent.amount,
+      snapshotIntentPaymentMethod: overrides.snapshotIntentPaymentMethod ?? venmoPaymentMethodHash,
+      snapshotIntentFiatCurrency: overrides.snapshotIntentFiatCurrency ?? defaultCurrency,
+      snapshotIntentPayeeDetails: overrides.snapshotIntentPayeeDetails ?? defaultPayeeId,
+      snapshotIntentConversionRate: overrides.snapshotIntentConversionRate ?? intent.conversionRate,
+      snapshotIntentSignalTimestamp: overrides.snapshotIntentSignalTimestamp ?? intent.timestamp,
+      snapshotIntentTimestampBuffer: overrides.snapshotIntentTimestampBuffer ?? BigNumber.from(0),
+      intentDepositId: overrides.intentDepositId ?? depositId,
+      intentEscrow: overrides.intentEscrow ?? escrow.address,
+      intentTo: overrides.intentTo ?? receiver.address,
+    });
+  };
+
+  const buildVerificationDataForIntent = async (hash: BytesLike) => {
+    const currentIntent = await orchestrator.getIntent(hash);
+    const depositMethod = await escrow.getDepositPaymentMethodData(
+      currentIntent.depositId,
+      currentIntent.paymentMethod,
+    );
+
+    return ethers.utils.defaultAbiCoder.encode(
+      ["uint256", "uint256", "uint256", "bytes32"],
+      [
+        currentIntent.amount,
+        currentIntent.conversionRate,
+        currentIntent.timestamp,
+        depositMethod.payeeDetails,
+      ],
+    );
+  };
+
+  async function verifierCallStatic(proof: BytesLike) {
+    const verificationData = await buildVerificationDataForIntent(intentHash);
+    const encodedCall = verifier.interface.encodeFunctionData("verifyPayment", [
+      {
+        intentHash,
+        paymentProof: proof,
+        data: verificationData,
+      },
+    ]);
+
+    const raw = await ethers.provider.call({
+      to: verifier.address,
+      data: encodedCall,
+      from: orchestrator.address,
+    });
+
+    const [result] = verifier.interface.decodeFunctionResult("verifyPayment", raw);
+    return result as {
+      success: boolean;
+      intentHash: string;
+      releaseAmount: BigNumber;
+    };
+  }
+
+  describe("#verifyPayment via Orchestrator", () => {
     let subjectProof: BytesLike;
-    let subjectDepositToken: Address;
-    let subjectIntentAmount: BigNumber;
-    let subjectIntentTimestamp: BigNumber;
-    let subjectConversionRate: BigNumber;
-    let subjectPayeeDetails: string;
-    let subjectFiatCurrency: BytesLike;
-    let subjectDepositData: BytesLike;
-    let subjectData: BytesLike;
 
-    let paymentDetails: any;
-
-    beforeEach(async () => {
-      // Set up the attestation verifier data (zkTLS attestor address)
-      // This will be passed to the attestation verifier AND its hash will be stored in dataHash
-      const attestationData = ethers.utils.defaultAbiCoder.encode(
-        ['address'],
-        [zktlsAttestor.address]
-      );
-      const dataHash = ethers.utils.keccak256(attestationData);
-
-      const testPayeeDetails = "test_payee_id";
-      const hashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(testPayeeDetails));
-      const paymentId = "4386986668001199384";
-      const hashedPaymentId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(paymentId));
-
-      paymentDetails = {
-        paymentMethod: venmoPaymentMethodHash,
-        providerHash: venmoProviderHash,
-        intentHash: "0x18926574de6ca4682ebe5c9b6425295e92962d505da5737185785206584cb551",
-        recipientId: hashedPayeeDetails,
-        amount: BigNumber.from(49980), // $499.80 in cents
-        timestamp: BigNumber.from(1753762763000), // milliseconds
-        paymentId: hashedPaymentId,
-        currency: Currency.USD,
-        dataHash: dataHash
-      } as PaymentDetails;
-
-      subjectProof = await createAttestation(
-        witness1,
-        paymentDetails,
-        verifier.address
-      );
-
-      subjectCaller = orchestrator;
-      subjectDepositToken = usdcToken.address;
-      subjectIntentAmount = usdc(500); // Intent for $500
-      subjectIntentTimestamp = paymentDetails.timestamp.sub(100000); // Intent created 100 seconds before payment (in milliseconds)
-      subjectConversionRate = ether(1); // 1:1 USD to USDC
-      subjectPayeeDetails = hashedPayeeDetails;
-      subjectFiatCurrency = Currency.USD;
-      subjectDepositData = '0x';
-      subjectData = attestationData;
+    beforeEach(() => {
+      subjectProof = builtProof.paymentProof;
     });
 
-    async function subject(): Promise<any> {
-      return await verifier.connect(subjectCaller.wallet).verifyPayment({
+    async function subject() {
+      const verificationData = await buildVerificationDataForIntent(intentHash);
+      return orchestrator.connect(attacker.wallet).fulfillIntent({
         paymentProof: subjectProof,
-        depositToken: subjectDepositToken,
-        intentAmount: subjectIntentAmount,
-        intentTimestamp: subjectIntentTimestamp,
-        payeeDetails: subjectPayeeDetails,
-        fiatCurrency: subjectFiatCurrency,
-        conversionRate: subjectConversionRate,
-        depositData: subjectDepositData,
-        data: subjectData
+        intentHash,
+        verificationData,
+        postIntentHookData: ZERO_BYTES,
       });
     }
 
-    async function subjectCallStatic(): Promise<any> {
-      return await verifier.connect(subjectCaller.wallet).callStatic.verifyPayment({
+    async function subjectCallStatic() {
+      const verificationData = await buildVerificationDataForIntent(intentHash);
+      return orchestrator.connect(attacker.wallet).callStatic.fulfillIntent({
         paymentProof: subjectProof,
-        depositToken: subjectDepositToken,
-        intentAmount: subjectIntentAmount,
-        intentTimestamp: subjectIntentTimestamp,
-        payeeDetails: subjectPayeeDetails,
-        fiatCurrency: subjectFiatCurrency,
-        conversionRate: subjectConversionRate,
-        depositData: subjectDepositData,
-        data: subjectData
+        intentHash,
+        verificationData,
+        postIntentHookData: ZERO_BYTES,
       });
     }
 
-    it("should verify the proof successfully", async () => {
-      const result = await subjectCallStatic();
+    it("verifies witness signature successfully", async () => {
+      const result = await verifierCallStatic(subjectProof);
 
       expect(result.success).to.be.true;
-      expect(result.intentHash).to.eq(paymentDetails.intentHash);
-      expect(result.releaseAmount).to.eq(paymentDetails.amount); // With 1:1 conversion
+      expect(result.intentHash).to.eq(intentHash);
+      expect(result.releaseAmount).to.eq(builtProof.attestation.releaseAmount);
+    });
+
+    it("emits PaymentVerified event", async () => {
+      await expect(subject())
+        .to.emit(verifier, "PaymentVerified")
+        .withArgs(
+          intentHash,
+          builtProof.paymentDetails.method,
+          builtProof.paymentDetails.currency,
+          builtProof.paymentDetails.amount,
+          builtProof.paymentDetails.timestamp,
+          builtProof.paymentDetails.paymentId,
+          builtProof.paymentDetails.payeeId,
+        );
     });
 
     it("should nullify the payment with correct collision-resistant nullifier", async () => {
       await subject();
 
-      // Verify the nullifier is calculated as keccak256(abi.encodePacked(paymentMethod, paymentId))
       const expectedNullifier = ethers.utils.keccak256(
         ethers.utils.solidityPack(
           ["bytes32", "bytes32"],
-          [paymentDetails.paymentMethod, paymentDetails.paymentId]
-        )
+          [builtProof.paymentDetails.method, builtProof.paymentDetails.paymentId],
+        ),
       );
 
       expect(await nullifierRegistry.isNullified(expectedNullifier)).to.be.true;
     });
 
-    describe("when payment amount is less than intent amount", async () => {
-      beforeEach(async () => {
-        subjectIntentAmount = usdc(600); // Intent for $600 but payment is only $499.80
+    describe("snapshot validation failures", () => {
+      const setSnapshotOverride = async (overrides: BuildPaymentProofOverrides) => {
+        builtProof = await buildProof(overrides);
+        subjectProof = builtProof.paymentProof;
+      };
+
+      describe("when snapshot hash mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentHash: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot hash mismatch");
+        });
       });
 
-      it("should succeed with partial release", async () => {
-        const result = await subjectCallStatic();
+      describe("when snapshot amount mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentAmount: builtProof.intentSnapshot.amount.add(1) });
+        });
 
-        expect(result.success).to.be.true;
-        expect(result.releaseAmount).to.eq(paymentDetails.amount); // 1:1 conversion
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot amount mismatch");
+        });
+      });
+
+      describe("when snapshot method mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentPaymentMethod: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot method mismatch");
+        });
+      });
+
+      describe("when snapshot currency mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentFiatCurrency: ethers.constants.HashZero });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot currency mismatch");
+        });
+      });
+
+      describe("when snapshot rate mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentConversionRate: builtProof.intentSnapshot.conversionRate.add(1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot rate mismatch");
+        });
+      });
+
+      describe("when snapshot timestamp mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentSignalTimestamp: builtProof.intentSnapshot.signalTimestamp.add(1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot timestamp mismatch");
+        });
+      });
+
+      describe("when snapshot timestamp buffer exceeds maximum", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentTimestampBuffer: BigNumber.from(MAX_TIMESTAMP_BUFFER_MS + 1) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot timestamp buffer exceeds maximum");
+        });
+      });
+
+      describe("when snapshot payee mismatches", () => {
+        beforeEach(async () => {
+          await setSnapshotOverride({ snapshotIntentPayeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tampered")) });
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWith("UPV: Snapshot payee mismatch");
+        });
       });
     });
 
-    describe("when payment method does not exist", async () => {
+    describe("when payment method is not registered", () => {
       beforeEach(async () => {
-        const invalidPaymentMethodHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid"));
-        const paymentDetailsWithInvalidMethod = {
-          ...paymentDetails,
-          paymentMethod: invalidPaymentMethodHash,
-        };
+        builtProof = await buildProof({ paymentPaymentMethod: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid")) });
+        subjectProof = builtProof.paymentProof;
+      });
 
-        subjectProof = await createAttestation(
-          witness1,
-          paymentDetailsWithInvalidMethod,
-          verifier.address
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("UPV: Invalid payment method");
+      });
+    });
+
+    describe("when witness signature is not from the configured witness", () => {
+      beforeEach(async () => {
+        builtProof = await buildProof({ attestationSigner: attacker });
+        subjectProof = builtProof.paymentProof;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith(
+          "ThresholdSigVerifierUtils: Not enough valid witness signatures",
         );
       });
+    });
+
+    describe("when attestation verifier returns false", () => {
+      beforeEach(async () => {
+        const failingFactory = await ethers.getContractFactory("FailingAttestationVerifier", owner.wallet);
+        const failingVerifier = await failingFactory.deploy();
+        await verifier.connect(owner.wallet).setAttestationVerifier(failingVerifier.address);
+      });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Payment method does not exist");
+        await expect(subject()).to.be.revertedWith("UPV: Invalid attestation");
       });
     });
 
-    // provider hash check removed from contracts
-
-    describe("when witness signature is invalid", async () => {
+    describe("when release amount exceeds intent amount", () => {
       beforeEach(async () => {
-        const paymentDetailsWithInvalidSignature = {
-          ...paymentDetails,
-          signatures: ["0x" + "00".repeat(65)] // Invalid signature
+        builtProof = await buildProof({ attestationReleaseAmount: builtProof.attestation.releaseAmount.mul(2) });
+        subjectProof = builtProof.paymentProof;
+      });
+
+      it("should cap release amount to intent amount", async () => {
+        const result = await verifierCallStatic(subjectProof);
+        expect(result.releaseAmount).to.eq(builtProof.intentSnapshot.amount);
+      });
+    });
+
+    describe("when payment has already been verified", () => {
+      let secondIntentHash: BytesLike;
+      let secondIntent: IOrchestrator.IntentStructOutput;
+      let secondProof: BytesLike;
+
+      beforeEach(async () => {
+        // Fulfil the first intent
+        await subject();
+
+        // Signal a new intent that reuses the same deposit context
+        const secondIntentAmount = intent.amount;
+        const signatureExpiration = BigNumber.from(
+          (await ethers.provider.getBlock("latest")).timestamp,
+        ).add(ONE_DAY_IN_SECONDS);
+        const secondSignature = await generateGatingServiceSignature(
+          gatingService,
+          orchestrator.address,
+          escrow.address,
+          depositId,
+          secondIntentAmount,
+          receiver.address,
+          venmoPaymentMethodHash,
+          defaultCurrency.toString(),
+          intent.conversionRate,
+          chainId.toString(),
+          signatureExpiration,
+        )
+
+        const counterBefore = await orchestrator.intentCounter();
+        await orchestrator.connect(intentOwner.wallet).signalIntent({
+          escrow: escrow.address,
+          depositId,
+          amount: secondIntentAmount,
+          to: receiver.address,
+          paymentMethod: venmoPaymentMethodHash,
+          fiatCurrency: defaultCurrency,
+          conversionRate: intent.conversionRate,
+          referrer: ethers.constants.AddressZero,
+          referrerFee: ZERO,
+          gatingServiceSignature: secondSignature,
+          signatureExpiration,
+          postIntentHook: ethers.constants.AddressZero,
+          data: ZERO_BYTES,
+        });
+
+        secondIntentHash = calculateIntentHash(orchestrator.address, counterBefore);
+        secondIntent = await orchestrator.getIntent(secondIntentHash);
+
+        const secondTimestampMs = BigNumber.from(secondIntent.timestamp).mul(1000);
+        const proof = await buildUnifiedPaymentProof({
+          verifier: verifier.address,
+          witness,
+          chainId,
+          paymentPaymentMethod: venmoPaymentMethodHash,
+          paymentPayeeId: defaultPayeeId,
+          paymentAmount: secondIntent.amount,
+          paymentCurrency: defaultCurrency,
+          paymentTimestamp: secondTimestampMs,
+          paymentPaymentId: builtProof.paymentDetails.paymentId,
+          attestationIntentHash: secondIntentHash,
+          attestationReleaseAmount: secondIntent.amount,
+          snapshotIntentHash: secondIntentHash,
+          snapshotIntentAmount: secondIntent.amount,
+          snapshotIntentPaymentMethod: secondIntent.paymentMethod,
+          snapshotIntentFiatCurrency: secondIntent.fiatCurrency,
+          snapshotIntentPayeeDetails: defaultPayeeId,
+          snapshotIntentConversionRate: secondIntent.conversionRate,
+          snapshotIntentSignalTimestamp: secondIntent.timestamp,
+          snapshotIntentTimestampBuffer: BigNumber.from(0),
+          intentDepositId: depositId,
+          intentEscrow: escrow.address,
+          intentTo: receiver.address,
+        });
+
+        secondProof = proof.paymentProof;
+      });
+
+      it("should revert when reusing the payment proof", async () => {
+        const verificationData = await buildVerificationDataForIntent(secondIntentHash);
+        await expect(
+          orchestrator.connect(attacker.wallet).fulfillIntent({
+            paymentProof: secondProof,
+            intentHash: secondIntentHash,
+            verificationData,
+            postIntentHookData: ZERO_BYTES,
+          }),
+        ).to.be.revertedWith("Nullifier has already been used");
+      });
+    });
+
+    describe("when caller is not orchestrator", () => {
+      it("should revert", async () => {
+        await expect(
+          verifier.connect(attacker.wallet).verifyPayment({
+            intentHash,
+            paymentProof: subjectProof,
+            data: ZERO_BYTES,
+          }),
+        ).to.be.revertedWith("Only orchestrator can call");
+      });
+    });
+
+    describe("when attestation data hash does not match provided data", () => {
+      beforeEach(async () => {
+        const tamperedDetails = {
+          ...builtProof.paymentDetails,
+          amount: builtProof.paymentDetails.amount.add(1),
         };
+        const tamperedData = encodeUnifiedPaymentPayload(tamperedDetails, builtProof.intentSnapshot);
 
-        subjectProof = encodePaymentDetails(paymentDetailsWithInvalidSignature);
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("ThresholdSigVerifierUtils: Not enough valid witness signatures");
-      });
-    });
-
-    describe("when payee details don't match", async () => {
-      beforeEach(async () => {
-        const differentPayeeDetails = "different_payee_id";
-        const differentHashedPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(differentPayeeDetails));
-
-        subjectPayeeDetails = differentHashedPayeeDetails;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Payee mismatch");
-      });
-    });
-
-    describe("when currency doesn't match fiat currency", async () => {
-      beforeEach(async () => {
-        subjectFiatCurrency = Currency.EUR; // Different from USD in payment details
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Currency mismatch");
-      });
-    });
-
-    describe("when payment was made before intent", async () => {
-      beforeEach(async () => {
-        // Intent timestamp is after payment timestamp + buffer
-        // Payment timestamp is 1753762763000 ms
-        // Timestamp buffer is 30000 ms (30 seconds)
-        // Intent timestamp needs to be after payment + buffer
-        subjectIntentTimestamp = BigNumber.from(paymentDetails.timestamp.toNumber() + 31000); // Intent created 31 seconds after payment
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Payment before intent");
-      });
-    });
-
-    describe("when release amount exceeds intent amount", async () => {
-      beforeEach(async () => {
-        // Payment is 49980 cents, so set intent to something smaller to trigger the error
-        subjectIntentAmount = BigNumber.from(40000); // Intent for 40000 units, but payment releases 49980
-      });
-
-      it("should revert", async () => {
-        const result = await subjectCallStatic();
-
-        expect(result.releaseAmount).to.eq(40000); // With 1:1 conversion
-      });
-    });
-
-    describe("when payment has already been verified", async () => {
-      beforeEach(async () => {
-        await subject(); // First verification
-      });
-
-      it("should revert on second verification", async () => {
-        await expect(subject()).to.be.revertedWith("Nullifier has already been used");
-      });
-    });
-
-    describe("when caller is not orchestrator", async () => {
-      beforeEach(async () => {
-        subjectCaller = owner;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Only orchestrator can call");
-      });
-    });
-
-    describe("when dataHash doesn't match provided data", async () => {
-      beforeEach(async () => {
-        subjectData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [attacker.address] // Different address than what was hashed
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,uint256,bytes32,bytes[],bytes,bytes)"],
+          [[
+            builtProof.attestation.intentHash,
+            builtProof.attestation.releaseAmount,
+            builtProof.attestation.dataHash,
+            builtProof.attestation.signatures,
+            tamperedData,
+            builtProof.attestation.metadata,
+          ]],
         );
       });
 
@@ -326,59 +624,25 @@ describe("UnifiedPaymentVerifier", () => {
       });
     });
 
-    describe("when attestation verifier returns false", async () => {
+    describe("when the signature digest is tampered", () => {
       beforeEach(async () => {
-        // Use a different zkTLS attestor than what's registered
-        const wrongAttestationData = ethers.utils.defaultAbiCoder.encode(
-          ['address'],
-          [attacker.address] // Not the registered zkTLS attestor
-        );
-        const dataHash = ethers.utils.keccak256(wrongAttestationData);
-
-        const paymentDetailsWithInvalidDataHash = {
-          ...paymentDetails,
-          dataHash: dataHash
-        };
-
-        subjectData = wrongAttestationData;
-        subjectProof = await createAttestation(
-          witness1,
-          paymentDetailsWithInvalidDataHash,
-          verifier.address
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["tuple(bytes32,uint256,bytes32,bytes[],bytes,bytes)"],
+          [[
+            builtProof.attestation.intentHash,
+            builtProof.attestation.releaseAmount.add(1),
+            builtProof.attestation.dataHash,
+            builtProof.attestation.signatures,
+            builtProof.attestation.data,
+            builtProof.attestation.metadata,
+          ]],
         );
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("UPV: Invalid witness signatures");
-      });
-    });
-
-    describe("integration with different conversion rates", async () => {
-      describe("when conversion rate makes release amount smaller", async () => {
-        beforeEach(async () => {
-          subjectConversionRate = ether(2); // 1 USD = 2 USDC, so release amount will be halved
-        });
-
-        it("should calculate correct release amount", async () => {
-          const result = await subjectCallStatic();
-          const expectedReleaseAmount = BigNumber.from(paymentDetails.amount).mul(ether(1)).div(ether(2));
-
-          expect(result.releaseAmount).to.eq(expectedReleaseAmount);
-        });
-      });
-
-      describe("when conversion rate makes release amount larger", async () => {
-        beforeEach(async () => {
-          subjectConversionRate = ether(0.5); // 1 USD = 0.5 USDC, so release amount will be doubled
-          subjectIntentAmount = usdc(1000); // Increase intent to accommodate larger release
-        });
-
-        it("should calculate correct release amount", async () => {
-          const result = await subjectCallStatic();
-          const expectedReleaseAmount = BigNumber.from(paymentDetails.amount).mul(ether(1)).div(ether(0.5));
-
-          expect(result.releaseAmount).to.eq(expectedReleaseAmount);
-        });
+        await expect(subject()).to.be.revertedWith(
+          "ThresholdSigVerifierUtils: Not enough valid witness signatures",
+        );
       });
     });
   });
