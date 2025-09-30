@@ -41,7 +41,7 @@ async function sendDeploymentTransaction(
   const result = await hre.deployments.rawTx(tx);
   const txHash = typeof result === "string"
     ? result
-    : result?.transactionHash ?? result?.txHash ?? result?.hash;
+    : (result as any)?.transactionHash ?? (result as any)?.hash ?? (result as any)?.txHash;
   if (!txHash) {
     throw new Error("Unable to determine transaction hash for deployment transaction");
   }
