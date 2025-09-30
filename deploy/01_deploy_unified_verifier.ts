@@ -34,6 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("SimpleAttestationVerifier deployed at", simpleAttestationVerifier.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy UnifiedPaymentVerifier
   const unifiedPaymentVerifier = await deploy("UnifiedPaymentVerifier", {
@@ -45,6 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("UnifiedPaymentVerifier deployed at", unifiedPaymentVerifier.address);
+  await waitForDeploymentDelay(hre);
 
   // Get contract instances
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistryAddress);
