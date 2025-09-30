@@ -32,7 +32,7 @@ import { generateGatingServiceSignature } from "@utils/test/helpers";
 const expect = getWaffleExpect();
 
 const ZERO_BYTES = "0x";
-const MAX_TIMESTAMP_BUFFER_MS = 24 * 60 * 60 * 1000;
+const MAX_TIMESTAMP_BUFFER_MS = 48 * 60 * 60 * 1000;
 
 
 describe("UnifiedPaymentVerifier", () => {

@@ -26,7 +26,7 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
     /* ============ Constants ============ */
     
     // Max timestamp buffer
-    uint256 private constant MAX_TIMESTAMP_BUFFER = 24 * 60 * 60 * 1000; // 24 hours
+    uint256 private constant MAX_TIMESTAMP_BUFFER = 48 * 60 * 60 * 1000; // 48 hours
 
     // EIP-712 Domain Separator
     bytes32 private constant DOMAIN_TYPEHASH = keccak256(
