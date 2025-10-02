@@ -3,7 +3,7 @@ export default {
   "chainId": "84532",
   "contracts": {
     "Escrow": {
-      "address": "0x2CE748dd6fCB8bcCD0837E1bb42dC6DE91213203",
+      "address": "0x6a5e11c3D87e22b828d02ee65a4e8f322BF6B97E",
       "abi": [
         {
           "inputs": [
@@ -469,7 +469,7 @@ export default {
             {
               "indexed": false,
               "internalType": "uint256",
-              "name": "conversionRate",
+              "name": "minConversionRate",
               "type": "uint256"
             }
           ],
@@ -564,6 +564,12 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "netAdditionalAmount",
               "type": "uint256"
             }
           ],
@@ -707,6 +713,12 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "netDepositAmount",
               "type": "uint256"
             },
             {
@@ -2228,7 +2240,7 @@ export default {
       ]
     },
     "EscrowRegistry": {
-      "address": "0x7CB207d5A97Fc6663786BAaC39E0DB3763b4Bc21",
+      "address": "0x29d5116784144C30bD09D9537B7b5AB96cD6CdaA",
       "abi": [
         {
           "inputs": [],
@@ -2445,7 +2457,7 @@ export default {
       ]
     },
     "NullifierRegistry": {
-      "address": "0xcb217d660D44EFFD050e6BC0614afB55eB287134",
+      "address": "0xE0980FFdC868B69484C78A4B213E2C1Fa5AE70Cb",
       "abi": [
         {
           "inputs": [],
@@ -2661,7 +2673,7 @@ export default {
       ]
     },
     "Orchestrator": {
-      "address": "0x52603a0980AfCC84722db18369768E2e1c906AB8",
+      "address": "0x7D563c65456deF11c1Fdb9510eB745D5a780F5Fd",
       "abi": [
         {
           "inputs": [
@@ -3785,7 +3797,7 @@ export default {
       ]
     },
     "PaymentVerifierRegistry": {
-      "address": "0xFC9FF90C16e73143e7AF9DB7c4BA96F2367ebE26",
+      "address": "0x251b544f0fBFF4D55aCb02dF17F6A9bB19861062",
       "abi": [
         {
           "inputs": [],
@@ -4120,7 +4132,7 @@ export default {
       ]
     },
     "PostIntentHookRegistry": {
-      "address": "0xf6d3BC4D383EFD9014ea29bA4E2039979a300bcd",
+      "address": "0x6ee1693e4fE83F7c3C87313a06f97E190f9Dc99c",
       "abi": [
         {
           "inputs": [],
@@ -4304,7 +4316,7 @@ export default {
       ]
     },
     "ProtocolViewer": {
-      "address": "0xf2AC5be14F32Cbe6A613CFF8931d95460D6c33A3",
+      "address": "0x0c875D2B0802EAb3793886da9e0cF40e636b3384",
       "abi": [
         {
           "inputs": [
@@ -5689,7 +5701,7 @@ export default {
       ]
     },
     "RelayerRegistry": {
-      "address": "0x00D003C73EAB8fEaec04bab976235915fE7641e3",
+      "address": "0x8Ffe25Bc049ee6bd3E24fd9fDd3f654FCcDc3eE6",
       "abi": [
         {
           "inputs": [],
@@ -5854,18 +5866,13 @@ export default {
       ]
     },
     "SimpleAttestationVerifier": {
-      "address": "0xc7e5c933f0eE8A616d15129f3E582bC1910cEf8A",
+      "address": "0x2Db1d6E0d7711b2AaC2918FE84270CfF84958dfA",
       "abi": [
         {
           "inputs": [
             {
               "internalType": "address",
               "name": "_witness",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "_zktlsAttestor",
               "type": "address"
             }
           ],
@@ -5895,19 +5902,6 @@ export default {
           "anonymous": false,
           "inputs": [
             {
-              "indexed": false,
-              "internalType": "bool",
-              "name": "required",
-              "type": "bool"
-            }
-          ],
-          "name": "RequireZktlsValidationUpdated",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
               "indexed": true,
               "internalType": "address",
               "name": "oldWitness",
@@ -5921,25 +5915,6 @@ export default {
             }
           ],
           "name": "WitnessUpdated",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "oldAttestor",
-              "type": "address"
-            },
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "newAttestor",
-              "type": "address"
-            }
-          ],
-          "name": "ZktlsAttestorUpdated",
           "type": "event"
         },
         {
@@ -5992,19 +5967,6 @@ export default {
           "inputs": [
             {
               "internalType": "address",
-              "name": "_newAttestor",
-              "type": "address"
-            }
-          ],
-          "name": "setZktlsAttestor",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "address",
               "name": "newOwner",
               "type": "address"
             }
@@ -6028,7 +5990,7 @@ export default {
             },
             {
               "internalType": "bytes",
-              "name": "_data",
+              "name": "",
               "type": "bytes"
             }
           ],
@@ -6055,24 +6017,11 @@ export default {
           ],
           "stateMutability": "view",
           "type": "function"
-        },
-        {
-          "inputs": [],
-          "name": "zktlsAttestor",
-          "outputs": [
-            {
-              "internalType": "address",
-              "name": "",
-              "type": "address"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
         }
       ]
     },
     "USDCMock": {
-      "address": "0x816433610FbfbF517f51Cf5f514E8110aB5cFeAE",
+      "address": "0x48aB9BCF2B25a696ea950E95c2EACFE0Ec8A6DE1",
       "abi": [
         {
           "inputs": [
@@ -6368,13 +6317,13 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0x09618E223f22652e3d83B98614A745D12A7ae991",
+      "address": "0xA22aE87e99d614e6e04d787c67C609E24F223F6C",
       "abi": [
         {
           "inputs": [
             {
-              "internalType": "address",
-              "name": "_escrow",
+              "internalType": "contract IOrchestrator",
+              "name": "_orchestrator",
               "type": "address"
             },
             {
@@ -6437,12 +6386,6 @@ export default {
               "internalType": "bytes32",
               "name": "paymentMethod",
               "type": "bytes32"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "timestampBuffer",
-              "type": "uint256"
             }
           ],
           "name": "PaymentMethodAdded",
@@ -6467,61 +6410,47 @@ export default {
             {
               "indexed": true,
               "internalType": "bytes32",
-              "name": "paymentMethod",
+              "name": "intentHash",
               "type": "bytes32"
             },
             {
               "indexed": true,
               "internalType": "bytes32",
-              "name": "providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "ProviderHashAdded",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "paymentMethod",
+              "name": "method",
               "type": "bytes32"
             },
             {
               "indexed": true,
               "internalType": "bytes32",
-              "name": "providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "ProviderHashRemoved",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "paymentMethod",
+              "name": "currency",
               "type": "bytes32"
             },
             {
               "indexed": false,
               "internalType": "uint256",
-              "name": "oldBuffer",
+              "name": "amount",
               "type": "uint256"
             },
             {
               "indexed": false,
               "internalType": "uint256",
-              "name": "newBuffer",
+              "name": "timestamp",
               "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes32",
+              "name": "paymentId",
+              "type": "bytes32"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes32",
+              "name": "payeeId",
+              "type": "bytes32"
             }
           ],
-          "name": "TimestampBufferUpdated",
+          "name": "PaymentVerified",
           "type": "event"
         },
         {
@@ -6543,37 +6472,9 @@ export default {
               "internalType": "bytes32",
               "name": "_paymentMethod",
               "type": "bytes32"
-            },
-            {
-              "internalType": "uint256",
-              "name": "_timestampBuffer",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
             }
           ],
           "name": "addPaymentMethod",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
-            }
-          ],
-          "name": "addProviderHashes",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -6608,54 +6509,11 @@ export default {
           "inputs": [
             {
               "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            }
-          ],
-          "name": "getProviderHashes",
-          "outputs": [
-            {
-              "internalType": "bytes32[]",
               "name": "",
-              "type": "bytes32[]"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
               "type": "bytes32"
             }
           ],
-          "name": "getTimestampBuffer",
-          "outputs": [
-            {
-              "internalType": "uint256",
-              "name": "",
-              "type": "uint256"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_providerHash",
-              "type": "bytes32"
-            }
-          ],
-          "name": "isProviderHash",
+          "name": "isPaymentMethod",
           "outputs": [
             {
               "internalType": "bool",
@@ -6684,7 +6542,7 @@ export default {
           "name": "orchestrator",
           "outputs": [
             {
-              "internalType": "address",
+              "internalType": "contract IOrchestrator",
               "name": "",
               "type": "address"
             }
@@ -6738,24 +6596,6 @@ export default {
           "type": "function"
         },
         {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32[]",
-              "name": "_providerHashes",
-              "type": "bytes32[]"
-            }
-          ],
-          "name": "removeProviderHashes",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
           "inputs": [],
           "name": "renounceOwnership",
           "outputs": [],
@@ -6778,48 +6618,6 @@ export default {
         {
           "inputs": [
             {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "uint256",
-              "name": "_newTimestampBuffer",
-              "type": "uint256"
-            }
-          ],
-          "name": "setTimestampBuffer",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "bytes32",
-              "name": "",
-              "type": "bytes32"
-            }
-          ],
-          "name": "store",
-          "outputs": [
-            {
-              "internalType": "bool",
-              "name": "initialized",
-              "type": "bool"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestampBuffer",
-              "type": "uint256"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
               "internalType": "address",
               "name": "newOwner",
               "type": "address"
@@ -6835,43 +6633,13 @@ export default {
             {
               "components": [
                 {
-                  "internalType": "bytes",
-                  "name": "paymentProof",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "address",
-                  "name": "depositToken",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "intentAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "intentTimestamp",
-                  "type": "uint256"
-                },
-                {
                   "internalType": "bytes32",
-                  "name": "payeeDetails",
+                  "name": "intentHash",
                   "type": "bytes32"
-                },
-                {
-                  "internalType": "bytes32",
-                  "name": "fiatCurrency",
-                  "type": "bytes32"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "conversionRate",
-                  "type": "uint256"
                 },
                 {
                   "internalType": "bytes",
-                  "name": "depositData",
+                  "name": "paymentProof",
                   "type": "bytes"
                 },
                 {

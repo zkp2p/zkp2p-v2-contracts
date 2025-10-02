@@ -20,7 +20,13 @@ import {
   MAX_INTENTS_PER_DEPOSIT,
   PARTIAL_MANUAL_RELEASE_DELAY,
 } from "../deployments/parameters";
-import { addEscrowToRegistry, getDeployedContractAddress, setNewOwner, setOrchestrator } from "../deployments/helpers";
+import {
+  addEscrowToRegistry,
+  getDeployedContractAddress,
+  setNewOwner,
+  setOrchestrator,
+  waitForDeploymentDelay,
+} from "../deployments/helpers";
 
 // Deployment Scripts
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -39,6 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
     usdcAddress = usdcToken.address;
     console.log("USDC deployed...");
+    await waitForDeploymentDelay(hre);
   } else {
     usdcAddress = USDC[network];
   }
@@ -49,6 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   console.log("Payment verifier registry deployed at", paymentVerifierRegistry.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy post intent hook registry
   const postIntentHookRegistry = await deploy("PostIntentHookRegistry", {
@@ -56,6 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   console.log("Post intent hook registry deployed at", postIntentHookRegistry.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy relayer registry
   const relayerRegistry = await deploy("RelayerRegistry", {
@@ -63,6 +72,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   console.log("Relayer registry deployed at", relayerRegistry.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy nullifier registry
   const nullifierRegistry = await deploy("NullifierRegistry", {
@@ -70,6 +80,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   console.log("Nullifier deployed at", nullifierRegistry.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy escrow registry
   const escrowRegistry = await deploy("EscrowRegistry", {
@@ -77,6 +88,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   console.log("Escrow registry deployed at", escrowRegistry.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy escrow
   const escrow = await deploy("Escrow", {
@@ -95,6 +107,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("Escrow deployed at", escrow.address);
+  await waitForDeploymentDelay(hre);
 
   // Set escrow registry on escrow
   const escrowRegistryContract = await ethers.getContractAt("EscrowRegistry", escrowRegistry.address);
@@ -118,6 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("Orchestrator deployed at", orchestrator.address);
+  await waitForDeploymentDelay(hre);
 
   // Set orchestrator on escrow
   const escrowContract = await ethers.getContractAt("Escrow", escrow.address);
@@ -130,6 +144,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [escrow.address, orchestrator.address],
   });
   console.log("Protocol viewer deployed at", protocolViewer.address);
+  await waitForDeploymentDelay(hre);
 
   const paymentVerifierRegistryContract = await ethers.getContractAt("PaymentVerifierRegistry", paymentVerifierRegistry.address);
   const postIntentHookRegistryContract = await ethers.getContractAt("PostIntentHookRegistry", postIntentHookRegistry.address);
@@ -156,12 +171,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await setNewOwner(hre, nullifierRegistryContract, multiSig);
 
   console.log("Deploy finished...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {
   const network = hre.network.name;
   if (network != "localhost") {
-    try { getDeployedContractAddress(hre.network.name, "Escrow") } catch (e) { return false; }
+    try { getDeployedContractAddress(hre.network.name, "ProtocolViewer") } catch (e) { return false; }
     return true;
   }
   return false;

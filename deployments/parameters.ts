@@ -73,3 +73,10 @@ export const USDC: any = {
 // For Goerli and localhost
 export const USDC_MINT_AMOUNT = usdc(1000000);
 export const USDC_RECIPIENT = "0x84e113087C97Cd80eA9D78983D4B8Ff61ECa1929";
+
+export const DEPLOY_TX_DELAY_MS: any = {
+  localhost: 0,
+  base: 8000,
+  base_staging: 5000,
+  base_sepolia: 5000,
+};

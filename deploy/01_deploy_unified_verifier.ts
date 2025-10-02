@@ -10,7 +10,8 @@ import {
 import {
   addWritePermission,
   getDeployedContractAddress,
-  setNewOwner
+  setNewOwner,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import { WITNESS_ADDRESS } from "../deployments/parameters";
 
@@ -33,6 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("SimpleAttestationVerifier deployed at", simpleAttestationVerifier.address);
+  await waitForDeploymentDelay(hre);
 
   // Deploy UnifiedPaymentVerifier
   const unifiedPaymentVerifier = await deploy("UnifiedPaymentVerifier", {
@@ -44,6 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ],
   });
   console.log("UnifiedPaymentVerifier deployed at", unifiedPaymentVerifier.address);
+  await waitForDeploymentDelay(hre);
 
   // Get contract instances
   const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistryAddress);
@@ -60,6 +63,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("UnifiedPaymentVerifier ownership transferred to", multiSig);
 
   console.log("Deploy finished...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

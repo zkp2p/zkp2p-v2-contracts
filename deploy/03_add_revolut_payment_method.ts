@@ -11,7 +11,8 @@ import {
   getDeployedContractAddress,
   addPaymentMethodToRegistry,
   addPaymentMethodToUnifiedVerifier,
-  savePaymentMethodSnapshot
+  savePaymentMethodSnapshot,
+  waitForDeploymentDelay,
 } from "../deployments/helpers";
 import { REVOLUT_PROVIDER_CONFIG } from "../deployments/verifiers/revolut";
 
@@ -55,6 +56,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     REVOLUT_PROVIDER_CONFIG.paymentMethodHash
   );
   console.log("Revolut added to unified verifier...");
+
+  await waitForDeploymentDelay(hre);
 };
 
 func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> => {

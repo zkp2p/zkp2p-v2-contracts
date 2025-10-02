@@ -3,6 +3,52 @@ import { Address } from "../utils/types";
 import { BigNumber } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
+import { DEPLOY_TX_DELAY_MS } from "./parameters";
+
+const ENV_DELAY_OVERRIDE = process.env.DEPLOY_TX_DELAY_MS;
+
+export async function waitForDeploymentDelay(hre: HardhatRuntimeEnvironment): Promise<void> {
+  const network = hre.deployments.getNetworkName();
+  const overrideDelay = ENV_DELAY_OVERRIDE ? Number(ENV_DELAY_OVERRIDE) : undefined;
+  const networkDelay = DEPLOY_TX_DELAY_MS[network] ?? 0;
+  const delay = overrideDelay !== undefined && !Number.isNaN(overrideDelay) ? overrideDelay : networkDelay;
+
+  if (delay > 0) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
+async function waitForAccountNonceSync(hre: HardhatRuntimeEnvironment, account: string): Promise<void> {
+  const provider = hre.ethers.provider;
+  const maxIterations = 300;
+  for (let i = 0; i < maxIterations; i += 1) {
+    const latest = await provider.getTransactionCount(account, "latest");
+    const pending = await provider.getTransactionCount(account, "pending");
+    if (pending === latest) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Pending transactions for ${account} did not settle in time`);
+}
+
+async function sendDeploymentTransaction(
+  hre: HardhatRuntimeEnvironment,
+  tx: { from: string; to: string; data: string },
+): Promise<void> {
+  const provider = hre.ethers.provider;
+  await waitForAccountNonceSync(hre, tx.from);
+  const result = await hre.deployments.rawTx(tx);
+  const txHash = typeof result === "string"
+    ? result
+    : (result as any)?.transactionHash ?? (result as any)?.hash ?? (result as any)?.txHash;
+  if (!txHash) {
+    throw new Error("Unable to determine transaction hash for deployment transaction");
+  }
+  await provider.waitForTransaction(txHash);
+  await waitForAccountNonceSync(hre, tx.from);
+  await waitForDeploymentDelay(hre);
+}
 
 export function getDeployedContractAddress(network: string, contractName: string): string {
   return require(`./${network}/${contractName}.json`).address;
@@ -17,11 +63,10 @@ export async function setNewOwner(
 
   if (currentOwner != newOwner) {
     const data = contract.interface.encodeFunctionData("transferOwnership", [newOwner]);
-
-    await hre.deployments.rawTx({
+    await sendDeploymentTransaction(hre, {
       from: currentOwner,
       to: contract.address,
-      data
+      data,
     });
   }
 }
@@ -36,10 +81,10 @@ export async function setOrchestrator(
   if (!(await contract.orchestrator() == orchestrator)) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
       const data = contract.interface.encodeFunctionData("setOrchestrator", [orchestrator]);
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: contract.address,
-        data
+        data,
       });
     } else {
       console.log(
@@ -61,10 +106,10 @@ export async function addEscrowToRegistry(
   if (!(await contract.isWhitelistedEscrow(escrow))) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
       const data = contract.interface.encodeFunctionData("addEscrow", [escrow]);
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: contract.address,
-        data
+        data,
       });
     } else {
       console.log(
@@ -86,11 +131,10 @@ export async function addWritePermission(
   if (!(await contract.isWriter(newPermission))) {
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
       const data = contract.interface.encodeFunctionData("addWritePermission", [newPermission]);
-
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: contract.address,
-        data
+        data,
       });
     } else {
       console.log(
@@ -113,10 +157,10 @@ export async function addCurrency(
     if ((await hre.getUnnamedAccounts()).includes(currentOwner)) {
       console.log("Adding currency ", currency, "to", contract.address);
       const data = contract.interface.encodeFunctionData("addCurrency", [currency]);
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: contract.address,
-        data
+        data,
       });
     } else {
       console.log(
@@ -150,10 +194,10 @@ export async function addPaymentMethodToRegistry(
         verifierAddress,
         currencies
       ]);
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: paymentVerifierRegistryContract.address,
-        data
+        data,
       });
     } else {
       console.log(
@@ -186,10 +230,10 @@ export async function addPaymentMethodToUnifiedVerifier(
       const data = unifiedVerifierContract.interface.encodeFunctionData("addPaymentMethod", [
         paymentMethodHash
       ]);
-      await hre.deployments.rawTx({
+      await sendDeploymentTransaction(hre, {
         from: currentOwner,
         to: unifiedVerifierContract.address,
-        data
+        data,
       });
     } else {
       console.log(
