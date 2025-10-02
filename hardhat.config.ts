@@ -109,6 +109,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       sepolia: process.env.ETHERSCAN_KEY || "",
       base: process.env.ETHERSCAN_KEY || "",
+      base_staging: process.env.ETHERSCAN_KEY || "",
       base_sepolia: process.env.ETHERSCAN_KEY || "",
     },
     customChains: [
@@ -118,6 +119,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.etherscan.io/v2/api?chainid=84532",
           browserURL: "https://sepolia.basescan.org"
+        }
+      },
+      {
+        network: "base_staging",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=8453",
+          browserURL: "https://basescan.org"
         }
       },
       {
