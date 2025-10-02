@@ -109,11 +109,11 @@ const config: HardhatUserConfig = {
     apiKey: {
       sepolia: process.env.ETHERSCAN_KEY || "",
       base: process.env.ETHERSCAN_KEY || "",
-      baseSepolia: process.env.ETHERSCAN_KEY || "",
+      base_sepolia: process.env.ETHERSCAN_KEY || "",
     },
     customChains: [
       {
-        network: "baseSepolia",
+        network: "base_sepolia",
         chainId: 84532,
         urls: {
           apiURL: "https://api.etherscan.io/v2/api?chainid=84532",
