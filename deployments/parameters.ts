@@ -61,7 +61,7 @@ export const MULTI_SIG: any = {
 export const WITNESS_ADDRESS: any = {
   "localhost": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "base": "0x0636c417755E3ae25C6c166D181c0607F4C572A3",
-  "base_staging": "0x0636c417755E3ae25C6c166D181c0607F4C572A3",
+  "base_staging": "0x4ab950AE1e3326578Bf7e643a2031E858aBa2927",
   "base_sepolia": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
 };
 
