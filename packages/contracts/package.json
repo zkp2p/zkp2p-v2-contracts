@@ -1,6 +1,6 @@
 {
   "name": "@zkp2p/contracts-v2",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "./_cjs/index.js",
   "module": "./_esm/index.js",
@@ -80,6 +80,13 @@
       "default": "./abis/baseSepolia.cjs"
     },
     "./abis/baseSepolia/*.json": "./abis/baseSepolia/*.json",
+    "./abis/baseStaging": {
+      "types": "./abis/baseStaging.d.ts",
+      "import": "./abis/baseStaging.mjs",
+      "require": "./abis/baseStaging.cjs",
+      "default": "./abis/baseStaging.cjs"
+    },
+    "./abis/baseStaging/*.json": "./abis/baseStaging/*.json",
     "./abis": {
       "types": "./abis/index.ts",
       "import": "./abis/index.ts",

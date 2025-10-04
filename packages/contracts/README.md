@@ -111,9 +111,7 @@ import { base, baseSepolia } from "@zkp2p/contracts-v2/paymentMethods"
 // Access payment method configurations
 const venmoConfig = base.venmo;
 console.log('Payment Method Hash:', venmoConfig.paymentMethodHash);
-console.log('Provider Hashes:', venmoConfig.providerHashes);
 console.log('Currencies:', venmoConfig.currencies);
-console.log('Timestamp Buffer:', venmoConfig.timestampBuffer);
 
 // Or use testnet configurations
 const testnetPaymentMethods = baseSepolia;
