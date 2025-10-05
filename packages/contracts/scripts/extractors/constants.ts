@@ -96,7 +96,7 @@ export async function extractConstants(): Promise<void> {
       // Write per-network .d.ts for constants
       const perNetworkDts = `// Typed constants file for ${fileName}
 export type Constants = { USDC?: \`0x\${string}\` } & Record<string, unknown>;
-const value: Constants;
+declare const value: Constants;
 export default value;
 `;
       fs.writeFileSync(path.join(CONSTANTS_DIR, `${fileName}.d.ts`), perNetworkDts);

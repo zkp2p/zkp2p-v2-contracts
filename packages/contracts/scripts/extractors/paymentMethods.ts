@@ -143,7 +143,7 @@ export async function extractPaymentMethods(): Promise<void> {
       // Write per-network .d.ts alongside JSON for strong typing
       const perNetworkDts = `// Typed payment methods file for ${normalizedNetworkName}
 export type PaymentMethods = { methods: Record<string, { paymentMethodHash?: \`0x\${string}\`; currencies?: string[] }> };
-const value: PaymentMethods;
+declare const value: PaymentMethods;
 export default value;
 `;
       fs.writeFileSync(path.join(PAYMENT_METHODS_DIR, `${normalizedNetworkName}.d.ts`), perNetworkDts);
