@@ -1,5 +1,5 @@
 // Auto-generated network entry for baseStaging
-exports.addresses = require('../addresses/baseStaging.json');
-Object.assign(exports, require('../abis/baseStaging.cjs'));
-exports.constants = require('../constants/baseStaging.json');
-exports.paymentMethods = require('../paymentMethods/baseStaging.json');
+exports.addresses = require('../_cjs/addresses/baseStaging.js');
+Object.assign(exports, require('../_cjs/abis/baseStaging/index.js'));
+exports.constants = require('../_cjs/constants/baseStaging.js');
+exports.paymentMethods = require('../_cjs/paymentMethods/baseStaging.js');

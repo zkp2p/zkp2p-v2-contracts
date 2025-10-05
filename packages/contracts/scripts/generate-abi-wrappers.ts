@@ -38,7 +38,7 @@ function getNetworkContracts(): NetworkContracts {
 
 function generateCommonJSWrapper(network: string, contracts: string[]): string {
   const imports = contracts.map(contract => 
-    `  ${contract}: require('./${network}/${contract}.json')`
+    `  ${contract}: require('../_cjs/abis/${network}/${contract}.js')`
   ).join(',\n');
   
   return `// Auto-generated CommonJS wrapper for ${network} ABIs
@@ -49,18 +49,12 @@ ${imports}
 }
 
 function generateESMWrapper(network: string, contracts: string[]): string {
-  const imports = contracts.map(contract => 
-    `import ${contract} from './${network}/${contract}.json' assert { type: 'json' };`
+  const exports = contracts.map(contract => 
+    `export { default as ${contract} } from '../_esm/abis/${network}/${contract}.js';`
   ).join('\n');
-  
-  const exports = contracts.map(c => c).join(', ');
-  
-  return `// Auto-generated ESM wrapper for ${network} ABIs
-${imports}
 
-export {
-  ${exports}
-};
+  return `// Auto-generated ESM wrapper for ${network} ABIs
+${exports}
 `;
 }
 
@@ -89,10 +83,13 @@ function updatePackageExports(networks: string[]): void {
     '.': packageJson.exports['.'],
     './addresses': packageJson.exports['./addresses'],
     './addresses/*': packageJson.exports['./addresses/*'],
+    './addresses/*.json': packageJson.exports['./addresses/*.json'],
     './constants': packageJson.exports['./constants'],
     './constants/*': packageJson.exports['./constants/*'],
+    './constants/*.json': packageJson.exports['./constants/*.json'],
     './paymentMethods': packageJson.exports['./paymentMethods'],
     './paymentMethods/*': packageJson.exports['./paymentMethods/*'],
+    './paymentMethods/*.json': packageJson.exports['./paymentMethods/*.json'],
     './types': packageJson.exports['./types'],
     './utils': packageJson.exports['./utils'],
     './utils/protocolUtils': packageJson.exports['./utils/protocolUtils']
@@ -108,8 +105,9 @@ function updatePackageExports(networks: string[]): void {
     newExports[`./abis/${network}`] = {
       types: `./abis/${network}.d.ts`,
       import: `./abis/${network}.mjs`,
+      "react-native": `./abis/${network}.mjs`,
       require: `./abis/${network}.cjs`,
-      default: `./abis/${network}.cjs`
+      default: `./abis/${network}.mjs`
     };
     
     // Also allow direct JSON imports

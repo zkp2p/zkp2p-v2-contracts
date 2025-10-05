@@ -13,6 +13,17 @@ function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
+function createJsonModule(content: string, format: 'esm' | 'cjs'): string {
+  const parsed = JSON.parse(content);
+  const serialized = JSON.stringify(parsed, null, 2);
+
+  if (format === 'esm') {
+    return `const data = ${serialized};\nexport default data;\n`;
+  }
+
+  return `const data = ${serialized};\nmodule.exports = data;\nmodule.exports.default = data;\n`;
+}
+
 function compileModule(moduleName: string, format: 'esm' | 'cjs') {
   const inputDir = path.join(PKG_ROOT, moduleName);
   const outputDir = path.join(PKG_ROOT, format === 'esm' ? '_esm' : '_cjs', moduleName);
@@ -32,13 +43,19 @@ function compileModule(moduleName: string, format: 'esm' | 'cjs') {
       } else if (entry.name.endsWith('.json')) {
         // Copy JSON files directly
         fs.copyFileSync(inputPath, outputPath);
+
+        // Also generate companion JS modules for easier imports
+        const jsonSource = fs.readFileSync(inputPath, 'utf8');
+        const moduleSource = createJsonModule(jsonSource, format);
+        const jsPath = outputPath.replace(/\.json$/, '.js');
+        fs.writeFileSync(jsPath, moduleSource);
       } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
         // Compile TypeScript files
         const source = fs.readFileSync(inputPath, 'utf8');
-        
+
         // Simple transformation for imports/exports
         let transformed = source;
-        
+
         if (format === 'cjs') {
           // Convert ES modules to CommonJS
           transformed = transformed
@@ -50,8 +67,12 @@ function compileModule(moduleName: string, format: 'esm' | 'cjs') {
                     "Object.assign(exports, require('./$2'))")
             .replace(/import type \{([^}]+)\} from '\.\/(.+)'/g, '')
             .replace(/export type \{([^}]+)\}/g, '');
+        } else {
+          transformed = transformed
+            .replace(/from "\.\/(.+)\.json"/g, "from './$1.js'")
+            .replace(/from '\.\/(.+)\.json'/g, "from './$1.js'");
         }
-        
+
         // Write the output file with .js extension
         const jsPath = outputPath.replace(/\.ts$/, '.js');
         fs.writeFileSync(jsPath, transformed);

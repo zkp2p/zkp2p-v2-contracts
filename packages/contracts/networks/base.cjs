@@ -1,5 +1,5 @@
 // Auto-generated network entry for base
-exports.addresses = require('../addresses/base.json');
-Object.assign(exports, require('../abis/base.cjs'));
-exports.constants = require('../constants/base.json');
-exports.paymentMethods = require('../paymentMethods/base.json');
+exports.addresses = require('../_cjs/addresses/base.js');
+Object.assign(exports, require('../_cjs/abis/base/index.js'));
+exports.constants = require('../_cjs/constants/base.js');
+exports.paymentMethods = require('../_cjs/paymentMethods/base.js');

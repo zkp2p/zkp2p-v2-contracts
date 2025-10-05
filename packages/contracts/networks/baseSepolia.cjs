@@ -1,5 +1,5 @@
 // Auto-generated network entry for baseSepolia
-exports.addresses = require('../addresses/baseSepolia.json');
-Object.assign(exports, require('../abis/baseSepolia.cjs'));
-exports.constants = require('../constants/baseSepolia.json');
-exports.paymentMethods = require('../paymentMethods/baseSepolia.json');
+exports.addresses = require('../_cjs/addresses/baseSepolia.js');
+Object.assign(exports, require('../_cjs/abis/baseSepolia/index.js'));
+exports.constants = require('../_cjs/constants/baseSepolia.js');
+exports.paymentMethods = require('../_cjs/paymentMethods/baseSepolia.js');
