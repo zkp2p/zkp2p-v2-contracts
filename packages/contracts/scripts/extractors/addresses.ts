@@ -35,6 +35,7 @@ export async function extractAddresses(): Promise<void> {
     .filter((f) => f.endsWith('Contracts.ts') && !f.startsWith('localhost')); // Exclude localhost
 
   const indexExports: string[] = [];
+  const dtsExports: string[] = [];
 
   for (const file of files) {
     const network = normalizeNetworkName(file);
@@ -60,11 +61,25 @@ export async function extractAddresses(): Promise<void> {
     fs.writeFileSync(outPath, JSON.stringify(payload, null, 2));
 
     indexExports.push(`export { default as ${network} } from './${network}.json';`);
+
+    // Write per-network .d.ts alongside JSON for strong typing
+    const perNetworkDts = `// Typed address file for ${network}
+export type AddressFile = { name: string; chainId: number; contracts: Record<string, 0x\${string}>; meta?: Record<string, unknown> };
+const value: AddressFile;
+export default value;
+`;
+    fs.writeFileSync(path.join(ADDRESSES_DIR, `${network}.d.ts`), perNetworkDts);
+    dtsExports.push(`export { default as ${network} } from './${network}';`);
   }
 
   // Write an index.ts exporting each network JSON
   const indexPath = path.join(ADDRESSES_DIR, 'index.ts');
   fs.writeFileSync(indexPath, indexExports.join('\n') + '\n');
+
+  // Also write an index.d.ts so package.json exports can point to it
+  const indexDtsPath = path.join(ADDRESSES_DIR, 'index.d.ts');
+  const indexDts = `// Typed re-exports for address files\n${dtsExports.join('\n')}\n`;
+  fs.writeFileSync(indexDtsPath, indexDts);
 
   console.log(`✅ Addresses written to ${ADDRESSES_DIR}`);
 }

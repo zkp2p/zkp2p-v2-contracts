@@ -66,10 +66,11 @@ export {
 
 function generateTypeDefinitions(network: string, contracts: string[]): string {
   const exports = contracts.map(contract => 
-    `export declare const ${contract}: any;`
+    `export declare const ${contract}: Abi;`
   ).join('\n');
-  
+
   return `// Auto-generated TypeScript definitions for ${network} ABIs
+import type { Abi } from 'abitype';
 ${exports}
 `;
 }

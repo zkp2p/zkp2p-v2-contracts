@@ -1,6 +1,6 @@
 {
   "name": "@zkp2p/contracts-v2",
-  "version": "0.0.4",
+  "version": "0.0.5-rc.1",
   "description": "ZKP2P V2 smart contract interfaces and utilities",
   "main": "./_cjs/index.js",
   "module": "./_esm/index.js",
@@ -13,13 +13,14 @@
     "abis",
     "constants",
     "paymentMethods",
+    "networks",
     "types",
     "utils"
   ],
   "scripts": {
-    "build": "yarn clean && yarn extract && yarn generate:wrappers && yarn bundle",
+    "build": "yarn clean && yarn extract && yarn generate:wrappers && ts-node --transpile-only scripts/generate-network-entries.ts && yarn bundle",
     "build:full": "yarn build",
-    "clean": "rimraf _cjs _esm _types addresses abis constants paymentMethods types utils",
+    "clean": "rimraf _cjs _esm _types addresses abis constants paymentMethods networks types utils",
     "extract": "ts-node --transpile-only scripts/extract-all.ts",
     "generate:wrappers": "ts-node --transpile-only scripts/generate-abi-wrappers.ts",
     "compile": "echo 'Skipping tsc, using Rollup for compilation'",
@@ -39,6 +40,7 @@
       "default": "./addresses/index.json"
     },
     "./addresses/*": {
+      "types": "./addresses/*.d.ts",
       "default": "./addresses/*.json"
     },
     "./constants": {
@@ -46,6 +48,7 @@
       "default": "./constants/index.json"
     },
     "./constants/*": {
+      "types": "./constants/*.d.ts",
       "default": "./constants/*.json"
     },
     "./paymentMethods": {
@@ -53,6 +56,7 @@
       "default": "./paymentMethods/index.json"
     },
     "./paymentMethods/*": {
+      "types": "./paymentMethods/*.d.ts",
       "default": "./paymentMethods/*.json"
     },
     "./types": {
@@ -92,6 +96,21 @@
       "import": "./abis/index.ts",
       "require": "./abis/index.ts",
       "default": "./abis/index.ts"
+    },
+    "./networks/base": {
+      "types": "./networks/base.d.ts",
+      "import": "./networks/base.mjs",
+      "require": "./networks/base.cjs"
+    },
+    "./networks/baseSepolia": {
+      "types": "./networks/baseSepolia.d.ts",
+      "import": "./networks/baseSepolia.mjs",
+      "require": "./networks/baseSepolia.cjs"
+    },
+    "./networks/baseStaging": {
+      "types": "./networks/baseStaging.d.ts",
+      "import": "./networks/baseStaging.mjs",
+      "require": "./networks/baseStaging.cjs"
     }
   },
   "sideEffects": false,
@@ -112,6 +131,9 @@
     "ts-jest": "^29.0.0",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "abitype": "^1.0.0"
   },
   "repository": {
     "type": "git",

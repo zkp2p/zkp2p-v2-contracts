@@ -140,6 +140,14 @@ export async function extractPaymentMethods(): Promise<void> {
       fs.writeFileSync(outPath, JSON.stringify(networkConfig, null, 2));
       networks.push(normalizedNetworkName);
 
+      // Write per-network .d.ts alongside JSON for strong typing
+      const perNetworkDts = `// Typed payment methods file for ${normalizedNetworkName}
+export type PaymentMethods = { methods: Record<string, { paymentMethodHash?: 0x\${string}; currencies?: string[] }> };
+const value: PaymentMethods;
+export default value;
+`;
+      fs.writeFileSync(path.join(PAYMENT_METHODS_DIR, `${normalizedNetworkName}.d.ts`), perNetworkDts);
+
     } catch (e) {
       console.warn(`⚠️  Failed to process provider file ${file}:`, e);
     }
@@ -198,6 +206,10 @@ ${networks.map(net => `  ${net}: require('./${net}.json')`).join(',\n')}
 `;
 
   fs.writeFileSync(path.join(PAYMENT_METHODS_DIR, 'index.ts'), indexContent);
+
+  // Also write an index.d.ts so exports can reference it
+  const indexDts = `// Typed re-exports for payment methods\n${networks.map(net => `export { default as ${net} } from './${net}';`).join('\n')}\n`;
+  fs.writeFileSync(path.join(PAYMENT_METHODS_DIR, 'index.d.ts'), indexDts);
 
   console.log(`✅ Unified payment method configs written to ${PAYMENT_METHODS_DIR}`);
 }
