@@ -29,6 +29,7 @@ interface IEscrow {
         Range intentAmountRange;                    // Range of take amount per intent
         // Deposit state
         bool acceptingIntents;                      // State: True if the deposit is accepting intents, False otherwise
+        bool allowTailFill;                         // State: If true, allow a one-shot final intent equal to remainingDeposits even if below min
         uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity (net of reserved fees)
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
         // Fee tracking
@@ -66,6 +67,7 @@ interface IEscrow {
         address intentGuardian;                      // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
         address referrer;                            // Address of the referrer who brought this deposit (address(0) if no referrer)
         uint256 referrerFee;                         // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
+        bool allowTailFill;                          // If true, enable tail-fill at creation
     }
 
     /* ============ Events ============ */
@@ -85,6 +87,7 @@ interface IEscrow {
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
     event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
     event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
+    event DepositTailFillUpdated(uint256 indexed depositId, bool allowTailFill);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
@@ -180,4 +183,7 @@ interface IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount);
+
+    /* ============ Maker Controls ============ */
+    function setDepositTailFillEnabled(uint256 _depositId, bool _enabled) external;
 }

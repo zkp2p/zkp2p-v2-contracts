@@ -3664,6 +3664,89 @@ describe("Escrow", () => {
       });
     });
 
+    describe("tail-fill behavior", async () => {
+      it("should allow tail-fill when amount equals current remainder and no prune occurs", async () => {
+        // Enable tail-fill for this deposit
+        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+
+        // Current deposit: 100 USDC net, min=10, max=60 (from beforeEach)
+        // Lock 60, then 32, leaving 8 USDC (< min) as the exact remainder
+        const firstIntent = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf1"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(subjectDepositId, firstIntent, usdc(60));
+
+        const secondIntent = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf2"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(subjectDepositId, secondIntent, usdc(32));
+
+        // Tail-fill the final 8 USDC (below min), should succeed without pruning
+        subjectAmount = usdc(8);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf3"));
+
+        const tx = await subject();
+        await expect(tx).to.emit(ramp, "FundsLocked");
+
+        const post = await ramp.getDeposit(subjectDepositId);
+        expect(post.remainingDeposits).to.eq(ZERO);
+        expect(post.outstandingIntentAmount).to.eq(usdc(100));
+      });
+      it("should revert sub-min when prune increases remainingDeposits beyond amount (invalidating tail-fill)", async () => {
+        // Enable tail-fill for this deposit
+        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+
+        // Create an intent that will expire and be reclaimed on prune
+        const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          expiringIntentHash,
+          usdc(20)
+        );
+
+        // Fast-forward so the above intent expires
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        // Reduce remainingDeposits to 5 USDC (below min=10) but keep acceptingIntents due to tail-fill
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(75));
+
+        // Force prune to run due to intents-at-cap; this will also reclaim 20 USDC
+        await ramp.connect(owner.wallet).setMaxIntentsPerDeposit(1);
+
+        // Attempt to lock exactly the pre-prune remainder (5 USDC). After prune, remainingDeposits becomes 25,
+        // so this is no longer a tail-fill and should revert as sub-min.
+        subjectAmount = usdc(5);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tailFillInvalidated"));
+
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
+      });
+
+      it("should allow tail-fill after prune when amount equals post-prune remainder", async () => {
+        // Enable tail-fill
+        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+
+        // Create an intent that will expire and be reclaimed on prune
+        const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent2"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          expiringIntentHash,
+          usdc(20)
+        );
+
+        // Expire it
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        // Reduce remainingDeposits to 5 USDC
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(75));
+
+        // Now request 25 USDC so remainingDeposits < amount triggers prune; post-prune remainder will be 25 (5 + 20)
+        subjectAmount = usdc(25);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tailFillValidAfterPrune"));
+
+        await expect(subject()).to.emit(ramp, "FundsLocked");
+
+        const post = await ramp.getDeposit(subjectDepositId);
+        expect(post.remainingDeposits).to.eq(ZERO); // consumed the entire remainder
+        expect(post.outstandingIntentAmount).to.eq(usdc(25));
+      });
+    });
+
     describe("when we have reached max number of intents per deposit", async function () {
       const MAX_INTENTS_PER_DEPOSIT = 3; // Matches the contract constant
       let intentHashes: string[] = [];

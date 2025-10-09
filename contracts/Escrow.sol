@@ -168,6 +168,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             amount: _params.amount,
             intentAmountRange: _params.intentAmountRange,
             acceptingIntents: true,
+            allowTailFill: _params.allowTailFill,
             remainingDeposits: netDepositAmount,    // Net amount available for intents
             outstandingIntentAmount: 0,
             makerProtocolFee: makerProtocolFee,
@@ -262,7 +263,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.amount -= _amount;
         deposit.remainingDeposits -= _amount;
         
-        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
+        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min && !deposit.allowTailFill) {
             deposit.acceptingIntents = false;
         }
 
@@ -575,11 +576,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents(_depositId);
-        if (_amount < deposit.intentAmountRange.min) revert AmountBelowMin(_amount, deposit.intentAmountRange.min);
-        if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
+        if (_amount == 0) revert ZeroValue();
         
-        // Effects
-        // Check if we need to reclaim expired liquidity first
+        // Quick fail for oversized amount before any pruning
+        if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
+
+        // If liquidity is insufficient, reclaim expired intents first
         uint256 currentIntentCount = depositIntentHashes[_depositId].length;
         if (deposit.remainingDeposits < _amount || currentIntentCount >= maxIntentsPerDeposit) {
             _pruneExpiredIntents(deposit, _depositId, _amount);
@@ -589,8 +591,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 revert MaxIntentsExceeded(_depositId, currentIntentCount, maxIntentsPerDeposit);
             }
         }
-        
-        // Update deposit state
+
+        // Re-evaluate tail-fill with the post-prune remainingDeposits
+        bool isTailFill = deposit.allowTailFill && _amount == deposit.remainingDeposits;
+        if (!isTailFill && _amount < deposit.intentAmountRange.min) revert AmountBelowMin(_amount, deposit.intentAmountRange.min);
+
+        // Effects
         deposit.remainingDeposits -= _amount;
         deposit.outstandingIntentAmount += _amount;
         
@@ -604,6 +610,26 @@ contract Escrow is Ownable, Pausable, IEscrow {
         });
 
         emit FundsLocked(_depositId, _intentHash, _amount, expiryTime);
+    }
+
+    /**
+     * @notice Allows depositor or delegate to enable/disable tail-fill for a specific deposit. When enabled, if
+     * remainingDeposits is below the deposit's min intent amount, a taker may lock exactly remainingDeposits once
+     * (i.e., `_amount == remainingDeposits`) even though it is below `intentAmountRange.min`.
+     *
+     * @param _depositId    The deposit ID
+     * @param _enabled      True to enable tail fill; false to disable
+     */
+    function setDepositTailFillEnabled(uint256 _depositId, bool _enabled)
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.allowTailFill == _enabled) revert DepositAlreadyInState(_depositId, _enabled);
+        
+        deposit.allowTailFill = _enabled;
+        emit DepositTailFillUpdated(_depositId, _enabled);
     }
 
     /**
