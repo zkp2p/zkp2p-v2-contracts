@@ -171,7 +171,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -282,7 +283,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -301,7 +303,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectAccount = offRamper.address;
@@ -353,7 +356,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -372,7 +376,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositIds = [ZERO, ONE];
@@ -427,7 +432,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -508,7 +514,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -593,7 +600,8 @@ describe("ProtocolViewer", () => {
         delegate: ethers.constants.AddressZero,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const params = await createSignalIntentParams(
