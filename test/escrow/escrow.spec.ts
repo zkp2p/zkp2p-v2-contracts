@@ -3776,7 +3776,7 @@ describe.only("Escrow", () => {
     describe("tail-fill behavior", async () => {
       it("should allow tail-fill when amount equals current remainder and no prune occurs", async () => {
         // Enable tail-fill for this deposit
-        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
 
         // Current deposit: 100 USDC net, min=10, max=60 (from beforeEach)
         // Lock 60, then 32, leaving 8 USDC (< min) as the exact remainder
@@ -3799,7 +3799,7 @@ describe.only("Escrow", () => {
       });
       it("should revert sub-min when prune increases remainingDeposits beyond amount (invalidating tail-fill)", async () => {
         // Enable tail-fill for this deposit
-        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
 
         // Create an intent that will expire and be reclaimed on prune
         const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent"));
@@ -3828,7 +3828,7 @@ describe.only("Escrow", () => {
 
       it("should allow tail-fill after prune when amount equals post-prune remainder", async () => {
         // Enable tail-fill
-        await ramp.connect(offRamper.wallet).setDepositTailFillEnabled(subjectDepositId, true);
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
 
         // Create an intent that will expire and be reclaimed on prune
         const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent2"));
