@@ -87,7 +87,7 @@ interface IEscrow {
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
     event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
     event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
-    event DepositTailFillUpdated(uint256 indexed depositId, bool allowTailFill);
+    event DepositAllowTailFillUpdated(uint256 indexed depositId, bool allowTailFill);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);
@@ -183,7 +183,4 @@ interface IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount);
-
-    /* ============ Maker Controls ============ */
-    function setDepositTailFillEnabled(uint256 _depositId, bool _enabled) external;
 }

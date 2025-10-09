@@ -544,6 +544,27 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
     }
 
+    /**
+     * @notice Allows depositor or delegate to enable/disable tail-fill for a specific deposit. When enabled, if
+     * remainingDeposits is below the deposit's min intent amount, a taker may lock exactly remainingDeposits once
+     * (i.e., `_amount == remainingDeposits`) even though it is below `intentAmountRange.min`.
+     *
+     * @param _depositId    The deposit ID
+     * @param _enabled      True to enable tail fill; false to disable
+     */
+    function setDepositAllowTailFill(uint256 _depositId, bool _enabled)
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.allowTailFill == _enabled) revert DepositAlreadyInState(_depositId, _enabled);
+        
+        deposit.allowTailFill = _enabled;
+        emit DepositAllowTailFillUpdated(_depositId, _enabled);
+    }
+
+
     /* ============ Anyone callable (External Functions) ============ */
 
     /**
@@ -610,26 +631,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         });
 
         emit FundsLocked(_depositId, _intentHash, _amount, expiryTime);
-    }
-
-    /**
-     * @notice Allows depositor or delegate to enable/disable tail-fill for a specific deposit. When enabled, if
-     * remainingDeposits is below the deposit's min intent amount, a taker may lock exactly remainingDeposits once
-     * (i.e., `_amount == remainingDeposits`) even though it is below `intentAmountRange.min`.
-     *
-     * @param _depositId    The deposit ID
-     * @param _enabled      True to enable tail fill; false to disable
-     */
-    function setDepositTailFillEnabled(uint256 _depositId, bool _enabled)
-        external
-        whenNotPaused
-        onlyDepositorOrDelegate(_depositId)
-    {
-        Deposit storage deposit = deposits[_depositId];
-        if (deposit.allowTailFill == _enabled) revert DepositAlreadyInState(_depositId, _enabled);
-        
-        deposit.allowTailFill = _enabled;
-        emit DepositTailFillUpdated(_depositId, _enabled);
     }
 
     /**

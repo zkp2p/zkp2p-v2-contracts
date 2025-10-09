@@ -347,7 +347,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -444,7 +445,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -553,7 +555,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -697,7 +700,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -898,7 +902,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -1046,7 +1051,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -1207,7 +1213,8 @@ contract EscrowCriticalPathFuzz is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         params.paymentMethods[0] = VENMO;
