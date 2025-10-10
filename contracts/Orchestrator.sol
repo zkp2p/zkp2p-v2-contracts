@@ -47,6 +47,10 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     mapping(bytes32 => Intent) internal intents;                       // Mapping of intentHashes to intent structs
     mapping(address => bytes32[]) internal accountIntents;             // Mapping of address to array of intentHashes
 
+    // Snapshot of the minimum per-intent amount at the time of lock (signal)
+    // Used to prevent fulfillments that pay out less than the deposit's min intent amount.
+    mapping(bytes32 => uint256) internal intentMinAtSignal;
+
     // Contract references
     IEscrowRegistry public escrowRegistry;                              // Registry of escrow contracts
     IPaymentVerifierRegistry public  paymentVerifierRegistry;          // Registry of payment verifiers
@@ -114,7 +118,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // Effects
         bytes32 intentHash = _calculateIntentHash();
 
+        // Lock funds first to ensure escrow state allows this intent and to avoid leaving stale snapshots
         IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount);
+
+        // Snapshot the min-per-intent at signal-time to enforce at fulfillment
+        IEscrow.Deposit memory dep = IEscrow(_params.escrow).getDeposit(_params.depositId);
+        intentMinAtSignal[intentHash] = dep.intentAmountRange.min;
 
         intents[intentHash] = Intent({
             owner: msg.sender,
@@ -194,6 +203,12 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         );
         if (!verificationResult.success) revert PaymentVerificationFailed();
         if (verificationResult.intentHash != _params.intentHash) revert HashMismatch(_params.intentHash, verificationResult.intentHash);
+
+        // Enforce snapshot min-at-signal to prevent sub-min partial fulfillments
+        uint256 minAtSignal = intentMinAtSignal[_params.intentHash];
+        if (minAtSignal > 0 && verificationResult.releaseAmount < minAtSignal) {
+            revert AmountBelowMin(verificationResult.releaseAmount, minAtSignal);
+        }
 
         // Effects
         _pruneIntent(_params.intentHash);
@@ -363,6 +378,10 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         return accountIntents[_account];
     }
 
+    function getIntentMinAtSignal(bytes32 _intentHash) external view returns (uint256) {
+        return intentMinAtSignal[_intentHash];
+    }
+
     /* ============ Internal Functions ============ */
 
     /**
@@ -447,6 +466,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
         accountIntents[intent.owner].removeStorage(_intentHash);
         delete intents[_intentHash];
+        delete intentMinAtSignal[_intentHash];
 
         emit IntentPruned(_intentHash);
     }
