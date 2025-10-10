@@ -18,11 +18,12 @@
     "utils"
   ],
   "scripts": {
-    "build": "yarn clean && yarn extract && yarn generate:wrappers && ts-node --transpile-only scripts/generate-network-entries.ts && yarn bundle",
+    "build": "yarn clean && yarn extract && yarn generate:wrappers && yarn generate:networks && yarn bundle",
     "build:full": "yarn build",
     "clean": "rimraf _cjs _esm _types addresses abis constants paymentMethods networks types utils",
     "extract": "ts-node --transpile-only scripts/extract-all.ts",
     "generate:wrappers": "ts-node --transpile-only scripts/generate-abi-wrappers.ts",
+    "generate:networks": "ts-node --transpile-only scripts/generate-network-entries.ts",
     "compile": "echo 'Skipping tsc, using Rollup for compilation'",
     "bundle": "ts-node --transpile-only scripts/build-modules.ts",
     "test": "jest --passWithNoTests",
