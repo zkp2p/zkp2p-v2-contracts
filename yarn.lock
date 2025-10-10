@@ -3238,6 +3238,7 @@ __metadata:
     "@rollup/plugin-typescript": "npm:^11.0.0"
     "@types/jest": "npm:^29.0.0"
     "@types/node": "npm:^20.0.0"
+    abitype: "npm:^1.0.0"
     ethers: "npm:^5.7.2"
     jest: "npm:^29.0.0"
     rimraf: "npm:^5.0.0"
@@ -3322,6 +3323,21 @@ __metadata:
     zod:
       optional: true
   checksum: 10c0/d3393f32898c1f0f6da4eed2561da6830dcd0d5129a160fae9517214236ee6a6c8e5a0380b8b960c5bc1b949320bcbd015ec7f38b5d7444f8f2b854a1b5dd754
+  languageName: node
+  linkType: hard
+
+"abitype@npm:^1.0.0":
+  version: 1.1.1
+  resolution: "abitype@npm:1.1.1"
+  peerDependencies:
+    typescript: ">=5.0.4"
+    zod: ^3.22.0 || ^4.0.0
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+    zod:
+      optional: true
+  checksum: 10c0/d52fd8195cb37cdb462ba4d1817dafdba8da403eeab50f144f251748d7458a43308ee29ea46889db2969c91c074780e6d1f00f86acd22dc5772570432ee56b9c
   languageName: node
   linkType: hard
 

@@ -23,7 +23,7 @@ async function generateTypeDeclarations() {
   }
 }
 
-async function main() {
+export async function extractAll(): Promise<void> {
   console.log('📦 Starting extraction from deployments/outputs...');
 
   const started = Date.now();
@@ -41,7 +41,9 @@ async function main() {
   console.log(`✅ Extraction complete in ${ms}ms`);
 }
 
-main().catch((err) => {
-  console.error('❌ Extraction failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  extractAll().catch((err) => {
+    console.error('❌ Extraction failed:', err);
+    process.exit(1);
+  });
+}

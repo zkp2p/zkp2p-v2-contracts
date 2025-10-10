@@ -34,6 +34,8 @@ export async function extractConstants(): Promise<void> {
   // Network names based on what's actually in parameters.ts (excluding localhost)
   const networks = ['base', 'base_sepolia', 'base_staging'];
   const indexExports: string[] = [];
+  const dtsExports: string[] = [];
+  const networksList: string[] = [];
 
   for (const network of networks) {
     const networkConstants: Record<string, any> = {};
@@ -90,6 +92,16 @@ export async function extractConstants(): Promise<void> {
       fs.writeFileSync(outPath, JSON.stringify(networkConstants, null, 2));
 
       indexExports.push(`export { default as ${fileName} } from './${fileName}.json';`);
+
+      // Write per-network .d.ts for constants
+      const perNetworkDts = `// Typed constants file for ${fileName}
+export type Constants = { USDC?: \`0x\${string}\` } & Record<string, unknown>;
+declare const value: Constants;
+export default value;
+`;
+      fs.writeFileSync(path.join(CONSTANTS_DIR, `${fileName}.d.ts`), perNetworkDts);
+      dtsExports.push(`export { default as ${fileName} } from './${fileName}';`);
+      networksList.push(fileName);
     }
   }
 
@@ -97,6 +109,18 @@ export async function extractConstants(): Promise<void> {
   fs.writeFileSync(
     path.join(CONSTANTS_DIR, 'index.ts'),
     indexExports.join('\n') + '\n'
+  );
+
+  // Create index.d.ts for typed entry
+  fs.writeFileSync(
+    path.join(CONSTANTS_DIR, 'index.d.ts'),
+    `// Typed re-exports for constants\n${dtsExports.join('\n')}\n`
+  );
+
+  // Minimal index.json for default export compatibility
+  fs.writeFileSync(
+    path.join(CONSTANTS_DIR, 'index.json'),
+    JSON.stringify({ networks: networksList, generatedAt: new Date().toISOString() }, null, 2)
   );
 
   console.log(`✅ Constants written to ${CONSTANTS_DIR}`);
