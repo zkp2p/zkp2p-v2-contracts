@@ -152,7 +152,8 @@ contract EscrowHandler is Test {
             delegate: address(0),
             intentGuardian: address(0),
             referrer: address(0),
-            referrerFee: 0
+            referrerFee: 0,
+            allowTailFill: false
         });
         
         uint256 depositId = escrow.depositCounter();

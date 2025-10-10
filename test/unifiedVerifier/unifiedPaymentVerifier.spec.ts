@@ -162,6 +162,7 @@ describe("UnifiedPaymentVerifier", () => {
       intentGuardian: ethers.constants.AddressZero,
       referrer: ethers.constants.AddressZero,
       referrerFee: ZERO,
+      allowTailFill: false
     });
 
     depositId = BigNumber.from(0);

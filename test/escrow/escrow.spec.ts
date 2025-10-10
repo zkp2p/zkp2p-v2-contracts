@@ -234,7 +234,8 @@ describe("Escrow", () => {
         delegate: subjectDelegate,
         intentGuardian: subjectIntentGuardian,
         referrer: subjectReferrer,
-        referrerFee: subjectReferrerFee
+        referrerFee: subjectReferrerFee,
+        allowTailFill: false
       });
     }
 
@@ -274,6 +275,7 @@ describe("Escrow", () => {
       expect(depositView.paymentMethods[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
       expect(depositView.deposit.intentGuardian).to.eq(subjectIntentGuardian);
       expect(depositView.deposit.makerProtocolFee).to.eq(ZERO);
+      expect(depositView.deposit.allowTailFill).to.eq(false);
     });
 
     it("should add the deposit to the accountDeposits mapping", async () => {
@@ -429,7 +431,8 @@ describe("Escrow", () => {
           delegate: ADDRESS_ZERO,
           intentGuardian: ADDRESS_ZERO,
           referrer: referrer.address,
-          referrerFee: ether(0.02)  // 2% referrer fee
+          referrerFee: ether(0.02),  // 2% referrer fee
+          allowTailFill: false
         };
 
         subjectCaller = offRamper;
@@ -784,7 +787,8 @@ describe("Escrow", () => {
             delegate: offRamperDelegate.address,
             intentGuardian: ADDRESS_ZERO,
             referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
+            referrerFee: ZERO,
+            allowTailFill: false
           });
 
           const newDeposit = await ramp.getDeposit(1);
@@ -810,7 +814,8 @@ describe("Escrow", () => {
             delegate: offRamperDelegate.address,
             intentGuardian: ADDRESS_ZERO,
             referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
+            referrerFee: ZERO,
+            allowTailFill: false
           });
 
           const oldDeposit = await ramp.getDeposit(0);
@@ -852,7 +857,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -985,7 +991,8 @@ describe("Escrow", () => {
           delegate: offRamperDelegate.address,
           intentGuardian: ADDRESS_ZERO,
           referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          referrerFee: ZERO,
+          allowTailFill: false
         });
 
         subjectDepositId = BigNumber.from(1);
@@ -1224,7 +1231,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -1491,7 +1499,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -1809,7 +1818,8 @@ describe("Escrow", () => {
           delegate: offRamperDelegate.address,
           intentGuardian: ADDRESS_ZERO,
           referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          referrerFee: ZERO,
+          allowTailFill: false
         });
 
         subjectDepositId = BigNumber.from(1); // New deposit created
@@ -2053,7 +2063,8 @@ describe("Escrow", () => {
           delegate: ADDRESS_ZERO,
           intentGuardian: ADDRESS_ZERO,
           referrer: referrer.address,
-          referrerFee: referrerFee
+          referrerFee: referrerFee,
+          allowTailFill: false
         });
 
         subjectDepositId = BigNumber.from(1); // New deposit created
@@ -2163,7 +2174,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -2290,7 +2302,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -2407,7 +2420,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Already registered paypalPaymentMethodHash in beforeEach
@@ -2564,7 +2578,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -2690,7 +2705,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -2841,7 +2857,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -2962,7 +2979,8 @@ describe("Escrow", () => {
         delegate: ADDRESS_ZERO,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -3057,6 +3075,103 @@ describe("Escrow", () => {
     });
   });
 
+  describe("#setDepositAllowTailFill", async () => {
+    let subjectAllowTailFill: boolean;
+    let subjectDepositId: BigNumber;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        currencies: [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO,
+        referrer: ADDRESS_ZERO,
+        referrerFee: ZERO,
+        allowTailFill: false
+      });
+
+      subjectDepositId = ZERO;
+      subjectCaller = offRamper;
+      subjectAllowTailFill = true;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setDepositAllowTailFill(
+        subjectDepositId,
+        subjectAllowTailFill
+      );
+    }
+
+    it("should set the correct allow tail fill", async () => {
+      await subject();
+
+      const postAllowTailFill = await ramp.getDeposit(subjectDepositId);
+      expect(postAllowTailFill.allowTailFill).to.eq(subjectAllowTailFill);
+    });
+
+    it("should emit a DepositAllowTailFillUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositAllowTailFillUpdated").withArgs(
+        subjectDepositId,
+        subjectAllowTailFill
+      );
+    });
+
+    describe("when the caller is not the depositor", async () => {
+      beforeEach(async () => {
+        subjectCaller = onRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+
+      describe("when the caller is delegate", async () => {
+        beforeEach(async () => {
+          subjectCaller = offRamperDelegate;
+        });
+
+        it("should not revert", async () => {
+          await expect(subject()).to.not.be.reverted;
+        });
+      });
+    });
+
+    describe("when the allow tail fill is already set to the requested state", async () => {
+      beforeEach(async () => {
+        subjectAllowTailFill = true;
+
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositAlreadyInState");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
   describe("#removeDepositDelegate", async () => {
     let subjectDepositId: BigNumber;
     let subjectCaller: Account;
@@ -3080,7 +3195,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -3171,7 +3287,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -3365,7 +3482,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3486,7 +3604,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3664,6 +3783,89 @@ describe("Escrow", () => {
       });
     });
 
+    describe("tail-fill behavior", async () => {
+      it("should allow tail-fill when amount equals current remainder and no prune occurs", async () => {
+        // Enable tail-fill for this deposit
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
+
+        // Current deposit: 100 USDC net, min=10, max=60 (from beforeEach)
+        // Lock 60, then 32, leaving 8 USDC (< min) as the exact remainder
+        const firstIntent = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf1"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(subjectDepositId, firstIntent, usdc(60));
+
+        const secondIntent = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf2"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(subjectDepositId, secondIntent, usdc(32));
+
+        // Tail-fill the final 8 USDC (below min), should succeed without pruning
+        subjectAmount = usdc(8);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tf3"));
+
+        const tx = await subject();
+        await expect(tx).to.emit(ramp, "FundsLocked");
+
+        const post = await ramp.getDeposit(subjectDepositId);
+        expect(post.remainingDeposits).to.eq(ZERO);
+        expect(post.outstandingIntentAmount).to.eq(usdc(100));
+      });
+      it("should revert sub-min when prune increases remainingDeposits beyond amount (invalidating tail-fill)", async () => {
+        // Enable tail-fill for this deposit
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
+
+        // Create an intent that will expire and be reclaimed on prune
+        const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          expiringIntentHash,
+          usdc(20)
+        );
+
+        // Fast-forward so the above intent expires
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        // Reduce remainingDeposits to 5 USDC (below min=10) but keep acceptingIntents due to tail-fill
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(75));
+
+        // Force prune to run due to intents-at-cap; this will also reclaim 20 USDC
+        await ramp.connect(owner.wallet).setMaxIntentsPerDeposit(1);
+
+        // Attempt to lock exactly the pre-prune remainder (5 USDC). After prune, remainingDeposits becomes 25,
+        // so this is no longer a tail-fill and should revert as sub-min.
+        subjectAmount = usdc(5);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tailFillInvalidated"));
+
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
+      });
+
+      it("should allow tail-fill after prune when amount equals post-prune remainder", async () => {
+        // Enable tail-fill
+        await ramp.connect(offRamper.wallet).setDepositAllowTailFill(subjectDepositId, true);
+
+        // Create an intent that will expire and be reclaimed on prune
+        const expiringIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("expiringIntent2"));
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          expiringIntentHash,
+          usdc(20)
+        );
+
+        // Expire it
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
+        // Reduce remainingDeposits to 5 USDC
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(75));
+
+        // Now request 25 USDC so remainingDeposits < amount triggers prune; post-prune remainder will be 25 (5 + 20)
+        subjectAmount = usdc(25);
+        subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tailFillValidAfterPrune"));
+
+        await expect(subject()).to.emit(ramp, "FundsLocked");
+
+        const post = await ramp.getDeposit(subjectDepositId);
+        expect(post.remainingDeposits).to.eq(ZERO); // consumed the entire remainder
+        expect(post.outstandingIntentAmount).to.eq(usdc(25));
+      });
+    });
+
     describe("when we have reached max number of intents per deposit", async function () {
       const MAX_INTENTS_PER_DEPOSIT = 3; // Matches the contract constant
       let intentHashes: string[] = [];
@@ -3722,7 +3924,8 @@ describe("Escrow", () => {
           delegate: ADDRESS_ZERO,
           intentGuardian: ADDRESS_ZERO,
           referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          referrerFee: ZERO,
+          allowTailFill: false
         });
 
         const depositCounter = await ramp.depositCounter();
@@ -3785,6 +3988,16 @@ describe("Escrow", () => {
         expect(depositIntents.length).to.eq(1);
       });
     });
+
+    describe("when the amount is zero", async () => {
+      beforeEach(async () => {
+        subjectAmount = ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "ZeroValue");
+      });
+    });
   });
 
   describe("#unlockFunds", async () => {
@@ -3814,7 +4027,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Lock funds first
@@ -3948,7 +4162,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Lock funds first
@@ -4163,7 +4378,8 @@ describe("Escrow", () => {
           delegate: offRamperDelegate.address,
           intentGuardian: ADDRESS_ZERO,
           referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          referrerFee: ZERO,
+          allowTailFill: false
         });
 
         // Lock funds
@@ -4420,7 +4636,8 @@ describe("Escrow", () => {
             delegate: ADDRESS_ZERO,
             intentGuardian: ADDRESS_ZERO,
             referrer: referrer.address,
-            referrerFee: referrerFee
+            referrerFee: referrerFee,
+            allowTailFill: false
           });
 
           depositId = BigNumber.from(2);
@@ -4492,7 +4709,8 @@ describe("Escrow", () => {
           delegate: ADDRESS_ZERO,
           intentGuardian: ADDRESS_ZERO,
           referrer: referrer.address,
-          referrerFee: referrerFee
+          referrerFee: referrerFee,
+          allowTailFill: false
         });
 
         depositId = ONE;
@@ -4579,7 +4797,8 @@ describe("Escrow", () => {
             delegate: ADDRESS_ZERO,
             intentGuardian: ADDRESS_ZERO,
             referrer: referrer.address,
-            referrerFee: referrerFee
+            referrerFee: referrerFee,
+            allowTailFill: false
           });
 
           depositId = BigNumber.from(2);
@@ -4685,7 +4904,8 @@ describe("Escrow", () => {
         delegate: ADDRESS_ZERO,  // delegate
         intentGuardian: intentGuardian.address,  // intentGuardian
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       subjectDepositId = ZERO;
@@ -4794,7 +5014,8 @@ describe("Escrow", () => {
           delegate: ADDRESS_ZERO,  // delegate
           intentGuardian: ADDRESS_ZERO,   // no intentGuardian,
           referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          referrerFee: ZERO,
+          allowTailFill: false
         });
 
         const newDepositId = ONE;
@@ -5414,7 +5635,8 @@ describe("Escrow", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();

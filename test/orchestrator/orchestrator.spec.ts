@@ -215,7 +215,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -725,7 +726,8 @@ describe("Orchestrator", () => {
             delegate: offRamperDelegate.address,
             intentGuardian: ADDRESS_ZERO,  // intentGuardian
             referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
+            referrerFee: ZERO,
+            allowTailFill: false
           });
 
           subjectDepositId = ONE;
@@ -829,7 +831,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Signal an intent
@@ -966,7 +969,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Signal an intent
@@ -1827,7 +1831,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       intentAmount = usdc(50);
@@ -2265,7 +2270,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
 
       // Enable multiple intents
@@ -2870,7 +2876,8 @@ describe("Orchestrator", () => {
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
         referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        referrerFee: ZERO,
+        allowTailFill: false
       });
     });
 
