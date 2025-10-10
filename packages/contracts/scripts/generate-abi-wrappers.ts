@@ -128,7 +128,7 @@ function updatePackageExports(networks: string[]): void {
   console.log('✅ Updated package.json exports');
 }
 
-async function main() {
+export async function generateAbiWrappers(): Promise<void> {
   console.log('🔧 Generating ABI wrapper files...');
   
   const networks = getNetworkContracts();
@@ -162,4 +162,9 @@ async function main() {
   console.log('✅ Successfully generated wrapper files for:', networkNames.join(', '));
 }
 
-main().catch(console.error);
+if (require.main === module) {
+  generateAbiWrappers().catch((error) => {
+    console.error('❌ ABI wrapper generation failed:', error);
+    process.exit(1);
+  });
+}

@@ -116,7 +116,7 @@ export declare const version: string;
   fs.writeFileSync(path.join(PKG_ROOT, '_types', 'index.d.ts'), typesIndex);
 }
 
-async function main() {
+export async function buildModules(): Promise<void> {
   console.log('📦 Building modules...');
   
   // Build each module
@@ -134,4 +134,9 @@ async function main() {
   console.log('✅ Build complete');
 }
 
-main().catch(console.error);
+if (require.main === module) {
+  buildModules().catch((error) => {
+    console.error('❌ Module build failed:', error);
+    process.exit(1);
+  });
+}
