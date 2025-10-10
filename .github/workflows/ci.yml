@@ -1,4 +1,4 @@
-name: push
+name: Hardhat Tests
 on: [push]
 jobs:
   run-tests:

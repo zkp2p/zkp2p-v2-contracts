@@ -331,6 +331,22 @@ describe("Orchestrator", () => {
       expect(accountIntents).to.include(intentHash);
     });
 
+    it("should snapshot the min-at-signal", async () => {
+      const currentTimestamp = await blockchain.getCurrentTimestamp();
+      const intentHash = calculateIntentHash(
+        orchestrator.address,
+        currentIntentCounter
+      );
+
+      const deposit = await escrow.getDeposit(subjectDepositId);
+      const expectedMinAtSignal = deposit.intentAmountRange.min;
+
+      await subject();
+
+      const minAtSignal = await orchestrator.getIntentMinAtSignal(intentHash);
+      expect(minAtSignal).to.eq(expectedMinAtSignal);
+    });
+
     it("should emit an IntentSignaled event", async () => {
       const tx = await subject();
       const receipt = await tx.wait();
@@ -866,6 +882,13 @@ describe("Orchestrator", () => {
       expect(intent.owner).to.eq(ADDRESS_ZERO);
     });
 
+    it("should remove the intent from the intentMinAtSignal mapping", async () => {
+      await subject();
+
+      const minAtSignal = await orchestrator.getIntentMinAtSignal(subjectIntentHash);
+      expect(minAtSignal).to.eq(ZERO);
+    });
+
     it("should remove the intent from the accountIntents mapping", async () => {
       await subject();
 
@@ -1023,6 +1046,22 @@ describe("Orchestrator", () => {
       const intent = await orchestrator.getIntent(subjectIntentHash);
 
       expect(intent.owner).to.eq(ADDRESS_ZERO); // Intent should be deleted
+    });
+
+    describe("when verifier releaseAmount is below min-at-lock", async () => {
+      beforeEach(async () => {
+        // Craft a proof with a small offchain payment (5 USDC) so that
+        // releaseAmount (amount / conversionRate) < deposit.min (10 USDC)
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        subjectProof = ethers.utils.defaultAbiCoder.encode(
+          ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
+          [usdc(5), currentTimestamp, payeeDetails, Currency.USD, intentHash]
+        );
+      });
+
+      it("should revert with AmountBelowMin", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(orchestrator, "AmountBelowMin");
+      });
     });
 
     it("should update the deposit balances correctly", async () => {
