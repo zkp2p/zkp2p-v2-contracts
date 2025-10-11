@@ -65,15 +65,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
     uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
 
-    /* ============ Modifiers ============ */
-
-    modifier onlyWhitelistedEscrow() {
-        if (!escrowRegistry.isWhitelistedEscrow(msg.sender) && !escrowRegistry.isAcceptingAllEscrows()) {
-            revert UnauthorizedEscrowCaller(msg.sender);
-        }
-        _;
-    }
-
     /* ============ Constructor ============ */
     constructor(
         address _owner,
@@ -252,17 +243,20 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     /* ============ Escrow Functions ============ */
 
     /**
-     * @notice Only the escrow contract can call this function. Called by escrow to prune specific expired intents.
-     * Escrow leads the cleanup process.
+     * @notice Only the escrow contract owns the intent can call this function. Called by escrow to prune specific
+     * expired intents. Escrow leads the cleanup process.
      * 
      * @param _intents   Array of intent hashes to prune
      */
-    function pruneIntents(bytes32[] calldata _intents) external onlyWhitelistedEscrow {
+    function pruneIntents(bytes32[] calldata _intents) external {
         for (uint256 i = 0; i < _intents.length; i++) {
             bytes32 intentHash = _intents[i];
             if (intentHash != bytes32(0)) {
                 Intent memory intent = intents[intentHash];
-                if (intent.timestamp != 0) {    // Only prune if intent exists
+                if (
+                    intent.timestamp != 0 && // Only prune if intent exists on this contract; otherwise skip
+                    intent.escrow == msg.sender // Ensure only the escrow that owns the intent can prune it; otherwise skip
+                ) {
                     _pruneIntent(intentHash);
                 }
             }

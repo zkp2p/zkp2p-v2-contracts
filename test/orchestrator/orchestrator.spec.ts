@@ -2240,7 +2240,7 @@ describe("Orchestrator", () => {
 
   describe("#pruneIntents", async () => {
     let subjectIntents: string[];
-    let subjectCaller: Account;
+    let subjectCaller: Address;
 
     let depositId: BigNumber;
     let intentHashes: string[];
@@ -2309,16 +2309,20 @@ describe("Orchestrator", () => {
       }
 
       subjectIntents = intentHashes;
-      subjectCaller = owner; // Will be escrow in real scenario
+      subjectCaller = escrow.address;
     });
 
     async function subject(): Promise<any> {
-      // For testing, we need to set escrow as the caller
-      // In production, only escrow can call this function
-      await escrowRegistry.connect(owner.wallet).addEscrow(subjectCaller.address);
-      const tx = await orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents);
-      // Reset orchestrator
-      await escrowRegistry.connect(owner.wallet).removeEscrow(subjectCaller.address);
+      // Impersonate the escrow so msg.sender == escrow.address
+      await ethers.provider.send("hardhat_impersonateAccount", [subjectCaller]);
+      // Fund the escrow address for gas
+      await ethers.provider.send("hardhat_setBalance", [
+        subjectCaller,
+        "0x21e19e0c9bab2400000" // 1000 ETH
+      ]);
+      const escrowSigner = await ethers.getSigner(subjectCaller);
+      const tx = await orchestrator.connect(escrowSigner).pruneIntents(subjectIntents);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [subjectCaller]);
       return tx;
     }
 
@@ -2406,13 +2410,20 @@ describe("Orchestrator", () => {
 
     describe("when caller is not the escrow", async () => {
       beforeEach(async () => {
-        subjectCaller = maliciousOnRamper;
+        subjectCaller = maliciousOnRamper.address;
       });
 
-      it("should revert", async () => {
-        await expect(
-          orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents)
-        ).to.be.revertedWithCustomError(orchestrator, "UnauthorizedEscrowCaller");
+      it("should skip pruning and not revert or emit events", async () => {
+        const tx = await subject();
+
+        // Should not emit IntentPruned events
+        await expect(tx).to.not.emit(orchestrator, "IntentPruned");
+
+        // Intents should remain
+        for (const intentHash of intentHashes) {
+          const intent = await orchestrator.getIntent(intentHash);
+          expect(intent.owner).to.eq(onRamper.address);
+        }
       });
     });
 
