@@ -894,10 +894,9 @@ contract OrchestratorCriticalPathFuzz is Test {
     ) public {
         vm.assume(randomEscrow != address(escrow) && randomEscrow != address(0));
         
-        // Property: Non-whitelisted escrow cannot prune intents
+        // Property: Non-whitelisted or foreign escrow calls are skipped (no revert, no effect)
         bytes32[] memory emptyIntents = new bytes32[](1);
         vm.prank(randomEscrow);
-        vm.expectRevert();
         orchestrator.pruneIntents(emptyIntents);
         
         // Property: Whitelisted escrow can prune intents
@@ -917,8 +916,16 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         // Calculate intent hash (uses counter value before increment)
         bytes32 intentHash = _calculateIntentHash(counterBefore);
-        
-        // Escrow can prune the intent
+
+        // Non-owning escrow tries to prune: should be skipped and intent remains
+        bytes32[] memory foreignPrune = new bytes32[](1);
+        foreignPrune[0] = intentHash;
+        vm.prank(randomEscrow);
+        orchestrator.pruneIntents(foreignPrune);
+        IOrchestrator.Intent memory intentBefore = orchestrator.getIntent(intentHash);
+        assertEq(intentBefore.owner, taker, "Foreign escrow should not prune intent");
+
+        // Escrow that owns the intent can prune it
         bytes32[] memory intentsToPrune = new bytes32[](1);
         intentsToPrune[0] = intentHash;
         vm.prank(address(escrow));
