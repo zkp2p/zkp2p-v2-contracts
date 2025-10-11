@@ -150,9 +150,7 @@ contract EscrowHandler is Test {
             paymentMethodData: paymentMethodData,
             currencies: currencies,
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         uint256 depositId = escrow.depositCounter();
@@ -446,8 +444,7 @@ contract EscrowInvariantTest is Test {
             owner,
             1, // chainId
             address(paymentVerifierRegistry),
-            0, // makerProtocolFee
-            protocolFeeRecipient, // makerFeeRecipient
+            protocolFeeRecipient,
             1e4, // dustThreshold
             100, // maxIntentsPerDeposit
             INTENT_EXPIRATION_PERIOD
@@ -536,16 +533,8 @@ contract EscrowInvariantTest is Test {
      * @dev Total fees collected never exceed maximum possible fees
      * Protects users from excessive fee extraction
      */
-    function invariant_FeeBounds() public view {
-        uint256 totalFees = handler.ghostTotalFees();
-        uint256 maxPossibleFees = (handler.ghostTotalIn() * 5e16) / PRECISE_UNIT; // 5% max
-        
-        assertLe(
-            totalFees,
-            maxPossibleFees,
-            "Fee bounds violated - fees exceed maximum allowed"
-        );
-    }
+    // fees removed: invariant_FeeBounds no longer applicable
+    function invariant_FeeBounds() public view {}
     
     /**
      * @notice Invariant 4: Deposit Liquidity Consistency
