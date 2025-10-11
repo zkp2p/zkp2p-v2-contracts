@@ -39,15 +39,14 @@ import {
   PROTOCOL_TAKER_FEE,
   PROTOCOL_TAKER_FEE_RECIPIENT,
   MULTI_SIG,
-  PROTOCOL_MAKER_FEE,
-  PROTOCOL_MAKER_FEE_RECIPIENT,
+  DUST_RECIPIENT,
   DUST_THRESHOLD,
   MAX_INTENTS_PER_DEPOSIT
 } from "../../deployments/parameters";
 
 const expect = getWaffleExpect();
 
-describe("Escrow and NullifierRegistry Deployment", () => {
+describe("V2.1 System Deployment", () => {
   let deployer: Account;
   let multiSig: Address;
 
@@ -131,19 +130,14 @@ describe("Escrow and NullifierRegistry Deployment", () => {
       expect(isWhitelisted).to.eq(true);
     });
 
-    it("should have the correct maker protocol fee set", async () => {
-      const actualMakerProtocolFee = await escrow.makerProtocolFee();
-      expect(actualMakerProtocolFee).to.eq(PROTOCOL_MAKER_FEE[network]);
-    });
+    it("should have the correct dust recipient set", async () => {
+      const actualDustRecipient = await escrow.dustRecipient();
 
-    it("should have the correct maker fee recipient set", async () => {
-      const actualMakerFeeRecipient = await escrow.makerFeeRecipient();
-
-      const expectedMakerFeeRecipient = PROTOCOL_MAKER_FEE_RECIPIENT[network] != ""
-        ? PROTOCOL_MAKER_FEE_RECIPIENT[network]
+      const expectedDustRecipient = DUST_RECIPIENT[network] != ""
+        ? DUST_RECIPIENT[network]
         : deployer.address;
 
-      expect(actualMakerFeeRecipient).to.eq(expectedMakerFeeRecipient);
+      expect(actualDustRecipient).to.eq(expectedDustRecipient);
     });
 
     it("should have the correct dust threshold set", async () => {

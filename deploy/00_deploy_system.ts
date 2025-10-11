@@ -12,13 +12,12 @@ import {
   PROTOCOL_TAKER_FEE,
   PROTOCOL_TAKER_FEE_RECIPIENT,
   PROTOCOL_MAKER_FEE,
-  PROTOCOL_MAKER_FEE_RECIPIENT,
+  DUST_RECIPIENT,
   USDC,
   USDC_MINT_AMOUNT,
   USDC_RECIPIENT,
   DUST_THRESHOLD,
   MAX_INTENTS_PER_DEPOSIT,
-  PARTIAL_MANUAL_RELEASE_DELAY,
 } from "../deployments/parameters";
 import {
   addEscrowToRegistry,
@@ -97,9 +96,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       deployer,
       chainId,
       paymentVerifierRegistry.address,
-      PROTOCOL_MAKER_FEE[network],
-      PROTOCOL_MAKER_FEE_RECIPIENT[network] != ""
-        ? PROTOCOL_MAKER_FEE_RECIPIENT[network]
+      DUST_RECIPIENT[network] != ""
+        ? DUST_RECIPIENT[network]
         : deployer,
       DUST_THRESHOLD[network],
       MAX_INTENTS_PER_DEPOSIT[network],
