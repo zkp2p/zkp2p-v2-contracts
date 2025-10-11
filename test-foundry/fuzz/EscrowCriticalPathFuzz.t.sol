@@ -571,9 +571,8 @@ contract EscrowCriticalPathFuzz is Test {
         if (addAmount > 0) {
             usdc.approve(address(escrow), addAmount);  // Need approval for addFundsToDeposit
             
-            // Calculate fees on added amount (same 1% maker protocol fee)
-            uint256 addMakerFee = (addAmount * 1e16) / PRECISE_UNIT;
-            netAddAmount = addAmount - addMakerFee;
+            // Fees removed: full amount added
+            netAddAmount = addAmount;
             
             escrow.addFundsToDeposit(depositId, addAmount);
             deposit = escrow.getDeposit(depositId);
