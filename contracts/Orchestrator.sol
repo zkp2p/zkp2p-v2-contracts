@@ -529,11 +529,20 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // If there's a post-intent hook, handle it; skip if manual release
         address fundsTransferredTo = _intent.to;
         if (address(_intent.postIntentHook) != address(0)) {
+            // Snapshot balance to enforce exact consumption by the hook
+            uint256 preBalance = _token.balanceOf(address(this));
+
             // Grant exact allowance to the post-intent hook using SafeERC20 with zero-before-set
             _token.safeApprove(address(_intent.postIntentHook), 0);
             _token.safeApprove(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
             
+            // Enforce that the hook pulled exactly netAmount to prevent stranded funds
+            uint256 postBalance = _token.balanceOf(address(this));
+            require(postBalance <= preBalance, "PostIntentHook: unexpected balance increase");
+            uint256 spent = preBalance - postBalance;
+            require(spent == netAmount, "PostIntentHook: must pull exact netAmount");
+
             // Reset allowance to prevent residual balance drainage (and fail closed on non-standard ERC20s)
             _token.safeApprove(address(_intent.postIntentHook), 0);
 

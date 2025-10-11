@@ -20,13 +20,17 @@ import {
   UnifiedPaymentVerifier,
   ThresholdSigVerifierUtilsMock,
   SimpleAttestationVerifier,
-  ReentrantPostIntentHook
+  ReentrantPostIntentHook,
+  PartialPullPostIntentHookMock,
+  PushPostIntentHookMock
 } from "./contracts";
 import {
   USDCMock__factory,
   PostIntentHookMock__factory,
   OrchestratorMock__factory,
-  ReentrantPostIntentHook__factory
+  ReentrantPostIntentHook__factory,
+  PartialPullPostIntentHookMock__factory,
+  PushPostIntentHookMock__factory
 } from "../typechain/factories/contracts/mocks";
 import { PaymentVerifierMock__factory } from "../typechain/factories/contracts/mocks";
 import {
@@ -116,6 +120,20 @@ export default class DeployHelper {
     escrow: Address
   ): Promise<PostIntentHookMock> {
     return await new PostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
+  }
+
+  public async deployPartialPullPostIntentHookMock(
+    usdc: Address,
+    escrow: Address
+  ): Promise<PartialPullPostIntentHookMock> {
+    return await new PartialPullPostIntentHookMock__factory(this._deployerSigner).deploy(usdc, escrow);
+  }
+
+  public async deployPushPostIntentHookMock(
+    usdc: Address,
+    orchestrator: Address
+  ): Promise<PushPostIntentHookMock> {
+    return await new PushPostIntentHookMock__factory(this._deployerSigner).deploy(usdc, orchestrator);
   }
 
   public async deployOrchestratorMock(

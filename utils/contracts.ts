@@ -17,7 +17,9 @@ export {
   UnifiedPaymentVerifier,
   SimpleAttestationVerifier,
   IAttestationVerifier,
-  IPaymentVerifier
+  IPaymentVerifier,
+  PartialPullPostIntentHookMock,
+  PushPostIntentHookMock
 } from "../typechain";
 export { IEscrow } from "../typechain/contracts/Escrow";
 export { IOrchestrator } from "../typechain/contracts/Orchestrator";
