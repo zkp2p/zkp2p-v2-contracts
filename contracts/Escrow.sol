@@ -577,6 +577,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (!deposit.acceptingIntents) revert DepositNotAcceptingIntents(_depositId);
         if (_amount < deposit.intentAmountRange.min) revert AmountBelowMin(_amount, deposit.intentAmountRange.min);
         if (_amount > deposit.intentAmountRange.max) revert AmountAboveMax(_amount, deposit.intentAmountRange.max);
+        // Prevent duplicate intent hashes which can corrupt liquidity accounting
+        if (depositIntents[_depositId][_intentHash].intentHash != bytes32(0)) {
+            revert IntentAlreadyExists(_depositId, _intentHash);
+        }
         
         // Effects
         // Check if we need to reclaim expired liquidity first
@@ -728,7 +732,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Governance Functions ============ */
     
     /**
-     * @notice NEW: Sets the orchestrator contract address. Only callable by owner.
+     * @notice GOVERNANCE ONLY: Sets the orchestrator contract address. Only callable by owner.
      *
      * @param _orchestrator The orchestrator contract address
      */
