@@ -23,14 +23,14 @@ export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
   "base_sepolia": "",
 };
 
-export const DUST_RECIPIENT: any = {
+export const ESCROW_DUST_RECIPIENT: any = {
   "localhost": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
   "base_sepolia": "",
 };
 
-export const DUST_THRESHOLD: any = {
+export const ESCROW_DUST_THRESHOLD: any = {
   "localhost": usdc(0.1),
   "base": usdc(0.1),
   "base_staging": usdc(0.1),
