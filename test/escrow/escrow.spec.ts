@@ -3202,6 +3202,75 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when remainder is dust and gets collected", async () => {
+      let tinyDepositId: BigNumber;
+      let tinyIntentHash: string;
+
+      beforeEach(async () => {
+        // Create a tiny deposit of 1 USDC
+        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10));
+        await ramp.connect(offRamper.wallet).createDeposit({
+          token: usdcToken.address,
+          amount: usdc(1),
+          intentAmountRange: { min: usdc(1), max: usdc(1) },
+          paymentMethods: [venmoPaymentMethodHash],
+          paymentMethodData: [{
+            intentGatingService: gatingService.address,
+            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+            data: "0x"
+          }],
+          currencies: [
+            [{ code: Currency.USD, minConversionRate: ether(1) }]
+          ],
+          delegate: ADDRESS_ZERO,
+          intentGuardian: ADDRESS_ZERO,
+        });
+
+        tinyDepositId = BigNumber.from(1); // next deposit
+        tinyIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("tiny-intent"));
+
+        // Route orchestrator to the mock
+        await ramp.connect(owner.wallet).setOrchestrator(orchestratorMock.address);
+
+        // Lock the full 1 USDC for this tiny deposit
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          tinyDepositId,
+          tinyIntentHash,
+          usdc(1)
+        );
+
+        // Set dust threshold to 1 USDC and dust recipient
+        await ramp.connect(owner.wallet).setDustThreshold(usdc(1));
+        await ramp.connect(owner.wallet).setDustRecipient(feeRecipient.address);
+      });
+
+      it("should emit DustCollected and transfer dust to dustRecipient", async () => {
+        const preDustRecipient = await usdcToken.balanceOf(feeRecipient.address);
+
+        // Transfer all but 1 unit (1 micro USDC) so remainder = 1 unit <= dustThreshold
+        const tx = await orchestratorMock.connect(owner.wallet).unlockAndTransferFunds(
+          tinyDepositId,
+          tinyIntentHash,
+          usdc(1).sub(1),
+          owner.address
+        );
+
+        await expect(tx).to.emit(ramp, "DustCollected").withArgs(
+          tinyDepositId,
+          BigNumber.from(1),
+          feeRecipient.address
+        );
+
+        // Deposit should be closed
+        const post = await ramp.getDeposit(tinyDepositId);
+        expect(post.depositor).to.eq(ADDRESS_ZERO);
+
+        // Dust recipient should have received the 1 unit
+        const postDustRecipient = await usdcToken.balanceOf(feeRecipient.address);
+        expect(postDustRecipient.sub(preDustRecipient)).to.eq(1);
+      });
+    });
+
     describe("when transfer amount exceeds intent amount", async () => {
       beforeEach(async () => {
         subjectTransferAmount = usdc(40); // Intent amount is only 30
