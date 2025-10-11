@@ -117,8 +117,7 @@ describe("Orchestrator", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
-      ZERO,
-      protocolFeeRecipient.address,
+      ADDRESS_ZERO,
       ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS  // intentExpirationPeriod
@@ -224,8 +223,6 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -734,8 +731,6 @@ describe("Orchestrator", () => {
             ],
             delegate: offRamperDelegate.address,
             intentGuardian: ADDRESS_ZERO,  // intentGuardian
-            referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
           });
 
           subjectDepositId = ONE;
@@ -838,8 +833,6 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
       });
 
       // Signal an intent
@@ -974,9 +967,7 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       // Signal an intent
@@ -1904,8 +1895,6 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
       });
 
       intentAmount = usdc(50);
@@ -2342,8 +2331,6 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
       });
 
       // Enable multiple intents
@@ -2957,8 +2944,6 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
       });
     });
 

@@ -414,9 +414,7 @@ contract OrchestratorHandler is Test {
                 paymentMethodData: paymentMethodData,
                 currencies: currencies,
                 delegate: address(0),
-                intentGuardian: address(0),
-                referrer: address(0),
-                referrerFee: 0
+                intentGuardian: address(0)
             });
             
             uint256 depositId = escrow.depositCounter();
@@ -529,7 +527,6 @@ contract OrchestratorInvariantTest is Test {
             owner,
             1, // chainId
             address(paymentVerifierRegistry),
-            0, // makerProtocolFee
             protocolFeeRecipient,
             1e4, // dustThreshold
             100, // maxIntentsPerDeposit

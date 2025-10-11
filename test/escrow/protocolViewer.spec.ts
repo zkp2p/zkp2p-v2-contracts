@@ -97,8 +97,7 @@ describe("ProtocolViewer", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
-      ZERO,
-      protocolFeeRecipient.address,
+      ADDRESS_ZERO,
       ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS
@@ -169,9 +168,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -280,9 +277,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -299,9 +294,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectAccount = offRamper.address;
@@ -351,9 +344,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -370,9 +361,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositIds = [ZERO, ONE];
@@ -425,9 +414,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -506,9 +493,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -591,9 +576,7 @@ describe("ProtocolViewer", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const params = await createSignalIntentParams(

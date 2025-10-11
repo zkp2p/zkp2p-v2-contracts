@@ -26,7 +26,7 @@ import {
   encodeUnifiedPaymentPayload,
 } from "@utils/unifiedVerifierUtils";
 import { Currency, calculateIntentHash } from "@utils/protocolUtils";
-import { ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
+import { ONE_DAY_IN_SECONDS, ZERO, ADDRESS_ZERO } from "@utils/constants";
 import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
@@ -99,8 +99,7 @@ describe("UnifiedPaymentVerifier", () => {
       owner.address,
       BigNumber.from(chainId),
       paymentVerifierRegistry.address,
-      ZERO,
-      feeRecipient.address,
+      ADDRESS_ZERO,
       ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS,
@@ -160,8 +159,6 @@ describe("UnifiedPaymentVerifier", () => {
       currencies: [[{ code: Currency.USD, minConversionRate: depositMinConversionRate }]],
       delegate: ethers.constants.AddressZero,
       intentGuardian: ethers.constants.AddressZero,
-      referrer: ethers.constants.AddressZero,
-      referrerFee: ZERO,
     });
 
     depositId = BigNumber.from(0);

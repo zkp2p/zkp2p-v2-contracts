@@ -16,13 +16,6 @@ export const PROTOCOL_TAKER_FEE: any = {
   "base_sepolia": ZERO,
 };
 
-export const PROTOCOL_MAKER_FEE: any = {
-  "localhost": ether(.001),
-  "base": ZERO,
-  "base_staging": ZERO,
-  "base_sepolia": ZERO,
-}
-
 export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
   "localhost": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
@@ -30,14 +23,14 @@ export const PROTOCOL_TAKER_FEE_RECIPIENT: any = {
   "base_sepolia": "",
 };
 
-export const PROTOCOL_MAKER_FEE_RECIPIENT: any = {
+export const ESCROW_DUST_RECIPIENT: any = {
   "localhost": "",
   "base": "0x0bC26FF515411396DD588Abd6Ef6846E04470227",
   "base_staging": "",
   "base_sepolia": "",
 };
 
-export const DUST_THRESHOLD: any = {
+export const ESCROW_DUST_THRESHOLD: any = {
   "localhost": usdc(0.1),
   "base": usdc(0.1),
   "base_staging": usdc(0.1),

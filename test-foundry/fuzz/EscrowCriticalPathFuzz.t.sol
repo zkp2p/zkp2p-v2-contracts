@@ -102,7 +102,6 @@ contract EscrowCriticalPathFuzz is Test {
             owner,
             1, // chainId
             address(paymentVerifierRegistry),
-            1e16, // makerProtocolFee 1%
             protocolFeeRecipient,
             1e4, // dust threshold
             100, // max intents per deposit
@@ -131,8 +130,7 @@ contract EscrowCriticalPathFuzz is Test {
         // Set orchestrator on escrow
         escrow.setOrchestrator(address(orchestrator));
         
-        // Set protocol fee
-        escrow.setMakerProtocolFee(1e16); // 1%
+        // fees removed: no maker protocol fee configuration
         vm.stopPrank();
         
         // Setup test tokens
@@ -151,7 +149,7 @@ contract EscrowCriticalPathFuzz is Test {
      * @notice Test that fees are monotonically increasing with amount
      * @dev Property: larger deposits should have larger or equal fees
      */
-    function testFuzz_FeeMonotonicity(
+    function xtestFuzz_FeeMonotonicity(
         uint256 amount1,
         uint256 amount2,
         uint256 makerFee,
@@ -194,7 +192,7 @@ contract EscrowCriticalPathFuzz is Test {
      * @notice Test fee bounds - fees never exceed configured maximums
      * @dev Property: Total fees <= (makerFee + referrerFee) * amount / PRECISE_UNIT
      */
-    function testFuzz_FeeBounds(
+    function xtestFuzz_FeeBounds(
         uint256 amount,
         uint256 makerFee,
         uint256 referrerFee
@@ -224,7 +222,7 @@ contract EscrowCriticalPathFuzz is Test {
      * @notice Test fee precision - no value is lost or created in fee calculations
      * @dev Property: sum(individual fees) = total fees calculated together
      */
-    function testFuzz_FeePrecisionConsistency(
+    function xtestFuzz_FeePrecisionConsistency(
         uint256 amount,
         uint256 makerFee,
         uint256 referrerFee
@@ -327,9 +325,8 @@ contract EscrowCriticalPathFuzz is Test {
         // Bound inputs to realistic USDC values
         depositAmount = bound(depositAmount, 10e6, 10000000e6);
         
-        // Account for 1% maker protocol fee
-        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 netDepositAmount = depositAmount - makerFee;
+        // Fees removed: net deposit equals deposit amount
+        uint256 netDepositAmount = depositAmount;
         
         minIntent = bound(minIntent, 1e6, netDepositAmount / 2);
         maxIntent = bound(maxIntent, minIntent, netDepositAmount);
@@ -345,9 +342,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -427,9 +422,8 @@ contract EscrowCriticalPathFuzz is Test {
         // Bound inputs to realistic USDC values (max 10 million USDC)
         depositAmount = bound(depositAmount, 100e6, 10000000e6);
         
-        // Account for 1% maker protocol fee
-        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 netDepositAmount = depositAmount - makerFee;
+        // Fees removed: net deposit equals deposit amount
+        uint256 netDepositAmount = depositAmount;
         
         // Create deposit with wide range
         vm.startPrank(depositor);
@@ -442,9 +436,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -533,9 +525,8 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 maxAddAmount = 10000000e6 > initialAmount ? 10000000e6 - initialAmount : 0;
         addAmount = bound(addAmount, 0, maxAddAmount);
         
-        // Account for 1% maker protocol fee on initial deposit
-        uint256 initialMakerFee = (initialAmount * 1e16) / PRECISE_UNIT;
-        uint256 netInitialAmount = initialAmount - initialMakerFee;
+        // Fees removed: net initial equals initial amount
+        uint256 netInitialAmount = initialAmount;
         
         removeAmount = bound(removeAmount, 0, netInitialAmount + addAmount);
         intentAmount = bound(intentAmount, 0, 10000000e6);
@@ -551,9 +542,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -582,9 +571,8 @@ contract EscrowCriticalPathFuzz is Test {
         if (addAmount > 0) {
             usdc.approve(address(escrow), addAmount);  // Need approval for addFundsToDeposit
             
-            // Calculate fees on added amount (same 1% maker protocol fee)
-            uint256 addMakerFee = (addAmount * 1e16) / PRECISE_UNIT;
-            netAddAmount = addAmount - addMakerFee;
+            // Fees removed: full amount added
+            netAddAmount = addAmount;
             
             escrow.addFundsToDeposit(depositId, addAmount);
             deposit = escrow.getDeposit(depositId);
@@ -626,9 +614,9 @@ contract EscrowCriticalPathFuzz is Test {
             assertEq(deposit.remainingDeposits, currentAvailable - intentAmount, "Liquidity not locked");
             assertEq(deposit.outstandingIntentAmount, intentAmount, "Intent amount not tracked");
             
-            // Property: Conservation (must account for reserved fees)
+            // Property: Conservation (fees removed)
             assertEq(
-                deposit.remainingDeposits + deposit.outstandingIntentAmount + deposit.reservedMakerFees,
+                deposit.remainingDeposits + deposit.outstandingIntentAmount,
                 deposit.amount,
                 "Liquidity conservation violated"
             );
@@ -651,9 +639,9 @@ contract EscrowCriticalPathFuzz is Test {
             assertEq(deposit.amount, preDep.amount - removeAmount, "Remove funds failed");
             assertEq(deposit.remainingDeposits, preDep.remainingDeposits - removeAmount, "Liquidity not updated");
             
-            // Property: Conservation still holds (must account for reserved fees)
+            // Property: Conservation still holds (fees removed)
             assertEq(
-                deposit.remainingDeposits + deposit.outstandingIntentAmount + deposit.reservedMakerFees,
+                deposit.remainingDeposits + deposit.outstandingIntentAmount,
                 deposit.amount,
                 "Liquidity conservation violated after removal"
             );
@@ -677,9 +665,8 @@ contract EscrowCriticalPathFuzz is Test {
         // Bound inputs to realistic USDC values
         depositAmount = bound(depositAmount, 10e6, 10000000e6);
         
-        // Account for 1% maker protocol fee
-        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 netDepositAmount = depositAmount - makerFee;
+        // Fees removed: net deposit equals deposit amount
+        uint256 netDepositAmount = depositAmount;
         
         intentAmount = bound(intentAmount, 1e6, netDepositAmount);
         timeElapsed = bound(timeElapsed, 0, 30 days);
@@ -695,9 +682,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -877,9 +862,8 @@ contract EscrowCriticalPathFuzz is Test {
         // Bound inputs to realistic USDC values (max 10 million USDC)
         depositAmount = bound(depositAmount, 100e6, 10000000e6);
         
-        // Calculate deposit after fees (1% maker fee set in setUp)
-        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 netDepositAmount = depositAmount - makerFee;
+        // Fees removed: net deposit equals deposit amount
+        uint256 netDepositAmount = depositAmount;
         
         // Intent must be within available liquidity after fees
         intentAmount = bound(intentAmount, 1e6, netDepositAmount / 2);
@@ -896,9 +880,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -988,9 +970,9 @@ contract EscrowCriticalPathFuzz is Test {
                 assertEq(depositAfter.remainingDeposits, expectedRemaining, "Remaining liquidity not updated");
                 assertEq(depositAfter.outstandingIntentAmount, intentAmount, "Outstanding intent changed");
                 
-                // Property: Conservation of funds (remaining + outstanding + reserved fees = total amount)
+                // Property: Conservation of funds (remaining + outstanding = total amount)
                 assertEq(
-                    depositAfter.remainingDeposits + depositAfter.outstandingIntentAmount + depositAfter.reservedMakerFees,
+                    depositAfter.remainingDeposits + depositAfter.outstandingIntentAmount,
                     depositAfter.amount,
                     "Fund conservation violated"
                 );
@@ -1029,9 +1011,8 @@ contract EscrowCriticalPathFuzz is Test {
         vm.prank(owner);
         escrow.setDustThreshold(dustThreshold);
         
-        // Calculate net deposit after fees for proper intent range
-        uint256 preMakerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 preNetDepositAmount = depositAmount - preMakerFee;
+        // Fees removed
+        uint256 preNetDepositAmount = depositAmount;
         
         // Create deposit
         vm.startPrank(depositor);
@@ -1044,9 +1025,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
@@ -1205,9 +1184,7 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;

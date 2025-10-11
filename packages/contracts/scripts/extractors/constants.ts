@@ -48,20 +48,16 @@ export async function extractConstants(): Promise<void> {
       networkConstants.PROTOCOL_TAKER_FEE = serializeValue(params.PROTOCOL_TAKER_FEE[network]);
     }
 
-    if (params.PROTOCOL_MAKER_FEE?.[network] !== undefined) {
-      networkConstants.PROTOCOL_MAKER_FEE = serializeValue(params.PROTOCOL_MAKER_FEE[network]);
-    }
-
     if (params.PROTOCOL_TAKER_FEE_RECIPIENT?.[network] !== undefined) {
       networkConstants.PROTOCOL_TAKER_FEE_RECIPIENT = params.PROTOCOL_TAKER_FEE_RECIPIENT[network];
     }
 
-    if (params.PROTOCOL_MAKER_FEE_RECIPIENT?.[network] !== undefined) {
-      networkConstants.PROTOCOL_MAKER_FEE_RECIPIENT = params.PROTOCOL_MAKER_FEE_RECIPIENT[network];
+    if (params.ESCROW_DUST_RECIPIENT?.[network] !== undefined) {
+      networkConstants.ESCROW_DUST_RECIPIENT = params.ESCROW_DUST_RECIPIENT[network];
     }
 
-    if (params.DUST_THRESHOLD?.[network] !== undefined) {
-      networkConstants.DUST_THRESHOLD = serializeValue(params.DUST_THRESHOLD[network]);
+    if (params.ESCROW_DUST_THRESHOLD?.[network] !== undefined) {
+      networkConstants.ESCROW_DUST_THRESHOLD = serializeValue(params.ESCROW_DUST_THRESHOLD[network]);
     }
 
     if (params.MAX_INTENTS_PER_DEPOSIT?.[network] !== undefined) {

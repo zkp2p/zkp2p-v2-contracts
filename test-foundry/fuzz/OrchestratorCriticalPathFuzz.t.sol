@@ -113,7 +113,6 @@ contract OrchestratorCriticalPathFuzz is Test {
             owner,
             1, // chainId
             address(paymentVerifierRegistry),
-            1e16, // makerProtocolFee 1%
             protocolFeeRecipient,
             1e4, // dust threshold
             100, // max intents per deposit
@@ -1106,8 +1105,7 @@ contract OrchestratorCriticalPathFuzz is Test {
         
         // Account for 1% maker protocol fee
         uint256 depositAmount = 500000e6;
-        uint256 makerFee = (depositAmount * 1e16) / PRECISE_UNIT;
-        uint256 netDepositAmount = depositAmount - makerFee;
+        uint256 netDepositAmount = depositAmount;
         
         IEscrow.CreateDepositParams memory params = IEscrow.CreateDepositParams({
             token: IERC20(address(usdc)),
@@ -1117,9 +1115,7 @@ contract OrchestratorCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](2),
             currencies: new IEscrow.Currency[][](2),
             delegate: address(0),
-            intentGuardian: address(0),
-            referrer: address(0),
-            referrerFee: 0
+            intentGuardian: address(0)
         });
         
         params.paymentMethods[0] = VENMO;
