@@ -68,7 +68,7 @@ describe("Escrow", () => {
   let relayerRegistry: RelayerRegistry;
   let postIntentHookMock: PostIntentHookMock;
   let orchestratorMock: OrchestratorMock;
-  let protocolFeeRecipient: Account;
+  let dustRecipient: Account;
 
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
@@ -89,7 +89,7 @@ describe("Escrow", () => {
       feeRecipient,
       gatingService,
       witness,
-      protocolFeeRecipient,
+      dustRecipient,
       intentGuardian
     ] = await getAccounts();
 
@@ -112,6 +112,7 @@ describe("Escrow", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
+      dustRecipient.address,
       ZERO,
       BigNumber.from(3),
       ONE_DAY_IN_SECONDS  // intentExpirationPeriod
@@ -167,12 +168,14 @@ describe("Escrow", () => {
       const paymentVerifierRegistryAddress: Address = await ramp.paymentVerifierRegistry();
       const maxIntentsPerDeposit: BigNumber = await ramp.maxIntentsPerDeposit();
       const dustThreshold: BigNumber = await ramp.dustThreshold();
+      const dustRecipientAddress: Address = await ramp.dustRecipient();
       const intentExpirationPeriod: BigNumber = await ramp.intentExpirationPeriod();
 
       expect(ownerAddress).to.eq(owner.address);
       expect(chainId).to.eq(chainId);
       expect(paymentVerifierRegistryAddress).to.eq(paymentVerifierRegistry.address);
       expect(maxIntentsPerDeposit).to.eq(BigNumber.from(3));
+      expect(dustRecipientAddress).to.eq(dustRecipient.address);
       expect(dustThreshold).to.eq(ZERO);
       expect(intentExpirationPeriod).to.eq(ONE_DAY_IN_SECONDS);
     });

@@ -26,7 +26,7 @@ import {
   encodeUnifiedPaymentPayload,
 } from "@utils/unifiedVerifierUtils";
 import { Currency, calculateIntentHash } from "@utils/protocolUtils";
-import { ONE_DAY_IN_SECONDS, ZERO } from "@utils/constants";
+import { ONE_DAY_IN_SECONDS, ZERO, ADDRESS_ZERO } from "@utils/constants";
 import { generateGatingServiceSignature } from "@utils/test/helpers";
 
 const expect = getWaffleExpect();
@@ -99,6 +99,7 @@ describe("UnifiedPaymentVerifier", () => {
       owner.address,
       BigNumber.from(chainId),
       paymentVerifierRegistry.address,
+      ADDRESS_ZERO,
       ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS,

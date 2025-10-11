@@ -97,6 +97,7 @@ describe("ProtocolViewer", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
+      ADDRESS_ZERO,
       ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS

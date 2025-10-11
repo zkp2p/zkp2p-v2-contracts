@@ -103,6 +103,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _owner,
         uint256 _chainId,
         address _paymentVerifierRegistry,
+        address _dustRecipient,
         uint256 _dustThreshold,
         uint256 _maxIntentsPerDeposit,
         uint256 _intentExpirationPeriod
@@ -111,6 +112,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         chainId = _chainId;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
+        dustRecipient = _dustRecipient;
         dustThreshold = _dustThreshold;
         maxIntentsPerDeposit = _maxIntentsPerDeposit;
         intentExpirationPeriod = _intentExpirationPeriod;
