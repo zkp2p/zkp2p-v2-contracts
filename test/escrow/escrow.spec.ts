@@ -53,7 +53,6 @@ describe("Escrow", () => {
   let gatingService: Account;
   let witness: Account;
   let intentGuardian: Account;
-  let referrer: Account;
   let chainId: BigNumber = ONE;
   let currentIntentCounter: number = 0;
   let venmoPaymentMethodHash: string;
@@ -91,8 +90,7 @@ describe("Escrow", () => {
       gatingService,
       witness,
       protocolFeeRecipient,
-      intentGuardian,
-      referrer
+      intentGuardian
     ] = await getAccounts();
 
     // Initialize payment method hashes
@@ -114,8 +112,6 @@ describe("Escrow", () => {
       owner.address,
       chainId,
       paymentVerifierRegistry.address,
-      ZERO,
-      protocolFeeRecipient.address,
       ZERO,
       BigNumber.from(3),
       ONE_DAY_IN_SECONDS  // intentExpirationPeriod
@@ -169,8 +165,6 @@ describe("Escrow", () => {
       const ownerAddress: Address = await ramp.owner();
       const chainId: BigNumber = await ramp.chainId();
       const paymentVerifierRegistryAddress: Address = await ramp.paymentVerifierRegistry();
-      const makerProtocolFee: BigNumber = await ramp.makerProtocolFee();
-      const makerFeeRecipientAddress: Address = await ramp.makerFeeRecipient();
       const maxIntentsPerDeposit: BigNumber = await ramp.maxIntentsPerDeposit();
       const dustThreshold: BigNumber = await ramp.dustThreshold();
       const intentExpirationPeriod: BigNumber = await ramp.intentExpirationPeriod();
@@ -178,8 +172,6 @@ describe("Escrow", () => {
       expect(ownerAddress).to.eq(owner.address);
       expect(chainId).to.eq(chainId);
       expect(paymentVerifierRegistryAddress).to.eq(paymentVerifierRegistry.address);
-      expect(makerProtocolFee).to.eq(ZERO);
-      expect(makerFeeRecipientAddress).to.eq(protocolFeeRecipient.address);
       expect(maxIntentsPerDeposit).to.eq(BigNumber.from(3));
       expect(dustThreshold).to.eq(ZERO);
       expect(intentExpirationPeriod).to.eq(ONE_DAY_IN_SECONDS);
@@ -233,8 +225,7 @@ describe("Escrow", () => {
         currencies: subjectCurrencies,
         delegate: subjectDelegate,
         intentGuardian: subjectIntentGuardian,
-        referrer: subjectReferrer,
-        referrerFee: subjectReferrerFee
+        // fees removed
       });
     }
 
@@ -259,8 +250,6 @@ describe("Escrow", () => {
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
       expect(depositView.deposit.delegate).to.eq(subjectDelegate);
-      expect(depositView.deposit.referrer).to.eq(subjectReferrer);
-      expect(depositView.deposit.referrerFee).to.eq(subjectReferrerFee);
 
       expect(depositView.paymentMethods.length).to.eq(1);
       expect(depositView.paymentMethods[0].paymentMethod).to.eq(subjectPaymentMethods[0]);
@@ -273,7 +262,7 @@ describe("Escrow", () => {
       expect(depositView.paymentMethods[0].currencies[1].code).to.eq(subjectCurrencies[0][1].code);
       expect(depositView.paymentMethods[0].currencies[1].minConversionRate).to.eq(subjectCurrencies[0][1].minConversionRate);
       expect(depositView.deposit.intentGuardian).to.eq(subjectIntentGuardian);
-      expect(depositView.deposit.makerProtocolFee).to.eq(ZERO);
+      // fees removed: no makerProtocolFee on deposit
     });
 
     it("should add the deposit to the accountDeposits mapping", async () => {
@@ -403,122 +392,6 @@ describe("Escrow", () => {
 
         const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
-      });
-    });
-
-    describe("when there is a referrer", async () => {
-      let subjectDepositParams: IEscrow.CreateDepositParamsStruct;
-      let subjectCaller: Account;
-
-      beforeEach(async () => {
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-        subjectDepositParams = {
-          token: usdcToken.address,
-          amount: usdc(1000),
-          intentAmountRange: { min: subjectIntentAmountRange.min, max: subjectIntentAmountRange.max },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1) }]
-          ],
-          delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: referrer.address,
-          referrerFee: ether(0.02)  // 2% referrer fee
-        };
-
-        subjectCaller = offRamper;
-      });
-
-      async function subject(): Promise<any> {
-        return ramp.connect(subjectCaller.wallet).createDeposit(subjectDepositParams);
-      }
-
-      it("should create deposit with referrer", async () => {
-        await subject();
-
-        const deposit = await ramp.getDeposit(ZERO);
-        expect(deposit.referrer).to.eq(referrer.address);
-        expect(deposit.referrerFee).to.eq(ether(0.02));
-      });
-
-      it("should emit a DepositReceived event with the correct net deposit amount", async () => {
-        const depositAmount = usdc(1000);
-        const expectedNetDepositAmount = usdc(980); // 2% referrer fee
-        await expect(subject()).to.emit(ramp, "DepositReceived").withArgs(
-          ZERO, // depositId starts at 0
-          offRamper.address,
-          subjectToken,
-          depositAmount,
-          expectedNetDepositAmount.toString(),
-          subjectIntentAmountRange,
-          subjectDelegate,
-          subjectIntentGuardian
-        );
-      });
-
-      it("should transfer the tokens to the Escrow contract", async () => {
-        await subject();
-
-        const escrowBalance = await usdcToken.balanceOf(ramp.address);
-        const offRamperBalance = await usdcToken.balanceOf(offRamper.address);
-        expect(escrowBalance).to.eq(usdc(1000));
-        expect(offRamperBalance).to.eq(usdc(9000));
-      });
-
-      describe("when referrer fee exceeds maximum", async () => {
-        beforeEach(async () => {
-          subjectDepositParams.referrerFee = ether(0.06); // 6% fee (exceeds 5% max)
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "FeeExceedsMaximum");
-        });
-      });
-
-      describe("when referrer is not set but fee is set", async () => {
-        beforeEach(async () => {
-          subjectDepositParams.referrer = ADDRESS_ZERO;
-          subjectDepositParams.referrerFee = ether(0.01); // 1% fee without referrer
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "InvalidReferrerFeeConfiguration");
-        });
-      });
-
-      describe("when referrer is set but fee is zero", async () => {
-        beforeEach(async () => {
-          subjectDepositParams.referrerFee = ZERO;
-        });
-
-        it("should create deposit with zero referrer fee", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(ZERO);
-          expect(deposit.referrer).to.eq(referrer.address);
-          expect(deposit.referrerFee).to.eq(ZERO);
-        });
-      });
-
-      describe("when no referrer is set", async () => {
-        beforeEach(async () => {
-          subjectDepositParams.referrer = ADDRESS_ZERO;
-          subjectDepositParams.referrerFee = ZERO;
-        });
-
-        it("should create deposit without referrer", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(ZERO);
-          expect(deposit.referrer).to.eq(ADDRESS_ZERO);
-          expect(deposit.referrerFee).to.eq(ZERO);
-        });
       });
     });
 
@@ -693,139 +566,6 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
-
-    describe("when maker fees are enabled", async () => {
-      let makerFeeRate: BigNumber;
-
-      beforeEach(async () => {
-        // Set maker fee to 1%
-        makerFeeRate = ether(0.01);
-        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-      });
-
-      it("should store the current makerProtocolFee in the deposit", async () => {
-        await subject();
-
-        const deposit = await ramp.getDeposit(0);
-        expect(deposit.makerProtocolFee).to.eq(makerFeeRate);
-      });
-
-      it("should calculate and reserve maker fees correctly", async () => {
-        await subject();
-
-        const deposit = await ramp.getDeposit(0);
-        const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1));
-        const expectedNetAmount = subjectAmount.sub(expectedMakerFees);
-
-        expect(deposit.reservedMakerFees).to.eq(expectedMakerFees);
-        expect(deposit.accruedMakerFees).to.eq(0);
-        expect(deposit.remainingDeposits).to.eq(expectedNetAmount);
-        expect(deposit.amount).to.eq(subjectAmount);
-      });
-
-      it("should transfer the full gross amount from depositor", async () => {
-        await subject();
-
-        const rampBalance = await usdcToken.balanceOf(ramp.address);
-        expect(rampBalance).to.eq(subjectAmount);
-      });
-
-      describe("when net amount after fees is below minimum intent amount", async () => {
-        beforeEach(async () => {
-          // Set high fee rate so net amount is below minimum
-          makerFeeRate = ether(0.05); // 5% fee
-          await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-          subjectAmount = usdc(100);
-          subjectIntentAmountRange = { min: usdc(99), max: usdc(200) };
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountBelowMin");
-        });
-      });
-
-      describe("when global maker fee changes after deposit creation", async () => {
-        let newGlobalFeeRate: BigNumber;
-        let depositId: BigNumber;
-
-        beforeEach(async () => {
-          // Create deposit with 1% fee
-          await subject();
-          depositId = ZERO;
-
-          // Change global fee to 2%
-          newGlobalFeeRate = ether(0.02);
-          await ramp.connect(owner.wallet).setMakerProtocolFee(newGlobalFeeRate);
-        });
-
-        it("should keep using the original fee rate for existing deposit", async () => {
-          const deposit = await ramp.getDeposit(depositId);
-          expect(deposit.makerProtocolFee).to.eq(makerFeeRate); // Still 1%
-          expect(deposit.makerProtocolFee).to.not.eq(newGlobalFeeRate); // Not 2%
-        });
-
-        it("should use new global fee rate for new deposits", async () => {
-          // Create another deposit after fee change
-          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-          await ramp.connect(offRamper.wallet).createDeposit({
-            token: usdcToken.address,
-            amount: usdc(200),
-            intentAmountRange: { min: usdc(10), max: usdc(200) },
-            paymentMethods: [venmoPaymentMethodHash],
-            paymentMethodData: [{
-              intentGatingService: gatingService.address,
-              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
-              data: "0x"
-            }],
-            currencies: [
-              [{ code: Currency.USD, minConversionRate: ether(1.01) }]
-            ],
-            delegate: offRamperDelegate.address,
-            intentGuardian: ADDRESS_ZERO,
-            referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
-          });
-
-          const newDeposit = await ramp.getDeposit(1);
-          expect(newDeposit.makerProtocolFee).to.eq(newGlobalFeeRate); // Uses new 2% rate
-        });
-
-        it("should calculate fees correctly for both deposits", async () => {
-          // Create another deposit with new fee rate
-          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-          await ramp.connect(offRamper.wallet).createDeposit({
-            token: usdcToken.address,
-            amount: usdc(200),
-            intentAmountRange: { min: usdc(10), max: usdc(200) },
-            paymentMethods: [venmoPaymentMethodHash],
-            paymentMethodData: [{
-              intentGatingService: gatingService.address,
-              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails2")),
-              data: "0x"
-            }],
-            currencies: [
-              [{ code: Currency.USD, minConversionRate: ether(1.01) }]
-            ],
-            delegate: offRamperDelegate.address,
-            intentGuardian: ADDRESS_ZERO,
-            referrer: ADDRESS_ZERO,
-            referrerFee: ZERO
-          });
-
-          const oldDeposit = await ramp.getDeposit(0);
-          const newDeposit = await ramp.getDeposit(1);
-
-          // Old deposit: 100 USDC * 1% = 1 USDC fees, 99 USDC remaining
-          expect(oldDeposit.reservedMakerFees).to.eq(usdc(1));
-          expect(oldDeposit.remainingDeposits).to.eq(usdc(99));
-
-          // New deposit: 200 USDC * 2% = 4 USDC fees, 196 USDC remaining
-          expect(newDeposit.reservedMakerFees).to.eq(usdc(4));
-          expect(newDeposit.remainingDeposits).to.eq(usdc(196));
-        });
-      });
-    });
   });
 
   describe("#addFundsToDeposit", async () => {
@@ -850,9 +590,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -890,13 +628,7 @@ describe("Escrow", () => {
     });
 
     it("should emit a DepositFundsAdded event", async () => {
-      const netAdditionalAmount = subjectAmount;
-      await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
-        subjectDepositId,
-        offRamper.address,
-        subjectAmount,
-        netAdditionalAmount
-      );
+      await expect(subject()).to.emit(ramp, "DepositFundsAdded");
     });
 
     describe("when the deposit is not accepting intents", async () => {
@@ -956,248 +688,6 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
-
-    describe("when maker fees are enabled", async () => {
-      let makerFeeRate: BigNumber;
-      let initialDeposit: any;
-
-      beforeEach(async () => {
-        // Set maker fee to 1%
-        makerFeeRate = ether(0.01);
-        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-
-        // Create deposit to test adding funds
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit({
-          token: usdcToken.address,
-          amount: usdc(100),
-          intentAmountRange: { min: usdc(10), max: usdc(200) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
-          ],
-          delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
-        });
-
-        subjectDepositId = BigNumber.from(1);
-        subjectAmount = usdc(50);
-        subjectCaller = offRamper;
-
-        // Get initial deposit state
-        initialDeposit = await ramp.getDeposit(subjectDepositId);
-      });
-
-      it("should calculate and add maker fees for additional amount", async () => {
-        await subject();
-
-        const deposit = await ramp.getDeposit(subjectDepositId);
-        const expectedAdditionalFees = subjectAmount.mul(makerFeeRate).div(ether(1));
-        const expectedNetAdditional = subjectAmount.sub(expectedAdditionalFees);
-
-        expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedAdditionalFees));
-        expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
-        expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
-      });
-
-      it("should transfer the full additional amount from depositor", async () => {
-        const rampPreBalance = await usdcToken.balanceOf(ramp.address);
-
-        await subject();
-
-        const rampPostBalance = await usdcToken.balanceOf(ramp.address);
-        expect(rampPostBalance.sub(rampPreBalance)).to.eq(subjectAmount);
-      });
-
-      describe("when adding large amount with fees", async () => {
-        beforeEach(async () => {
-          subjectAmount = usdc(1000);
-        });
-
-        it("should handle large amounts correctly", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(subjectDepositId);
-          const expectedAdditionalFees = subjectAmount.mul(makerFeeRate).div(ether(1));
-          const expectedNetAdditional = subjectAmount.sub(expectedAdditionalFees);
-
-          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedAdditionalFees));
-          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
-        });
-      });
-    });
-
-    describe("when deposit has referrer fees", async () => {
-      let referrerFee: BigNumber;
-      let depositWithReferrerParams: any;
-
-      beforeEach(async () => {
-        referrerFee = ether(0.02); // 2% referrer fee
-
-        // Create a deposit with referrer fee
-        depositWithReferrerParams = {
-          token: usdcToken.address,
-          amount: usdc(100),
-          intentAmountRange: { min: usdc(10), max: usdc(200) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsWithReferrer")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
-          ],
-          delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: referrer.address,
-          referrerFee: referrerFee
-        };
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit(depositWithReferrerParams);
-
-        subjectDepositId = BigNumber.from(1); // New deposit created
-        subjectAmount = usdc(50);
-        subjectCaller = offRamper;
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-      });
-
-      it("should calculate and reserve referrer fees for additional amount", async () => {
-        const initialDeposit = await ramp.getDeposit(subjectDepositId);
-
-        await subject();
-
-        const deposit = await ramp.getDeposit(subjectDepositId);
-        const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-        const expectedNetAdditional = subjectAmount.sub(expectedReferrerFees); // 50 - 1 = 49 USDC
-
-        expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(expectedReferrerFees));
-        expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
-        expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
-      });
-
-      it("should transfer the full additional amount from depositor", async () => {
-        const rampPreBalance = await usdcToken.balanceOf(ramp.address);
-
-        await subject();
-
-        const rampPostBalance = await usdcToken.balanceOf(ramp.address);
-        expect(rampPostBalance.sub(rampPreBalance)).to.eq(subjectAmount);
-      });
-
-      it("should emit a DepositFundsAdded event", async () => {
-        const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-        const netAdditionalAmount = subjectAmount.sub(expectedReferrerFees);
-        await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
-          subjectDepositId,
-          offRamper.address,
-          subjectAmount,
-          netAdditionalAmount
-        );
-      });
-
-      describe("when both maker and referrer fees are enabled", async () => {
-        let makerFeeRate: BigNumber;
-
-        beforeEach(async () => {
-          // Enable maker fees globally
-          makerFeeRate = ether(0.01); // 1% maker fee
-          await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-          await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-
-          // Create new deposit with both fees
-          depositWithReferrerParams.amount = usdc(200); // Use different amount to distinguish
-          depositWithReferrerParams.paymentMethodData[0].payeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetailsBothFees"));
-
-          await ramp.connect(offRamper.wallet).createDeposit(depositWithReferrerParams);
-
-          subjectDepositId = BigNumber.from(2); // Newest deposit
-        });
-
-        it("should calculate both maker and referrer fees correctly", async () => {
-          const initialDeposit = await ramp.getDeposit(subjectDepositId);
-
-          await subject();
-
-          const deposit = await ramp.getDeposit(subjectDepositId);
-          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
-          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
-          const expectedNetAdditional = subjectAmount.sub(totalFees); // 50 - 1.5 = 48.5 USDC
-
-          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(totalFees));
-          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(expectedNetAdditional));
-          expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
-        });
-
-        it("should use deposit's stored fee rates, not global rates", async () => {
-          // Change global maker fee after deposit creation
-          const newGlobalMakerFee = ether(0.05); // 5%
-          await ramp.connect(owner.wallet).setMakerProtocolFee(newGlobalMakerFee);
-
-          const initialDeposit = await ramp.getDeposit(subjectDepositId);
-
-          await subject();
-
-          const deposit = await ramp.getDeposit(subjectDepositId);
-
-          // Should use original 1% maker fee and 2% referrer fee, not new 5% maker fee
-          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
-          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
-
-          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees.add(totalFees));
-
-          // Verify it didn't use the new 5% maker fee
-          const wouldBeWithNewRate = subjectAmount.mul(newGlobalMakerFee).div(ether(1));
-          const wouldBeTotalWithNewRate = wouldBeWithNewRate.add(expectedReferrerFees);
-          expect(deposit.reservedMakerFees).to.not.eq(initialDeposit.reservedMakerFees.add(wouldBeTotalWithNewRate));
-        });
-
-        it("should emit a DepositFundsAdded event", async () => {
-          const expectedMakerFees = subjectAmount.mul(makerFeeRate).div(ether(1)); // 1% of 50 = 0.5 USDC
-          const expectedReferrerFees = subjectAmount.mul(referrerFee).div(ether(1)); // 2% of 50 = 1 USDC
-          const totalFees = expectedMakerFees.add(expectedReferrerFees); // 1.5 USDC total
-          const netAdditionalAmount = subjectAmount.sub(totalFees);
-          await expect(subject()).to.emit(ramp, "DepositFundsAdded").withArgs(
-            subjectDepositId,
-            offRamper.address,
-            subjectAmount,
-            netAdditionalAmount
-          );
-        });
-      });
-
-      describe("when deposit has no referrer", async () => {
-        beforeEach(async () => {
-          // Use the original deposit which has no referrer
-          subjectDepositId = ZERO; // Original deposit with no referrer
-        });
-
-        it("should not charge any referrer fees", async () => {
-          const initialDeposit = await ramp.getDeposit(subjectDepositId);
-
-          await subject();
-
-          const deposit = await ramp.getDeposit(subjectDepositId);
-
-          // No referrer fees should be charged
-          expect(deposit.reservedMakerFees).to.eq(initialDeposit.reservedMakerFees);
-          expect(deposit.remainingDeposits).to.eq(initialDeposit.remainingDeposits.add(subjectAmount));
-          expect(deposit.amount).to.eq(initialDeposit.amount.add(subjectAmount));
-        });
-      });
-    });
   });
 
   describe("#removeFundsFromDeposit", async () => {
@@ -1222,9 +712,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1489,9 +977,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -1774,365 +1260,6 @@ describe("Escrow", () => {
         await expect(subject()).to.not.be.reverted;
       });
     });
-
-    describe("when maker fees are enabled", async () => {
-      let makerFeeRate: BigNumber;
-      let grossDepositAmount: BigNumber;
-      let reservedFees: BigNumber;
-      let netDepositAmount: BigNumber;
-
-      beforeEach(async () => {
-        // Set maker fee to 1%
-        makerFeeRate = ether(0.01);
-        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-
-        // Create deposit with fees
-        grossDepositAmount = usdc(100);
-        reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
-        netDepositAmount = grossDepositAmount.sub(reservedFees);
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit({
-          token: usdcToken.address,
-          amount: grossDepositAmount,
-          intentAmountRange: { min: usdc(10), max: usdc(200) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1.08) }]
-          ],
-          delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
-        });
-
-        subjectDepositId = BigNumber.from(1); // New deposit created
-      });
-
-      it("should return full amount including unused fees", async () => {
-        const preBalance = await usdcToken.balanceOf(offRamper.address);
-        const preRampBalance = await usdcToken.balanceOf(ramp.address);
-        const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-        await subject();
-
-        const postBalance = await usdcToken.balanceOf(offRamper.address);
-        const postRampBalance = await usdcToken.balanceOf(ramp.address);
-        const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-        // Depositor gets back full gross amount (including unused fees)
-        expect(postBalance).to.eq(preBalance.add(grossDepositAmount));
-        expect(postRampBalance).to.eq(preRampBalance.sub(grossDepositAmount));
-        // No fees collected since no intents were fulfilled
-        expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance);
-      });
-
-      it("should emit DepositClosed event", async () => {
-        await expect(subject()).to.emit(ramp, "DepositClosed").withArgs(
-          subjectDepositId,
-          offRamper.address
-        );
-      });
-
-      describe("when some fees have been accrued", async () => {
-        let intentHash: string;
-        let intentAmount: BigNumber;
-        let paymentAmount: BigNumber;
-
-        beforeEach(async () => {
-          // Signal and fulfill an intent to accrue some fees
-          intentAmount = usdc(50);
-          paymentAmount = intentAmount.mul(ether(1.1));  // pay the full amount
-          const conversionRate = ether(1.1);
-
-          const signalIntentParams = await createSignalIntentParams(
-            orchestrator.address,
-            ramp.address,
-            subjectDepositId,
-            intentAmount,
-            onRamper.address,
-            venmoPaymentMethodHash,
-            Currency.USD,
-            conversionRate,
-            ADDRESS_ZERO,
-            ZERO,
-            gatingService,
-            chainId.toString(),
-            ADDRESS_ZERO,
-            "0x"
-          );
-
-          await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
-
-          const currentTimestamp = await blockchain.getCurrentTimestamp();
-          intentHash = calculateIntentHash(
-            orchestrator.address,
-            currentIntentCounter
-          );
-          currentIntentCounter++;  // Increment after signalIntent
-
-          // Fulfill the intent - this will accrue fees
-          const paymentData = ethers.utils.defaultAbiCoder.encode(
-            ["uint256", "uint256", "string", "bytes32", "bytes32"],
-            [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
-          );
-          const fulfillParams = {
-            paymentProof: paymentData,
-            intentHash: intentHash,
-            verificationData: "0x",
-            postIntentHookData: "0x"
-          };
-
-          await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
-        });
-
-        it("should return remaining deposits plus unused fees", async () => {
-          const preDepositorBalance = await usdcToken.balanceOf(offRamper.address);
-          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          await subject();
-
-          const postDepositorBalance = await usdcToken.balanceOf(offRamper.address);
-          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          // Depositor gets: remaining deposits (49 USDC) + unused fees (1 - 0.5 = 0.5 USDC)
-          let accruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
-          const expectedReturn = netDepositAmount.sub(intentAmount).add(reservedFees.sub(accruedFees));
-          expect(postDepositorBalance).to.eq(preDepositorBalance.add(expectedReturn));
-
-          // Fee recipient gets the accrued fees (0.5 USDC)
-          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(accruedFees));
-        });
-
-        it("should emit MakerFeesCollected event", async () => {
-          let accruedFees = intentAmount.mul(makerFeeRate).div(ether(1));
-          await expect(subject()).to.emit(ramp, "MakerFeesCollected").withArgs(
-            subjectDepositId,
-            accruedFees,
-            feeRecipient.address
-          );
-        });
-      });
-
-      describe("when all fees and dust have been collected", async () => {
-        let fulfillParams: any;
-        let intentAmount: BigNumber;
-
-        beforeEach(async () => {
-          // Set dust threshold
-          // Signal intent for 99 USDC, reserved fees were 100 * 0.01 = 1 USDC
-          // accrued fees after intent fulfillment are 99 * 0.01 = 0.99 USDC
-          // dust threshold is 0.01 USDC
-          // remaining deposits (non reserved fees) are 99 - 99 = 0 USDC
-          // total remaining is 0 + (1 - 0.99) (reserved fees - accrued fees) = 0.01 USDC
-
-          // Set dust threshold
-          const dustThreshold = usdc(0.01);
-          await ramp.connect(owner.wallet).setDustThreshold(dustThreshold);
-
-          // Fulfill intent for full net deposit amount to accrue all fees
-          intentAmount = netDepositAmount;
-          const paymentAmount = intentAmount.mul(ether(1.1));  // pay the full amount
-          const conversionRate = ether(1.1);
-
-          const signalIntentParams = await createSignalIntentParams(
-            orchestrator.address,
-            ramp.address,
-            subjectDepositId,
-            intentAmount,
-            onRamper.address,
-            venmoPaymentMethodHash,
-            Currency.USD,
-            conversionRate,
-            ADDRESS_ZERO,
-            ZERO,
-            gatingService,
-            chainId.toString(),
-            ADDRESS_ZERO,
-            "0x"
-          );
-
-          await orchestrator.connect(onRamper.wallet).signalIntent(signalIntentParams);
-
-          const currentTimestamp = await blockchain.getCurrentTimestamp();
-          const intentHash = calculateIntentHash(
-            orchestrator.address,
-            currentIntentCounter
-          );
-          currentIntentCounter++;  // Increment after signalIntent
-
-          // Fulfill the intent
-          const paymentData = ethers.utils.defaultAbiCoder.encode(
-            ["uint256", "uint256", "string", "bytes32", "bytes32"],
-            [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
-          );
-          fulfillParams = {
-            paymentProof: paymentData,
-            intentHash: intentHash,
-            verificationData: "0x",
-            postIntentHookData: "0x"
-          };
-        });
-
-        it("should only transfer accrued fees to fee recipient", async () => {
-          const preDepositorBalance = await usdcToken.balanceOf(offRamper.address);
-          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          // Fulfill the intent; close the deposit automatically; collect fees
-          await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
-
-          const postDepositorBalance = await usdcToken.balanceOf(offRamper.address);
-          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          // Depositor gets nothing (all net deposits were fulfilled)
-          expect(postDepositorBalance).to.eq(preDepositorBalance);
-
-          // Fee recipient gets all reserved fees
-          const feesCollected = intentAmount.mul(makerFeeRate).div(ether(1));
-          const dustCollected = usdc(0.01);
-          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(feesCollected).add(dustCollected));
-        });
-
-        it("should emit MakerFeesCollected event", async () => {
-          const feesCollected = intentAmount.mul(makerFeeRate).div(ether(1));
-          await expect(orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams)).to.emit(
-            ramp, "MakerFeesCollected"
-          ).withArgs(
-            subjectDepositId,
-            feesCollected,
-            feeRecipient.address
-          );
-        });
-
-        it("should emit DustCollected event", async () => {
-          const dustCollected = usdc(0.01);
-          await expect(orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams)).to.emit(
-            ramp, "DustCollected"
-          ).withArgs(
-            subjectDepositId,
-            dustCollected,
-            feeRecipient.address
-          );
-        });
-      });
-    });
-
-    describe("when deposit has referrer fees", async () => {
-      let referrerFee: BigNumber;
-      let intentHash: string;
-      let intentAmount: BigNumber;
-      let paymentAmount: BigNumber;
-
-      beforeEach(async () => {
-        // Create a deposit with referrer
-        referrerFee = ether(0.02); // 2% referrer fee
-        intentAmount = usdc(100);
-        paymentAmount = intentAmount.mul(ether(1.1));
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-        await ramp.connect(offRamper.wallet).createDeposit({
-          token: usdcToken.address,
-          amount: usdc(1000),
-          intentAmountRange: { min: usdc(10), max: usdc(1000) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1) }]
-          ],
-          delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: referrer.address,
-          referrerFee: referrerFee
-        });
-
-        subjectDepositId = BigNumber.from(1); // New deposit created
-
-        // Signal and fulfill an intent to accrue some fees
-        const params = await createSignalIntentParams(
-          orchestrator.address,
-          ramp.address,
-          subjectDepositId,
-          usdc(100),
-          onRamper.address,
-          venmoPaymentMethodHash,
-          Currency.USD,
-          ether(1),
-          ADDRESS_ZERO,
-          ZERO,
-          gatingService,
-          chainId.toString(),
-          ADDRESS_ZERO,
-          "0x"
-        );
-
-        await ramp.connect(owner.wallet).setOrchestrator(orchestrator.address);
-
-        await orchestrator.connect(onRamper.wallet).signalIntent(params);
-
-        const currentTimestamp = await blockchain.getCurrentTimestamp();
-        intentHash = calculateIntentHash(
-          orchestrator.address,
-          currentIntentCounter
-        );
-        currentIntentCounter++;  // Increment after signalIntent
-
-        // Fulfill the intent - this will accrue fees
-        const paymentData = ethers.utils.defaultAbiCoder.encode(
-          ["uint256", "uint256", "string", "bytes32", "bytes32"],
-          [paymentAmount, currentTimestamp, "payeeDetails", Currency.USD, intentHash]
-        );
-        const fulfillParams = {
-          paymentProof: paymentData,
-          intentHash: intentHash,
-          verificationData: "0x",
-          postIntentHookData: "0x"
-        };
-
-        await orchestrator.connect(witness.wallet).fulfillIntent(fulfillParams);
-      });
-
-      it("should pay referrer fees on withdrawal", async () => {
-        const referrerBalanceBefore = await usdcToken.balanceOf(referrer.address);
-
-        await subject();
-
-        const referrerBalanceAfter = await usdcToken.balanceOf(referrer.address);
-        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
-
-        expect(referrerBalanceAfter.sub(referrerBalanceBefore)).to.eq(expectedReferrerFee);
-      });
-
-      it("should emit ReferrerFeesCollected event", async () => {
-        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
-
-        await expect(subject())
-          .to.emit(ramp, "ReferrerFeesCollected")
-          .withArgs(subjectDepositId, expectedReferrerFee, referrer.address);
-      });
-
-      it("should return correct amount to depositor", async () => {
-        const depositorBalanceBefore = await usdcToken.balanceOf(offRamper.address);
-
-        await subject();
-
-        const depositorBalanceAfter = await usdcToken.balanceOf(offRamper.address);
-        const expectedReferrerFee = usdc(100).mul(referrerFee).div(ether(1)); // 2 USDC
-        const expectedReturn = usdc(1000).sub(usdc(100)).sub(expectedReferrerFee);
-
-        expect(depositorBalanceAfter.sub(depositorBalanceBefore)).to.eq(expectedReturn);
-      });
-    });
   });
 
   // DELEGATE FUNCTIONS
@@ -2161,9 +1288,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2288,9 +1413,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2405,9 +1528,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       // Already registered paypalPaymentMethodHash in beforeEach
@@ -2562,9 +1683,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.02) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2688,9 +1807,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2839,9 +1956,7 @@ describe("Escrow", () => {
           ]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -2960,9 +2075,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: ADDRESS_ZERO,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -3078,9 +2191,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -3169,9 +2280,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       subjectDepositId = ZERO;
@@ -3363,9 +2472,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3484,9 +2591,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -3735,9 +2840,7 @@ describe("Escrow", () => {
           }],
           currencies: [[{ code: Currency.USD, minConversionRate: ether(1) }]],
           delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          intentGuardian: ADDRESS_ZERO
         });
 
         const depositCounter = await ramp.depositCounter();
@@ -3827,9 +2930,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       // Lock funds first
@@ -3961,9 +3062,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       // Lock funds first
@@ -4034,8 +3133,6 @@ describe("Escrow", () => {
         subjectIntentHash,
         intentAmount,
         subjectTransferAmount,
-        ZERO,     // maker fee
-        ZERO,     // referrer fee
         subjectTo
       );
     });
@@ -4142,536 +3239,6 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentNotFound");
       });
     });
-
-    describe("when maker fees are enabled", async () => {
-      let makerFeeRate: BigNumber;
-      let grossDepositAmount: BigNumber;
-      let reservedFees: BigNumber;
-      let netDepositAmount: BigNumber;
-      let expectedAccruedFees: BigNumber;
-
-      beforeEach(async () => {
-        // Set maker fee to 1%
-        makerFeeRate = ether(0.01);
-        await ramp.connect(owner.wallet).setMakerProtocolFee(makerFeeRate);
-        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
-
-        // Create deposit with fees
-        grossDepositAmount = usdc(100);
-        reservedFees = grossDepositAmount.mul(makerFeeRate).div(ether(1));
-        netDepositAmount = grossDepositAmount.sub(reservedFees);
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-        await ramp.connect(offRamper.wallet).createDeposit({
-          token: usdcToken.address,
-          amount: grossDepositAmount,
-          intentAmountRange: { min: usdc(10), max: usdc(100) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1.01) }]
-          ],
-          delegate: offRamperDelegate.address,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
-        });
-
-        // Lock funds
-        const currentTimestamp = await blockchain.getCurrentTimestamp();
-        subjectDepositId = BigNumber.from(1); // New deposit
-        subjectIntentHash = calculateIntentHash(
-          orchestrator.address,
-          currentIntentCounter
-        );
-        intentAmount = usdc(30);
-        intentExpiryTime = currentTimestamp.add(ONE_DAY_IN_SECONDS);
-        currentIntentCounter++;  // Increment after signalIntent
-
-        await orchestratorMock.connect(owner.wallet).lockFunds(
-          subjectDepositId,
-          subjectIntentHash,
-          intentAmount
-        );
-
-        subjectTransferAmount = intentAmount; // Full amount by default
-        expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
-      });
-
-      it("should accrue maker fees on transfer", async () => {
-        const preDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(preDeposit.accruedMakerFees).to.eq(ZERO);
-        expect(preDeposit.reservedMakerFees).to.eq(reservedFees);
-
-        await subject();
-
-        const postDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
-        expect(postDeposit.reservedMakerFees).to.eq(reservedFees); // Reserved fees unchanged
-      });
-
-      it("should update the deposit state correctly with fees", async () => {
-        await subject();
-
-        const postDeposit = await ramp.getDeposit(subjectDepositId);
-        // Remaining = 99 - 30 = 69 USDC
-        expect(postDeposit.remainingDeposits).to.eq(netDepositAmount.sub(intentAmount));
-        expect(postDeposit.outstandingIntentAmount).to.eq(ZERO);
-      });
-
-      it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
-        await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
-          subjectDepositId,
-          subjectIntentHash,
-          intentAmount,
-          subjectTransferAmount,
-          expectedAccruedFees,
-          ZERO,
-          subjectTo
-        );
-      });
-
-      describe("when transferring partial amount", async () => {
-        beforeEach(async () => {
-          subjectTransferAmount = usdc(20); // Less than intent amount
-          expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
-        });
-
-        it("should accrue fees proportional to transfer amount", async () => {
-          await subject();
-
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-          expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees); // 0.2 USDC
-        });
-
-        it("should return unused portion to remaining deposits", async () => {
-          await subject();
-
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-          // Remaining = 69 + 10 (unused) = 79 USDC
-          const expectedRemaining = netDepositAmount.sub(intentAmount).add(intentAmount.sub(subjectTransferAmount));
-          expect(postDeposit.remainingDeposits).to.eq(expectedRemaining);
-        });
-      });
-
-      describe("when transferring would accrue fees but not close deposit", async () => {
-        beforeEach(async () => {
-          // Remove most funds, leaving only the intent amount
-          await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, netDepositAmount.sub(intentAmount));
-        });
-
-        it("should collect accrued fees and close deposit", async () => {
-          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          await subject();
-
-          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-
-          // All fees should be collected (both the new accrued fees and any previously accrued)
-          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance);
-          expect(postDeposit.accruedMakerFees).to.eq(expectedAccruedFees);
-        });
-
-        it("should zero out the outstanding intent amount and remaining deposits", async () => {
-          await subject();
-
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-          expect(postDeposit.outstandingIntentAmount).to.eq(ZERO);
-          expect(postDeposit.remainingDeposits).to.eq(ZERO);
-        });
-
-        it("should NOT emit MakerFeesCollected event", async () => {
-          await expect(subject()).to.not.emit(ramp, "MakerFeesCollected");
-        });
-
-        describe("should allow the depositor to withdraw the reamaining reserved fees later", async () => {
-          beforeEach(async () => {
-            // Unlock and transfer to accrue fees
-            await subject();
-          });
-
-          it("should allow the depositor to withdraw the reamaining funds", async () => {
-            const preOffRamperBalance = await usdcToken.balanceOf(offRamper.address);
-
-            await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
-
-            const postOffRamperBalance = await usdcToken.balanceOf(offRamper.address);
-            expect(postOffRamperBalance).to.eq(preOffRamperBalance.add(reservedFees.sub(expectedAccruedFees)));
-          });
-        });
-      });
-
-      describe("when deposit has remaining funds less than dust threshold", async () => {
-        beforeEach(async () => {
-          // Remove the old intent
-          await orchestratorMock.connect(owner.wallet).unlockFunds(subjectDepositId, subjectIntentHash);
-
-          // Set dust threshold
-          await ramp.connect(owner.wallet).setDustThreshold(usdc(1));
-
-          // Create a smaller intent that will leave dust
-          intentAmount = netDepositAmount.sub(usdc(0.5)); // Leave 0.5 USDC
-
-          // Re-lock funds with new amount
-          const currentTimestamp = await blockchain.getCurrentTimestamp();
-          subjectIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("newIntent"));
-
-          await orchestratorMock.connect(owner.wallet).lockFunds(
-            subjectDepositId,
-            subjectIntentHash,
-            intentAmount
-          );
-
-          subjectTransferAmount = intentAmount;
-          expectedAccruedFees = subjectTransferAmount.mul(makerFeeRate).div(ether(1));
-        });
-
-        it("should collect dust and close deposit", async () => {
-          const preFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-
-          await subject();
-
-          const postFeeRecipientBalance = await usdcToken.balanceOf(feeRecipient.address);
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-
-          // Fee recipient gets accrued fees + dust
-          // accrued fees is 0.01 * (99 - 0.5) = 0.985 USDC
-          // remaining reserved fees is 1 - 0.985 = 0.015 USDC
-          // dust is 0.5 USDC
-          // and total remaining is 0.5 + 0.015 = 0.515 USDC
-          const expectedTotal = expectedAccruedFees.add(usdc(0.5)).add(usdc(0.015));
-          expect(postFeeRecipientBalance).to.eq(preFeeRecipientBalance.add(expectedTotal));
-          expect(postDeposit.depositor).to.eq(ADDRESS_ZERO); // Deposit closed
-        });
-
-        it("should emit both MakerFeesCollected and DustCollected events", async () => {
-          const tx = await subject();
-
-          await expect(tx).to.emit(ramp, "MakerFeesCollected").withArgs(
-            subjectDepositId,
-            expectedAccruedFees, // All accrued fees collected
-            feeRecipient.address
-          );
-
-          await expect(tx).to.emit(ramp, "DustCollected").withArgs(
-            subjectDepositId,
-            usdc(0.5).add(usdc(0.015)), // dust + remaining reserved fees
-            feeRecipient.address
-          );
-        });
-      });
-
-      describe("when multiple intents fulfilled", async () => {
-        let secondIntentHash: string;
-        let secondIntentAmount: BigNumber;
-
-        beforeEach(async () => {
-          // First fulfill the original intent
-          await subject();
-
-          // Create and lock a second intent
-          secondIntentAmount = usdc(40);
-          const currentTimestamp = await blockchain.getCurrentTimestamp();
-          secondIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("secondIntent"));
-
-          await orchestratorMock.connect(owner.wallet).lockFunds(
-            subjectDepositId,
-            secondIntentHash,
-            secondIntentAmount
-          );
-
-          // Update subject params for second intent
-          subjectIntentHash = secondIntentHash;
-          subjectTransferAmount = secondIntentAmount;
-        });
-
-        it("should accumulate accrued fees", async () => {
-          const firstIntentFees = intentAmount.mul(makerFeeRate).div(ether(1));
-          const secondIntentFees = secondIntentAmount.mul(makerFeeRate).div(ether(1));
-
-          await subject();
-
-          const postDeposit = await ramp.getDeposit(subjectDepositId);
-          expect(postDeposit.accruedMakerFees).to.eq(firstIntentFees.add(secondIntentFees));
-        });
-      });
-
-      it("should not accrue referrer fees when no referrer is set", async () => {
-        await subject();
-
-        const deposit = await ramp.getDeposit(subjectDepositId);
-        expect(deposit.accruedReferrerFees).to.eq(ZERO);
-      });
-
-      describe("when referrer fee is set", async () => {
-        let referrerFee: BigNumber;
-        let depositId: BigNumber;
-        let intentHash: string;
-        let intentAmount: BigNumber;
-
-        beforeEach(async () => {
-          referrerFee = ether(0.02); // 2% referrer fee
-
-          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-          await ramp.connect(offRamper.wallet).createDeposit({
-            token: usdcToken.address,
-            amount: usdc(1000),
-            intentAmountRange: { min: usdc(10), max: usdc(1000) },
-            paymentMethods: [venmoPaymentMethodHash],
-            paymentMethodData: [{
-              intentGatingService: gatingService.address,
-              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-              data: "0x"
-            }],
-            currencies: [
-              [{ code: Currency.USD, minConversionRate: ether(1) }]
-            ],
-            delegate: ADDRESS_ZERO,
-            intentGuardian: ADDRESS_ZERO,
-            referrer: referrer.address,
-            referrerFee: referrerFee
-          });
-
-          depositId = BigNumber.from(2);
-          intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
-          intentAmount = usdc(100);
-
-          await orchestratorMock.connect(onRamper.wallet).lockFunds(
-            depositId,
-            intentHash,
-            intentAmount
-          );
-          subjectDepositId = depositId;
-          subjectIntentHash = intentHash;
-          subjectTransferAmount = intentAmount;
-
-          currentIntentCounter++;
-        });
-
-        it("should accrue both referrer and maker fees", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(depositId);
-          const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
-          const expectedMakerFee = intentAmount.mul(makerFeeRate).div(ether(1));
-          expect(deposit.accruedReferrerFees).to.eq(expectedReferrerFee);
-          expect(deposit.accruedMakerFees).to.eq(expectedMakerFee);
-        });
-
-        it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
-          const expectedMakerFee = intentAmount.mul(makerFeeRate).div(ether(1));
-          const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
-          await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
-            subjectDepositId,
-            subjectIntentHash,
-            intentAmount,
-            subjectTransferAmount,
-            expectedMakerFee,
-            expectedReferrerFee,
-            subjectTo
-          );
-        });
-      });
-    });
-
-    describe("when referrer fees are enabled", async () => {
-      let depositId: BigNumber;
-      let intentHash: string;
-      let referrerFee: BigNumber;
-
-      beforeEach(async () => {
-        // Create a deposit with referrer
-        referrerFee = ether(0.02); // 2% referrer fee
-
-        await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-        await ramp.connect(offRamper.wallet).createDeposit({
-          token: usdcToken.address,
-          amount: usdc(1000),
-          intentAmountRange: { min: usdc(10), max: usdc(1000) },
-          paymentMethods: [venmoPaymentMethodHash],
-          paymentMethodData: [{
-            intentGatingService: gatingService.address,
-            payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-            data: "0x"
-          }],
-          currencies: [
-            [{ code: Currency.USD, minConversionRate: ether(1) }]
-          ],
-          delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO,
-          referrer: referrer.address,
-          referrerFee: referrerFee
-        });
-
-        depositId = ONE;
-        intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
-        intentAmount = usdc(100);
-
-        await orchestratorMock.connect(onRamper.wallet).lockFunds(
-          depositId,
-          intentHash,
-          intentAmount
-        );
-        subjectDepositId = depositId;
-        subjectIntentHash = intentHash;
-        subjectTransferAmount = intentAmount;
-
-        currentIntentCounter++;
-      });
-
-      it("should accrue referrer fees on fulfillment", async () => {
-        const depositBefore = await ramp.getDeposit(depositId);
-        expect(depositBefore.accruedReferrerFees).to.eq(ZERO);
-
-        await subject();
-
-        const depositAfter = await ramp.getDeposit(depositId);
-        const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
-        expect(depositAfter.accruedReferrerFees).to.eq(expectedReferrerFee);
-      });
-
-      it("should emit FundsUnlockedAndTransferred with correct fee amount", async () => {
-        const expectedReferrerFee = intentAmount.mul(referrerFee).div(ether(1));
-        await expect(subject()).to.emit(ramp, "FundsUnlockedAndTransferred").withArgs(
-          subjectDepositId,
-          subjectIntentHash,
-          intentAmount,
-          subjectTransferAmount,
-          ZERO,   // maker fee
-          expectedReferrerFee,
-          subjectTo
-        );
-      });
-
-      describe("when partial fulfillment", async () => {
-        beforeEach(async () => {
-          subjectTransferAmount = usdc(50);
-        });
-
-        it("should accrue proportional referrer fees", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(depositId);
-
-          // Referrer fee: 50 USDC * 2% = 1 USDC
-          const expectedReferrerFee = usdc(50).mul(referrerFee).div(ether(1));
-          expect(deposit.accruedReferrerFees).to.eq(expectedReferrerFee);
-        });
-      });
-
-      describe("when closing deposit due to dust with referrer fees", async () => {
-        beforeEach(async () => {
-
-          // At 2% fee, we will reserve 1 USDC for fees;
-          // we will take away 45 for first intent and 4 for second intent
-          // and we will take 45 * 2% + 4 * 2% = 0.98 USDC for fees
-          // so remaining dust is 0.02 USDC
-          await ramp.connect(owner.wallet).setDustThreshold(usdc(0.1));
-
-          referrerFee = ether(0.02); // 2% referrer fee
-          await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
-
-          await ramp.connect(offRamper.wallet).createDeposit({
-            token: usdcToken.address,
-            amount: usdc(50),
-            intentAmountRange: { min: usdc(1), max: usdc(50) },
-            paymentMethods: [venmoPaymentMethodHash],
-            paymentMethodData: [{
-              intentGatingService: gatingService.address,
-              payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
-              data: "0x"
-            }],
-            currencies: [
-              [{ code: Currency.USD, minConversionRate: ether(1) }]
-            ],
-            delegate: ADDRESS_ZERO,
-            intentGuardian: ADDRESS_ZERO,
-            referrer: referrer.address,
-            referrerFee: referrerFee
-          });
-
-          depositId = BigNumber.from(2);
-          intentAmount = usdc(45);
-
-          const params = await createSignalIntentParams(
-            orchestrator.address,
-            ramp.address,
-            depositId,
-            intentAmount,
-            onRamper.address,
-            venmoPaymentMethodHash,
-            Currency.USD,
-            ether(1),
-            ADDRESS_ZERO,
-            ZERO,
-            gatingService,
-            chainId.toString(),
-            ADDRESS_ZERO,
-            "0x"
-          );
-
-          intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
-
-          await orchestratorMock.connect(onRamper.wallet).lockFunds(
-            depositId,
-            intentHash,
-            intentAmount
-          );
-
-          await orchestratorMock.connect(onRamper.wallet).unlockAndTransferFunds(
-            depositId,
-            intentHash,
-            intentAmount,
-            orchestratorMock.address
-          );
-
-          const intentHash2 = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
-          intentAmount = usdc(4);
-          await orchestratorMock.connect(onRamper.wallet).lockFunds(
-            depositId,
-            intentHash2,
-            intentAmount
-          );
-
-          subjectDepositId = depositId;
-          subjectIntentHash = intentHash2;
-          subjectTransferAmount = intentAmount;
-        });
-
-        it("should pay referrer fees when closing deposit due to dust", async () => {
-          const referrerBalanceBefore = await usdcToken.balanceOf(referrer.address);
-
-          await subject();
-
-          const referrerBalanceAfter = await usdcToken.balanceOf(referrer.address);
-          const totalReferrerFee = usdc(45).mul(referrerFee).div(ether(1)).add(usdc(4).mul(referrerFee).div(ether(1))); // 2% of 50 + 2% of 4
-
-          expect(referrerBalanceAfter.sub(referrerBalanceBefore)).to.eq(totalReferrerFee);
-        });
-
-        it("should emit ReferrerFeesCollected event", async () => {
-          const totalReferrerFee = usdc(45).mul(referrerFee).div(ether(1)).add(usdc(4).mul(referrerFee).div(ether(1))); // 2% of 50 + 2% of 4
-
-          await expect(subject())
-            .to.emit(ramp, "ReferrerFeesCollected")
-            .withArgs(depositId, totalReferrerFee, referrer.address);
-        });
-
-        it("should close the deposit", async () => {
-          await subject();
-
-          const deposit = await ramp.getDeposit(depositId);
-          expect(deposit.depositor).to.eq(ADDRESS_ZERO);
-        });
-      });
-    });
   });
 
   describe("#extendIntentExpiry", async () => {
@@ -4698,9 +3265,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1) }]
         ],
         delegate: ADDRESS_ZERO,  // delegate
-        intentGuardian: intentGuardian.address,  // intentGuardian
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: intentGuardian.address,  // intentGuardia
       });
 
       subjectDepositId = ZERO;
@@ -4807,9 +3372,7 @@ describe("Escrow", () => {
             [{ code: Currency.USD, minConversionRate: ether(1) }]
           ],
           delegate: ADDRESS_ZERO,  // delegate
-          intentGuardian: ADDRESS_ZERO,   // no intentGuardian,
-          referrer: ADDRESS_ZERO,
-          referrerFee: ZERO
+          intentGuardian: ADDRESS_ZERO,   // no intentGuardian
         });
 
         const newDepositId = ONE;
@@ -5111,116 +3674,52 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#setMakerProtocolFee", async () => {
-    let subjectMakerProtocolFee: BigNumber;
+  describe("#setDustRecipient", async () => {
+    let subjectDustRecipient: Address;
     let subjectCaller: Account;
 
     beforeEach(async () => {
-      subjectMakerProtocolFee = ether(0.02); // 2%
+      subjectDustRecipient = receiver.address;
       subjectCaller = owner;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setMakerProtocolFee(subjectMakerProtocolFee);
-    }
-
-    it("should set the correct maker protocol fee", async () => {
-      const preFee = await ramp.makerProtocolFee();
-      expect(preFee).to.eq(ZERO);
-
-      await subject();
-
-      const postFee = await ramp.makerProtocolFee();
-      expect(postFee).to.eq(subjectMakerProtocolFee);
-    });
-
-    it("should emit a MakerProtocolFeeUpdated event", async () => {
-      await expect(subject()).to.emit(ramp, "MakerProtocolFeeUpdated").withArgs(subjectMakerProtocolFee);
-    });
-
-    describe("when setting fee to zero", async () => {
-      beforeEach(async () => {
-        // First set a non-zero fee
-        await ramp.connect(owner.wallet).setMakerProtocolFee(ether(0.01));
-        // Then set to zero
-        subjectMakerProtocolFee = ZERO;
-      });
-
-      it("should allow setting fee to zero", async () => {
-        await subject();
-
-        const postFee = await ramp.makerProtocolFee();
-        expect(postFee).to.eq(ZERO);
-      });
-    });
-
-    describe("when the fee exceeds maximum", async () => {
-      beforeEach(async () => {
-        subjectMakerProtocolFee = ether(0.051); // 5.1%, exceeds max of 5%
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "AmountAboveMax");
-      });
-    });
-
-    describe("when the caller is not the owner", async () => {
-      beforeEach(async () => {
-        subjectCaller = onRamper;
-      });
-
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-  });
-
-  describe("#setMakerFeeRecipient", async () => {
-    let subjectMakerFeeRecipient: Address;
-    let subjectCaller: Account;
-
-    beforeEach(async () => {
-      subjectMakerFeeRecipient = receiver.address;
-      subjectCaller = owner;
-    });
-
-    async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setMakerFeeRecipient(subjectMakerFeeRecipient);
+      return ramp.connect(subjectCaller.wallet).setDustRecipient(subjectDustRecipient);
     }
 
     it("should set the correct maker fee recipient", async () => {
       await subject();
 
-      const postRecipient = await ramp.makerFeeRecipient();
-      expect(postRecipient).to.eq(subjectMakerFeeRecipient);
+      const postRecipient = await ramp.dustRecipient();
+      expect(postRecipient).to.eq(subjectDustRecipient);
     });
 
-    it("should emit a MakerFeeRecipientUpdated event", async () => {
-      await expect(subject()).to.emit(ramp, "MakerFeeRecipientUpdated").withArgs(subjectMakerFeeRecipient);
+    it("should emit a DustRecipientUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "DustRecipientUpdated").withArgs(subjectDustRecipient);
     });
 
     describe("when updating existing recipient", async () => {
       beforeEach(async () => {
         // First set an initial recipient
-        await ramp.connect(owner.wallet).setMakerFeeRecipient(feeRecipient.address);
+        await ramp.connect(owner.wallet).setDustRecipient(feeRecipient.address);
         // Then update to new recipient
-        subjectMakerFeeRecipient = receiver.address;
+        subjectDustRecipient = receiver.address;
       });
 
       it("should update to new recipient", async () => {
-        const preRecipient = await ramp.makerFeeRecipient();
+        const preRecipient = await ramp.dustRecipient();
         expect(preRecipient).to.eq(feeRecipient.address);
 
         await subject();
 
-        const postRecipient = await ramp.makerFeeRecipient();
-        expect(postRecipient).to.eq(subjectMakerFeeRecipient);
+        const postRecipient = await ramp.dustRecipient();
+        expect(postRecipient).to.eq(subjectDustRecipient);
       });
     });
 
     describe("when the recipient is zero address", async () => {
       beforeEach(async () => {
-        subjectMakerFeeRecipient = ADDRESS_ZERO;
+        subjectDustRecipient = ADDRESS_ZERO;
       });
 
       it("should revert", async () => {
@@ -5427,9 +3926,7 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO,
-        referrer: ADDRESS_ZERO,
-        referrerFee: ZERO
+        intentGuardian: ADDRESS_ZERO
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();

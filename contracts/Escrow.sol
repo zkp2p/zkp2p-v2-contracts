@@ -38,8 +38,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /* ============ Constants ============ */
     uint256 internal constant PRECISE_UNIT = 1e18;
-    uint256 internal constant MAX_MAKER_FEE = 5e16;                 // 5% max maker fee
-    uint256 internal constant MAX_REFERRER_FEE = 5e16;             // 5% max referrer fee
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
     
@@ -72,8 +70,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     uint256 public depositCounter;          // Counter for depositIds
     
-    uint256 public makerProtocolFee;        // Protocol fee taken from maker (in preciseUnits, 1e16 = 1%)
-    address public makerFeeRecipient;       // Address that receives maker protocol fees
+    address public dustRecipient;           // Address that receives dust
     uint256 public dustThreshold;           // Amount below which deposits are considered dust and can be closed
     uint256 public maxIntentsPerDeposit;    // Maximum active intents per deposit (suggested to keep below 100 to prevent deposit withdraw DOS)
     uint256 public intentExpirationPeriod;  // Time period after which an intent expires
@@ -106,8 +103,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _owner,
         uint256 _chainId,
         address _paymentVerifierRegistry,
-        uint256 _makerProtocolFee,
-        address _makerFeeRecipient,
         uint256 _dustThreshold,
         uint256 _maxIntentsPerDeposit,
         uint256 _intentExpirationPeriod
@@ -116,8 +111,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         chainId = _chainId;
         paymentVerifierRegistry = IPaymentVerifierRegistry(_paymentVerifierRegistry);
-        makerProtocolFee = _makerProtocolFee;
-        makerFeeRecipient = _makerFeeRecipient;
         dustThreshold = _dustThreshold;
         maxIntentsPerDeposit = _maxIntentsPerDeposit;
         intentExpirationPeriod = _intentExpirationPeriod;
@@ -141,19 +134,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
         }
 
-        // Validate referrer fee configuration
-        if (_params.referrerFee > MAX_REFERRER_FEE) revert FeeExceedsMaximum(_params.referrerFee, MAX_REFERRER_FEE);
-        if (_params.referrer == address(0) && _params.referrerFee != 0) revert InvalidReferrerFeeConfiguration();
-
-        // Calculate maker fees and net deposit amount
-        uint256 totalFees = 0;
-        if (makerProtocolFee > 0) {
-            totalFees += (_params.amount * makerProtocolFee) / PRECISE_UNIT;
-        }
-        if (_params.referrerFee > 0) {
-            totalFees += (_params.amount * _params.referrerFee) / PRECISE_UNIT;
-        }
-        uint256 netDepositAmount = _params.amount - totalFees;
+        uint256 netDepositAmount = _params.amount;
         if (netDepositAmount < _params.intentAmountRange.min) {
             revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
         }
@@ -170,13 +151,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             acceptingIntents: true,
             remainingDeposits: netDepositAmount,    // Net amount available for intents
             outstandingIntentAmount: 0,
-            makerProtocolFee: makerProtocolFee,
-            reservedMakerFees: totalFees,
-            accruedMakerFees: 0,
-            accruedReferrerFees: 0,
-            intentGuardian: _params.intentGuardian,
-            referrer: _params.referrer,
-            referrerFee: _params.referrerFee
+            intentGuardian: _params.intentGuardian
         });
 
         emit DepositReceived(
@@ -213,24 +188,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
-        uint256 additionalMakerFees = 0;
-        uint256 additionalReferrerFees = 0;
-
-        if (deposit.makerProtocolFee > 0) {
-            additionalMakerFees = (_amount * deposit.makerProtocolFee) / PRECISE_UNIT;
-        }
-        if (deposit.referrerFee > 0) {
-            additionalReferrerFees = (_amount * deposit.referrerFee) / PRECISE_UNIT;
-        }
-
-        uint256 totalFees = additionalMakerFees + additionalReferrerFees;
-        uint256 netAdditionalAmount = _amount - totalFees;
-        
         deposit.amount += _amount;
-        deposit.remainingDeposits += netAdditionalAmount;
-        deposit.reservedMakerFees += totalFees;
+        deposit.remainingDeposits += _amount;
         
-        emit DepositFundsAdded(_depositId, msg.sender, _amount, netAdditionalAmount);
+        emit DepositFundsAdded(_depositId, msg.sender, _amount);
         
         // Interactions
         deposit.token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -294,18 +255,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         _pruneIntents(_depositId, expiredIntents);
 
-        uint256 unusedFees = deposit.reservedMakerFees - deposit.accruedMakerFees - deposit.accruedReferrerFees;
-        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount + unusedFees;
-        
-        _collectAccruedMakerFees(_depositId, deposit);
-        _collectAccruedReferrerFees(_depositId, deposit);
+        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
 
         IERC20 token = deposit.token;
         deposit.outstandingIntentAmount -= reclaimableAmount;
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
-        delete deposit.accruedMakerFees;
-        delete deposit.accruedReferrerFees;
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
 
@@ -665,18 +620,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_transferAmount > intent.amount) revert AmountExceedsAvailable(_transferAmount, intent.amount);
         
         // Effects
-        uint256 makerFeeForThisTransfer = 0;
-        uint256 referrerFeeForThisTransfer = 0;
-
-        if (deposit.makerProtocolFee > 0) {
-            makerFeeForThisTransfer = (_transferAmount * deposit.makerProtocolFee) / PRECISE_UNIT;
-            deposit.accruedMakerFees += makerFeeForThisTransfer;
-        }
-        if (deposit.referrerFee > 0) {
-            referrerFeeForThisTransfer = (_transferAmount * deposit.referrerFee) / PRECISE_UNIT;
-            deposit.accruedReferrerFees += referrerFeeForThisTransfer;
-        }
-
         deposit.outstandingIntentAmount -= intent.amount;
         
         // If this is a partial release, return the unused portion to remainingDeposits
@@ -690,7 +633,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _closeDepositIfNecessary(_depositId, deposit);
         
         emit FundsUnlockedAndTransferred(
-            _depositId, _intentHash, intent.amount, _transferAmount, makerFeeForThisTransfer, referrerFeeForThisTransfer, _to
+            _depositId, _intentHash, intent.amount, _transferAmount, _to
         );
 
         // Interactions
@@ -755,31 +698,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         emit PaymentVerifierRegistryUpdated(_paymentVerifierRegistry);
     }
 
-    /**
-     * @notice GOVERNANCE ONLY: Sets the maker protocol fee rate. This fee is charged to makers upon fulfillment of 
-     * intents.
+    /** 
+     * @notice GOVERNANCE ONLY: Sets the dust recipient address.
      *
-     * @param _makerProtocolFee The maker protocol fee in preciseUnits (1e16 = 1%)
+     * @param _dustRecipient The new dust recipient address
      */
-    function setMakerProtocolFee(uint256 _makerProtocolFee) external onlyOwner {
-        if (_makerProtocolFee > MAX_MAKER_FEE) revert AmountAboveMax(_makerProtocolFee, MAX_MAKER_FEE);
+    function setDustRecipient(address _dustRecipient) external onlyOwner {
+        if (_dustRecipient == address(0)) revert ZeroAddress();
         
-        makerProtocolFee = _makerProtocolFee;
-        emit MakerProtocolFeeUpdated(_makerProtocolFee);
+        dustRecipient = _dustRecipient;
+        emit DustRecipientUpdated(_dustRecipient);
     }
-    
-    /**
-     * @notice GOVERNANCE ONLY: Sets the address that receives maker protocol fees.
-     *
-     * @param _makerFeeRecipient The address to receive maker fees
-     */
-    function setMakerFeeRecipient(address _makerFeeRecipient) external onlyOwner {
-        if (_makerFeeRecipient == address(0)) revert ZeroAddress();
-        
-        makerFeeRecipient = _makerFeeRecipient;
-        emit MakerFeeRecipientUpdated(_makerFeeRecipient);
-    }
-    
+
     /**
      * @notice GOVERNANCE ONLY: Sets the dust threshold below which deposits can be closed automatically.
      *
@@ -965,44 +895,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
             delete _deposit.acceptingIntents;
         }
 
-        // Close if no outstanding intents, no remaining deposits, and no reserved fees left
-        uint256 reservedFeesLeft = _deposit.reservedMakerFees - _deposit.accruedMakerFees - _deposit.accruedReferrerFees;
-        uint256 totalRemaining = _deposit.remainingDeposits + reservedFeesLeft;
+        // Close if no outstanding intents and remaining deposits are at or below dust
+        uint256 totalRemaining = _deposit.remainingDeposits;
 
         if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
-            
-            _collectAccruedMakerFees(_depositId, _deposit);
-            _collectAccruedReferrerFees(_depositId, _deposit);
-            
             if (totalRemaining > 0) {
-                _deposit.token.safeTransfer(makerFeeRecipient, totalRemaining);
-                emit DustCollected(_depositId, totalRemaining, makerFeeRecipient);
+                _deposit.token.safeTransfer(dustRecipient, totalRemaining);
+                emit DustCollected(_depositId, totalRemaining, dustRecipient);
             }
-            
             _closeDeposit(_depositId, _deposit);
         }
     }
 
 
-    /**
-     * @notice Collects any accrued maker fees to the protocol fee recipient.
-     */
-    function _collectAccruedMakerFees(uint256 _depositId, Deposit storage _deposit) internal {
-        if (_deposit.accruedMakerFees > 0) {
-            _deposit.token.safeTransfer(makerFeeRecipient, _deposit.accruedMakerFees);
-            emit MakerFeesCollected(_depositId, _deposit.accruedMakerFees, makerFeeRecipient);
-        }
-    }
-
-    /**
-     * @notice Collects any accrued referrer fees to the referrer.
-     */
-    function _collectAccruedReferrerFees(uint256 _depositId, Deposit storage _deposit) internal {
-        if (_deposit.accruedReferrerFees > 0) {
-            _deposit.token.safeTransfer(_deposit.referrer, _deposit.accruedReferrerFees);
-            emit ReferrerFeesCollected(_depositId, _deposit.accruedReferrerFees, _deposit.referrer);
-        }
-    }
+    // Fees removed: no accrued fee collection helpers
 
     /**
      * @notice Closes a deposit. Deleting a deposit deletes it from the deposits mapping and removes tracking

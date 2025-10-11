@@ -100,8 +100,6 @@ describe("UnifiedPaymentVerifier", () => {
       BigNumber.from(chainId),
       paymentVerifierRegistry.address,
       ZERO,
-      feeRecipient.address,
-      ZERO,
       BigNumber.from(10),
       ONE_DAY_IN_SECONDS,
     );
@@ -160,8 +158,6 @@ describe("UnifiedPaymentVerifier", () => {
       currencies: [[{ code: Currency.USD, minConversionRate: depositMinConversionRate }]],
       delegate: ethers.constants.AddressZero,
       intentGuardian: ethers.constants.AddressZero,
-      referrer: ethers.constants.AddressZero,
-      referrerFee: ZERO,
     });
 
     depositId = BigNumber.from(0);

@@ -62,8 +62,6 @@ export default class DeployHelper {
     owner: Address,
     chainId: BigNumber,
     paymentVerifierRegistry: Address,
-    makerProtocolFee: BigNumber,
-    makerFeeRecipient: Address,
     dustThreshold: BigNumber,
     maxIntentsPerDeposit: BigNumber,
     intentExpirationPeriod: BigNumber
@@ -72,8 +70,6 @@ export default class DeployHelper {
       owner,
       chainId.toString(),
       paymentVerifierRegistry,
-      makerProtocolFee,
-      makerFeeRecipient,
       dustThreshold,
       maxIntentsPerDeposit,
       intentExpirationPeriod
