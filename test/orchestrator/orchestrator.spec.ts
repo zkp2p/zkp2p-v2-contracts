@@ -20,7 +20,9 @@ import {
   RelayerRegistry,
   NullifierRegistry,
   ProtocolViewer,
-  EscrowRegistry
+  EscrowRegistry,
+  PartialPullPostIntentHookMock,
+  PushPostIntentHookMock
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 
@@ -71,6 +73,8 @@ describe("Orchestrator", () => {
   let verifier: PaymentVerifierMock;
   let otherVerifier: PaymentVerifierMock;
   let postIntentHookMock: PostIntentHookMock;
+  let partialPostIntentHook: PartialPullPostIntentHookMock;
+  let pushPostIntentHook: PushPostIntentHookMock;
   let deployer: DeployHelper;
   let venmoPaymentMethod: BytesLike;
 
@@ -145,8 +149,14 @@ describe("Orchestrator", () => {
     await otherVerifier.connect(owner.wallet).setVerificationContext(orchestrator.address, escrow.address);
 
     postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, orchestrator.address);
-
     await postIntentHookRegistry.addPostIntentHook(postIntentHookMock.address);
+
+    partialPostIntentHook = await deployer.deployPartialPullPostIntentHookMock(usdcToken.address, orchestrator.address);
+    await postIntentHookRegistry.addPostIntentHook(partialPostIntentHook.address);
+
+    pushPostIntentHook = await deployer.deployPushPostIntentHookMock(usdcToken.address, orchestrator.address);
+    await postIntentHookRegistry.addPostIntentHook(pushPostIntentHook.address);
+
 
     venmoPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("venmo"));
     await paymentVerifierRegistry.addPaymentMethod(
@@ -1422,10 +1432,10 @@ describe("Orchestrator", () => {
 
     describe("when a postIntentHook is used", async () => {
       let hookTargetAddress: Address;
+      let subjectHookAddress: Address;
 
-      beforeEach(async () => {
-        hookTargetAddress = receiver.address;
-        const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetAddress]);
+      const signalIntentWithHook = async (hookAddress: Address, hookTargetRecipientAddress: Address) => {
+        const signalIntentDataForHook = ethers.utils.defaultAbiCoder.encode(["address"], [hookTargetRecipientAddress]);
 
         const currentTimestamp = await blockchain.getCurrentTimestamp();
         const signatureExpiration = currentTimestamp.add(ONE_DAY_IN_SECONDS).add(10);
@@ -1462,16 +1472,26 @@ describe("Orchestrator", () => {
           ZERO,
           null, // passing null since we already have the signature
           chainId.toString(),
-          postIntentHookMock.address,
+          hookAddress,    // use the hook address passed in
           signalIntentDataForHook,
           signatureExpiration
         );
         // Override the signature since we generated it manually
         params.gatingServiceSignature = gatingServiceSignatureForHook;
         await orchestrator.connect(onRamper.wallet).signalIntent(params);
-        const currentTimestamp2 = await blockchain.getCurrentTimestamp();
+        const intentTimestamp = await blockchain.getCurrentTimestamp();
         intentHash = calculateIntentHash(orchestrator.address, currentIntentCounter);
-        currentIntentCounter++;  // Increment after signalIntent
+        currentIntentCounter++;
+
+        return { intentHash, currentIntentCounter, intentTimestamp };
+      }
+
+      beforeEach(async () => {
+        hookTargetAddress = receiver.address;
+        const { intentHash, currentIntentCounter, intentTimestamp } = await signalIntentWithHook(
+          postIntentHookMock.address,
+          hookTargetAddress
+        );
 
         // Set the verifier to verify payment
         await verifier.setShouldVerifyPayment(true);
@@ -1479,11 +1499,12 @@ describe("Orchestrator", () => {
         // Prepare the proof and processor for the onRamp function
         subjectProof = ethers.utils.defaultAbiCoder.encode(
           ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
-          [usdc(50), currentTimestamp2, payeeDetails, Currency.USD, intentHash]
+          [usdc(50), intentTimestamp, payeeDetails, Currency.USD, intentHash]
         );
         subjectIntentHash = intentHash;
         subjectCaller = onRamper;
         subjectPostIntentDataData = "0x"; // Still keep it empty
+        subjectHookAddress = postIntentHookMock.address;
       });
 
       it("should transfer funds to the hook's target address, not the intent.to address", async () => {
@@ -1556,6 +1577,63 @@ describe("Orchestrator", () => {
             releaseAmount.sub(fee),    // Amount transferred to hook's destination
             false
           );
+        });
+      });
+
+      describe("when a partial-pull postIntentHook is used", async () => {
+        beforeEach(async () => {
+          hookTargetAddress = receiver.address;
+          const { intentHash, currentIntentCounter, intentTimestamp } = await signalIntentWithHook(
+            partialPostIntentHook.address,  // Use the partial-pull hook
+            hookTargetAddress
+          );
+
+          // Set the verifier to verify payment
+          await verifier.setShouldVerifyPayment(true);
+
+          // Prepare the proof and processor for the onRamp function
+          subjectProof = ethers.utils.defaultAbiCoder.encode(
+            ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
+            [usdc(50), intentTimestamp, payeeDetails, Currency.USD, intentHash]
+          );
+          subjectIntentHash = intentHash;
+          subjectCaller = onRamper;
+          subjectPostIntentDataData = "0x"; // Still keep it empty
+          subjectHookAddress = partialPostIntentHook.address;
+        });
+
+        it("should revert if the hook fails to pull the full net amount", async () => {
+          await expect(subject()).to.be.revertedWith("PostIntentHook: must pull exact netAmount");
+        });
+      });
+
+      describe("when a push-to-orchestrator postIntentHook is used", async () => {
+        beforeEach(async () => {
+          hookTargetAddress = receiver.address;
+          const { intentHash, currentIntentCounter, intentTimestamp } = await signalIntentWithHook(
+            pushPostIntentHook.address,  // Use the push-to-orchestrator hook
+            hookTargetAddress
+          );
+
+          // Set the verifier to verify payment
+          await verifier.setShouldVerifyPayment(true);
+
+          // Send some USDC to the hook
+          await usdcToken.transfer(pushPostIntentHook.address, usdc(10));
+
+          // Prepare the proof and processor for the onRamp function
+          subjectProof = ethers.utils.defaultAbiCoder.encode(
+            ["uint256", "uint256", "bytes32", "bytes32", "bytes32"],
+            [usdc(50), intentTimestamp, payeeDetails, Currency.USD, intentHash]
+          );
+          subjectIntentHash = intentHash;
+          subjectCaller = onRamper;
+          subjectPostIntentDataData = "0x"; // Still keep it empty
+          subjectHookAddress = pushPostIntentHook.address;
+        });
+
+        it("should revert if the hook fails to pull the full net amount", async () => {
+          await expect(subject()).to.be.revertedWith("PostIntentHook: unexpected balance increase");
         });
       });
     });
@@ -2240,7 +2318,7 @@ describe("Orchestrator", () => {
 
   describe("#pruneIntents", async () => {
     let subjectIntents: string[];
-    let subjectCaller: Account;
+    let subjectCaller: Address;
 
     let depositId: BigNumber;
     let intentHashes: string[];
@@ -2309,16 +2387,20 @@ describe("Orchestrator", () => {
       }
 
       subjectIntents = intentHashes;
-      subjectCaller = owner; // Will be escrow in real scenario
+      subjectCaller = escrow.address;
     });
 
     async function subject(): Promise<any> {
-      // For testing, we need to set escrow as the caller
-      // In production, only escrow can call this function
-      await escrowRegistry.connect(owner.wallet).addEscrow(subjectCaller.address);
-      const tx = await orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents);
-      // Reset orchestrator
-      await escrowRegistry.connect(owner.wallet).removeEscrow(subjectCaller.address);
+      // Impersonate the escrow so msg.sender == escrow.address
+      await ethers.provider.send("hardhat_impersonateAccount", [subjectCaller]);
+      // Fund the escrow address for gas
+      await ethers.provider.send("hardhat_setBalance", [
+        subjectCaller,
+        "0x21e19e0c9bab2400000" // 1000 ETH
+      ]);
+      const escrowSigner = await ethers.getSigner(subjectCaller);
+      const tx = await orchestrator.connect(escrowSigner).pruneIntents(subjectIntents);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [subjectCaller]);
       return tx;
     }
 
@@ -2406,13 +2488,20 @@ describe("Orchestrator", () => {
 
     describe("when caller is not the escrow", async () => {
       beforeEach(async () => {
-        subjectCaller = maliciousOnRamper;
+        subjectCaller = maliciousOnRamper.address;
       });
 
-      it("should revert", async () => {
-        await expect(
-          orchestrator.connect(subjectCaller.wallet).pruneIntents(subjectIntents)
-        ).to.be.revertedWithCustomError(orchestrator, "UnauthorizedEscrowCaller");
+      it("should skip pruning and not revert or emit events", async () => {
+        const tx = await subject();
+
+        // Should not emit IntentPruned events
+        await expect(tx).to.not.emit(orchestrator, "IntentPruned");
+
+        // Intents should remain
+        for (const intentHash of intentHashes) {
+          const intent = await orchestrator.getIntent(intentHash);
+          expect(intent.owner).to.eq(onRamper.address);
+        }
       });
     });
 
@@ -2634,7 +2723,6 @@ describe("Orchestrator", () => {
       });
     });
   });
-
 
   describe("#setPostIntentHookRegistry", async () => {
     let subjectPostIntentHookRegistry: Address;

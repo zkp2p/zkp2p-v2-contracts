@@ -65,15 +65,6 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
     uint256 public intentCounter;                                 // Counter for number of intents created; nonce for unique intent hashes
 
-    /* ============ Modifiers ============ */
-
-    modifier onlyWhitelistedEscrow() {
-        if (!escrowRegistry.isWhitelistedEscrow(msg.sender) && !escrowRegistry.isAcceptingAllEscrows()) {
-            revert UnauthorizedEscrowCaller(msg.sender);
-        }
-        _;
-    }
-
     /* ============ Constructor ============ */
     constructor(
         address _owner,
@@ -252,17 +243,20 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     /* ============ Escrow Functions ============ */
 
     /**
-     * @notice Only the escrow contract can call this function. Called by escrow to prune specific expired intents.
-     * Escrow leads the cleanup process.
+     * @notice Only the escrow contract owns the intent can call this function. Called by escrow to prune specific
+     * expired intents. Escrow leads the cleanup process.
      * 
      * @param _intents   Array of intent hashes to prune
      */
-    function pruneIntents(bytes32[] calldata _intents) external onlyWhitelistedEscrow {
+    function pruneIntents(bytes32[] calldata _intents) external {
         for (uint256 i = 0; i < _intents.length; i++) {
             bytes32 intentHash = _intents[i];
             if (intentHash != bytes32(0)) {
                 Intent memory intent = intents[intentHash];
-                if (intent.timestamp != 0) {    // Only prune if intent exists
+                if (
+                    intent.timestamp != 0 && // Only prune if intent exists on this contract; otherwise skip
+                    intent.escrow == msg.sender // Ensure only the escrow that owns the intent can prune it; otherwise skip
+                ) {
                     _pruneIntent(intentHash);
                 }
             }
@@ -535,11 +529,22 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // If there's a post-intent hook, handle it; skip if manual release
         address fundsTransferredTo = _intent.to;
         if (address(_intent.postIntentHook) != address(0)) {
-            _token.approve(address(_intent.postIntentHook), netAmount);
+            // Snapshot balance to enforce exact consumption by the hook
+            uint256 preBalance = _token.balanceOf(address(this));
+
+            // Grant exact allowance to the post-intent hook using SafeERC20 with zero-before-set
+            _token.safeApprove(address(_intent.postIntentHook), 0);
+            _token.safeApprove(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
             
-            // Reset allowance to prevent residual balance drainage
-            _token.approve(address(_intent.postIntentHook), 0);
+            // Enforce that the hook pulled exactly netAmount to prevent stranded funds
+            uint256 postBalance = _token.balanceOf(address(this));
+            require(postBalance <= preBalance, "PostIntentHook: unexpected balance increase");
+            uint256 spent = preBalance - postBalance;
+            require(spent == netAmount, "PostIntentHook: must pull exact netAmount");
+
+            // Reset allowance to prevent residual balance drainage (and fail closed on non-standard ERC20s)
+            _token.safeApprove(address(_intent.postIntentHook), 0);
 
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {

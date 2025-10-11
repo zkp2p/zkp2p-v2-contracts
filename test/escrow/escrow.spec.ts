@@ -3638,6 +3638,21 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when intent hash already exists", async () => {
+      beforeEach(async () => {
+        // First lock funds with the subject intent hash
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          subjectIntentHash,
+          subjectAmount
+        );
+      });
+
+      it("should revert with IntentAlreadyExists", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "IntentAlreadyExists");
+      });
+    });
+
     describe("when there is not enough liquidity even after pruning", async () => {
       beforeEach(async () => {
         // Lock all available funds

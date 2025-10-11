@@ -145,6 +145,7 @@ interface IEscrow {
     // Already exists errors
     error PaymentMethodAlreadyExists(uint256 depositId, bytes32 paymentMethod);
     error CurrencyAlreadyExists(bytes32 paymentMethod, bytes32 currency);
+    error IntentAlreadyExists(uint256 depositId, bytes32 intentHash);
 
     // State errors
     error DepositNotAcceptingIntents(uint256 depositId);
