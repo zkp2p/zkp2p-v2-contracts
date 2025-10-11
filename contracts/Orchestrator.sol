@@ -529,11 +529,13 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // If there's a post-intent hook, handle it; skip if manual release
         address fundsTransferredTo = _intent.to;
         if (address(_intent.postIntentHook) != address(0)) {
-            _token.approve(address(_intent.postIntentHook), netAmount);
+            // Grant exact allowance to the post-intent hook using SafeERC20 with zero-before-set
+            _token.safeApprove(address(_intent.postIntentHook), 0);
+            _token.safeApprove(address(_intent.postIntentHook), netAmount);
             _intent.postIntentHook.execute(_intent, netAmount, _postIntentHookData);
             
-            // Reset allowance to prevent residual balance drainage
-            _token.approve(address(_intent.postIntentHook), 0);
+            // Reset allowance to prevent residual balance drainage (and fail closed on non-standard ERC20s)
+            _token.safeApprove(address(_intent.postIntentHook), 0);
 
             fundsTransferredTo = address(_intent.postIntentHook);
         } else {
