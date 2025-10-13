@@ -178,7 +178,7 @@ describe("ProtocolViewer", () => {
       return protocolViewer.getDeposit(subjectDepositId);
     }
 
-    it.only("should return the correct deposit details", async () => {
+    it("should return the correct deposit details", async () => {
       const depositView = await subject();
 
       expect(depositView.depositId).to.eq(subjectDepositId);
