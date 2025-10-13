@@ -248,7 +248,6 @@ describe("Escrow", () => {
 
       expect(depositView.deposit.depositor).to.eq(offRamper.address);
       expect(depositView.deposit.token).to.eq(subjectToken);
-      expect(depositView.deposit.amount).to.eq(subjectAmount);
       expect(depositView.deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
@@ -310,7 +309,6 @@ describe("Escrow", () => {
         ZERO, // depositId starts at 0
         offRamper.address,
         subjectToken,
-        subjectAmount,
         subjectAmount,
         subjectIntentAmountRange,
         subjectDelegate,
@@ -626,7 +624,6 @@ describe("Escrow", () => {
       await subject();
 
       const postDeposit = await ramp.getDeposit(subjectDepositId);
-      expect(postDeposit.amount).to.eq(preDeposit.amount.add(subjectAmount));
       expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
     });
 
@@ -647,7 +644,6 @@ describe("Escrow", () => {
         await subject();
 
         const postDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(postDeposit.amount).to.eq(preDeposit.amount.add(subjectAmount));
         expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
       });
     });
@@ -746,7 +742,6 @@ describe("Escrow", () => {
       await subject();
 
       const postDeposit = await ramp.getDeposit(subjectDepositId);
-      expect(postDeposit.amount).to.eq(preDeposit.amount.sub(subjectAmount));
       expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.sub(subjectAmount));
     });
 
@@ -774,7 +769,6 @@ describe("Escrow", () => {
         await subject();
 
         const postDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(postDeposit.amount).to.eq(preDeposit.amount.sub(subjectAmount));
         expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.sub(subjectAmount));
       });
     });

@@ -136,9 +136,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
         }
 
-        uint256 netDepositAmount = _params.amount;
-        if (netDepositAmount < _params.intentAmountRange.min) {
-            revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
+        if (_params.amount < _params.intentAmountRange.min) {
+            revert AmountBelowMin(_params.amount, _params.intentAmountRange.min);
         }
         
         // Effects
@@ -148,10 +147,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             depositor: msg.sender,
             delegate: _params.delegate,
             token: _params.token,
-            amount: _params.amount,
             intentAmountRange: _params.intentAmountRange,
             acceptingIntents: true,
-            remainingDeposits: netDepositAmount,    // Net amount available for intents
+            remainingDeposits: _params.amount,
             outstandingIntentAmount: 0,
             intentGuardian: _params.intentGuardian
         });
@@ -161,7 +159,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             msg.sender, 
             _params.token,
             _params.amount,
-            netDepositAmount,
             _params.intentAmountRange, 
             _params.delegate, 
             _params.intentGuardian
@@ -190,7 +187,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
-        deposit.amount += _amount;
         deposit.remainingDeposits += _amount;
         
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
@@ -222,7 +218,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _pruneExpiredIntents(deposit, _depositId, _amount);
         }
         
-        deposit.amount -= _amount;
         deposit.remainingDeposits -= _amount;
         
         if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
@@ -387,7 +382,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
-     * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
+     * NOTE: This function does not delete the payment method data, it only removes the payment method from the deposit.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method to remove
