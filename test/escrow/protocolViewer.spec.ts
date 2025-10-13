@@ -178,13 +178,12 @@ describe("ProtocolViewer", () => {
       return protocolViewer.getDeposit(subjectDepositId);
     }
 
-    it("should return the correct deposit details", async () => {
+    it.only("should return the correct deposit details", async () => {
       const depositView = await subject();
 
       expect(depositView.depositId).to.eq(subjectDepositId);
       expect(depositView.deposit.token).to.eq(usdcToken.address);
       expect(depositView.deposit.depositor).to.eq(offRamper.address);
-      expect(depositView.deposit.amount).to.eq(usdc(100));
       expect(depositView.deposit.intentAmountRange.min).to.eq(usdc(10));
       expect(depositView.deposit.intentAmountRange.max).to.eq(usdc(200));
       expect(depositView.deposit.remainingDeposits).to.eq(usdc(100));

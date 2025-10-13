@@ -294,6 +294,14 @@ describe("Escrow", () => {
       expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[0]);
+      expect(isPaymentMethodActive).to.be.true;
+    });
+
+
     it("should correctly update the depositCurrencyMinRate mapping", async () => {
       await subject();
 
@@ -393,6 +401,16 @@ describe("Escrow", () => {
 
         const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
+      });
+
+      it("should correctly update the depositPaymentMethodActive mapping", async () => {
+        await subject();
+
+        const isPaymentMethodActive1 = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[0]);
+        expect(isPaymentMethodActive1).to.be.true;
+
+        const isPaymentMethodActive2 = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[1]);
+        expect(isPaymentMethodActive2).to.be.true;
       });
     });
 
@@ -1028,6 +1046,13 @@ describe("Escrow", () => {
       expect(postPaymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
     });
 
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, venmoPaymentMethodHash);
+      expect(isPaymentMethodActive).to.be.false;
+    });
+
     it("should delete the deposit payment methods array", async () => {
       const prePaymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
       expect(prePaymentMethods.length).to.eq(1);
@@ -1567,6 +1592,13 @@ describe("Escrow", () => {
       expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, paypalPaymentMethodHash);
+      expect(isPaymentMethodActive).to.be.true;
+    });
+
     it("should add the currencies to the payment method", async () => {
       await subject();
 
@@ -1710,6 +1742,13 @@ describe("Escrow", () => {
       expect(paymentMethodData.intentGatingService).to.eq(gatingService.address);
       expect(paymentMethodData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
       expect(paymentMethodData.data).to.eq("0x");
+    });
+
+    it("should delete the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
+      expect(isPaymentMethodActive).to.be.false;
     });
 
     it("should remove the currency data for the payment method", async () => {

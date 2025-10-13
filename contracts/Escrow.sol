@@ -56,6 +56,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     //                    => Revolut => payeeDetails: 0x789, data: 0xabc
     mapping(uint256 => mapping(bytes32 => DepositPaymentMethodData)) internal depositPaymentMethodData;
     mapping(uint256 => bytes32[]) internal depositPaymentMethods;          // Handy mapping to get all payment methods for a deposit
+    mapping(uint256 => mapping(bytes32 => bool)) internal depositPaymentMethodActive; // Handy mapping for checking if a payment method is active for a deposit
     
     // Mapping of depositId to verifier address to mapping of fiat currency to min conversion rate. Each payment service can support
     // multiple currencies. Depositor can specify list of currencies and min conversion rates for each payment service.
@@ -135,7 +136,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_params.intentAmountRange.min > _params.intentAmountRange.max) { 
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
         }
-
         if (_params.amount < _params.intentAmountRange.min) {
             revert AmountBelowMin(_params.amount, _params.intentAmountRange.min);
         }
@@ -400,6 +400,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         depositPaymentMethods[_depositId].removeStorage(_paymentMethod);
+        depositPaymentMethodActive[_depositId][_paymentMethod] = false;
 
         bytes32[] storage currenciesForPaymentMethod = depositCurrencies[_depositId][_paymentMethod];
         for (uint256 i = 0; i < currenciesForPaymentMethod.length; i++) {
@@ -431,8 +432,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        bytes32 payeeDetails = depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails;
-        if (payeeDetails == bytes32(0)) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -460,8 +460,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        bytes32 payeeDetails = depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails;
-        if (payeeDetails == bytes32(0)) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
 
         uint256 currencyMinRate = depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode];
         if (currencyMinRate == 0) revert CurrencyNotFound(_paymentMethod, _currencyCode);
@@ -801,6 +800,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return depositPaymentMethodData[_depositId][_paymentMethod];
     }
 
+    function getDepositPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod) external view returns (bool) {
+        return depositPaymentMethodActive[_depositId][_paymentMethod];
+    }
+
+    function getDepositGatingService(uint256 _depositId, bytes32 _paymentMethod) external view returns (address) {
+        return depositPaymentMethodData[_depositId][_paymentMethod].intentGatingService;
+    }
+
     function getAccountDeposits(address _account) external view returns (uint256[] memory) {
         return accountDeposits[_account];
     }
@@ -930,6 +937,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         for (uint256 i = 0; i < paymentMethods.length; i++) {
             bytes32 paymentMethod = paymentMethods[i];
             delete depositPaymentMethodData[_depositId][paymentMethod];
+            delete depositPaymentMethodActive[_depositId][paymentMethod];
             bytes32[] memory currencies = depositCurrencies[_depositId][paymentMethod];
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyMinRate[_depositId][paymentMethod][currencies[j]];
@@ -965,6 +973,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
             depositPaymentMethodData[_depositId][paymentMethod] = _paymentMethodData[i];
             depositPaymentMethods[_depositId].push(paymentMethod);
+            depositPaymentMethodActive[_depositId][paymentMethod] = true;
 
             emit DepositPaymentMethodAdded(_depositId, paymentMethod, _paymentMethodData[i].payeeDetails, _paymentMethodData[i].intentGatingService);
 
