@@ -560,9 +560,9 @@ contract EscrowCriticalPathFuzz is Test {
         uint256 depositId = escrow.depositCounter();
         escrow.createDeposit(params);
         
-        // Property: Initial state (amount includes fee, but remainingDeposits is net)
+        // Property: Initial state (fees removed): escrow balance equals deposit amount; remainingDeposits equals net
         IEscrow.Deposit memory deposit = escrow.getDeposit(depositId);
-        assertEq(deposit.amount, initialAmount, "Initial amount mismatch");
+        assertEq(usdc.balanceOf(address(escrow)), initialAmount, "Initial escrow balance mismatch");
         assertEq(deposit.remainingDeposits, netInitialAmount, "Initial liquidity mismatch");
         assertEq(deposit.outstandingIntentAmount, 0, "Should have no intents initially");
         
@@ -577,8 +577,8 @@ contract EscrowCriticalPathFuzz is Test {
             escrow.addFundsToDeposit(depositId, addAmount);
             deposit = escrow.getDeposit(depositId);
             
-            // Property: Addition increases both total and available
-            assertEq(deposit.amount, initialAmount + addAmount, "Add funds failed");
+            // Property: Addition increases both total (escrow balance) and available
+            assertEq(usdc.balanceOf(address(escrow)), initialAmount + addAmount, "Add funds failed");
             assertEq(deposit.remainingDeposits, netInitialAmount + netAddAmount, "Liquidity not updated");
         }
         
@@ -614,10 +614,10 @@ contract EscrowCriticalPathFuzz is Test {
             assertEq(deposit.remainingDeposits, currentAvailable - intentAmount, "Liquidity not locked");
             assertEq(deposit.outstandingIntentAmount, intentAmount, "Intent amount not tracked");
             
-            // Property: Conservation (fees removed)
+            // Property: Conservation (fees removed): remaining + locked = escrow token balance
             assertEq(
                 deposit.remainingDeposits + deposit.outstandingIntentAmount,
-                deposit.amount,
+                usdc.balanceOf(address(escrow)),
                 "Liquidity conservation violated"
             );
             
@@ -632,17 +632,19 @@ contract EscrowCriticalPathFuzz is Test {
             // Store values before removal (using deposit struct to avoid stack issues)
             IEscrow.Deposit memory preDep = deposit;
             
+            // Capture escrow balance before removal for delta check
+            uint256 escrowBalBeforeRemoval = usdc.balanceOf(address(escrow));
             escrow.removeFundsFromDeposit(depositId, removeAmount);
             deposit = escrow.getDeposit(depositId);
-            
-            // Property: Removal decreases both total and available
-            assertEq(deposit.amount, preDep.amount - removeAmount, "Remove funds failed");
+
+            // Property: Removal decreases both total (escrow balance) and available
+            assertEq(usdc.balanceOf(address(escrow)), escrowBalBeforeRemoval - removeAmount, "Remove funds failed");
             assertEq(deposit.remainingDeposits, preDep.remainingDeposits - removeAmount, "Liquidity not updated");
-            
+
             // Property: Conservation still holds (fees removed)
             assertEq(
                 deposit.remainingDeposits + deposit.outstandingIntentAmount,
-                deposit.amount,
+                usdc.balanceOf(address(escrow)),
                 "Liquidity conservation violated after removal"
             );
         } else if (removeAmount > availableLiquidity) {
@@ -946,7 +948,7 @@ contract EscrowCriticalPathFuzz is Test {
                     "Depositor didn't receive correct amount"
                 );
             }
-            
+
             {
                 uint256 escrowBalanceAfter = usdc.balanceOf(address(escrow));
                 assertEq(
@@ -960,20 +962,15 @@ contract EscrowCriticalPathFuzz is Test {
             {
                 IEscrow.Deposit memory depositAfter = escrow.getDeposit(depositId);
                 
-                // The deposit amount includes reserved fees, so we need to account for that
-                // After withdrawal: new amount = original amount - withdrawAttempt
-                // But the amount field also includes reserved maker fees which don't change
-                uint256 expectedTotalAmount = depositState.amount - withdrawAttempt;
                 uint256 expectedRemaining = availableLiquidity - withdrawAttempt;
-                
-                assertEq(depositAfter.amount, expectedTotalAmount, "Deposit amount not updated");
+
                 assertEq(depositAfter.remainingDeposits, expectedRemaining, "Remaining liquidity not updated");
                 assertEq(depositAfter.outstandingIntentAmount, intentAmount, "Outstanding intent changed");
-                
-                // Property: Conservation of funds (remaining + outstanding = total amount)
+
+                // Property: Conservation of funds (remaining + outstanding = escrow token balance)
                 assertEq(
                     depositAfter.remainingDeposits + depositAfter.outstandingIntentAmount,
-                    depositAfter.amount,
+                    usdc.balanceOf(address(escrow)),
                     "Fund conservation violated"
                 );
             }
@@ -981,10 +978,10 @@ contract EscrowCriticalPathFuzz is Test {
             // Property: Cannot withdraw more than available
             vm.expectRevert();
             escrow.removeFundsFromDeposit(depositId, withdrawAttempt);
-            
+
             // Property: State unchanged after failed withdrawal
             IEscrow.Deposit memory depositAfter = escrow.getDeposit(depositId);
-            assertEq(depositAfter.amount, depositAmount, "Amount changed on failed withdraw");
+            assertEq(usdc.balanceOf(address(escrow)), escrowBalanceBefore, "Escrow balance changed on failed withdraw");
             assertEq(depositAfter.remainingDeposits, availableLiquidity, "Liquidity changed on failed withdraw");
             assertEq(depositAfter.outstandingIntentAmount, intentAmount, "Intent changed on failed withdraw");
         }
