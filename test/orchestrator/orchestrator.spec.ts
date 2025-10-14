@@ -223,6 +223,7 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
+        retainOnEmpty: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -731,6 +732,7 @@ describe("Orchestrator", () => {
             ],
             delegate: offRamperDelegate.address,
             intentGuardian: ADDRESS_ZERO,  // intentGuardian
+            retainOnEmpty: false
           });
 
           subjectDepositId = ONE;
@@ -833,6 +835,7 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,  // intentGuardian
+        retainOnEmpty: false
       });
 
       // Signal an intent
@@ -967,7 +970,8 @@ describe("Orchestrator", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       // Signal an intent
@@ -1895,6 +1899,7 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       intentAmount = usdc(50);
@@ -2331,6 +2336,7 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       // Enable multiple intents
@@ -2944,6 +2950,7 @@ describe("Orchestrator", () => {
         ],
         delegate: offRamperDelegate.address,
         intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
     });
 

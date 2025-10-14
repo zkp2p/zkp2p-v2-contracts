@@ -192,6 +192,7 @@ describe("Escrow", () => {
     let subjectIntentGuardian: Address;
     let subjectReferrer: Address;
     let subjectReferrerFee: BigNumber;
+    let subjectRetainOnEmpty: boolean;
 
     beforeEach(async () => {
       subjectToken = usdcToken.address;
@@ -215,6 +216,7 @@ describe("Escrow", () => {
       subjectIntentGuardian = ADDRESS_ZERO;
       subjectReferrer = ADDRESS_ZERO;
       subjectReferrerFee = ZERO;
+      subjectRetainOnEmpty = true;
       await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
     });
 
@@ -228,7 +230,7 @@ describe("Escrow", () => {
         currencies: subjectCurrencies,
         delegate: subjectDelegate,
         intentGuardian: subjectIntentGuardian,
-        // fees removed
+        retainOnEmpty: subjectRetainOnEmpty,
       });
     }
 
@@ -301,6 +303,12 @@ describe("Escrow", () => {
       expect(isPaymentMethodActive).to.be.true;
     });
 
+    it("should correctly update the depositRetainOnEmpty mapping", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(0);
+      expect(deposit.retainOnEmpty).to.eq(subjectRetainOnEmpty);
+    });
 
     it("should correctly update the depositCurrencyMinRate mapping", async () => {
       await subject();
@@ -609,7 +617,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -729,7 +738,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -992,7 +1002,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -1310,7 +1321,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -1435,7 +1447,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -1550,7 +1563,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       // Already registered paypalPaymentMethodHash in beforeEach
@@ -1712,7 +1726,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.02) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -1853,7 +1868,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -2002,7 +2018,8 @@ describe("Escrow", () => {
           ]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -2121,7 +2138,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: ADDRESS_ZERO,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -2237,7 +2255,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -2326,7 +2345,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -2542,7 +2562,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -2638,6 +2659,120 @@ describe("Escrow", () => {
     });
   });
 
+  describe("#setDepositRetainOnEmpty", async () => {
+    let subjectDepositId: BigNumber;
+    let subjectRetainOnEmpty: boolean;
+    let subjectCaller: Account;
+
+    beforeEach(async () => {
+      // Create deposit first
+      await usdcToken.connect(offRamper.wallet).approve(ramp.address, usdc(10000));
+      await ramp.connect(offRamper.wallet).createDeposit({
+        token: usdcToken.address,
+        amount: usdc(100),
+        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        paymentMethods: [venmoPaymentMethodHash],
+        paymentMethodData: [{
+          intentGatingService: gatingService.address,
+          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          data: "0x"
+        }],
+        currencies: [
+          [{ code: Currency.USD, minConversionRate: ether(1.01) }]
+        ],
+        delegate: offRamperDelegate.address,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
+      });
+
+      subjectDepositId = ZERO;
+      subjectRetainOnEmpty = true;
+      subjectCaller = offRamper;
+    });
+
+    async function subject(): Promise<any> {
+      return ramp.connect(subjectCaller.wallet).setDepositRetainOnEmpty(
+        subjectDepositId,
+        subjectRetainOnEmpty
+      );
+    }
+
+    it("should set retainOnEmpty for the deposit", async () => {
+      await subject();
+
+      const deposit = await ramp.getDeposit(subjectDepositId);
+      expect(deposit.retainOnEmpty).to.eq(true);
+    });
+
+    it("should emit a DepositRetainOnEmptyUpdated event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositRetainOnEmptyUpdated").withArgs(
+        subjectDepositId,
+        subjectRetainOnEmpty
+      );
+    });
+
+    describe("when the caller is delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = offRamperDelegate;
+      });
+
+      it("should not revert", async () => {
+        await expect(subject()).to.not.be.reverted;
+      });
+
+      it("should update the flag", async () => {
+        await subject();
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.retainOnEmpty).to.eq(true);
+      });
+    });
+
+    describe("when the caller is not owner or delegate", async () => {
+      beforeEach(async () => {
+        subjectCaller = maliciousOnRamper;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
+    describe("when the deposit does not exist", async () => {
+      beforeEach(async () => {
+        subjectDepositId = BigNumber.from(999);
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCallerOrDelegate");
+      });
+    });
+
+    describe("when setting to the same value", async () => {
+      beforeEach(async () => {
+        // First set to true
+        await ramp.connect(offRamper.wallet).setDepositRetainOnEmpty(subjectDepositId, true);
+        subjectRetainOnEmpty = true; // Trying to set same value again
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositAlreadyInState");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
+  });
+
+
+  // Add #setDepositRetainOnEmpty tests here
+
   // ORCHESTRATOR-ONLY FUNCTIONS
 
   describe("#lockFunds", async () => {
@@ -2663,7 +2798,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();
@@ -2912,7 +3048,8 @@ describe("Escrow", () => {
           }],
           currencies: [[{ code: Currency.USD, minConversionRate: ether(1) }]],
           delegate: ADDRESS_ZERO,
-          intentGuardian: ADDRESS_ZERO
+          intentGuardian: ADDRESS_ZERO,
+          retainOnEmpty: false
         });
 
         const depositCounter = await ramp.depositCounter();
@@ -3002,7 +3139,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       // Lock funds first
@@ -3134,7 +3272,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: ether(1.01) }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       // Lock funds first
@@ -3269,6 +3408,30 @@ describe("Escrow", () => {
           offRamper.address
         );
       });
+
+      describe("when retainOnEmpty is true", async () => {
+        beforeEach(async () => {
+          await ramp.connect(offRamper.wallet).setDepositRetainOnEmpty(subjectDepositId, true);
+        });
+
+        it("should not delete the deposit config", async () => {
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          expect(postDeposit.depositor).to.not.eq(ADDRESS_ZERO);
+        });
+
+        it("should set/keep the acceptIntents to false", async () => {
+          await subject();
+
+          const postDeposit = await ramp.getDeposit(subjectDepositId);
+          expect(postDeposit.acceptingIntents).to.eq(false);
+        });
+
+        it("should not emit DepositClosed event", async () => {
+          await expect(subject()).to.not.emit(ramp, "DepositClosed");
+        });
+      });
     });
 
     describe("when remainder is dust and gets collected", async () => {
@@ -3293,6 +3456,7 @@ describe("Escrow", () => {
           ],
           delegate: ADDRESS_ZERO,
           intentGuardian: ADDRESS_ZERO,
+          retainOnEmpty: false,
         });
 
         tinyDepositId = BigNumber.from(1); // next deposit
@@ -3407,6 +3571,7 @@ describe("Escrow", () => {
         ],
         delegate: ADDRESS_ZERO,  // delegate
         intentGuardian: intentGuardian.address,  // intentGuardia
+        retainOnEmpty: false,
       });
 
       subjectDepositId = ZERO;
@@ -3514,6 +3679,7 @@ describe("Escrow", () => {
           ],
           delegate: ADDRESS_ZERO,  // delegate
           intentGuardian: ADDRESS_ZERO,   // no intentGuardian
+          retainOnEmpty: false,
         });
 
         const newDepositId = ONE;
@@ -4067,7 +4233,8 @@ describe("Escrow", () => {
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
         delegate: offRamperDelegate.address,
-        intentGuardian: ADDRESS_ZERO
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const currentTimestamp = await blockchain.getCurrentTimestamp();

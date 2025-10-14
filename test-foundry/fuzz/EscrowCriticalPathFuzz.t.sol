@@ -342,7 +342,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -436,7 +437,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -542,7 +544,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -684,7 +687,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -882,7 +886,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -1022,7 +1027,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
@@ -1181,7 +1187,8 @@ contract EscrowCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](1),
             currencies: new IEscrow.Currency[][](1),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;
