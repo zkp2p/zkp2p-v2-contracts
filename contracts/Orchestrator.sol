@@ -410,10 +410,8 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         address verifier = paymentVerifierRegistry.getVerifier(_intent.paymentMethod);
         if (verifier == address(0)) revert PaymentMethodDoesNotExist(_intent.paymentMethod);
         
-        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(_intent.escrow).getDepositPaymentMethodData(
-            _intent.depositId, _intent.paymentMethod
-        );
-        if (paymentMethodData.payeeDetails == bytes32(0)) revert PaymentMethodNotSupported(_intent.paymentMethod);
+        bool isPaymentMethodActive = IEscrow(_intent.escrow).getDepositPaymentMethodActive(_intent.depositId, _intent.paymentMethod);
+        if (!isPaymentMethodActive) revert PaymentMethodNotSupported(_intent.paymentMethod);
         
         uint256 minConversionRate = IEscrow(_intent.escrow).getDepositCurrencyMinRate(
             _intent.depositId, _intent.paymentMethod, _intent.fiatCurrency
@@ -421,7 +419,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         if (minConversionRate == 0) revert CurrencyNotSupported(_intent.paymentMethod, _intent.fiatCurrency);
         if (_intent.conversionRate < minConversionRate) revert RateBelowMinimum(_intent.conversionRate, minConversionRate);
 
-        address intentGatingService = paymentMethodData.intentGatingService;
+        address intentGatingService = IEscrow(_intent.escrow).getDepositGatingService(_intent.depositId, _intent.paymentMethod);
         if (intentGatingService != address(0)) {
             // Check if signature has expired
             if (block.timestamp > _intent.signatureExpiration) {

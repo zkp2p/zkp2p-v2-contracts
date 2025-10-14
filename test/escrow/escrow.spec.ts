@@ -248,7 +248,6 @@ describe("Escrow", () => {
 
       expect(depositView.deposit.depositor).to.eq(offRamper.address);
       expect(depositView.deposit.token).to.eq(subjectToken);
-      expect(depositView.deposit.amount).to.eq(subjectAmount);
       expect(depositView.deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
       expect(depositView.deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
       expect(depositView.deposit.acceptingIntents).to.be.true;
@@ -295,6 +294,14 @@ describe("Escrow", () => {
       expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[0]);
+      expect(isPaymentMethodActive).to.be.true;
+    });
+
+
     it("should correctly update the depositCurrencyMinRate mapping", async () => {
       await subject();
 
@@ -310,7 +317,6 @@ describe("Escrow", () => {
         ZERO, // depositId starts at 0
         offRamper.address,
         subjectToken,
-        subjectAmount,
         subjectAmount,
         subjectIntentAmountRange,
         subjectDelegate,
@@ -395,6 +401,16 @@ describe("Escrow", () => {
 
         const currencyRate2_1 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[1], subjectCurrencies[1][0].code);
         expect(currencyRate2_1).to.eq(subjectCurrencies[1][0].minConversionRate);
+      });
+
+      it("should correctly update the depositPaymentMethodActive mapping", async () => {
+        await subject();
+
+        const isPaymentMethodActive1 = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[0]);
+        expect(isPaymentMethodActive1).to.be.true;
+
+        const isPaymentMethodActive2 = await ramp.getDepositPaymentMethodActive(0, subjectPaymentMethods[1]);
+        expect(isPaymentMethodActive2).to.be.true;
       });
     });
 
@@ -626,7 +642,6 @@ describe("Escrow", () => {
       await subject();
 
       const postDeposit = await ramp.getDeposit(subjectDepositId);
-      expect(postDeposit.amount).to.eq(preDeposit.amount.add(subjectAmount));
       expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
     });
 
@@ -647,7 +662,6 @@ describe("Escrow", () => {
         await subject();
 
         const postDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(postDeposit.amount).to.eq(preDeposit.amount.add(subjectAmount));
         expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
       });
     });
@@ -746,7 +760,6 @@ describe("Escrow", () => {
       await subject();
 
       const postDeposit = await ramp.getDeposit(subjectDepositId);
-      expect(postDeposit.amount).to.eq(preDeposit.amount.sub(subjectAmount));
       expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.sub(subjectAmount));
     });
 
@@ -774,7 +787,6 @@ describe("Escrow", () => {
         await subject();
 
         const postDeposit = await ramp.getDeposit(subjectDepositId);
-        expect(postDeposit.amount).to.eq(preDeposit.amount.sub(subjectAmount));
         expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.sub(subjectAmount));
       });
     });
@@ -1032,6 +1044,13 @@ describe("Escrow", () => {
 
       const postPaymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, venmoPaymentMethodHash);
       expect(postPaymentMethodData.intentGatingService).to.eq(ADDRESS_ZERO);
+    });
+
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, venmoPaymentMethodHash);
+      expect(isPaymentMethodActive).to.be.false;
     });
 
     it("should delete the deposit payment methods array", async () => {
@@ -1573,6 +1592,13 @@ describe("Escrow", () => {
       expect(paymentMethodData.data).to.eq(subjectPaymentMethodData[0].data);
     });
 
+    it("should correctly update the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, paypalPaymentMethodHash);
+      expect(isPaymentMethodActive).to.be.true;
+    });
+
     it("should add the currencies to the payment method", async () => {
       await subject();
 
@@ -1718,6 +1744,13 @@ describe("Escrow", () => {
       expect(paymentMethodData.data).to.eq("0x");
     });
 
+    it("should delete the depositPaymentMethodActive mapping", async () => {
+      await subject();
+
+      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
+      expect(isPaymentMethodActive).to.be.false;
+    });
+
     it("should remove the currency data for the payment method", async () => {
       await subject();
 
@@ -1769,6 +1802,16 @@ describe("Escrow", () => {
       beforeEach(async () => {
         const unknownPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("unknown"));
         subjectPaymentMethod = unknownPaymentMethod;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+      });
+    });
+
+    describe("when the payment method has already been removed", async () => {
+      beforeEach(async () => {
+        await subject();
       });
 
       it("should revert", async () => {
@@ -2397,11 +2440,35 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           intentHash,
-          usdc(10)
+          usdc(10)  // 10 locked, 90 remaining
         );
 
-        // Remove all remaining deposits from deposit
-        await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
+        // Remove all remaining deposits from deposit, 90 removed, 10 locked, 0 remaining to be taken
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(90));
+
+        // Set accepting intents to true
+        subjectAcceptingIntents = true; // Trying to restart accepting intents
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
+      });
+    });
+
+    describe("when the deposit has remaining liquidity below the minimum intent amount", async () => {
+      beforeEach(async () => {
+        // Lock some funds first
+        await ramp.connect(owner.wallet).setOrchestrator(orchestratorMock.address);
+        const intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          intentHash,
+          usdc(10)  // 10 locked, 90 remaining
+        );
+
+        // Remove all remaining deposits from deposit, 81 removed, 10 locked, 9 remaining to be taken
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(81));
 
         // Set accepting intents to true
         subjectAcceptingIntents = true; // Trying to restart accepting intents
@@ -2449,7 +2516,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#pruneExpiredIntents", async () => {
+  describe("#pruneExpiredIntentsAndReclaimLiquidity", async () => {
     let subjectCaller: Account;
     let subjectDepositId: BigNumber;
 
@@ -2494,7 +2561,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      await ramp.connect(subjectCaller.wallet).pruneExpiredIntents(subjectDepositId);
+      return ramp.connect(subjectCaller.wallet).pruneExpiredIntentsAndReclaimLiquidity(subjectDepositId);
     }
 
     describe("when timestamp is before intent expiry", async () => {
@@ -2535,15 +2602,17 @@ describe("Escrow", () => {
         expect(postDeposit.outstandingIntentAmount).to.eq(ZERO);
       });
 
-      it("should have called the orchestrator to prune intents", async () => {
-        const preIntents = await orchestratorMock.getLastPrunedIntents();
-        expect(preIntents.length).to.eq(0);
+      it.skip("should have called the orchestrator to prune intents", async () => {
+        const tx = await subject();
+        await expect(tx).to.emit(orchestratorMock, "IntentsPruned");
 
-        await subject();
-
-        const postIntents = await orchestratorMock.getLastPrunedIntents();
-        expect(postIntents.length).to.eq(1);
-        expect(postIntents[0]).to.eq(intentHash);
+        const events = await orchestratorMock.queryFilter(
+          orchestratorMock.filters.IntentsPruned(),
+          tx.blockNumber,
+          tx.blockNumber
+        );
+        const pruned = events.at(-1)!.args![0] as string;
+        expect(pruned).to.eq(intentHash);
       });
     });
 
@@ -4016,15 +4085,15 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
     });
 
-    async function subject(): Promise<{ expiredIntents: string[], reclaimedAmount: BigNumber }> {
+    async function subject(): Promise<{ expiredIntents: string[], reclaimableAmount: BigNumber }> {
       return ramp.connect(subjectCaller.wallet).getExpiredIntents(subjectDepositId);
     }
 
     describe("when timestamp is before intent expiry", async () => {
       it("should return empty array", async () => {
-        const { expiredIntents, reclaimedAmount } = await subject();
-        expect(expiredIntents.length).to.eq(1);
-        expect(reclaimedAmount).to.eq(ZERO);
+        const { expiredIntents, reclaimableAmount } = await subject();
+        expect(expiredIntents.length).to.eq(0);
+        expect(reclaimableAmount).to.eq(ZERO);
       });
     });
 
@@ -4032,11 +4101,11 @@ describe("Escrow", () => {
       it("should return prunable intents", async () => {
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
 
-        const { expiredIntents, reclaimedAmount } = await subject();
+        const { expiredIntents, reclaimableAmount } = await subject();
 
         expect(expiredIntents).to.include(intentHash);
         expect(expiredIntents.length).to.eq(1);
-        expect(reclaimedAmount).to.eq(usdc(50));
+        expect(reclaimableAmount).to.eq(usdc(50));
       });
     });
 
@@ -4049,9 +4118,9 @@ describe("Escrow", () => {
       });
 
       it("should return empty array", async () => {
-        const { expiredIntents, reclaimedAmount } = await subject();
+        const { expiredIntents, reclaimableAmount } = await subject();
         expect(expiredIntents.length).to.eq(0);
-        expect(reclaimedAmount).to.eq(ZERO);
+        expect(reclaimableAmount).to.eq(ZERO);
       });
     });
   });

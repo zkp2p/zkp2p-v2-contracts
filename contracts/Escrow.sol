@@ -19,7 +19,6 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
-
 pragma solidity ^0.8.18;
 
 /**
@@ -40,6 +39,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
+    uint256 internal constant PRUNE_ALL_EXPIRED_INTENTS = type(uint256).max;
     
     /* ============ State Variables ============ */
 
@@ -56,6 +56,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     //                    => Revolut => payeeDetails: 0x789, data: 0xabc
     mapping(uint256 => mapping(bytes32 => DepositPaymentMethodData)) internal depositPaymentMethodData;
     mapping(uint256 => bytes32[]) internal depositPaymentMethods;          // Handy mapping to get all payment methods for a deposit
+    mapping(uint256 => mapping(bytes32 => bool)) internal depositPaymentMethodActive; // Handy mapping for checking if a payment method is active for a deposit
     
     // Mapping of depositId to verifier address to mapping of fiat currency to min conversion rate. Each payment service can support
     // multiple currencies. Depositor can specify list of currencies and min conversion rates for each payment service.
@@ -126,7 +127,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
      * not add to previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
      * of deposit token. Every deposit specifies the payment methods it supports by specifying their verification data, supported currencies and 
-     * their min conversion rates for each payment method. Optionally, a referrer and a referrer fee can be specified.
+     * their min conversion rates for each payment method. Optionally, a delegate to manage the deposit can be specified.
      * Note that the order of the payment methods, verification data, and currency data must match.
      */
     function createDeposit(CreateDepositParams calldata _params) external whenNotPaused {
@@ -135,10 +136,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_params.intentAmountRange.min > _params.intentAmountRange.max) { 
             revert InvalidRange(_params.intentAmountRange.min, _params.intentAmountRange.max);
         }
-
-        uint256 netDepositAmount = _params.amount;
-        if (netDepositAmount < _params.intentAmountRange.min) {
-            revert AmountBelowMin(netDepositAmount, _params.intentAmountRange.min);
+        if (_params.amount < _params.intentAmountRange.min) {
+            revert AmountBelowMin(_params.amount, _params.intentAmountRange.min);
         }
         
         // Effects
@@ -148,10 +147,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             depositor: msg.sender,
             delegate: _params.delegate,
             token: _params.token,
-            amount: _params.amount,
             intentAmountRange: _params.intentAmountRange,
             acceptingIntents: true,
-            remainingDeposits: netDepositAmount,    // Net amount available for intents
+            remainingDeposits: _params.amount,
             outstandingIntentAmount: 0,
             intentGuardian: _params.intentGuardian
         });
@@ -161,7 +159,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             msg.sender, 
             _params.token,
             _params.amount,
-            netDepositAmount,
             _params.intentAmountRange, 
             _params.delegate, 
             _params.intentGuardian
@@ -190,7 +187,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
-        deposit.amount += _amount;
         deposit.remainingDeposits += _amount;
         
         emit DepositFundsAdded(_depositId, msg.sender, _amount);
@@ -202,8 +198,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Removes funds from an existing deposit. Only the depositor can remove funds. If the amount to remove is greater
      * than the remaining deposits, then expired intents will be pruned to reclaim liquidity. If the remaining deposits is less than
-     * the min intent amount, then the deposit will be marked as not accepting intents. Reserved maker fees remain locked until full
-     * withdrawal via withdrawDeposit().
+     * the min intent amount, then the deposit will be marked as not accepting intents. 
      *
      * @param _depositId    The deposit ID to remove funds from
      * @param _amount       The amount of tokens to remove
@@ -218,11 +213,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, _amount);
         if (deposit.remainingDeposits < _amount) {
-            _pruneExpiredIntents(deposit, _depositId, _amount);
+            revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, _amount);
         }
-        
-        deposit.amount -= _amount;
+
         deposit.remainingDeposits -= _amount;
         
         if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
@@ -233,14 +228,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         // Interactions
         deposit.token.safeTransfer(msg.sender, _amount);
+
+        // Prune intents on the orchestrator
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /**
-     * @notice Depositor is returned all remaining deposits, any outstanding intents that are expired, and unused maker fees.
-     * Only the depositor can withdraw. If an intent is not expired then those funds will not be returned. Deposit is marked
-     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this
-     * function again. Deposit will be deleted and accrued maker fees collected to protocol as long as there are no more
-     * outstanding intents.
+     * @notice Depositor is returned all remaining deposits and any outstanding intents that are expired. Only the depositor can withdraw. 
+     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds
+     * locked due to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there are
+     * no more outstanding intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
@@ -250,29 +249,27 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
         // Effects
-        (
-            bytes32[] memory expiredIntents,
-            uint256 reclaimableAmount
-        ) = _getExpiredIntents(_depositId);
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, PRUNE_ALL_EXPIRED_INTENTS);
 
-        _pruneIntents(_depositId, expiredIntents);
-
-        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
-
+        uint256 returnAmount = deposit.remainingDeposits;
         IERC20 token = deposit.token;
-        deposit.outstandingIntentAmount -= reclaimableAmount;
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
 
-        if (deposit.outstandingIntentAmount == 0) {
-            _closeDeposit(_depositId, deposit);
-        }
+        _closeDepositIfNecessary(_depositId, deposit);
         
         // Interactions
         token.safeTransfer(msg.sender, returnAmount);
+
+        // Prune intents on the orchestrator
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
+
+    /* ============ Deposit Delegate management ============ */
 
     /**
      * @notice Allows depositor to set a delegate address that can manage a specific deposit
@@ -309,9 +306,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Deposit Owner OR Delegate Only (External Functions) ============ */
 
     /**
-     * @notice Only callable by the depositor for a deposit. Allows depositor to update the min conversion rate for a currency for a 
-     * payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate will not affect
-     * any intents that have already been signaled.
+     * @notice Only callable by the depositor/delegate for a deposit. Allows depositor/delegate to update the min conversion rate for a 
+     * currency for a payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate
+     * will not affect any intents that have already been signaled.
      *
      * @param _depositId                The deposit ID
      * @param _paymentMethod            The payment method to update the min conversion rate for
@@ -387,7 +384,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
-     * NOTE: This function does not delete the veirifier data, it only removes the verifier from the deposit.
+     * NOTE: This function does not delete the payment method data to allow existing intents to be fulfilled, it only removes 
+     * the payment method from deposit, sets the active state to false and removes the currencies for the payment method.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method to remove
@@ -400,11 +398,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails == bytes32(0)) {
-            revert PaymentMethodNotFound(_depositId, _paymentMethod);
-        }
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
 
         depositPaymentMethods[_depositId].removeStorage(_paymentMethod);
+        depositPaymentMethodActive[_depositId][_paymentMethod] = false;
 
         bytes32[] storage currenciesForPaymentMethod = depositCurrencies[_depositId][_paymentMethod];
         for (uint256 i = 0; i < currenciesForPaymentMethod.length; i++) {
@@ -436,8 +433,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        bytes32 payeeDetails = depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails;
-        if (payeeDetails == bytes32(0)) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -465,8 +461,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        bytes32 payeeDetails = depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails;
-        if (payeeDetails == bytes32(0)) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
 
         uint256 currencyMinRate = depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode];
         if (currencyMinRate == 0) revert CurrencyNotFound(_paymentMethod, _currencyCode);
@@ -493,8 +488,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.acceptingIntents == _acceptingIntents) revert DepositAlreadyInState(_depositId, _acceptingIntents);
-        // Doesn't reclaim liquidity for gas savings
-        if (deposit.remainingDeposits == 0) revert InsufficientDepositLiquidity(_depositId, 0, 1);
+
+        // If accepting intents, check if there is enough liquidity to accept the minimum intent amount
+        if (
+            _acceptingIntents && 
+            deposit.remainingDeposits < deposit.intentAmountRange.min
+        ) revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, deposit.intentAmountRange.min);
+        
         
         deposit.acceptingIntents = _acceptingIntents;
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
@@ -507,8 +507,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * @param _depositId The deposit ID to prune expired intents for
      */
-    function pruneExpiredIntents(uint256 _depositId) external {
-        _pruneExpiredIntents(deposits[_depositId], _depositId, 0);
+    function pruneExpiredIntentsAndReclaimLiquidity(uint256 _depositId) external {
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(
+            deposits[_depositId], 
+            _depositId, 
+            PRUNE_ALL_EXPIRED_INTENTS     // Prune all expired intents
+        );
+
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
@@ -540,18 +548,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
         
         // Effects
-        // Check if we need to reclaim expired liquidity first
-        uint256 currentIntentCount = depositIntentHashes[_depositId].length;
-        if (deposit.remainingDeposits < _amount || currentIntentCount >= maxIntentsPerDeposit) {
-            _pruneExpiredIntents(deposit, _depositId, _amount);
+        // Check if we need to reclaim expired liquidity first; if so, then reclaims and updates the deposit state
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, _amount);
+    
+        // Check if we have enough liquidity after reclaiming expired liquidity
+        if (deposit.remainingDeposits < _amount) {
+            revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, _amount);
+        }
 
-            currentIntentCount = depositIntentHashes[_depositId].length;
-            if (currentIntentCount >= maxIntentsPerDeposit) {
-                revert MaxIntentsExceeded(_depositId, currentIntentCount, maxIntentsPerDeposit);
-            }
+        // Check if we exceeded the maximum number of intents after expiring intents and adding the new intent
+        uint256 newIntentCount = depositIntentHashes[_depositId].length + 1;
+        if (newIntentCount > maxIntentsPerDeposit) {
+            revert MaxIntentsExceeded(_depositId, newIntentCount, maxIntentsPerDeposit);
         }
         
-        // Update deposit state
+        // Update deposit state due to the new intent
         deposit.remainingDeposits -= _amount;
         deposit.outstandingIntentAmount += _amount;
         
@@ -563,8 +574,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
             timestamp: block.timestamp,
             expiryTime: expiryTime
         });
-
+        
         emit FundsLocked(_depositId, _intentHash, _amount, expiryTime);
+
+        // Interactions
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /**
@@ -646,6 +662,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice INTENT GUARDIAN ONLY: Extends the expiry time of an existing intent. Only callable by intent guardian.
+     * This function reverts if the total intent expiry period is greater than the maximum allowed to prevent griefing
+     * by extending the intent expiry period indefinitely.
      * 
      * @param _depositId The deposit ID containing the intent
      * @param _intentHash The intent hash to extend expiry for
@@ -658,6 +676,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     ) 
         external 
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         Intent storage intent = depositIntents[_depositId][_intentHash];
         
@@ -669,6 +688,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert AmountAboveMax(_additionalTime, MAX_TOTAL_INTENT_EXPIRATION_PERIOD);
         }
         
+        // Effects
         intent.expiryTime += _additionalTime;
         
         emit IntentExpiryExtended(_depositId, _intentHash, intent.expiryTime);
@@ -760,7 +780,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * Functionalities that remain unpaused to allow users to retrieve funds:
      * - Full deposit withdrawal (withdrawDeposit)
      * - Delegate management (setDepositDelegate, removeDepositDelegate)
-     * - Expired intent pruning (pruneExpiredIntents)
+     * - Expired intent pruning (pruneExpiredIntentsAndReclaimLiquidity)
      * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
      * - Intent expiry extensions by guardian
      * - All view functions
@@ -806,11 +826,19 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return depositPaymentMethodData[_depositId][_paymentMethod];
     }
 
+    function getDepositPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod) external view returns (bool) {
+        return depositPaymentMethodActive[_depositId][_paymentMethod];
+    }
+
+    function getDepositGatingService(uint256 _depositId, bytes32 _paymentMethod) external view returns (address) {
+        return depositPaymentMethodData[_depositId][_paymentMethod].intentGatingService;
+    }
+
     function getAccountDeposits(address _account) external view returns (uint256[] memory) {
         return accountDeposits[_account];
     }
     
-    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount) {
+    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount) {
         return _getExpiredIntents(_depositId);
     }
 
@@ -820,58 +848,66 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Cycles through all intents currently open on a deposit and sees if any have expired. If they have expired
      * the outstanding amounts are summed and returned alongside the intentHashes.
+     * Note: This function compacts the expired intents array to remove any empty slots.
      */
     function _getExpiredIntents(
         uint256 _depositId
     )
         internal
         view
-        returns(bytes32[] memory expiredIntents, uint256 reclaimedAmount)
+        returns(bytes32[] memory expiredIntents, uint256 reclaimableAmount)
     {
         bytes32[] memory intentHashes = depositIntentHashes[_depositId];
-        expiredIntents = new bytes32[](intentHashes.length);
+        bytes32[] memory verboseExpiredIntents = new bytes32[](intentHashes.length);
+        uint256 numExpiredIntents = 0;
 
         for (uint256 i = 0; i < intentHashes.length; ++i) {
             Intent memory intent = depositIntents[_depositId][intentHashes[i]];
             if (intent.expiryTime < block.timestamp) {
-                expiredIntents[i] = intentHashes[i];
-                reclaimedAmount += intent.amount;
+                verboseExpiredIntents[i] = intentHashes[i];
+                reclaimableAmount += intent.amount;
+                numExpiredIntents++;
+            }
+        }
+
+        // Compact the expired intents array
+        expiredIntents = new bytes32[](numExpiredIntents);
+        uint256 compactedIndex = 0;
+        for (uint256 i = 0; i < intentHashes.length; ++i) {
+            if (verboseExpiredIntents[i] != bytes32(0)) {
+                expiredIntents[compactedIndex++] = verboseExpiredIntents[i];
             }
         }
     }
 
     /**
-     * @notice Free up deposit liquidity by removing intents that have expired. Tries to remove all expired intents that are expired
-     * and adds the reclaimable amount to the deposit's remaining deposits. If the remaining amount including the new recovered amount
-     * is less than the minimum required amount, this function will revert with a NotEnoughLiquidity error.
+     * @notice Free up deposit liquidity by reclaiming liquidity from expired intents. Only reclaims if remaining deposits amount
+     * is less than the minimum required amount. Returns the expired intents that need to be pruned. Only does local state updates, 
+     * does not call any external contracts. Whenever this function is called, the calling function should also call _callOrchestratorToPruneIntents
+     * with the returned intents to expire the intents on the orchestrator contract.
      */
-    function _pruneExpiredIntents(Deposit storage _deposit, uint256 _depositId, uint256 _minRequiredAmount) internal {
-        (
-            bytes32[] memory expiredIntents,
-            uint256 reclaimableAmount
-        ) = _getExpiredIntents(_depositId);
-        
-        uint256 availableAmount = _deposit.remainingDeposits;
-        availableAmount += reclaimableAmount;
-        
-        if (availableAmount < _minRequiredAmount) revert InsufficientDepositLiquidity(_depositId, availableAmount, _minRequiredAmount);
-        
-        // Prune expired intents to free up funds
-        _pruneIntents(_depositId, expiredIntents);
-        _deposit.remainingDeposits += reclaimableAmount;
-        _deposit.outstandingIntentAmount -= reclaimableAmount;
-    }
+    function _reclaimLiquidityIfNecessary(
+        Deposit storage _deposit, 
+        uint256 _depositId, 
+        uint256 _minRequiredAmount
+    )
+        internal
+        returns (bytes32[] memory expiredIntents)
+    {
+        if (
+            _deposit.remainingDeposits < _minRequiredAmount || 
+            depositIntentHashes[_depositId].length == maxIntentsPerDeposit
+        ) {
+            // If the deposit has insufficient liquidity or is at max intents, reclaim liquidity from expired intents
+            uint256 reclaimedAmount;
+            
+            (expiredIntents, reclaimedAmount) = _getExpiredIntents(_depositId);    
+            _deposit.remainingDeposits += reclaimedAmount;
+            _deposit.outstandingIntentAmount -= reclaimedAmount;
 
-    /**
-     * @notice Prunes given intents from a deposit. Also calls orchestrator to clean up intents.
-     */
-    function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
-        // Call orchestrator to clean up intents first
-        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
-
-        for (uint256 i = 0; i < _intents.length; i++) {
-            Intent memory intent = depositIntents[_depositId][_intents[i]];
-            if (intent.intentHash != bytes32(0)) {
+            // Prune intents locally and emit funds unlocked events
+            for (uint256 i = 0; i < expiredIntents.length; i++) {
+                Intent memory intent = depositIntents[_depositId][expiredIntents[i]];
                 _pruneIntent(_depositId, intent.intentHash);
                 
                 emit FundsUnlocked(_depositId, intent.intentHash, intent.amount);
@@ -880,7 +916,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Prunes an intent from a deposit. Does not call orchestrator.
+     * @notice Prunes an intent from a deposit locally. Does not call orchestrator.
      */
     function _pruneIntent(uint256 _depositId, bytes32 _intentHash) internal {
         delete depositIntents[_depositId][_intentHash];
@@ -888,29 +924,33 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, collects any 
-     * accrued maker fees to the protocol fee recipient and transfers any remaining dust to the protocol fee recipient.
-     */
-    function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
-        // If no remaining deposits, delete the acceptingIntents flag
-        if (_deposit.remainingDeposits == 0) {
-            delete _deposit.acceptingIntents;
-        }
-
-        // Close if no outstanding intents and remaining deposits are at or below dust
-        uint256 totalRemaining = _deposit.remainingDeposits;
-
-        if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
-            if (totalRemaining > 0) {
-                _deposit.token.safeTransfer(dustRecipient, totalRemaining);
-                emit DustCollected(_depositId, totalRemaining, dustRecipient);
-            }
-            _closeDeposit(_depositId, _deposit);
-        }
+      * @notice Calls the orchestrator to clean up intents. 
+      * Note: If the orchestrator reverts, it is caught and ignored to allow the function to continue execution.
+      */
+    function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
+        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
     }
 
+    /**
+     * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, transfers any remaining
+     * dust to the protocol dust recipient.
+     */
+    function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
+        // Close if no outstanding intents and remaining deposits are at or below dust
+        uint256 totalRemaining = _deposit.remainingDeposits;
+        if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
+            
+            // Close deposit
+            IERC20 token = _deposit.token;
+            _closeDeposit(_depositId, _deposit);
 
-    // Fees removed: no accrued fee collection helpers
+            // Transfer dust to dust recipient
+            if (totalRemaining > 0) {
+                token.safeTransfer(dustRecipient, totalRemaining);
+                emit DustCollected(_depositId, totalRemaining, dustRecipient);
+            }
+        }
+    }
 
     /**
      * @notice Closes a deposit. Deleting a deposit deletes it from the deposits mapping and removes tracking
@@ -923,6 +963,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _deleteDepositPaymentMethodAndCurrencyData(_depositId);
         
         delete deposits[_depositId];
+        delete _deposit.acceptingIntents;
         
         emit DepositClosed(_depositId, depositor);
     }
@@ -935,6 +976,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         for (uint256 i = 0; i < paymentMethods.length; i++) {
             bytes32 paymentMethod = paymentMethods[i];
             delete depositPaymentMethodData[_depositId][paymentMethod];
+            delete depositPaymentMethodActive[_depositId][paymentMethod];
             bytes32[] memory currencies = depositCurrencies[_depositId][paymentMethod];
             for (uint256 j = 0; j < currencies.length; j++) {
                 delete depositCurrencyMinRate[_depositId][paymentMethod][currencies[j]];
@@ -961,15 +1003,18 @@ contract Escrow is Ownable, Pausable, IEscrow {
         for (uint256 i = 0; i < _paymentMethods.length; i++) {
             bytes32 paymentMethod = _paymentMethods[i];
             
+            // Validate payment method
             if (paymentMethod == bytes32(0)) revert ZeroAddress();
             if (!paymentVerifierRegistry.isPaymentMethod(paymentMethod)) {
                 revert PaymentMethodNotWhitelisted(paymentMethod);
             }
             if (_paymentMethodData[i].payeeDetails == bytes32(0)) revert EmptyPayeeDetails();
-            if (depositPaymentMethodData[_depositId][paymentMethod].payeeDetails != bytes32(0)) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
+            if (depositPaymentMethodActive[_depositId][paymentMethod]) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
 
+            // Add payment method
             depositPaymentMethodData[_depositId][paymentMethod] = _paymentMethodData[i];
             depositPaymentMethods[_depositId].push(paymentMethod);
+            depositPaymentMethodActive[_depositId][paymentMethod] = true;
 
             emit DepositPaymentMethodAdded(_depositId, paymentMethod, _paymentMethodData[i].payeeDetails, _paymentMethodData[i].intentGatingService);
 
@@ -995,6 +1040,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _currencyCode,
         uint256 _minConversionRate
     ) internal {
+        // Validate currency
         if (!paymentVerifierRegistry.isCurrency(_paymentMethod, _currencyCode)) {
             revert CurrencyNotSupported(_paymentMethod, _currencyCode);
         }
@@ -1002,6 +1048,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] != 0) {
             revert CurrencyAlreadyExists(_paymentMethod, _currencyCode);
         }
+
+        // Add currency
         depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_paymentMethod].push(_currencyCode);
 

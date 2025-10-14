@@ -25,11 +25,10 @@ interface IEscrow {
         address depositor;                          // Address of depositor
         address delegate;                           // Address that can manage this deposit (address(0) if no delegate)
         IERC20 token;                               // Address of deposit token
-        uint256 amount;                             // Amount of deposit token
         Range intentAmountRange;                    // Range of take amount per intent
         // Deposit state
         bool acceptingIntents;                      // State: True if the deposit is accepting intents, False otherwise
-        uint256 remainingDeposits;                  // State: Amount of remaining deposited liquidity
+        uint256 remainingDeposits;                  // State: Amount of liquidity immediately available to lock
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
         // Intent guardian
         address intentGuardian;                     // Address that can extend intent expiry times (address(0) if no guardian)
@@ -60,7 +59,7 @@ interface IEscrow {
 
     /* ============ Events ============ */
 
-    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, uint256 netDepositAmount, Range intentAmountRange, address delegate, address intentGuardian);
+    event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
 
     event DepositPaymentMethodAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed payeeDetails, address intentGatingService);
     event DepositPaymentMethodRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod);
@@ -161,7 +160,9 @@ interface IEscrow {
     function getDepositCurrencies(uint256 _depositId, bytes32 _paymentMethod) external view returns (bytes32[] memory);
     function getDepositCurrencyMinRate(uint256 _depositId, bytes32 _paymentMethod, bytes32 _currencyCode) external view returns (uint256);
     function getDepositPaymentMethodData(uint256 _depositId, bytes32 _paymentMethod) external view returns (DepositPaymentMethodData memory);
+    function getDepositPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod) external view returns (bool);
+    function getDepositGatingService(uint256 _depositId, bytes32 _paymentMethod) external view returns (address);
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
-    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount);
+    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount);
 }

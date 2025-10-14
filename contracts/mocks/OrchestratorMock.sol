@@ -3,7 +3,6 @@
 pragma solidity ^0.8.18;
 
 import { IEscrow } from "../interfaces/IEscrow.sol";
-
 /**
  * @title OrchestratorMock
  * @notice Mock orchestrator contract for testing escrow orchestrator-only functions
@@ -14,19 +13,20 @@ contract OrchestratorMock {
     bytes32[] public lastPrunedIntents;
     
     // Events for testing
-    event IntentsPruned(bytes32[] intents);
+    event IntentsPruned(bytes32 intent);
     
     constructor(address _escrow) {
         escrow = IEscrow(_escrow);
+        lastPrunedIntents = new bytes32[](1);
     }
     
     /**
      * @notice Implementation of pruneIntents required by IOrchestrator
      * @param _intents Array of intent hashes to prune
      */
-    function pruneIntents(bytes32[] memory _intents) external {
-        lastPrunedIntents = _intents;
-        emit IntentsPruned(_intents);
+    function pruneIntents(bytes32[] calldata _intents) external {
+        lastPrunedIntents[0] = _intents[0];
+        emit IntentsPruned(_intents[0]);
     }
     
     // Test helper functions to call orchestrator-only functions on escrow

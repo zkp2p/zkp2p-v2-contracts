@@ -368,7 +368,7 @@ contract EscrowHandler is Test {
             uint256 depositId = activeDepositIds[i];
             if (ghostDepositExists[depositId]) {
                 vm.prank(escrow.getDeposit(depositId).depositor);
-                try escrow.pruneExpiredIntents(depositId) {
+                try escrow.pruneExpiredIntentsAndReclaimLiquidity(depositId) {
                     // Expired intents return liquidity to deposit
                     // This is tracked through event monitoring in real implementation
                 } catch {}
@@ -538,7 +538,7 @@ contract EscrowInvariantTest is Test {
     
     /**
      * @notice Invariant 4: Deposit Liquidity Consistency
-     * @dev For each deposit: Available Liquidity + Locked in Intents = Total Deposit Amount
+     * @dev For each deposit: Available Liquidity + Locked in Intents = Ghost total for that deposit
      */
     function invariant_DepositLiquidityConsistency() public view {
         // Check each created deposit
@@ -551,10 +551,10 @@ contract EscrowInvariantTest is Test {
             uint256 contractRemaining = deposit.remainingDeposits;
             uint256 contractLocked = deposit.outstandingIntentAmount;
             
-            // Available + Locked should equal Total
+            // Available + Locked should equal handler's ghost total for that deposit
             assertEq(
                 contractRemaining + contractLocked,
-                deposit.amount,
+                handler.ghostDepositAmounts(depositId),
                 "Deposit liquidity accounting mismatch"
             );
         }
