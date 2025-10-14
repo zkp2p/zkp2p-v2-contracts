@@ -3421,19 +3421,15 @@ describe("Escrow", () => {
           expect(postDeposit.depositor).to.not.eq(ADDRESS_ZERO);
         });
 
-        it("should set the acceptIntents to false", async () => {
+        it("should set/keep the acceptIntents to false", async () => {
           await subject();
 
           const postDeposit = await ramp.getDeposit(subjectDepositId);
           expect(postDeposit.acceptingIntents).to.eq(false);
         });
 
-
-        it("should emit DepositAcceptingIntentsUpdated event", async () => {
-          await expect(subject()).to.emit(ramp, "DepositAcceptingIntentsUpdated").withArgs(
-            subjectDepositId,
-            false
-          );
+        it("should not emit DepositClosed event", async () => {
+          await expect(subject()).to.not.emit(ramp, "DepositClosed");
         });
       });
     });

@@ -1115,7 +1115,8 @@ contract OrchestratorCriticalPathFuzz is Test {
             paymentMethodData: new IEscrow.DepositPaymentMethodData[](2),
             currencies: new IEscrow.Currency[][](2),
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         params.paymentMethods[0] = VENMO;

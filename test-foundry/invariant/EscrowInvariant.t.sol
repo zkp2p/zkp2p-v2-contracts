@@ -150,7 +150,8 @@ contract EscrowHandler is Test {
             paymentMethodData: paymentMethodData,
             currencies: currencies,
             delegate: address(0),
-            intentGuardian: address(0)
+            intentGuardian: address(0),
+            retainOnEmpty: false
         });
         
         uint256 depositId = escrow.depositCounter();
