@@ -157,8 +157,9 @@ describe("UnifiedPaymentVerifier", () => {
         data: ZERO_BYTES,
       }],
       currencies: [[{ code: Currency.USD, minConversionRate: depositMinConversionRate }]],
-      delegate: ethers.constants.AddressZero,
-      intentGuardian: ethers.constants.AddressZero,
+      delegate: ADDRESS_ZERO,
+      intentGuardian: ADDRESS_ZERO,
+      retainOnEmpty: false,
     });
 
     depositId = BigNumber.from(0);
@@ -206,11 +207,11 @@ describe("UnifiedPaymentVerifier", () => {
       paymentMethod: venmoPaymentMethodHash,
       fiatCurrency: Currency.USD,
       conversionRate,
-      referrer: ethers.constants.AddressZero,
+      referrer: ADDRESS_ZERO,
       referrerFee: ZERO,
       gatingServiceSignature,
       signatureExpiration,
-      postIntentHook: ethers.constants.AddressZero,
+      postIntentHook: ADDRESS_ZERO,
       data: ZERO_BYTES,
     });
 
@@ -530,11 +531,11 @@ describe("UnifiedPaymentVerifier", () => {
           paymentMethod: venmoPaymentMethodHash,
           fiatCurrency: defaultCurrency,
           conversionRate: intent.conversionRate,
-          referrer: ethers.constants.AddressZero,
+          referrer: ADDRESS_ZERO,
           referrerFee: ZERO,
           gatingServiceSignature: secondSignature,
           signatureExpiration,
-          postIntentHook: ethers.constants.AddressZero,
+          postIntentHook: ADDRESS_ZERO,
           data: ZERO_BYTES,
         });
 

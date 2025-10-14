@@ -32,6 +32,8 @@ interface IEscrow {
         uint256 outstandingIntentAmount;            // State: Amount of outstanding intents (may include expired intents)
         // Intent guardian
         address intentGuardian;                     // Address that can extend intent expiry times (address(0) if no guardian)
+        // Retention behavior
+        bool retainOnEmpty;                         // If true, do not auto-close/sweep when empty; keep config for reuse
     }
 
     struct Currency {
@@ -55,6 +57,7 @@ interface IEscrow {
         Currency[][] currencies;                     // The currencies for each payment method that deposit supports
         address delegate;                            // Optional delegate address that can manage this deposit (address(0) for no delegate)
         address intentGuardian;                      // Optional intent guardian address that can extend intent expiry times (address(0) for no guardian)
+        bool retainOnEmpty;                          // Opt-in: keep deposit and config when empty
     }
 
     /* ============ Events ============ */
@@ -74,6 +77,7 @@ interface IEscrow {
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
     event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
     event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
+    event DepositRetainOnEmptyUpdated(uint256 indexed depositId, bool retainOnEmpty);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
     event DepositDelegateRemoved(uint256 indexed depositId, address indexed depositor);

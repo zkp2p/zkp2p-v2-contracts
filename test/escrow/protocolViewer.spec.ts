@@ -167,8 +167,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositId = ZERO;
@@ -220,11 +221,11 @@ describe("ProtocolViewer", () => {
           venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
-          ethers.constants.AddressZero,  // referrer
+          ADDRESS_ZERO,  // referrer
           ZERO,                           // referrerFee
           gatingService,
           chainId.toString(),
-          ethers.constants.AddressZero,
+          ADDRESS_ZERO,
           "0x"
         );
 
@@ -275,8 +276,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -292,8 +294,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectAccount = offRamper.address;
@@ -342,8 +345,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       await escrow.connect(offRamper.wallet).createDeposit({
@@ -359,8 +363,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: ether(1.08) }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       subjectDepositIds = [ZERO, ONE];
@@ -412,8 +417,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -438,11 +444,11 @@ describe("ProtocolViewer", () => {
         venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
-        ethers.constants.AddressZero,  // referrer
+        ADDRESS_ZERO,  // referrer
         ZERO,                           // referrerFee
         gatingService,
         chainId.toString(),
-        ethers.constants.AddressZero,
+        ADDRESS_ZERO,
         "0x"
       );
 
@@ -491,8 +497,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const gatingServiceSignature = await generateGatingServiceSignature(
@@ -517,11 +524,11 @@ describe("ProtocolViewer", () => {
         venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
-        ethers.constants.AddressZero,  // referrer
+        ADDRESS_ZERO,  // referrer
         ZERO,                           // referrerFee
         gatingService,
         chainId.toString(),
-        ethers.constants.AddressZero,
+        ADDRESS_ZERO,
         "0x"
       );
 
@@ -574,8 +581,9 @@ describe("ProtocolViewer", () => {
         currencies: [
           [{ code: Currency.USD, minConversionRate: depositConversionRate }]
         ],
-        delegate: ethers.constants.AddressZero,
-        intentGuardian: ADDRESS_ZERO
+        delegate: ADDRESS_ZERO,
+        intentGuardian: ADDRESS_ZERO,
+        retainOnEmpty: false
       });
 
       const params = await createSignalIntentParams(
@@ -587,11 +595,11 @@ describe("ProtocolViewer", () => {
         venmoPaymentMethodHash,
         Currency.USD,
         depositConversionRate,
-        ethers.constants.AddressZero,  // referrer
+        ADDRESS_ZERO,  // referrer
         ZERO,                           // referrerFee
         gatingService,
         chainId.toString(),
-        ethers.constants.AddressZero,
+        ADDRESS_ZERO,
         "0x"
       );
 
@@ -634,11 +642,11 @@ describe("ProtocolViewer", () => {
           venmoPaymentMethodHash,
           Currency.USD,
           depositConversionRate,
-          ethers.constants.AddressZero,
+          ADDRESS_ZERO,
           ZERO,
           gatingService,
           chainId.toString(),
-          ethers.constants.AddressZero,
+          ADDRESS_ZERO,
           "0x"
         );
 

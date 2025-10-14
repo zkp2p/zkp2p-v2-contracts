@@ -151,7 +151,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
             acceptingIntents: true,
             remainingDeposits: _params.amount,
             outstandingIntentAmount: 0,
-            intentGuardian: _params.intentGuardian
+            intentGuardian: _params.intentGuardian,
+            retainOnEmpty: _params.retainOnEmpty
         });
 
         emit DepositReceived(
@@ -498,6 +499,29 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         deposit.acceptingIntents = _acceptingIntents;
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
+    }
+
+    /**
+     * @notice Allows depositor or delegate to set the retain-on-empty behavior for a deposit. When true, the deposit
+     * will not auto-close or sweep dust when empty; config (payment methods, currencies, rate etc) stays for reuse.
+     *
+     * @param _depositId        The deposit ID
+     * @param _retainOnEmpty    New retain-on-empty flag value
+     */
+    function setDepositRetainOnEmpty(
+        uint256 _depositId,
+        bool _retainOnEmpty
+    )
+        external
+        whenNotPaused
+        onlyDepositorOrDelegate(_depositId)
+    {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.retainOnEmpty == _retainOnEmpty) revert DepositAlreadyInState(_depositId, _retainOnEmpty);
+        
+        deposit.retainOnEmpty = _retainOnEmpty;
+        
+        emit DepositRetainOnEmptyUpdated(_depositId, _retainOnEmpty);
     }
 
     /* ============ Anyone callable (External Functions) ============ */
@@ -939,12 +963,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
         // Close if no outstanding intents and remaining deposits are at or below dust
         uint256 totalRemaining = _deposit.remainingDeposits;
         if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
-            
-            // Close deposit
+            // If retention is enabled, do not close or sweep dust; keep config for reuse
+            if (_deposit.retainOnEmpty) {
+                // If below min, ensure deposit stops accepting intents until re-funded
+                if (_deposit.acceptingIntents && totalRemaining < _deposit.intentAmountRange.min) {
+                    _deposit.acceptingIntents = false;
+                    emit DepositAcceptingIntentsUpdated(_depositId, false);
+                }
+                return;
+            }
+
+            // Close deposit (and sweep any dust) when retention is not enabled
             IERC20 token = _deposit.token;
             _closeDeposit(_depositId, _deposit);
 
-            // Transfer dust to dust recipient
             if (totalRemaining > 0) {
                 token.safeTransfer(dustRecipient, totalRemaining);
                 emit DustCollected(_depositId, totalRemaining, dustRecipient);
