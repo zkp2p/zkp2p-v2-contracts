@@ -198,8 +198,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Removes funds from an existing deposit. Only the depositor can remove funds. If the amount to remove is greater
      * than the remaining deposits, then expired intents will be pruned to reclaim liquidity. If the remaining deposits is less than
-     * the min intent amount, then the deposit will be marked as not accepting intents. Reserved maker fees remain locked until full
-     * withdrawal via withdrawDeposit().
+     * the min intent amount, then the deposit will be marked as not accepting intents. 
      *
      * @param _depositId    The deposit ID to remove funds from
      * @param _amount       The amount of tokens to remove
@@ -231,11 +230,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Depositor is returned all remaining deposits, any outstanding intents that are expired, and unused maker fees.
-     * Only the depositor can withdraw. If an intent is not expired then those funds will not be returned. Deposit is marked
-     * as to not accept new intents and the funds locked due to intents can be withdrawn once they expire by calling this
-     * function again. Deposit will be deleted and accrued maker fees collected to protocol as long as there are no more
-     * outstanding intents.
+     * @notice Depositor is returned all remaining deposits and any outstanding intents that are expired. Only the depositor can withdraw. 
+     * If an intent is not expired then those funds will not be returned. Deposit is marked as to not accept new intents and the funds
+     * locked due to intents can be withdrawn once they expire by calling this function again. Deposit will be deleted as long as there are
+     * no more outstanding intents.
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
@@ -261,9 +259,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
 
-        if (deposit.outstandingIntentAmount == 0) {
-            _closeDeposit(_depositId, deposit);
-        }
+        _closeDepositIfNecessary(_depositId, deposit);
         
         // Interactions
         token.safeTransfer(msg.sender, returnAmount);
@@ -890,18 +886,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, collects any 
-     * accrued maker fees to the protocol fee recipient and transfers any remaining dust to the protocol fee recipient.
+     * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, transfers any remaining
+     * dust to the protocol dust recipient.
      */
     function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
-        // If no remaining deposits, delete the acceptingIntents flag
-        if (_deposit.remainingDeposits == 0) {
-            delete _deposit.acceptingIntents;
-        }
-
         // Close if no outstanding intents and remaining deposits are at or below dust
         uint256 totalRemaining = _deposit.remainingDeposits;
-
         if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
             if (totalRemaining > 0) {
                 _deposit.token.safeTransfer(dustRecipient, totalRemaining);
@@ -910,9 +900,6 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _closeDeposit(_depositId, _deposit);
         }
     }
-
-
-    // Fees removed: no accrued fee collection helpers
 
     /**
      * @notice Closes a deposit. Deleting a deposit deletes it from the deposits mapping and removes tracking
@@ -925,6 +912,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _deleteDepositPaymentMethodAndCurrencyData(_depositId);
         
         delete deposits[_depositId];
+        delete _deposit.acceptingIntents;
         
         emit DepositClosed(_depositId, depositor);
     }
