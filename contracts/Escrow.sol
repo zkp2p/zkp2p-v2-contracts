@@ -391,9 +391,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (depositPaymentMethodData[_depositId][_paymentMethod].payeeDetails == bytes32(0)) {
-            revert PaymentMethodNotFound(_depositId, _paymentMethod);
-        }
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
 
         depositPaymentMethods[_depositId].removeStorage(_paymentMethod);
         depositPaymentMethodActive[_depositId][_paymentMethod] = false;

@@ -1809,6 +1809,16 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the payment method has already been removed", async () => {
+      beforeEach(async () => {
+        await subject();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+      });
+    });
+
     describe("when the escrow is paused", async () => {
       beforeEach(async () => {
         await ramp.connect(owner.wallet).pauseEscrow();
