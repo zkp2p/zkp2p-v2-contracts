@@ -19,7 +19,6 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
-import "hardhat/console.sol";
 pragma solidity ^0.8.18;
 
 /**
@@ -935,10 +934,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
       * @notice Calls the orchestrator to clean up intents. Note if the orchestrator reverts, it is caught and ignored.
       */
     function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
-        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {
-            // todo: remove this
-            console.log("test");
-        }
+        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
     }
 
     /**
