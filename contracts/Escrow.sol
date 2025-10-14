@@ -306,9 +306,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /* ============ Deposit Owner OR Delegate Only (External Functions) ============ */
 
     /**
-     * @notice Only callable by the depositor for a deposit. Allows depositor to update the min conversion rate for a currency for a 
-     * payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate will not affect
-     * any intents that have already been signaled.
+     * @notice Only callable by the depositor/delegate for a deposit. Allows depositor/delegate to update the min conversion rate for a 
+     * currency for a payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate
+     * will not affect any intents that have already been signaled.
      *
      * @param _depositId                The deposit ID
      * @param _paymentMethod            The payment method to update the min conversion rate for
@@ -384,7 +384,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Allows depositor to remove an existing payment verifier from a deposit. 
-     * NOTE: This function does not delete the payment method data, it only removes the payment method from the deposit.
+     * NOTE: This function does not delete the payment method data to allow existing intents to be fulfilled, it only removes 
+     * the payment method from deposit, sets the active state to false and removes the currencies for the payment method.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method to remove
@@ -847,6 +848,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Cycles through all intents currently open on a deposit and sees if any have expired. If they have expired
      * the outstanding amounts are summed and returned alongside the intentHashes.
+     * Note: This function compacts the expired intents array to remove any empty slots.
      */
     function _getExpiredIntents(
         uint256 _depositId
@@ -879,10 +881,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Free up deposit liquidity by reclaiming for expired intents. Only reclaims if remaining deposits amount
-     * is less than the minimum required amount. Returns the expired intents that need to be pruned and the amount reclaimed.
-     * Only does local updates, does not call orchestrator. Whenever this function is called, the calling function should
-     * call _pruneIntents with the returned intents to expire the intents.
+     * @notice Free up deposit liquidity by reclaiming liquidity from expired intents. Only reclaims if remaining deposits amount
+     * is less than the minimum required amount. Returns the expired intents that need to be pruned. Only does local state updates, 
+     * does not call any external contracts. Whenever this function is called, the calling function should also call _callOrchestratorToPruneIntents
+     * with the returned intents to expire the intents on the orchestrator contract.
      */
     function _reclaimLiquidityIfNecessary(
         Deposit storage _deposit, 
@@ -903,18 +905,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _deposit.remainingDeposits += reclaimedAmount;
             _deposit.outstandingIntentAmount -= reclaimedAmount;
 
-            // Prune intents locally
-            _pruneLocalIntents(_depositId, expiredIntents);
-        }
-    }
-
-    /**
-     * @notice Prunes given intents from a deposit locally.
-     */
-    function _pruneLocalIntents(uint256 _depositId, bytes32[] memory _intents) internal {
-        for (uint256 i = 0; i < _intents.length; i++) {
-            Intent memory intent = depositIntents[_depositId][_intents[i]];
-            if (intent.intentHash != bytes32(0)) {
+            // Prune intents locally and emit funds unlocked events
+            for (uint256 i = 0; i < expiredIntents.length; i++) {
+                Intent memory intent = depositIntents[_depositId][expiredIntents[i]];
                 _pruneIntent(_depositId, intent.intentHash);
                 
                 emit FundsUnlocked(_depositId, intent.intentHash, intent.amount);
@@ -923,7 +916,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Prunes an intent from a deposit. Does not call orchestrator.
+     * @notice Prunes an intent from a deposit locally. Does not call orchestrator.
      */
     function _pruneIntent(uint256 _depositId, bytes32 _intentHash) internal {
         delete depositIntents[_depositId][_intentHash];
@@ -931,7 +924,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-      * @notice Calls the orchestrator to clean up intents. Note if the orchestrator reverts, it is caught and ignored.
+      * @notice Calls the orchestrator to clean up intents. 
+      * Note: If the orchestrator reverts, it is caught and ignored to allow the function to continue execution.
       */
     function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
         try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
@@ -945,11 +939,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
         // Close if no outstanding intents and remaining deposits are at or below dust
         uint256 totalRemaining = _deposit.remainingDeposits;
         if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
+            
+            // Close deposit
+            IERC20 token = _deposit.token;
+            _closeDeposit(_depositId, _deposit);
+
+            // Transfer dust to dust recipient
             if (totalRemaining > 0) {
-                _deposit.token.safeTransfer(dustRecipient, totalRemaining);
+                token.safeTransfer(dustRecipient, totalRemaining);
                 emit DustCollected(_depositId, totalRemaining, dustRecipient);
             }
-            _closeDeposit(_depositId, _deposit);
         }
     }
 
