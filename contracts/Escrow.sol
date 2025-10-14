@@ -127,7 +127,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @notice Creates a deposit entry by locking liquidity in the escrow contract that can be taken by signaling intents. This function will 
      * not add to previous deposits. Every deposit has it's own unique identifier. User must approve the contract to transfer the deposit amount
      * of deposit token. Every deposit specifies the payment methods it supports by specifying their verification data, supported currencies and 
-     * their min conversion rates for each payment method. Optionally, a referrer and a referrer fee can be specified.
+     * their min conversion rates for each payment method. Optionally, a delegate to manage the deposit can be specified.
      * Note that the order of the payment methods, verification data, and currency data must match.
      */
     function createDeposit(CreateDepositParams calldata _params) external whenNotPaused {
@@ -217,6 +217,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             _pruneExpiredIntents(deposit, _depositId, _amount);
         }
         
+        // todo: what if _amount is greater than deposit.remainingDeposits?
         deposit.remainingDeposits -= _amount;
         
         if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
@@ -264,6 +265,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         // Interactions
         token.safeTransfer(msg.sender, returnAmount);
     }
+
+    /* ============ Deposit Delegate management ============ */
 
     /**
      * @notice Allows depositor to set a delegate address that can manage a specific deposit
@@ -481,8 +484,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.acceptingIntents == _acceptingIntents) revert DepositAlreadyInState(_depositId, _acceptingIntents);
-        // Doesn't reclaim liquidity for gas savings
-        if (deposit.remainingDeposits == 0) revert InsufficientDepositLiquidity(_depositId, 0, 1);
+
+        // If accepting intents, check if there is enough liquidity to accept the minimum intent amount
+        if (
+            _acceptingIntents && 
+            deposit.remainingDeposits < deposit.intentAmountRange.min
+        ) revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, deposit.intentAmountRange.min);
+        
         
         deposit.acceptingIntents = _acceptingIntents;
         emit DepositAcceptingIntentsUpdated(_depositId, _acceptingIntents);
@@ -950,13 +958,15 @@ contract Escrow is Ownable, Pausable, IEscrow {
         for (uint256 i = 0; i < _paymentMethods.length; i++) {
             bytes32 paymentMethod = _paymentMethods[i];
             
+            // Validate payment method
             if (paymentMethod == bytes32(0)) revert ZeroAddress();
             if (!paymentVerifierRegistry.isPaymentMethod(paymentMethod)) {
                 revert PaymentMethodNotWhitelisted(paymentMethod);
             }
             if (_paymentMethodData[i].payeeDetails == bytes32(0)) revert EmptyPayeeDetails();
-            if (depositPaymentMethodData[_depositId][paymentMethod].payeeDetails != bytes32(0)) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
+            if (depositPaymentMethodActive[_depositId][paymentMethod]) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
 
+            // Add payment method
             depositPaymentMethodData[_depositId][paymentMethod] = _paymentMethodData[i];
             depositPaymentMethods[_depositId].push(paymentMethod);
             depositPaymentMethodActive[_depositId][paymentMethod] = true;
@@ -985,6 +995,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _currencyCode,
         uint256 _minConversionRate
     ) internal {
+        // Validate currency
         if (!paymentVerifierRegistry.isCurrency(_paymentMethod, _currencyCode)) {
             revert CurrencyNotSupported(_paymentMethod, _currencyCode);
         }
@@ -992,6 +1003,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] != 0) {
             revert CurrencyAlreadyExists(_paymentMethod, _currencyCode);
         }
+
+        // Add currency
         depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_paymentMethod].push(_currencyCode);
 

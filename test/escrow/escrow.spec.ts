@@ -2440,11 +2440,35 @@ describe("Escrow", () => {
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           intentHash,
-          usdc(10)
+          usdc(10)  // 10 locked, 90 remaining
         );
 
-        // Remove all remaining deposits from deposit
-        await ramp.connect(offRamper.wallet).withdrawDeposit(subjectDepositId);
+        // Remove all remaining deposits from deposit, 90 removed, 10 locked, 0 remaining to be taken
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(90));
+
+        // Set accepting intents to true
+        subjectAcceptingIntents = true; // Trying to restart accepting intents
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "InsufficientDepositLiquidity");
+      });
+    });
+
+    describe("when the deposit has remaining liquidity below the minimum intent amount", async () => {
+      beforeEach(async () => {
+        // Lock some funds first
+        await ramp.connect(owner.wallet).setOrchestrator(orchestratorMock.address);
+        const intentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent"));
+        const currentTimestamp = await blockchain.getCurrentTimestamp();
+        await orchestratorMock.connect(owner.wallet).lockFunds(
+          subjectDepositId,
+          intentHash,
+          usdc(10)  // 10 locked, 90 remaining
+        );
+
+        // Remove all remaining deposits from deposit, 81 removed, 10 locked, 9 remaining to be taken
+        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(81));
 
         // Set accepting intents to true
         subjectAcceptingIntents = true; // Trying to restart accepting intents
