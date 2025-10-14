@@ -368,7 +368,7 @@ contract EscrowHandler is Test {
             uint256 depositId = activeDepositIds[i];
             if (ghostDepositExists[depositId]) {
                 vm.prank(escrow.getDeposit(depositId).depositor);
-                try escrow.pruneExpiredIntents(depositId) {
+                try escrow.pruneExpiredIntentsAndReclaimLiquidity(depositId) {
                     // Expired intents return liquidity to deposit
                     // This is tracked through event monitoring in real implementation
                 } catch {}

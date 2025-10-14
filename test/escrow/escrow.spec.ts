@@ -2516,7 +2516,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#pruneExpiredIntents", async () => {
+  describe("#pruneExpiredIntentsAndReclaimLiquidity", async () => {
     let subjectCaller: Account;
     let subjectDepositId: BigNumber;
 
@@ -2561,7 +2561,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      await ramp.connect(subjectCaller.wallet).pruneExpiredIntents(subjectDepositId);
+      return ramp.connect(subjectCaller.wallet).pruneExpiredIntentsAndReclaimLiquidity(subjectDepositId);
     }
 
     describe("when timestamp is before intent expiry", async () => {
@@ -2603,14 +2603,16 @@ describe("Escrow", () => {
       });
 
       it("should have called the orchestrator to prune intents", async () => {
-        const preIntents = await orchestratorMock.getLastPrunedIntents();
-        expect(preIntents.length).to.eq(0);
+        const tx = await subject();
+        await expect(tx).to.emit(orchestratorMock, "IntentsPruned");
 
-        await subject();
-
-        const postIntents = await orchestratorMock.getLastPrunedIntents();
-        expect(postIntents.length).to.eq(1);
-        expect(postIntents[0]).to.eq(intentHash);
+        const events = await orchestratorMock.queryFilter(
+          orchestratorMock.filters.IntentsPruned(),
+          tx.blockNumber,
+          tx.blockNumber
+        );
+        const pruned = events.at(-1)!.args![0] as string;
+        expect(pruned).to.eq(intentHash);
       });
     });
 
@@ -4083,15 +4085,15 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
     });
 
-    async function subject(): Promise<{ expiredIntents: string[], reclaimedAmount: BigNumber }> {
+    async function subject(): Promise<{ expiredIntents: string[], reclaimableAmount: BigNumber }> {
       return ramp.connect(subjectCaller.wallet).getExpiredIntents(subjectDepositId);
     }
 
     describe("when timestamp is before intent expiry", async () => {
       it("should return empty array", async () => {
-        const { expiredIntents, reclaimedAmount } = await subject();
-        expect(expiredIntents.length).to.eq(1);
-        expect(reclaimedAmount).to.eq(ZERO);
+        const { expiredIntents, reclaimableAmount } = await subject();
+        expect(expiredIntents.length).to.eq(0);
+        expect(reclaimableAmount).to.eq(ZERO);
       });
     });
 
@@ -4099,11 +4101,11 @@ describe("Escrow", () => {
       it("should return prunable intents", async () => {
         await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
 
-        const { expiredIntents, reclaimedAmount } = await subject();
+        const { expiredIntents, reclaimableAmount } = await subject();
 
         expect(expiredIntents).to.include(intentHash);
         expect(expiredIntents.length).to.eq(1);
-        expect(reclaimedAmount).to.eq(usdc(50));
+        expect(reclaimableAmount).to.eq(usdc(50));
       });
     });
 
@@ -4116,9 +4118,9 @@ describe("Escrow", () => {
       });
 
       it("should return empty array", async () => {
-        const { expiredIntents, reclaimedAmount } = await subject();
+        const { expiredIntents, reclaimableAmount } = await subject();
         expect(expiredIntents.length).to.eq(0);
-        expect(reclaimedAmount).to.eq(ZERO);
+        expect(reclaimableAmount).to.eq(ZERO);
       });
     });
   });

@@ -19,7 +19,7 @@ import { IPaymentVerifier } from "./interfaces/IPaymentVerifier.sol";
 import { IPaymentVerifierRegistry } from "./interfaces/IPaymentVerifierRegistry.sol";
 import { IPostIntentHookRegistry } from "./interfaces/IPostIntentHookRegistry.sol";
 import { IRelayerRegistry } from "./interfaces/IRelayerRegistry.sol";
-
+import "hardhat/console.sol";
 pragma solidity ^0.8.18;
 
 /**
@@ -40,6 +40,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     uint256 internal constant PRECISE_UNIT = 1e18;
     uint256 internal constant MAX_DUST_THRESHOLD = 1e6;            // 1 USDC
     uint256 internal constant MAX_TOTAL_INTENT_EXPIRATION_PERIOD = 86400 * 5; // 5 days
+    uint256 internal constant PRUNE_ALL_EXPIRED_INTENTS = type(uint256).max;
     
     /* ============ State Variables ============ */
 
@@ -213,11 +214,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_amount == 0) revert ZeroValue();
         
         // Effects
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, _amount);
         if (deposit.remainingDeposits < _amount) {
-            _pruneExpiredIntents(deposit, _depositId, _amount);
+            revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, _amount);
         }
-        
-        // todo: what if _amount is greater than deposit.remainingDeposits?
+
         deposit.remainingDeposits -= _amount;
         
         if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
@@ -228,6 +229,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         // Interactions
         deposit.token.safeTransfer(msg.sender, _amount);
+
+        // Prune intents on the orchestrator
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /**
@@ -244,17 +250,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
 
         // Effects
-        (
-            bytes32[] memory expiredIntents,
-            uint256 reclaimableAmount
-        ) = _getExpiredIntents(_depositId);
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, PRUNE_ALL_EXPIRED_INTENTS);
 
-        _pruneIntents(_depositId, expiredIntents);
-
-        uint256 returnAmount = deposit.remainingDeposits + reclaimableAmount;
-
+        uint256 returnAmount = deposit.remainingDeposits;
         IERC20 token = deposit.token;
-        deposit.outstandingIntentAmount -= reclaimableAmount;
         delete deposit.remainingDeposits;
         delete deposit.acceptingIntents;
 
@@ -264,6 +263,11 @@ contract Escrow is Ownable, Pausable, IEscrow {
         
         // Interactions
         token.safeTransfer(msg.sender, returnAmount);
+
+        // Prune intents on the orchestrator
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /* ============ Deposit Delegate management ============ */
@@ -503,8 +507,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * @param _depositId The deposit ID to prune expired intents for
      */
-    function pruneExpiredIntents(uint256 _depositId) external {
-        _pruneExpiredIntents(deposits[_depositId], _depositId, 0);
+    function pruneExpiredIntentsAndReclaimLiquidity(uint256 _depositId) external {
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(
+            deposits[_depositId], 
+            _depositId, 
+            PRUNE_ALL_EXPIRED_INTENTS     // Prune all expired intents
+        );
+
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /* ============ Orchestrator-Only Locking and Unlocking Functions ============ */
@@ -536,18 +548,21 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
         
         // Effects
-        // Check if we need to reclaim expired liquidity first
-        uint256 currentIntentCount = depositIntentHashes[_depositId].length;
-        if (deposit.remainingDeposits < _amount || currentIntentCount >= maxIntentsPerDeposit) {
-            _pruneExpiredIntents(deposit, _depositId, _amount);
+        // Check if we need to reclaim expired liquidity first; if so, then reclaims and updates the deposit state
+        bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(deposit, _depositId, _amount);
+    
+        // Check if we have enough liquidity after reclaiming expired liquidity
+        if (deposit.remainingDeposits < _amount) {
+            revert InsufficientDepositLiquidity(_depositId, deposit.remainingDeposits, _amount);
+        }
 
-            currentIntentCount = depositIntentHashes[_depositId].length;
-            if (currentIntentCount >= maxIntentsPerDeposit) {
-                revert MaxIntentsExceeded(_depositId, currentIntentCount, maxIntentsPerDeposit);
-            }
+        // Check if we exceeded the maximum number of intents after expiring intents and adding the new intent
+        uint256 newIntentCount = depositIntentHashes[_depositId].length + 1;
+        if (newIntentCount > maxIntentsPerDeposit) {
+            revert MaxIntentsExceeded(_depositId, newIntentCount, maxIntentsPerDeposit);
         }
         
-        // Update deposit state
+        // Update deposit state due to the new intent
         deposit.remainingDeposits -= _amount;
         deposit.outstandingIntentAmount += _amount;
         
@@ -559,8 +574,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
             timestamp: block.timestamp,
             expiryTime: expiryTime
         });
-
+        
         emit FundsLocked(_depositId, _intentHash, _amount, expiryTime);
+
+        // Interactions
+        if (expiredIntents.length > 0) {
+            _callOrchestratorToPruneIntents(expiredIntents);
+        }
     }
 
     /**
@@ -642,6 +662,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice INTENT GUARDIAN ONLY: Extends the expiry time of an existing intent. Only callable by intent guardian.
+     * This function reverts if the total intent expiry period is greater than the maximum allowed to prevent griefing
+     * by extending the intent expiry period indefinitely.
      * 
      * @param _depositId The deposit ID containing the intent
      * @param _intentHash The intent hash to extend expiry for
@@ -654,6 +676,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     ) 
         external 
     {
+        // Checks
         Deposit storage deposit = deposits[_depositId];
         Intent storage intent = depositIntents[_depositId][_intentHash];
         
@@ -665,6 +688,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert AmountAboveMax(_additionalTime, MAX_TOTAL_INTENT_EXPIRATION_PERIOD);
         }
         
+        // Effects
         intent.expiryTime += _additionalTime;
         
         emit IntentExpiryExtended(_depositId, _intentHash, intent.expiryTime);
@@ -756,7 +780,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * Functionalities that remain unpaused to allow users to retrieve funds:
      * - Full deposit withdrawal (withdrawDeposit)
      * - Delegate management (setDepositDelegate, removeDepositDelegate)
-     * - Expired intent pruning (pruneExpiredIntents)
+     * - Expired intent pruning (pruneExpiredIntentsAndReclaimLiquidity)
      * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
      * - Intent expiry extensions by guardian
      * - All view functions
@@ -814,7 +838,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return accountDeposits[_account];
     }
     
-    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimedAmount) {
+    function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount) {
         return _getExpiredIntents(_depositId);
     }
 
@@ -830,49 +854,65 @@ contract Escrow is Ownable, Pausable, IEscrow {
     )
         internal
         view
-        returns(bytes32[] memory expiredIntents, uint256 reclaimedAmount)
+        returns(bytes32[] memory expiredIntents, uint256 reclaimableAmount)
     {
         bytes32[] memory intentHashes = depositIntentHashes[_depositId];
-        expiredIntents = new bytes32[](intentHashes.length);
+        bytes32[] memory verboseExpiredIntents = new bytes32[](intentHashes.length);
+        uint256 numExpiredIntents = 0;
 
         for (uint256 i = 0; i < intentHashes.length; ++i) {
             Intent memory intent = depositIntents[_depositId][intentHashes[i]];
             if (intent.expiryTime < block.timestamp) {
-                expiredIntents[i] = intentHashes[i];
-                reclaimedAmount += intent.amount;
+                verboseExpiredIntents[i] = intentHashes[i];
+                reclaimableAmount += intent.amount;
+                numExpiredIntents++;
+            }
+        }
+
+        // Compact the expired intents array
+        expiredIntents = new bytes32[](numExpiredIntents);
+        uint256 compactedIndex = 0;
+        for (uint256 i = 0; i < intentHashes.length; ++i) {
+            if (verboseExpiredIntents[i] != bytes32(0)) {
+                expiredIntents[compactedIndex++] = verboseExpiredIntents[i];
             }
         }
     }
 
     /**
-     * @notice Free up deposit liquidity by removing intents that have expired. Tries to remove all expired intents that are expired
-     * and adds the reclaimable amount to the deposit's remaining deposits. If the remaining amount including the new recovered amount
-     * is less than the minimum required amount, this function will revert with a NotEnoughLiquidity error.
+     * @notice Free up deposit liquidity by reclaiming for expired intents. Only reclaims if remaining deposits amount
+     * is less than the minimum required amount. Returns the expired intents that need to be pruned and the amount reclaimed.
+     * Only does local updates, does not call orchestrator. Whenever this function is called, the calling function should
+     * call _pruneIntents with the returned intents to expire the intents.
      */
-    function _pruneExpiredIntents(Deposit storage _deposit, uint256 _depositId, uint256 _minRequiredAmount) internal {
-        (
-            bytes32[] memory expiredIntents,
-            uint256 reclaimableAmount
-        ) = _getExpiredIntents(_depositId);
-        
-        uint256 availableAmount = _deposit.remainingDeposits;
-        availableAmount += reclaimableAmount;
-        
-        if (availableAmount < _minRequiredAmount) revert InsufficientDepositLiquidity(_depositId, availableAmount, _minRequiredAmount);
-        
-        // Prune expired intents to free up funds
-        _pruneIntents(_depositId, expiredIntents);
-        _deposit.remainingDeposits += reclaimableAmount;
-        _deposit.outstandingIntentAmount -= reclaimableAmount;
+    function _reclaimLiquidityIfNecessary(
+        Deposit storage _deposit, 
+        uint256 _depositId, 
+        uint256 _minRequiredAmount
+    )
+        internal
+        returns (bytes32[] memory expiredIntents)
+    {
+        if (
+            _deposit.remainingDeposits < _minRequiredAmount || 
+            depositIntentHashes[_depositId].length == maxIntentsPerDeposit
+        ) {
+            // If the deposit has insufficient liquidity or is at max intents, reclaim liquidity from expired intents
+            uint256 reclaimedAmount;
+            
+            (expiredIntents, reclaimedAmount) = _getExpiredIntents(_depositId);    
+            _deposit.remainingDeposits += reclaimedAmount;
+            _deposit.outstandingIntentAmount -= reclaimedAmount;
+
+            // Prune intents locally
+            _pruneLocalIntents(_depositId, expiredIntents);
+        }
     }
 
     /**
-     * @notice Prunes given intents from a deposit. Also calls orchestrator to clean up intents.
+     * @notice Prunes given intents from a deposit locally.
      */
-    function _pruneIntents(uint256 _depositId, bytes32[] memory _intents) internal {
-        // Call orchestrator to clean up intents first
-        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
-
+    function _pruneLocalIntents(uint256 _depositId, bytes32[] memory _intents) internal {
         for (uint256 i = 0; i < _intents.length; i++) {
             Intent memory intent = depositIntents[_depositId][_intents[i]];
             if (intent.intentHash != bytes32(0)) {
@@ -889,6 +929,16 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function _pruneIntent(uint256 _depositId, bytes32 _intentHash) internal {
         delete depositIntents[_depositId][_intentHash];
         depositIntentHashes[_depositId].removeStorage(_intentHash);
+    }
+
+    /**
+      * @notice Calls the orchestrator to clean up intents. Note if the orchestrator reverts, it is caught and ignored.
+      */
+    function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
+        try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {
+            // todo: remove this
+            console.log("test");
+        }
     }
 
     /**

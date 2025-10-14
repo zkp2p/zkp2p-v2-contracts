@@ -746,7 +746,7 @@ contract EscrowCriticalPathFuzz is Test {
         if (timeElapsed > INTENT_EXPIRATION_PERIOD) {
             // Prune expired intent
             vm.prank(depositor);
-            escrow.pruneExpiredIntents(depositId);
+            escrow.pruneExpiredIntentsAndReclaimLiquidity(depositId);
             
             // Property: Liquidity is reclaimed
             IEscrow.Deposit memory depositAfter = escrow.getDeposit(depositId);
