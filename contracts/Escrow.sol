@@ -962,17 +962,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     function _closeDepositIfNecessary(uint256 _depositId, Deposit storage _deposit) internal {
         // Close if no outstanding intents and remaining deposits are at or below dust
         uint256 totalRemaining = _deposit.remainingDeposits;
-        if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold) {
-            // If retention is enabled, do not close or sweep dust; keep config for reuse
-            if (_deposit.retainOnEmpty) {
-                // If below min, ensure deposit stops accepting intents until re-funded
-                if (_deposit.acceptingIntents && totalRemaining < _deposit.intentAmountRange.min) {
-                    _deposit.acceptingIntents = false;
-                    emit DepositAcceptingIntentsUpdated(_depositId, false);
-                }
-                return;
-            }
-
+        if (_deposit.outstandingIntentAmount == 0 && totalRemaining <= dustThreshold && !_deposit.retainOnEmpty) {
             // Close deposit (and sweep any dust) when retention is not enabled
             IERC20 token = _deposit.token;
             _closeDeposit(_depositId, _deposit);
