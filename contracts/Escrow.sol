@@ -183,7 +183,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId    The deposit ID to add funds to
      * @param _amount       The amount of tokens to add
      */
-    function addFundsToDeposit(uint256 _depositId, uint256 _amount)
+    function addFunds(uint256 _depositId, uint256 _amount)
         external
         whenNotPaused
     {
@@ -209,7 +209,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId    The deposit ID to remove funds from
      * @param _amount       The amount of tokens to remove
      */
-    function removeFundsFromDeposit(uint256 _depositId, uint256 _amount)
+    function removeFunds(uint256 _depositId, uint256 _amount)
         external
         whenNotPaused
     {
@@ -282,7 +282,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _delegate     The address to set as delegate (address(0) to remove delegate)
      */
     
-    function setDepositDelegate(uint256 _depositId, address _delegate) external {
+    function setDelegate(uint256 _depositId, address _delegate) external {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_delegate == address(0)) revert ZeroAddress();
@@ -297,7 +297,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId    The deposit ID
      */
-    function removeDepositDelegate(uint256 _depositId) external {
+    function removeDelegate(uint256 _depositId) external {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
@@ -320,7 +320,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _fiatCurrency             The fiat currency code to update the min conversion rate for
      * @param _newMinConversionRate     The new min conversion rate. Must be greater than 0.
      */
-    function updateDepositMinConversionRate(
+    function setCurrencyMinRate(
         uint256 _depositId, 
         bytes32 _paymentMethod, 
         bytes32 _fiatCurrency, 
@@ -348,7 +348,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId                The deposit ID
      * @param _intentAmountRange        The new intent amount range
      */
-    function updateDepositIntentAmountRange(
+    function setIntentRange(
         uint256 _depositId, 
         Range calldata _intentAmountRange
     )
@@ -377,7 +377,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _paymentMethodData     The payment verification data for the payment methods
      * @param _currencies            The currencies for the payment methods
      */
-    function addPaymentMethodsToDeposit(
+    function addPaymentMethods(
         uint256 _depositId,
         bytes32[] calldata _paymentMethods,
         DepositPaymentMethodData[] calldata _paymentMethodData,
@@ -400,7 +400,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _paymentMethod The payment method
      * @param _isActive      New active state
      */
-    function setDepositPaymentMethodActive(
+    function setPaymentMethodActive(
         uint256 _depositId,
         bytes32 _paymentMethod,
         bool _isActive
@@ -426,7 +426,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _paymentMethod         The payment method
      * @param _currencies            The currencies to add (code and conversion rate)
      */
-    function addCurrenciesToDepositPaymentMethod(
+    function addCurrencies(
         uint256 _depositId,
         bytes32 _paymentMethod,
         Currency[] calldata _currencies
@@ -454,7 +454,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _paymentMethod         The payment method
      * @param _currencyCode          The currency code to deactivate
      */
-    function deactivateCurrencyFromDepositPaymentMethod(
+    function deactivateCurrency(
         uint256 _depositId,
         bytes32 _paymentMethod,
         bytes32 _currencyCode
@@ -477,7 +477,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId             The deposit ID
      * @param _acceptingIntents      The new accepting intents state
      */
-    function setDepositAcceptingIntents(
+    function setAcceptingIntents(
         uint256 _depositId, 
         bool _acceptingIntents
     )
@@ -506,7 +506,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _depositId        The deposit ID
      * @param _retainOnEmpty    New retain-on-empty flag value
      */
-    function setDepositRetainOnEmpty(
+    function setRetainOnEmpty(
         uint256 _depositId,
         bool _retainOnEmpty
     )
@@ -529,7 +529,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * @param _depositId The deposit ID to prune expired intents for
      */
-    function pruneExpiredIntentsAndReclaimLiquidity(uint256 _depositId) external {
+    function pruneExpiredIntents(uint256 _depositId) external {
         bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(
             deposits[_depositId], 
             _depositId, 

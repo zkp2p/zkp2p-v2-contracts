@@ -572,12 +572,12 @@ contract EscrowCriticalPathFuzz is Test {
         // Add funds
         uint256 netAddAmount = 0;
         if (addAmount > 0) {
-            usdc.approve(address(escrow), addAmount);  // Need approval for addFundsToDeposit
+            usdc.approve(address(escrow), addAmount);  // Need approval for addFunds
             
             // Fees removed: full amount added
             netAddAmount = addAmount;
             
-            escrow.addFundsToDeposit(depositId, addAmount);
+            escrow.addFunds(depositId, addAmount);
             deposit = escrow.getDeposit(depositId);
             
             // Property: Addition increases both total (escrow balance) and available
@@ -637,7 +637,7 @@ contract EscrowCriticalPathFuzz is Test {
             
             // Capture escrow balance before removal for delta check
             uint256 escrowBalBeforeRemoval = usdc.balanceOf(address(escrow));
-            escrow.removeFundsFromDeposit(depositId, removeAmount);
+            escrow.removeFunds(depositId, removeAmount);
             deposit = escrow.getDeposit(depositId);
 
             // Property: Removal decreases both total (escrow balance) and available
@@ -652,7 +652,7 @@ contract EscrowCriticalPathFuzz is Test {
             );
         } else if (removeAmount > availableLiquidity) {
             vm.expectRevert();
-            escrow.removeFundsFromDeposit(depositId, removeAmount);
+            escrow.removeFunds(depositId, removeAmount);
         }
         
         vm.stopPrank();
@@ -750,7 +750,7 @@ contract EscrowCriticalPathFuzz is Test {
         if (timeElapsed > INTENT_EXPIRATION_PERIOD) {
             // Prune expired intent
             vm.prank(depositor);
-            escrow.pruneExpiredIntentsAndReclaimLiquidity(depositId);
+            escrow.pruneExpiredIntents(depositId);
             
             // Property: Liquidity is reclaimed
             IEscrow.Deposit memory depositAfter = escrow.getDeposit(depositId);
@@ -830,7 +830,7 @@ contract EscrowCriticalPathFuzz is Test {
             }
             
             vm.prank(depositor);
-            escrow.setDepositPaymentMethodActive(depositId, methodToRemoveHash, false);
+            escrow.setPaymentMethodActive(depositId, methodToRemoveHash, false);
 
             // Property: Payment method remains listed, but is inactive
             bytes32[] memory methodsAfterDeactivate = escrow.getDepositPaymentMethods(depositId);
@@ -935,7 +935,7 @@ contract EscrowCriticalPathFuzz is Test {
         
         // Property: Can withdraw up to available liquidity
         if (withdrawAttempt <= availableLiquidity) {
-            escrow.removeFundsFromDeposit(depositId, withdrawAttempt);
+            escrow.removeFunds(depositId, withdrawAttempt);
             
             // Verify withdrawal successful - use scoped blocks to reduce stack
             {
@@ -975,7 +975,7 @@ contract EscrowCriticalPathFuzz is Test {
         } else {
             // Property: Cannot withdraw more than available
             vm.expectRevert();
-            escrow.removeFundsFromDeposit(depositId, withdrawAttempt);
+            escrow.removeFunds(depositId, withdrawAttempt);
 
             // Property: State unchanged after failed withdrawal
             IEscrow.Deposit memory depositAfter = escrow.getDeposit(depositId);
@@ -1146,7 +1146,7 @@ contract EscrowCriticalPathFuzz is Test {
             // Can still withdraw remaining funds regardless of dust
             vm.prank(depositor);
             uint256 balanceBefore = usdc.balanceOf(depositor);
-            escrow.removeFundsFromDeposit(depositId, depositAfter.remainingDeposits);
+            escrow.removeFunds(depositId, depositAfter.remainingDeposits);
             uint256 balanceAfter = usdc.balanceOf(depositor);
             
             assertEq(
@@ -1231,7 +1231,7 @@ contract EscrowCriticalPathFuzz is Test {
         }
         
         vm.prank(depositor);
-        escrow.addPaymentMethodsToDeposit(depositId, newMethods, methodData, currencies);
+        escrow.addPaymentMethods(depositId, newMethods, methodData, currencies);
         
         return newMethods;
     }

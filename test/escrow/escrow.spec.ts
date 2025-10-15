@@ -643,7 +643,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).addFundsToDeposit(subjectDepositId, subjectAmount);
+      return ramp.connect(subjectCaller.wallet).addFunds(subjectDepositId, subjectAmount);
     }
 
     it("should transfer the tokens to the Ramp contract", async () => {
@@ -675,7 +675,7 @@ describe("Escrow", () => {
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Manually set deposit to not accept intents
-        await ramp.connect(offRamper.wallet).setDepositAcceptingIntents(subjectDepositId, false);
+        await ramp.connect(offRamper.wallet).setAcceptingIntents(subjectDepositId, false);
       });
 
       it("should still allow adding funds", async () => {
@@ -762,7 +762,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removeFundsFromDeposit(subjectDepositId, subjectAmount);
+      return ramp.connect(subjectCaller.wallet).removeFunds(subjectDepositId, subjectAmount);
     }
 
     it("should transfer the tokens from the Ramp contract to the depositor", async () => {
@@ -808,7 +808,7 @@ describe("Escrow", () => {
     describe("when the deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Manually set deposit to not accept intents
-        await ramp.connect(offRamper.wallet).setDepositAcceptingIntents(subjectDepositId, false);
+        await ramp.connect(offRamper.wallet).setAcceptingIntents(subjectDepositId, false);
 
         subjectAmount = usdc(20);
       });
@@ -1403,7 +1403,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).updateDepositMinConversionRate(
+      return ramp.connect(subjectCaller.wallet).setCurrencyMinRate(
         subjectDepositId,
         subjectPaymentMethod,
         subjectFiatCurrency,
@@ -1527,7 +1527,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).updateDepositIntentAmountRange(
+      return ramp.connect(subjectCaller.wallet).setIntentRange(
         subjectDepositId,
         subjectIntentAmountRange
       );
@@ -1564,7 +1564,7 @@ describe("Escrow", () => {
       describe("when remaining deposits is less than the new min", async () => {
         beforeEach(async () => {
           // 100 - 85 = 15, which is less than the new min of 20
-          await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(85));
+          await ramp.connect(offRamper.wallet).removeFunds(subjectDepositId, usdc(85));
         });
 
         it("should set acceptingIntents to false", async () => {
@@ -1708,7 +1708,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).addPaymentMethodsToDeposit(
+      return ramp.connect(subjectCaller.wallet).addPaymentMethods(
         subjectDepositId,
         subjectPaymentMethods,
         subjectPaymentMethodData,
@@ -1877,7 +1877,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setDepositPaymentMethodActive(
+      return ramp.connect(subjectCaller.wallet).setPaymentMethodActive(
         subjectDepositId,
         subjectPaymentMethod,
         subjectIsActive
@@ -1951,7 +1951,7 @@ describe("Escrow", () => {
     describe("when the payment method is inactive and setting active to true", async () => {
       beforeEach(async () => {
         // First set to false
-        await ramp.connect(offRamper.wallet).setDepositPaymentMethodActive(
+        await ramp.connect(offRamper.wallet).setPaymentMethodActive(
           subjectDepositId,
           subjectPaymentMethod,
           false
@@ -2074,7 +2074,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).addCurrenciesToDepositPaymentMethod(
+      return ramp.connect(subjectCaller.wallet).addCurrencies(
         subjectDepositId,
         subjectPaymentMethod,
         subjectCurrencies
@@ -2188,6 +2188,7 @@ describe("Escrow", () => {
   describe("#deactivateCurrencyFromDepositPaymentMethod", async () => {
     let subjectDepositId: BigNumber;
     let subjectPaymentMethod: string;
+    let subjectIsActive: boolean;
     let subjectCurrencyCode: string;
     let subjectCaller: Account;
 
@@ -2222,7 +2223,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).deactivateCurrencyFromDepositPaymentMethod(
+      return ramp.connect(subjectCaller.wallet).deactivateCurrency(
         subjectDepositId,
         subjectPaymentMethod,
         subjectCurrencyCode
@@ -2342,7 +2343,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setDepositDelegate(
+      return ramp.connect(subjectCaller.wallet).setDelegate(
         subjectDepositId,
         subjectDelegate
       );
@@ -2396,7 +2397,7 @@ describe("Escrow", () => {
     describe("when updating an existing delegate", async () => {
       beforeEach(async () => {
         // First set a delegate
-        await ramp.connect(offRamper.wallet).setDepositDelegate(subjectDepositId, offRamperDelegate.address);
+        await ramp.connect(offRamper.wallet).setDelegate(subjectDepositId, offRamperDelegate.address);
         // Then change to a different delegate
         subjectDelegate = receiver.address;
       });
@@ -2458,7 +2459,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removeDepositDelegate(subjectDepositId);
+      return ramp.connect(subjectCaller.wallet).removeDelegate(subjectDepositId);
     }
 
     it("should remove the delegate from the deposit", async () => {
@@ -2498,7 +2499,7 @@ describe("Escrow", () => {
     describe("when no delegate is set", async () => {
       beforeEach(async () => {
         // First remove the delegate, then try to remove again
-        await ramp.connect(offRamper.wallet).removeDepositDelegate(subjectDepositId);
+        await ramp.connect(offRamper.wallet).removeDelegate(subjectDepositId);
       });
 
       it("should revert", async () => {
@@ -2549,7 +2550,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setDepositAcceptingIntents(
+      return ramp.connect(subjectCaller.wallet).setAcceptingIntents(
         subjectDepositId,
         subjectAcceptingIntents
       );
@@ -2575,7 +2576,7 @@ describe("Escrow", () => {
     describe("when setting accepting intents to true", async () => {
       beforeEach(async () => {
         // First set to false
-        await ramp.connect(offRamper.wallet).setDepositAcceptingIntents(subjectDepositId, false);
+        await ramp.connect(offRamper.wallet).setAcceptingIntents(subjectDepositId, false);
         // Then set back to true
         subjectAcceptingIntents = true;
       });
@@ -2658,7 +2659,7 @@ describe("Escrow", () => {
         );
 
         // Remove all remaining deposits from deposit, 90 removed, 10 locked, 0 remaining to be taken
-        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(90));
+        await ramp.connect(offRamper.wallet).removeFunds(subjectDepositId, usdc(90));
 
         // Set accepting intents to true
         subjectAcceptingIntents = true; // Trying to restart accepting intents
@@ -2682,7 +2683,7 @@ describe("Escrow", () => {
         );
 
         // Remove all remaining deposits from deposit, 81 removed, 10 locked, 9 remaining to be taken
-        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(81));
+        await ramp.connect(offRamper.wallet).removeFunds(subjectDepositId, usdc(81));
 
         // Set accepting intents to true
         subjectAcceptingIntents = true; // Trying to restart accepting intents
@@ -2776,7 +2777,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).pruneExpiredIntentsAndReclaimLiquidity(subjectDepositId);
+      return ramp.connect(subjectCaller.wallet).pruneExpiredIntents(subjectDepositId);
     }
 
     describe("when timestamp is before intent expiry", async () => {
@@ -2885,7 +2886,7 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).setDepositRetainOnEmpty(
+      return ramp.connect(subjectCaller.wallet).setRetainOnEmpty(
         subjectDepositId,
         subjectRetainOnEmpty
       );
@@ -2944,7 +2945,7 @@ describe("Escrow", () => {
     describe("when setting to the same value", async () => {
       beforeEach(async () => {
         // First set to true
-        await ramp.connect(offRamper.wallet).setDepositRetainOnEmpty(subjectDepositId, true);
+        await ramp.connect(offRamper.wallet).setRetainOnEmpty(subjectDepositId, true);
         subjectRetainOnEmpty = true; // Trying to set same value again
       });
 
@@ -3081,7 +3082,7 @@ describe("Escrow", () => {
 
     describe("when the lock amount decreases the remaining deposits below the min", async () => {
       beforeEach(async () => {
-        await ramp.connect(offRamper.wallet).updateDepositIntentAmountRange(
+        await ramp.connect(offRamper.wallet).setIntentRange(
           subjectDepositId,
           { min: usdc(10), max: usdc(100) } // raise the max above 60 temporarily
         );
@@ -3604,7 +3605,7 @@ describe("Escrow", () => {
     describe("when transferring would close the deposit", async () => {
       beforeEach(async () => {
         // Withdraw most funds first
-        await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(70));
+        await ramp.connect(offRamper.wallet).removeFunds(subjectDepositId, usdc(70));
         // Now deposit only has the 30 USDC locked in the intent
       });
 
@@ -3624,7 +3625,7 @@ describe("Escrow", () => {
 
       describe("when retainOnEmpty is true", async () => {
         beforeEach(async () => {
-          await ramp.connect(offRamper.wallet).setDepositRetainOnEmpty(subjectDepositId, true);
+          await ramp.connect(offRamper.wallet).setRetainOnEmpty(subjectDepositId, true);
         });
 
         it("should not delete the deposit config", async () => {
