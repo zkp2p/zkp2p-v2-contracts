@@ -1094,7 +1094,7 @@ describe("Orchestrator", () => {
     describe("when the conversion rate is updated by depositor", async () => {
       beforeEach(async () => {
         // Incresases min rate from 1.08 to 1.09
-        await escrow.connect(offRamper.wallet).updateDepositMinConversionRate(
+        await escrow.connect(offRamper.wallet).setCurrencyMinRate(
           ZERO, venmoPaymentMethod, Currency.USD, ether(1.09)
         );
       });

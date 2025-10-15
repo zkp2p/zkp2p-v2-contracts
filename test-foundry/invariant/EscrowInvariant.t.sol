@@ -192,7 +192,7 @@ contract EscrowHandler is Test {
         
         // Add funds
         vm.prank(deposit.depositor);
-        try escrow.addFundsToDeposit(depositId, amount) {
+        try escrow.addFunds(depositId, amount) {
             // Update ghost ledger
             ghostTotalIn += amount;
             ghostDepositAmounts[depositId] += amount;
@@ -223,7 +223,7 @@ contract EscrowHandler is Test {
         
         // Remove funds
         vm.prank(deposit.depositor);
-        try escrow.removeFundsFromDeposit(depositId, amount) {
+        try escrow.removeFunds(depositId, amount) {
             // Update ghost ledger
             ghostTotalOut += amount;
             ghostDepositAmounts[depositId] -= amount;
@@ -369,7 +369,7 @@ contract EscrowHandler is Test {
             uint256 depositId = activeDepositIds[i];
             if (ghostDepositExists[depositId]) {
                 vm.prank(escrow.getDeposit(depositId).depositor);
-                try escrow.pruneExpiredIntentsAndReclaimLiquidity(depositId) {
+                try escrow.pruneExpiredIntents(depositId) {
                     // Expired intents return liquidity to deposit
                     // This is tracked through event monitoring in real implementation
                 } catch {}

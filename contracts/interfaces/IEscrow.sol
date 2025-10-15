@@ -171,5 +171,5 @@ interface IEscrow {
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount);
 
     // Optional toggle for method activation
-    function setDepositPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod, bool _isActive) external;
+    function setPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod, bool _isActive) external;
 }
