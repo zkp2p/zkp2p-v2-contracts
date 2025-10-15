@@ -222,7 +222,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         deposit.remainingDeposits -= _amount;
         _handleAcceptingIntentsState(_depositId);
 
-        emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
+        emit DepositWithdrawn(_depositId, msg.sender, _amount);
         
         // Interactions
         deposit.token.safeTransfer(msg.sender, _amount);
@@ -252,9 +252,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 returnAmount = deposit.remainingDeposits;
         IERC20 token = deposit.token;
         delete deposit.remainingDeposits;
-        delete deposit.acceptingIntents;
+        
+        _handleAcceptingIntentsState(_depositId);
 
-        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
+        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount);
 
         _closeDepositIfNecessary(_depositId, deposit);
         
@@ -998,7 +999,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _deleteDepositPaymentMethodAndCurrencyData(_depositId);
         
         delete deposits[_depositId];
-        delete _deposit.acceptingIntents;
+        delete _deposit.acceptingIntents;  // Might have been set to false, but delete it to be safe
         
         emit DepositClosed(_depositId, depositor);
     }

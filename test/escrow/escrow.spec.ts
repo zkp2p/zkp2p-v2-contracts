@@ -778,8 +778,17 @@ describe("Escrow", () => {
         subjectDepositId,
         offRamper.address,
         subjectAmount,
-        true    // still accepting intents
       );
+    });
+
+    it("should still be accepting intents", async () => {
+      const preDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(preDeposit.acceptingIntents).to.be.true;
+
+      await subject();
+
+      const postDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(postDeposit.acceptingIntents).to.be.true;
     });
 
     describe("when the deposit is not accepting intents", async () => {
@@ -829,8 +838,7 @@ describe("Escrow", () => {
         await expect(subject()).to.emit(ramp, "DepositWithdrawn").withArgs(
           subjectDepositId,
           offRamper.address,
-          subjectAmount,
-          false
+          subjectAmount
         );
       });
     });
@@ -906,8 +914,17 @@ describe("Escrow", () => {
           subjectDepositId,
           offRamper.address,
           subjectAmount,
-          true    // still accepting intents
         );
+      });
+
+      it("should still be accepting intents", async () => {
+        const preDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(preDeposit.acceptingIntents).to.be.true;
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(postDeposit.acceptingIntents).to.be.true;
       });
     });
 
@@ -1110,8 +1127,14 @@ describe("Escrow", () => {
         subjectDepositId,
         offRamper.address,
         usdc(100),
-        false
       );
+    });
+
+    it("should set the deposit accepting intents to false", async () => {
+      await subject();
+
+      const postDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(postDeposit.acceptingIntents).to.be.false;
     });
 
     it("should emit DepositClosed event", async () => {
@@ -1201,9 +1224,15 @@ describe("Escrow", () => {
         expect(tx).to.emit(ramp, "DepositWithdrawn").withArgs(
           subjectDepositId,
           offRamper.address,
-          usdc(50),
-          false
+          usdc(50)
         );
+      });
+
+      it("should set the deposit accepting intents to false", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.acceptingIntents).to.be.false;
       });
 
       describe("but the intent is expired", async () => {
@@ -1248,9 +1277,15 @@ describe("Escrow", () => {
           expect(tx).to.emit(ramp, "DepositWithdrawn").withArgs(
             subjectDepositId,
             offRamper.address,
-            usdc(100),
-            false
+            usdc(100)
           );
+        });
+
+        it("should set the deposit accepting intents to false", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+          expect(deposit.acceptingIntents).to.be.false;
         });
 
         it("should emit DepositClosed event", async () => {
