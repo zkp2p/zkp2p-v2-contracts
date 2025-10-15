@@ -169,7 +169,4 @@ interface IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount);
-
-    // Optional toggle for method activation
-    function setPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod, bool _isActive) external;
 }
