@@ -220,12 +220,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         deposit.remainingDeposits -= _amount;
-        
-        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
-            deposit.acceptingIntents = false;
-        }
+        _handleAcceptingIntentsState(_depositId);
 
-        emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
+        emit DepositWithdrawn(_depositId, msg.sender, _amount);
         
         // Interactions
         deposit.token.safeTransfer(msg.sender, _amount);
@@ -255,9 +252,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 returnAmount = deposit.remainingDeposits;
         IERC20 token = deposit.token;
         delete deposit.remainingDeposits;
-        delete deposit.acceptingIntents;
+        
+        _handleAcceptingIntentsState(_depositId);
 
-        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount, false);
+        emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount);
 
         _closeDepositIfNecessary(_depositId, deposit);
         
@@ -356,6 +354,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
 
         deposit.intentAmountRange = _intentAmountRange;
+        
+        _handleAcceptingIntentsState(_depositId);
 
         emit DepositIntentAmountRangeUpdated(_depositId, _intentAmountRange);
     }
@@ -956,6 +956,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
+     * @notice Updates acceptingIntents based on remaining liquidity. One-way demotion only: if remainingDeposits 
+     * falls below min and acceptingIntents is true, set it to false. If acceptingIntents is false, it will remain 
+     * false even if remainingDeposits is increased above min. The depositor has to manually re-enable accepting 
+     * intents by calling setDepositAcceptingIntents.
+     */
+    function _handleAcceptingIntentsState(uint256 _depositId) internal {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
+            deposit.acceptingIntents = false;
+            emit DepositAcceptingIntentsUpdated(_depositId, false);
+        }
+    }
+
+    /**
      * @notice Removes a deposit if no outstanding intents AND remaining funds is dust. Before deletion, transfers any remaining
      * dust to the protocol dust recipient.
      */
@@ -985,7 +999,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         _deleteDepositPaymentMethodAndCurrencyData(_depositId);
         
         delete deposits[_depositId];
-        delete _deposit.acceptingIntents;
+        delete _deposit.acceptingIntents;  // Might have been set to false, but delete it to be safe
         
         emit DepositClosed(_depositId, depositor);
     }

@@ -778,8 +778,17 @@ describe("Escrow", () => {
         subjectDepositId,
         offRamper.address,
         subjectAmount,
-        true    // still accepting intents
       );
+    });
+
+    it("should still be accepting intents", async () => {
+      const preDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(preDeposit.acceptingIntents).to.be.true;
+
+      await subject();
+
+      const postDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(postDeposit.acceptingIntents).to.be.true;
     });
 
     describe("when the deposit is not accepting intents", async () => {
@@ -818,12 +827,18 @@ describe("Escrow", () => {
         expect(postDeposit.acceptingIntents).to.be.false;
       });
 
+      it("should emit DepositAcceptingIntentsUpdated event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositAcceptingIntentsUpdated").withArgs(
+          subjectDepositId,
+          false
+        );
+      });
+
       it("should emit DepositWithdrawn event", async () => {
         await expect(subject()).to.emit(ramp, "DepositWithdrawn").withArgs(
           subjectDepositId,
           offRamper.address,
-          subjectAmount,
-          false
+          subjectAmount
         );
       });
     });
@@ -899,8 +914,17 @@ describe("Escrow", () => {
           subjectDepositId,
           offRamper.address,
           subjectAmount,
-          true    // still accepting intents
         );
+      });
+
+      it("should still be accepting intents", async () => {
+        const preDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(preDeposit.acceptingIntents).to.be.true;
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(postDeposit.acceptingIntents).to.be.true;
       });
     });
 
@@ -1103,8 +1127,14 @@ describe("Escrow", () => {
         subjectDepositId,
         offRamper.address,
         usdc(100),
-        false
       );
+    });
+
+    it("should set the deposit accepting intents to false", async () => {
+      await subject();
+
+      const postDeposit = await ramp.getDeposit(subjectDepositId);
+      expect(postDeposit.acceptingIntents).to.be.false;
     });
 
     it("should emit DepositClosed event", async () => {
@@ -1194,9 +1224,15 @@ describe("Escrow", () => {
         expect(tx).to.emit(ramp, "DepositWithdrawn").withArgs(
           subjectDepositId,
           offRamper.address,
-          usdc(50),
-          false
+          usdc(50)
         );
+      });
+
+      it("should set the deposit accepting intents to false", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.acceptingIntents).to.be.false;
       });
 
       describe("but the intent is expired", async () => {
@@ -1241,9 +1277,15 @@ describe("Escrow", () => {
           expect(tx).to.emit(ramp, "DepositWithdrawn").withArgs(
             subjectDepositId,
             offRamper.address,
-            usdc(100),
-            false
+            usdc(100)
           );
+        });
+
+        it("should set the deposit accepting intents to false", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+          expect(deposit.acceptingIntents).to.be.false;
         });
 
         it("should emit DepositClosed event", async () => {
@@ -1436,7 +1478,7 @@ describe("Escrow", () => {
       await ramp.connect(offRamper.wallet).createDeposit({
         token: usdcToken.address,
         amount: usdc(100),
-        intentAmountRange: { min: usdc(10), max: usdc(200) },
+        intentAmountRange: { min: usdc(10), max: usdc(100) },
         paymentMethods: [venmoPaymentMethodHash],
         paymentMethodData: [{
           intentGatingService: gatingService.address,
@@ -1452,7 +1494,7 @@ describe("Escrow", () => {
       });
 
       subjectDepositId = ZERO;
-      subjectIntentAmountRange = { min: usdc(5), max: usdc(150) };
+      subjectIntentAmountRange = { min: usdc(5), max: usdc(100) };
       subjectCaller = offRamper;
     });
 
@@ -1476,6 +1518,58 @@ describe("Escrow", () => {
         subjectDepositId,
         subjectIntentAmountRange
       );
+    });
+
+    describe("when the intent min is increased", async () => {
+      beforeEach(async () => {
+        subjectIntentAmountRange = { min: usdc(20), max: usdc(100) };
+      });
+
+      it("should update the intent amount range", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.intentAmountRange.min).to.eq(subjectIntentAmountRange.min);
+        expect(deposit.intentAmountRange.max).to.eq(subjectIntentAmountRange.max);
+      });
+
+      describe("when remaining deposits is less than the new min", async () => {
+        beforeEach(async () => {
+          // 100 - 85 = 15, which is less than the new min of 20
+          await ramp.connect(offRamper.wallet).removeFundsFromDeposit(subjectDepositId, usdc(85));
+        });
+
+        it("should set acceptingIntents to false", async () => {
+          await subject();
+
+          const deposit = await ramp.getDeposit(subjectDepositId);
+          expect(deposit.acceptingIntents).to.be.false;
+        });
+
+        it("should emit DepositAcceptingIntentsUpdated event", async () => {
+          const tx = await subject();
+
+          await expect(tx).to.emit(ramp, "DepositAcceptingIntentsUpdated").withArgs(
+            subjectDepositId,
+            false
+          );
+        });
+
+        describe("when the min is decreased again", async () => {
+          beforeEach(async () => {
+            await subject();    // First set to false
+
+            subjectIntentAmountRange = { min: usdc(5), max: usdc(250) };
+          });
+
+          it("should keep acceptingIntents to false", async () => {
+            await subject();
+
+            const deposit = await ramp.getDeposit(subjectDepositId);
+            expect(deposit.acceptingIntents).to.be.false;
+          });
+        });
+      });
     });
 
     describe("when the caller is delegate", async () => {
@@ -2771,8 +2865,6 @@ describe("Escrow", () => {
   });
 
 
-  // Add #setDepositRetainOnEmpty tests here
-
   // ORCHESTRATOR-ONLY FUNCTIONS
 
   describe("#lockFunds", async () => {
@@ -2887,6 +2979,24 @@ describe("Escrow", () => {
       });
     });
 
+    describe("when the lock amount decreases the remaining deposits below the min", async () => {
+      beforeEach(async () => {
+        await ramp.connect(offRamper.wallet).updateDepositIntentAmountRange(
+          subjectDepositId,
+          { min: usdc(10), max: usdc(100) } // raise the max above 60 temporarily
+        );
+
+        subjectAmount = usdc(95); // 100 - 5 = 5 is less than the min of 10
+      });
+
+      it("should NOT set the deposit accepting intents to false", async () => {
+        await subject();
+
+        const deposit = await ramp.getDeposit(subjectDepositId);
+        expect(deposit.acceptingIntents).to.be.true;
+      });
+    });
+
     describe("when deposit is not accepting intents", async () => {
       beforeEach(async () => {
         // Lock some funds on the deposit
@@ -2976,15 +3086,18 @@ describe("Escrow", () => {
           usdc(50)
         );
 
+        // Pass a day and time to expire the intent
+        await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1).toNumber());
+
         const secondIntentHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("intent2"));
         await orchestratorMock.connect(owner.wallet).lockFunds(
           subjectDepositId,
           secondIntentHash,
-          usdc(50)
+          usdc(45)
         );
 
-        // Try to lock more
-        subjectAmount = usdc(30);
+        // Try to lock more than the remaining 55
+        subjectAmount = usdc(56);  // 56 is more than the remaining 55, even after we reclaim the previous 50
       });
 
       it("should revert", async () => {
