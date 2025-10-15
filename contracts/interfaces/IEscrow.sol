@@ -65,18 +65,17 @@ interface IEscrow {
     event DepositReceived(uint256 indexed depositId, address indexed depositor, IERC20 indexed token, uint256 amount, Range intentAmountRange, address delegate, address intentGuardian);
 
     event DepositPaymentMethodAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed payeeDetails, address intentGatingService);
-    event DepositPaymentMethodRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod);
+    event DepositPaymentMethodActiveUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bool active);
 
     event DepositCurrencyAdded(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 minConversionRate);
-    event DepositCurrencyRemoved(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currencyCode);        
-
+    event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
+    
     event DepositFundsAdded(uint256 indexed depositId, address indexed depositor, uint256 amount);
     event DepositWithdrawn(uint256 indexed depositId, address indexed depositor, uint256 amount);
     event DepositClosed(uint256 depositId, address depositor);
+    event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
 
     event DepositIntentAmountRangeUpdated(uint256 indexed depositId, Range intentAmountRange);
-    event DepositMinConversionRateUpdated(uint256 indexed depositId, bytes32 indexed paymentMethod, bytes32 indexed currency, uint256 newMinConversionRate);
-    event DepositAcceptingIntentsUpdated(uint256 indexed depositId, bool acceptingIntents);
     event DepositRetainOnEmptyUpdated(uint256 indexed depositId, bool retainOnEmpty);
 
     event DepositDelegateSet(uint256 indexed depositId, address indexed depositor, address indexed delegate);
@@ -125,7 +124,8 @@ interface IEscrow {
     // Not found errors
     error DepositNotFound(uint256 depositId);
     error IntentNotFound(bytes32 intentHash);
-    error PaymentMethodNotFound(uint256 depositId, bytes32 paymentMethod);
+    error PaymentMethodNotActive(uint256 depositId, bytes32 paymentMethod);
+    error PaymentMethodNotListed(uint256 depositId, bytes32 paymentMethod);
     error CurrencyNotFound(bytes32 paymentMethod, bytes32 currency);
     error DelegateNotFound(uint256 depositId);
 
@@ -169,4 +169,7 @@ interface IEscrow {
     function getAccountDeposits(address _account) external view returns (uint256[] memory);
     function getDepositIntentHashes(uint256 _depositId) external view returns (bytes32[] memory);
     function getExpiredIntents(uint256 _depositId) external view returns (bytes32[] memory expiredIntents, uint256 reclaimableAmount);
+
+    // Optional toggle for method activation
+    function setDepositPaymentMethodActive(uint256 _depositId, bytes32 _paymentMethod, bool _isActive) external;
 }

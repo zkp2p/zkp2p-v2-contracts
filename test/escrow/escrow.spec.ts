@@ -303,6 +303,13 @@ describe("Escrow", () => {
       expect(isPaymentMethodActive).to.be.true;
     });
 
+    it("should correctly update the depositPaymentMethodListed mapping", async () => {
+      await subject();
+
+      const isPaymentMethodListed = await ramp.getDepositPaymentMethodListed(0, subjectPaymentMethods[0]);
+      expect(isPaymentMethodListed).to.be.true;
+    });
+
     it("should correctly update the depositRetainOnEmpty mapping", async () => {
       await subject();
 
@@ -318,6 +325,13 @@ describe("Escrow", () => {
 
       const currencyMinRate2 = await ramp.getDepositCurrencyMinRate(0, subjectPaymentMethods[0], subjectCurrencies[0][1].code);
       expect(currencyMinRate2).to.eq(subjectCurrencies[0][1].minConversionRate);
+    });
+
+    it("should correctly update the depositCurrencyListed mapping", async () => {
+      await subject();
+
+      const isCurrencyListed = await ramp.getDepositCurrencyListed(0, subjectPaymentMethods[0], subjectCurrencies[0][0].code);
+      expect(isCurrencyListed).to.be.true;
     });
 
     it("should emit a DepositReceived event", async () => {
@@ -1088,6 +1102,13 @@ describe("Escrow", () => {
       expect(isPaymentMethodActive).to.be.false;
     });
 
+    it("should correctly update the depositPaymentMethodListed mapping", async () => {
+      await subject();
+
+      const isPaymentMethodListed = await ramp.getDepositPaymentMethodListed(subjectDepositId, venmoPaymentMethodHash);
+      expect(isPaymentMethodListed).to.be.false;
+    });
+
     it("should delete the deposit payment methods array", async () => {
       const prePaymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
       expect(prePaymentMethods.length).to.eq(1);
@@ -1118,6 +1139,13 @@ describe("Escrow", () => {
 
       const postCurrencyMinRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, venmoPaymentMethodHash, Currency.USD);
       expect(postCurrencyMinRate).to.eq(ZERO);
+    });
+
+    it("should correctly update the depositCurrencyListed mapping", async () => {
+      await subject();
+
+      const isCurrencyListed = await ramp.getDepositCurrencyListed(subjectDepositId, venmoPaymentMethodHash, Currency.USD);
+      expect(isCurrencyListed).to.be.false;
     });
 
     it("should emit a DepositWithdrawn event", async () => {
@@ -1707,6 +1735,13 @@ describe("Escrow", () => {
       expect(isPaymentMethodActive).to.be.true;
     });
 
+    it("should correctly update the depositPaymentMethodListed mapping", async () => {
+      await subject();
+
+      const isPaymentMethodListed = await ramp.getDepositPaymentMethodListed(subjectDepositId, paypalPaymentMethodHash);
+      expect(isPaymentMethodListed).to.be.true;
+    });
+
     it("should add the currencies to the payment method", async () => {
       await subject();
 
@@ -1787,12 +1822,23 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
+
+    describe("when the payment method is already listed", async () => {
+      beforeEach(async () => {
+        await subject();
+      });
+
+      it("should revert with PaymentMethodAlreadyListed", async () => {
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodAlreadyExists");
+      });
+    });
   });
 
-  describe("#removePaymentMethodFromDeposit", async () => {
+  describe("#setDepositPaymentMethodActive", async () => {
     let subjectDepositId: BigNumber;
     let subjectPaymentMethod: string;
     let subjectCaller: Account;
+    let subjectIsActive: boolean;
 
     beforeEach(async () => {
       // Create deposit with multiple payment methods
@@ -1827,54 +1873,107 @@ describe("Escrow", () => {
       subjectDepositId = ZERO;
       subjectPaymentMethod = paypalPaymentMethodHash;
       subjectCaller = offRamper;
+      subjectIsActive = false;
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removePaymentMethodFromDeposit(
+      return ramp.connect(subjectCaller.wallet).setDepositPaymentMethodActive(
         subjectDepositId,
-        subjectPaymentMethod
+        subjectPaymentMethod,
+        subjectIsActive
       );
     }
 
-    it("should remove the payment method from the deposit", async () => {
-      await subject();
+    describe("when the payment method is already listed and setting active to false", async () => {
+      beforeEach(async () => {
+        subjectIsActive = false;
+      });
 
-      const paymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
-      expect(paymentMethods).to.not.include(subjectPaymentMethod);
+      it("should deactivate (not remove) the payment method for the deposit", async () => {
+        await subject();
 
+        const paymentMethods = await ramp.getDepositPaymentMethods(subjectDepositId);
+        expect(paymentMethods).to.include(subjectPaymentMethod); // still listed
+
+        const isActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
+        expect(isActive).to.eq(false);
+      });
+
+      it("should NOT delete the payment method data", async () => {
+        await subject();
+
+        const paymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, subjectPaymentMethod);
+        expect(paymentMethodData.intentGatingService).to.eq(gatingService.address);
+        expect(paymentMethodData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
+        expect(paymentMethodData.data).to.eq("0x");
+      });
+
+      it("should set the depositPaymentMethodActive mapping to false", async () => {
+        await subject();
+
+        const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
+        expect(isPaymentMethodActive).to.be.false;
+      });
+
+      it("should NOT remove currencies or data for the payment method", async () => {
+        await subject();
+
+        const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
+        expect(currencies.length).to.be.greaterThan(0); // still listed
+
+        const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, Currency.USD);
+        expect(minConversionRate).to.not.eq(ZERO); // unchanged
+
+        const data = await ramp.getDepositPaymentMethodData(subjectDepositId, subjectPaymentMethod);
+        expect(data.intentGatingService).to.eq(gatingService.address);
+      });
+
+      it("should emit a DepositPaymentMethodActiveUpdated(false) event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositPaymentMethodActiveUpdated").withArgs(
+          subjectDepositId,
+          subjectPaymentMethod,
+          false
+        );
+      });
+
+      describe("when the payment method is already inactive", async () => {
+        beforeEach(async () => {
+          subjectIsActive = false;
+          await subject();
+        });
+
+        it("should revert", async () => {
+          await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositAlreadyInState");
+        });
+      });
     });
 
-    it("should NOT delete the payment method data", async () => {
-      await subject();
+    describe("when the payment method is inactive and setting active to true", async () => {
+      beforeEach(async () => {
+        // First set to false
+        await ramp.connect(offRamper.wallet).setDepositPaymentMethodActive(
+          subjectDepositId,
+          subjectPaymentMethod,
+          false
+        );
 
-      const paymentMethodData = await ramp.getDepositPaymentMethodData(subjectDepositId, subjectPaymentMethod);
-      expect(paymentMethodData.intentGatingService).to.eq(gatingService.address);
-      expect(paymentMethodData.payeeDetails).to.eq(ethers.utils.keccak256(ethers.utils.toUtf8Bytes("otherPayeeDetails")));
-      expect(paymentMethodData.data).to.eq("0x");
-    });
+        subjectIsActive = true;
+      });
 
-    it("should delete the depositPaymentMethodActive mapping", async () => {
-      await subject();
+      it("should activate the payment method for the deposit", async () => {
+        await subject();
 
-      const isPaymentMethodActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
-      expect(isPaymentMethodActive).to.be.false;
-    });
+        const isActive = await ramp.getDepositPaymentMethodActive(subjectDepositId, subjectPaymentMethod);
+        expect(isActive).to.be.true;
+      });
 
-    it("should remove the currency data for the payment method", async () => {
-      await subject();
-
-      const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
-      expect(currencies).to.have.length(0);
-
-      const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, Currency.USD);
-      expect(minConversionRate).to.eq(ZERO);
-    });
-
-    it("should emit a DepositPaymentMethodRemoved event", async () => {
-      await expect(subject()).to.emit(ramp, "DepositPaymentMethodRemoved").withArgs(
-        subjectDepositId,
-        subjectPaymentMethod
-      );
+      it("should emit a DepositPaymentMethodActiveUpdated(true) event", async () => {
+        await expect(subject()).to.emit(ramp, "DepositPaymentMethodActiveUpdated").withArgs(
+          subjectDepositId,
+          subjectPaymentMethod,
+          true
+        );
+      });
     });
 
     describe("when the caller is delegate", async () => {
@@ -1907,24 +2006,24 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the payment method is not found for the deposit", async () => {
+    describe("when the payment method is not listed for the deposit", async () => {
       beforeEach(async () => {
         const unknownPaymentMethod = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("unknown"));
         subjectPaymentMethod = unknownPaymentMethod;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotListed");
       });
     });
 
-    describe("when the payment method has already been removed", async () => {
+    describe("when the payment method is already inactive", async () => {
       beforeEach(async () => {
         await subject();
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositAlreadyInState");
       });
     });
 
@@ -2031,13 +2130,13 @@ describe("Escrow", () => {
       });
     });
 
-    describe("when the payment method is not found for the deposit", async () => {
+    describe("when the payment method is not found or inactive for the deposit", async () => {
       beforeEach(async () => {
         subjectPaymentMethod = paypalPaymentMethodHash;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotActive");
       });
     });
 
@@ -2086,7 +2185,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#removeCurrencyFromDepositPaymentMethod", async () => {
+  describe("#deactivateCurrencyFromDepositPaymentMethod", async () => {
     let subjectDepositId: BigNumber;
     let subjectPaymentMethod: string;
     let subjectCurrencyCode: string;
@@ -2123,28 +2222,29 @@ describe("Escrow", () => {
     });
 
     async function subject(): Promise<any> {
-      return ramp.connect(subjectCaller.wallet).removeCurrencyFromDepositPaymentMethod(
+      return ramp.connect(subjectCaller.wallet).deactivateCurrencyFromDepositPaymentMethod(
         subjectDepositId,
         subjectPaymentMethod,
         subjectCurrencyCode
       );
     }
 
-    it("should remove the currency from the payment method", async () => {
+    it("should deactivate (not remove) the currency for the payment method", async () => {
       await subject();
 
       const currencies = await ramp.getDepositCurrencies(subjectDepositId, subjectPaymentMethod);
-      expect(currencies).to.not.include(subjectCurrencyCode);
+      expect(currencies).to.include(subjectCurrencyCode); // still listed
 
       const minConversionRate = await ramp.getDepositCurrencyMinRate(subjectDepositId, subjectPaymentMethod, subjectCurrencyCode);
-      expect(minConversionRate).to.eq(ZERO);
+      expect(minConversionRate).to.eq(ZERO); // deactivated
     });
 
-    it("should emit a DepositCurrencyRemoved event", async () => {
-      await expect(subject()).to.emit(ramp, "DepositCurrencyRemoved").withArgs(
+    it("should emit a DepositMinConversionRateUpdated(..., 0) event", async () => {
+      await expect(subject()).to.emit(ramp, "DepositMinConversionRateUpdated").withArgs(
         subjectDepositId,
         subjectPaymentMethod,
-        subjectCurrencyCode
+        subjectCurrencyCode,
+        ZERO
       );
     });
 
@@ -2179,13 +2279,13 @@ describe("Escrow", () => {
     });
 
 
-    describe("when the payment method is not found for the deposit", async () => {
+    describe("when the payment method is not active for the deposit", async () => {
       beforeEach(async () => {
         subjectPaymentMethod = paypalPaymentMethodHash;
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotFound");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "PaymentMethodNotActive");
       });
     });
 
