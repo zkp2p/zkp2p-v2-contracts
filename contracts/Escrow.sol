@@ -57,6 +57,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
     mapping(uint256 => mapping(bytes32 => DepositPaymentMethodData)) internal depositPaymentMethodData;
     mapping(uint256 => bytes32[]) internal depositPaymentMethods;          // Handy mapping to get all payment methods for a deposit
     mapping(uint256 => mapping(bytes32 => bool)) internal depositPaymentMethodActive; // Handy mapping for checking if a payment method is active for a deposit
+    // Track if a payment method has ever been listed for this deposit (to avoid array contains checks and duplicates in depositPaymentMethods)
+    mapping(uint256 => mapping(bytes32 => bool)) internal depositPaymentMethodListed;
     
     // Mapping of depositId to verifier address to mapping of fiat currency to min conversion rate. Each payment service can support
     // multiple currencies. Depositor can specify list of currencies and min conversion rates for each payment service.
@@ -64,6 +66,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
     //                    => Revolut => USD: 1e18, EUR: 1.2e18, SGD: 1.5e18
     mapping(uint256 => mapping(bytes32 => mapping(bytes32 => uint256))) internal depositCurrencyMinRate;
     mapping(uint256 => mapping(bytes32 => bytes32[])) internal depositCurrencies; // Handy mapping to get all currencies for a deposit and verifier
+    // Do not need to track if a currency is active; if it's min rate is 0 then it's not active
+    // Track if a currency code has ever been listed for this deposit+paymentMethod (avoid contains scans and duplicates in depositCurrencies)
+    mapping(uint256 => mapping(bytes32 => mapping(bytes32 => bool))) internal depositCurrencyListed;
 
     mapping(uint256 => Deposit) internal deposits;                          // Mapping of depositIds to deposit structs
     mapping(uint256 => bytes32[]) internal depositIntentHashes;             // Mapping of depositId to array of intentHashes
@@ -306,8 +311,9 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice Only callable by the depositor/delegate for a deposit. Allows depositor/delegate to update the min conversion rate for a 
-     * currency for a payment verifier. Since intent's store the conversion rate at the time of intent, changing the min conversion rate
-     * will not affect any intents that have already been signaled.
+     * currency for a payment verifier provided the currency was previously listed (otherwise use addCurrenciesToDepositPaymentMethod). 
+     * Since intent's store the conversion rate at the time of intent, changing the min conversion rate will not affect any intents that 
+     * have already been signaled.
      *
      * @param _depositId                The deposit ID
      * @param _paymentMethod            The payment method to update the min conversion rate for
@@ -324,9 +330,10 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        uint256 oldMinConversionRate = depositCurrencyMinRate[_depositId][_paymentMethod][_fiatCurrency];
-
-        if (oldMinConversionRate == 0) revert CurrencyNotSupported(_paymentMethod, _fiatCurrency);
+        // Allow reactivation from 0 if currency was previously listed
+        if (!depositCurrencyListed[_depositId][_paymentMethod][_fiatCurrency]) {
+            revert CurrencyNotSupported(_paymentMethod, _fiatCurrency);
+        }
         if (_newMinConversionRate == 0) revert ZeroConversionRate();
 
         depositCurrencyMinRate[_depositId][_paymentMethod][_fiatCurrency] = _newMinConversionRate;
@@ -384,36 +391,30 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Allows depositor to remove an existing payment verifier from a deposit. 
-     * NOTE: This function does not delete the payment method data to allow existing intents to be fulfilled, it only removes 
-     * the payment method from deposit, sets the active state to false and removes the currencies for the payment method.
+     * @notice Allows depositor or delegate to toggle a payment method's active state without removing it.
+     * This function allows depositor to remove an existing payment verifier from a deposit by setting active to false. The
+     * deposit and currencies data is not deleted immediately and instead deferred to when the deposit is fully closed.
+     * NOTE: This function does not delete the payment method data to allow existing intents to be fulfilled.
      *
-     * @param _depositId             The deposit ID
-     * @param _paymentMethod         The payment method to remove
+     * @param _depositId     The deposit ID
+     * @param _paymentMethod The payment method
+     * @param _isActive      New active state
      */
-    function removePaymentMethodFromDeposit(
+    function setDepositPaymentMethodActive(
         uint256 _depositId,
-        bytes32 _paymentMethod
+        bytes32 _paymentMethod,
+        bool _isActive
     )
         external
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
-
-        depositPaymentMethods[_depositId].removeStorage(_paymentMethod);
-        depositPaymentMethodActive[_depositId][_paymentMethod] = false;
-
-        bytes32[] storage currenciesForPaymentMethod = depositCurrencies[_depositId][_paymentMethod];
-        for (uint256 i = 0; i < currenciesForPaymentMethod.length; i++) {
-            bytes32 currencyCode = currenciesForPaymentMethod[i];
-            delete depositCurrencyMinRate[_depositId][_paymentMethod][currencyCode];
+        if (!depositPaymentMethodListed[_depositId][_paymentMethod]) revert PaymentMethodNotListed(_depositId, _paymentMethod);
+        if (depositPaymentMethodActive[_depositId][_paymentMethod] == _isActive) {
+            revert DepositAlreadyInState(_depositId, _isActive);
         }
-        delete depositCurrencies[_depositId][_paymentMethod];
-        
-        // Don't delete deposit payment method data to allow existing intents to be fulfilled        
-
-        emit DepositPaymentMethodRemoved(_depositId, _paymentMethod);
+        depositPaymentMethodActive[_depositId][_paymentMethod] = _isActive;
+        emit DepositPaymentMethodActiveUpdated(_depositId, _paymentMethod, _isActive);
     }
 
     /**
@@ -434,7 +435,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotActive(_depositId, _paymentMethod);
         
         for (uint256 i = 0; i < _currencies.length; i++) {
             _addCurrencyToDeposit(
@@ -447,30 +448,27 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Allows depositor to remove an existing currency from a verifier for a deposit.
+     * @notice Allows depositor to deactivate a currency from a verifier for a deposit. The currency is deactivated.
      *
      * @param _depositId             The deposit ID
      * @param _paymentMethod         The payment method
-     * @param _currencyCode          The currency code to remove
+     * @param _currencyCode          The currency code to deactivate
      */
-    function removeCurrencyFromDepositPaymentMethod(
+    function deactivateCurrencyFromDepositPaymentMethod(
         uint256 _depositId,
         bytes32 _paymentMethod,
         bytes32 _currencyCode
-    )
+    )   
         external
         whenNotPaused
         onlyDepositorOrDelegate(_depositId)
     {
-        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotFound(_depositId, _paymentMethod);
+        if (!depositPaymentMethodActive[_depositId][_paymentMethod]) revert PaymentMethodNotActive(_depositId, _paymentMethod);
+        if (!depositCurrencyListed[_depositId][_paymentMethod][_currencyCode]) revert CurrencyNotFound(_paymentMethod, _currencyCode);
+        
+        depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] = 0;
 
-        uint256 currencyMinRate = depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode];
-        if (currencyMinRate == 0) revert CurrencyNotFound(_paymentMethod, _currencyCode);
-
-        depositCurrencies[_depositId][_paymentMethod].removeStorage(_currencyCode);
-        delete depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode];
-
-        emit DepositCurrencyRemoved(_depositId, _paymentMethod, _currencyCode);
+        emit DepositMinConversionRateUpdated(_depositId, _paymentMethod, _currencyCode, 0);
     }
 
     /**
@@ -846,6 +844,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
         return depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode];
     }
 
+    function getDepositCurrencyListed(uint256 _depositId, bytes32 _paymentMethod, bytes32 _currencyCode) external view returns (bool) {
+        return depositCurrencyListed[_depositId][_paymentMethod][_currencyCode];
+    }
+
+    function getDepositPaymentMethodListed(uint256 _depositId, bytes32 _paymentMethod) external view returns (bool) {
+        return depositPaymentMethodListed[_depositId][_paymentMethod];
+    }
+
     function getDepositPaymentMethodData(uint256 _depositId, bytes32 _paymentMethod) external view returns (DepositPaymentMethodData memory) {
         return depositPaymentMethodData[_depositId][_paymentMethod];
     }
@@ -1013,9 +1019,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
             bytes32 paymentMethod = paymentMethods[i];
             delete depositPaymentMethodData[_depositId][paymentMethod];
             delete depositPaymentMethodActive[_depositId][paymentMethod];
+            delete depositPaymentMethodListed[_depositId][paymentMethod];
             bytes32[] memory currencies = depositCurrencies[_depositId][paymentMethod];
             for (uint256 j = 0; j < currencies.length; j++) {
-                delete depositCurrencyMinRate[_depositId][paymentMethod][currencies[j]];
+                bytes32 currencyCode = currencies[j];
+                delete depositCurrencyMinRate[_depositId][paymentMethod][currencyCode];
+                delete depositCurrencyListed[_depositId][paymentMethod][currencyCode];
             }
             delete depositCurrencies[_depositId][paymentMethod];
         }
@@ -1045,11 +1054,13 @@ contract Escrow is Ownable, Pausable, IEscrow {
                 revert PaymentMethodNotWhitelisted(paymentMethod);
             }
             if (_paymentMethodData[i].payeeDetails == bytes32(0)) revert EmptyPayeeDetails();
-            if (depositPaymentMethodActive[_depositId][paymentMethod]) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
+            // Prevent duplicates using O(1) listed flag; if already listed (active or inactive) revert
+            if (depositPaymentMethodListed[_depositId][paymentMethod]) revert PaymentMethodAlreadyExists(_depositId, paymentMethod);
 
             // Add payment method
             depositPaymentMethodData[_depositId][paymentMethod] = _paymentMethodData[i];
             depositPaymentMethods[_depositId].push(paymentMethod);
+            depositPaymentMethodListed[_depositId][paymentMethod] = true;
             depositPaymentMethodActive[_depositId][paymentMethod] = true;
 
             emit DepositPaymentMethodAdded(_depositId, paymentMethod, _paymentMethodData[i].payeeDetails, _paymentMethodData[i].intentGatingService);
@@ -1081,13 +1092,14 @@ contract Escrow is Ownable, Pausable, IEscrow {
             revert CurrencyNotSupported(_paymentMethod, _currencyCode);
         }
         if (_minConversionRate == 0) revert ZeroConversionRate();
-        if (depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] != 0) {
+        if (depositCurrencyListed[_depositId][_paymentMethod][_currencyCode]) {
             revert CurrencyAlreadyExists(_paymentMethod, _currencyCode);
         }
 
         // Add currency
         depositCurrencyMinRate[_depositId][_paymentMethod][_currencyCode] = _minConversionRate;
         depositCurrencies[_depositId][_paymentMethod].push(_currencyCode);
+        depositCurrencyListed[_depositId][_paymentMethod][_currencyCode] = true;
 
         emit DepositCurrencyAdded(_depositId, _paymentMethod, _currencyCode, _minConversionRate);
     }

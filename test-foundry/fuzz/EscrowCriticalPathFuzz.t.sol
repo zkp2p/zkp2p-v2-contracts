@@ -830,28 +830,21 @@ contract EscrowCriticalPathFuzz is Test {
             }
             
             vm.prank(depositor);
-            escrow.removePaymentMethodFromDeposit(depositId, methodToRemoveHash);
+            escrow.setDepositPaymentMethodActive(depositId, methodToRemoveHash, false);
+
+            // Property: Payment method remains listed, but is inactive
+            bytes32[] memory methodsAfterDeactivate = escrow.getDepositPaymentMethods(depositId);
+            assertEq(methodsAfterDeactivate.length, numMethods, "Method list length should be unchanged");
+            bool isActive = escrow.getDepositPaymentMethodActive(depositId, methodToRemoveHash);
+            assertTrue(isActive == false, "Method should be inactive after deactivation");
             
-            // Property: Payment method count decreased
-            bytes32[] memory methodsAfterRemove = escrow.getDepositPaymentMethods(depositId);
-            uint256 expectedCount = numMethods - 1;
-            assertEq(methodsAfterRemove.length, expectedCount, "Method count after remove wrong");
-            
-            // Property: Removed method not in list
-            for (uint256 i = 0; i < methodsAfterRemove.length; i++) {
-                assertTrue(methodsAfterRemove[i] != methodToRemoveHash, "Removed method still present");
-            }
-            
-            // Property: Liquidity unchanged by removing methods
+            // Property: Liquidity unchanged by deactivating methods
             {
-                IEscrow.Deposit memory depositAfterRemove = escrow.getDeposit(depositId);
-                assertEq(depositAfterRemove.remainingDeposits, initialLiquidity, "Liquidity changed by remove");
+                IEscrow.Deposit memory depositAfterDeactivate = escrow.getDeposit(depositId);
+                assertEq(depositAfterDeactivate.remainingDeposits, initialLiquidity, "Liquidity changed by deactivate");
             }
             
-            // Property: Test that we cannot remove all payment methods
-            // The contract should enforce at least 1 payment method remains
-            // Note: The actual contract may allow removing all methods, in which case this test should be adjusted
-            // For property-based testing, we're testing the invariant that deposits should have payment methods
+            // Note: Deactivation model allows all methods to be inactive; Orchestrator gates on active status at signal time.
         }
     }
     
