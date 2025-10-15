@@ -220,10 +220,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         }
 
         deposit.remainingDeposits -= _amount;
-        
-        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
-            deposit.acceptingIntents = false;
-        }
+        _handleAcceptingIntentsState(_depositId);
 
         emit DepositWithdrawn(_depositId, msg.sender, _amount, deposit.acceptingIntents);
         
@@ -356,6 +353,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         if (_intentAmountRange.min > _intentAmountRange.max) revert InvalidRange(_intentAmountRange.min, _intentAmountRange.max);
 
         deposit.intentAmountRange = _intentAmountRange;
+        
+        _handleAcceptingIntentsState(_depositId);
 
         emit DepositIntentAmountRangeUpdated(_depositId, _intentAmountRange);
     }
@@ -953,6 +952,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
       */
     function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
         try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
+    }
+
+    /**
+     * @notice Updates acceptingIntents based on remaining liquidity. One-way demotion only: if remainingDeposits 
+     * falls below min and acceptingIntents is true, set it to false. If acceptingIntents is false, it will remain 
+     * false even if remainingDeposits is increased above min. The depositor has to manually re-enable accepting 
+     * intents by calling setDepositAcceptingIntents.
+     */
+    function _handleAcceptingIntentsState(uint256 _depositId) internal {
+        Deposit storage deposit = deposits[_depositId];
+        if (deposit.acceptingIntents && deposit.remainingDeposits < deposit.intentAmountRange.min) {
+            deposit.acceptingIntents = false;
+            emit DepositAcceptingIntentsUpdated(_depositId, false);
+        }
     }
 
     /**
