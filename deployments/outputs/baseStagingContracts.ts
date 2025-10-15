@@ -3,7 +3,7 @@ export default {
   "chainId": "8453",
   "contracts": {
     "Escrow": {
-      "address": "0x21f007107269ea1c8Fe0730736548090F4945736",
+      "address": "0x8455b9a31041125C785044f45458eCf2cbB12eF7",
       "abi": [
         {
           "inputs": [
@@ -23,13 +23,8 @@ export default {
               "type": "address"
             },
             {
-              "internalType": "uint256",
-              "name": "_makerProtocolFee",
-              "type": "uint256"
-            },
-            {
               "internalType": "address",
-              "name": "_makerFeeRecipient",
+              "name": "_dustRecipient",
               "type": "address"
             },
             {
@@ -221,22 +216,6 @@ export default {
           "inputs": [
             {
               "internalType": "uint256",
-              "name": "fee",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "maximum",
-              "type": "uint256"
-            }
-          ],
-          "name": "FeeExceedsMaximum",
-          "type": "error"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
               "name": "depositId",
               "type": "uint256"
             },
@@ -252,6 +231,22 @@ export default {
             }
           ],
           "name": "InsufficientDepositLiquidity",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "intentHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "IntentAlreadyExists",
           "type": "error"
         },
         {
@@ -279,11 +274,6 @@ export default {
             }
           ],
           "name": "InvalidRange",
-          "type": "error"
-        },
-        {
-          "inputs": [],
-          "name": "InvalidReferrerFeeConfiguration",
           "type": "error"
         },
         {
@@ -336,7 +326,23 @@ export default {
               "type": "bytes32"
             }
           ],
-          "name": "PaymentMethodNotFound",
+          "name": "PaymentMethodNotActive",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "paymentMethod",
+              "type": "bytes32"
+            }
+          ],
+          "name": "PaymentMethodNotListed",
           "type": "error"
         },
         {
@@ -487,31 +493,6 @@ export default {
             },
             {
               "indexed": true,
-              "internalType": "bytes32",
-              "name": "paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "currencyCode",
-              "type": "bytes32"
-            }
-          ],
-          "name": "DepositCurrencyRemoved",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "uint256",
-              "name": "depositId",
-              "type": "uint256"
-            },
-            {
-              "indexed": true,
               "internalType": "address",
               "name": "depositor",
               "type": "address"
@@ -564,12 +545,6 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "netAdditionalAmount",
               "type": "uint256"
             }
           ],
@@ -654,19 +629,13 @@ export default {
               "type": "bytes32"
             },
             {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "payeeDetails",
-              "type": "bytes32"
-            },
-            {
               "indexed": false,
-              "internalType": "address",
-              "name": "intentGatingService",
-              "type": "address"
+              "internalType": "bool",
+              "name": "active",
+              "type": "bool"
             }
           ],
-          "name": "DepositPaymentMethodAdded",
+          "name": "DepositPaymentMethodActiveUpdated",
           "type": "event"
         },
         {
@@ -683,9 +652,21 @@ export default {
               "internalType": "bytes32",
               "name": "paymentMethod",
               "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "bytes32",
+              "name": "payeeDetails",
+              "type": "bytes32"
+            },
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "intentGatingService",
+              "type": "address"
             }
           ],
-          "name": "DepositPaymentMethodRemoved",
+          "name": "DepositPaymentMethodAdded",
           "type": "event"
         },
         {
@@ -713,12 +694,6 @@ export default {
               "indexed": false,
               "internalType": "uint256",
               "name": "amount",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "netDepositAmount",
               "type": "uint256"
             },
             {
@@ -765,6 +740,25 @@ export default {
               "type": "uint256"
             },
             {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "retainOnEmpty",
+              "type": "bool"
+            }
+          ],
+          "name": "DepositRetainOnEmptyUpdated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "depositId",
+              "type": "uint256"
+            },
+            {
               "indexed": true,
               "internalType": "address",
               "name": "depositor",
@@ -775,12 +769,6 @@ export default {
               "internalType": "uint256",
               "name": "amount",
               "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "bool",
-              "name": "acceptingIntents",
-              "type": "bool"
             }
           ],
           "name": "DepositWithdrawn",
@@ -804,11 +792,24 @@ export default {
             {
               "indexed": true,
               "internalType": "address",
-              "name": "makerFeeRecipient",
+              "name": "dustRecipient",
               "type": "address"
             }
           ],
           "name": "DustCollected",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "dustRecipient",
+              "type": "address"
+            }
+          ],
+          "name": "DustRecipientUpdated",
           "type": "event"
         },
         {
@@ -909,18 +910,6 @@ export default {
             },
             {
               "indexed": false,
-              "internalType": "uint256",
-              "name": "makerFees",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "referrerFees",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
               "internalType": "address",
               "name": "to",
               "type": "address"
@@ -965,57 +954,6 @@ export default {
             }
           ],
           "name": "IntentExpiryExtended",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "makerFeeRecipient",
-              "type": "address"
-            }
-          ],
-          "name": "MakerFeeRecipientUpdated",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "uint256",
-              "name": "depositId",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "collectedFees",
-              "type": "uint256"
-            },
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "makerFeeRecipient",
-              "type": "address"
-            }
-          ],
-          "name": "MakerFeesCollected",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "makerProtocolFee",
-              "type": "uint256"
-            }
-          ],
-          "name": "MakerProtocolFeeUpdated",
           "type": "event"
         },
         {
@@ -1106,31 +1044,6 @@ export default {
           "anonymous": false,
           "inputs": [
             {
-              "indexed": true,
-              "internalType": "uint256",
-              "name": "depositId",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "collectedFees",
-              "type": "uint256"
-            },
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "referrer",
-              "type": "address"
-            }
-          ],
-          "name": "ReferrerFeesCollected",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
               "indexed": false,
               "internalType": "address",
               "name": "account",
@@ -1170,7 +1083,7 @@ export default {
               "type": "tuple[]"
             }
           ],
-          "name": "addCurrenciesToDepositPaymentMethod",
+          "name": "addCurrencies",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -1188,7 +1101,7 @@ export default {
               "type": "uint256"
             }
           ],
-          "name": "addFundsToDeposit",
+          "name": "addFunds",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -1245,7 +1158,7 @@ export default {
               "type": "tuple[][]"
             }
           ],
-          "name": "addPaymentMethodsToDeposit",
+          "name": "addPaymentMethods",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -1349,14 +1262,9 @@ export default {
                   "type": "address"
                 },
                 {
-                  "internalType": "address",
-                  "name": "referrer",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "referrerFee",
-                  "type": "uint256"
+                  "internalType": "bool",
+                  "name": "retainOnEmpty",
+                  "type": "bool"
                 }
               ],
               "internalType": "struct IEscrow.CreateDepositParams",
@@ -1370,6 +1278,29 @@ export default {
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_currencyCode",
+              "type": "bytes32"
+            }
+          ],
+          "name": "deactivateCurrency",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "depositCounter",
           "outputs": [
@@ -1377,6 +1308,19 @@ export default {
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "dustRecipient",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
             }
           ],
           "stateMutability": "view",
@@ -1465,11 +1409,6 @@ export default {
                   "type": "address"
                 },
                 {
-                  "internalType": "uint256",
-                  "name": "amount",
-                  "type": "uint256"
-                },
-                {
                   "components": [
                     {
                       "internalType": "uint256",
@@ -1502,39 +1441,14 @@ export default {
                   "type": "uint256"
                 },
                 {
-                  "internalType": "uint256",
-                  "name": "makerProtocolFee",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "reservedMakerFees",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "accruedMakerFees",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "accruedReferrerFees",
-                  "type": "uint256"
-                },
-                {
                   "internalType": "address",
                   "name": "intentGuardian",
                   "type": "address"
                 },
                 {
-                  "internalType": "address",
-                  "name": "referrer",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "referrerFee",
-                  "type": "uint256"
+                  "internalType": "bool",
+                  "name": "retainOnEmpty",
+                  "type": "bool"
                 }
               ],
               "internalType": "struct IEscrow.Deposit",
@@ -1587,12 +1501,65 @@ export default {
               "type": "bytes32"
             }
           ],
+          "name": "getDepositCurrencyListed",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_currencyCode",
+              "type": "bytes32"
+            }
+          ],
           "name": "getDepositCurrencyMinRate",
           "outputs": [
             {
               "internalType": "uint256",
               "name": "",
               "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getDepositGatingService",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
             }
           ],
           "stateMutability": "view",
@@ -1676,6 +1643,30 @@ export default {
               "type": "bytes32"
             }
           ],
+          "name": "getDepositPaymentMethodActive",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            }
+          ],
           "name": "getDepositPaymentMethodData",
           "outputs": [
             {
@@ -1699,6 +1690,30 @@ export default {
               "internalType": "struct IEscrow.DepositPaymentMethodData",
               "name": "",
               "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getDepositPaymentMethodListed",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
             }
           ],
           "stateMutability": "view",
@@ -1740,7 +1755,7 @@ export default {
             },
             {
               "internalType": "uint256",
-              "name": "reclaimedAmount",
+              "name": "reclaimableAmount",
               "type": "uint256"
             }
           ],
@@ -1781,32 +1796,6 @@ export default {
           "name": "lockFunds",
           "outputs": [],
           "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [],
-          "name": "makerFeeRecipient",
-          "outputs": [
-            {
-              "internalType": "address",
-              "name": "",
-              "type": "address"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [],
-          "name": "makerProtocolFee",
-          "outputs": [
-            {
-              "internalType": "uint256",
-              "name": "",
-              "type": "uint256"
-            }
-          ],
-          "stateMutability": "view",
           "type": "function"
         },
         {
@@ -1900,32 +1889,9 @@ export default {
               "internalType": "uint256",
               "name": "_depositId",
               "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_currencyCode",
-              "type": "bytes32"
             }
           ],
-          "name": "removeCurrencyFromDepositPaymentMethod",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "_depositId",
-              "type": "uint256"
-            }
-          ],
-          "name": "removeDepositDelegate",
+          "name": "removeDelegate",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -1943,25 +1909,7 @@ export default {
               "type": "uint256"
             }
           ],
-          "name": "removeFundsFromDeposit",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "_depositId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            }
-          ],
-          "name": "removePaymentMethodFromDeposit",
+          "name": "removeFunds",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -1986,7 +1934,35 @@ export default {
               "type": "bool"
             }
           ],
-          "name": "setDepositAcceptingIntents",
+          "name": "setAcceptingIntents",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_fiatCurrency",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_newMinConversionRate",
+              "type": "uint256"
+            }
+          ],
+          "name": "setCurrencyMinRate",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -2004,7 +1980,20 @@ export default {
               "type": "address"
             }
           ],
-          "name": "setDepositDelegate",
+          "name": "setDelegate",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_dustRecipient",
+              "type": "address"
+            }
+          ],
+          "name": "setDustRecipient",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -2038,25 +2027,29 @@ export default {
         {
           "inputs": [
             {
-              "internalType": "address",
-              "name": "_makerFeeRecipient",
-              "type": "address"
-            }
-          ],
-          "name": "setMakerFeeRecipient",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
               "internalType": "uint256",
-              "name": "_makerProtocolFee",
+              "name": "_depositId",
               "type": "uint256"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "min",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "max",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct IEscrow.Range",
+              "name": "_intentAmountRange",
+              "type": "tuple"
             }
           ],
-          "name": "setMakerProtocolFee",
+          "name": "setIntentRange",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -2090,12 +2083,53 @@ export default {
         {
           "inputs": [
             {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "_paymentMethod",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bool",
+              "name": "_isActive",
+              "type": "bool"
+            }
+          ],
+          "name": "setPaymentMethodActive",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
               "internalType": "address",
               "name": "_paymentVerifierRegistry",
               "type": "address"
             }
           ],
           "name": "setPaymentVerifierRegistry",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_depositId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "_retainOnEmpty",
+              "type": "bool"
+            }
+          ],
+          "name": "setRetainOnEmpty",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -2172,64 +2206,6 @@ export default {
               "internalType": "uint256",
               "name": "_depositId",
               "type": "uint256"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "uint256",
-                  "name": "min",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "max",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IEscrow.Range",
-              "name": "_intentAmountRange",
-              "type": "tuple"
-            }
-          ],
-          "name": "updateDepositIntentAmountRange",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "_depositId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_paymentMethod",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "_fiatCurrency",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "uint256",
-              "name": "_newMinConversionRate",
-              "type": "uint256"
-            }
-          ],
-          "name": "updateDepositMinConversionRate",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "_depositId",
-              "type": "uint256"
             }
           ],
           "name": "withdrawDeposit",
@@ -2240,7 +2216,7 @@ export default {
       ]
     },
     "EscrowRegistry": {
-      "address": "0x808A446cab173C2a1a8287b4fcD73F9f4b6B6179",
+      "address": "0x429b2a0A43FF077c386270Cbb8d49B417296AE9b",
       "abi": [
         {
           "inputs": [],
@@ -2457,7 +2433,7 @@ export default {
       ]
     },
     "NullifierRegistry": {
-      "address": "0xF8624964695C338a827aBd0b2cF72094500e604b",
+      "address": "0x54cC1603ae6A712f366793f3bc0FF2324C2c4Cef",
       "abi": [
         {
           "inputs": [],
@@ -2673,7 +2649,7 @@ export default {
       ]
     },
     "Orchestrator": {
-      "address": "0x0F07d1FE72c2E09c1475539d57ba7D143ceB2A61",
+      "address": "0x65F1e4cC604E3eCCa46F1c238C00ddFFA8eD28CD",
       "abi": [
         {
           "inputs": [
@@ -3473,6 +3449,25 @@ export default {
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "_intentHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "getIntentMinAtSignal",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "intentCounter",
           "outputs": [
@@ -3797,7 +3792,7 @@ export default {
       ]
     },
     "PaymentVerifierRegistry": {
-      "address": "0x4f82d491bD224277e63a43a99aD1Dcd7Cd977505",
+      "address": "0x3c61dFfEa06b2DE37797a96744bd2F9B68895443",
       "abi": [
         {
           "inputs": [],
@@ -4132,7 +4127,7 @@ export default {
       ]
     },
     "PostIntentHookRegistry": {
-      "address": "0x6b96a37ccdb1ee3d125c32c18ddC1d58Ad2Bb63c",
+      "address": "0x077Fd7abB88CD0a9bdb21f5A181957Ca511F1D85",
       "abi": [
         {
           "inputs": [],
@@ -4316,7 +4311,7 @@ export default {
       ]
     },
     "ProtocolViewer": {
-      "address": "0x25fd68bB5F9cd87ed6a2358AaEF57b8eCd8d8F14",
+      "address": "0x2BEf27cb6EF00d689DbD45D90F9E5Ba17c9851F0",
       "abi": [
         {
           "inputs": [
@@ -4382,11 +4377,6 @@ export default {
                       "type": "address"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "amount",
-                      "type": "uint256"
-                    },
-                    {
                       "components": [
                         {
                           "internalType": "uint256",
@@ -4419,39 +4409,14 @@ export default {
                       "type": "uint256"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "makerProtocolFee",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "reservedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedReferrerFees",
-                      "type": "uint256"
-                    },
-                    {
                       "internalType": "address",
                       "name": "intentGuardian",
                       "type": "address"
                     },
                     {
-                      "internalType": "address",
-                      "name": "referrer",
-                      "type": "address"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "referrerFee",
-                      "type": "uint256"
+                      "internalType": "bool",
+                      "name": "retainOnEmpty",
+                      "type": "bool"
                     }
                   ],
                   "internalType": "struct IEscrow.Deposit",
@@ -4642,11 +4607,6 @@ export default {
                           "type": "address"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "amount",
-                          "type": "uint256"
-                        },
-                        {
                           "components": [
                             {
                               "internalType": "uint256",
@@ -4679,39 +4639,14 @@ export default {
                           "type": "uint256"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "makerProtocolFee",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "reservedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedReferrerFees",
-                          "type": "uint256"
-                        },
-                        {
                           "internalType": "address",
                           "name": "intentGuardian",
                           "type": "address"
                         },
                         {
-                          "internalType": "address",
-                          "name": "referrer",
-                          "type": "address"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "referrerFee",
-                          "type": "uint256"
+                          "internalType": "bool",
+                          "name": "retainOnEmpty",
+                          "type": "bool"
                         }
                       ],
                       "internalType": "struct IEscrow.Deposit",
@@ -4828,11 +4763,6 @@ export default {
                       "type": "address"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "amount",
-                      "type": "uint256"
-                    },
-                    {
                       "components": [
                         {
                           "internalType": "uint256",
@@ -4865,39 +4795,14 @@ export default {
                       "type": "uint256"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "makerProtocolFee",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "reservedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedReferrerFees",
-                      "type": "uint256"
-                    },
-                    {
                       "internalType": "address",
                       "name": "intentGuardian",
                       "type": "address"
                     },
                     {
-                      "internalType": "address",
-                      "name": "referrer",
-                      "type": "address"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "referrerFee",
-                      "type": "uint256"
+                      "internalType": "bool",
+                      "name": "retainOnEmpty",
+                      "type": "bool"
                     }
                   ],
                   "internalType": "struct IEscrow.Deposit",
@@ -5009,11 +4914,6 @@ export default {
                       "type": "address"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "amount",
-                      "type": "uint256"
-                    },
-                    {
                       "components": [
                         {
                           "internalType": "uint256",
@@ -5046,39 +4946,14 @@ export default {
                       "type": "uint256"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "makerProtocolFee",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "reservedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedMakerFees",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "accruedReferrerFees",
-                      "type": "uint256"
-                    },
-                    {
                       "internalType": "address",
                       "name": "intentGuardian",
                       "type": "address"
                     },
                     {
-                      "internalType": "address",
-                      "name": "referrer",
-                      "type": "address"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "referrerFee",
-                      "type": "uint256"
+                      "internalType": "bool",
+                      "name": "retainOnEmpty",
+                      "type": "bool"
                     }
                   ],
                   "internalType": "struct IEscrow.Deposit",
@@ -5269,11 +5144,6 @@ export default {
                           "type": "address"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "amount",
-                          "type": "uint256"
-                        },
-                        {
                           "components": [
                             {
                               "internalType": "uint256",
@@ -5306,39 +5176,14 @@ export default {
                           "type": "uint256"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "makerProtocolFee",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "reservedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedReferrerFees",
-                          "type": "uint256"
-                        },
-                        {
                           "internalType": "address",
                           "name": "intentGuardian",
                           "type": "address"
                         },
                         {
-                          "internalType": "address",
-                          "name": "referrer",
-                          "type": "address"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "referrerFee",
-                          "type": "uint256"
+                          "internalType": "bool",
+                          "name": "retainOnEmpty",
+                          "type": "bool"
                         }
                       ],
                       "internalType": "struct IEscrow.Deposit",
@@ -5534,11 +5379,6 @@ export default {
                           "type": "address"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "amount",
-                          "type": "uint256"
-                        },
-                        {
                           "components": [
                             {
                               "internalType": "uint256",
@@ -5571,39 +5411,14 @@ export default {
                           "type": "uint256"
                         },
                         {
-                          "internalType": "uint256",
-                          "name": "makerProtocolFee",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "reservedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedMakerFees",
-                          "type": "uint256"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "accruedReferrerFees",
-                          "type": "uint256"
-                        },
-                        {
                           "internalType": "address",
                           "name": "intentGuardian",
                           "type": "address"
                         },
                         {
-                          "internalType": "address",
-                          "name": "referrer",
-                          "type": "address"
-                        },
-                        {
-                          "internalType": "uint256",
-                          "name": "referrerFee",
-                          "type": "uint256"
+                          "internalType": "bool",
+                          "name": "retainOnEmpty",
+                          "type": "bool"
                         }
                       ],
                       "internalType": "struct IEscrow.Deposit",
@@ -5701,7 +5516,7 @@ export default {
       ]
     },
     "RelayerRegistry": {
-      "address": "0x7Cc565d0fA0F4A4E4653964eFF903FeeFE6C9A95",
+      "address": "0xE065d32966ceD2E33926Fc08660D61265B06FC2A",
       "abi": [
         {
           "inputs": [],
@@ -5866,7 +5681,7 @@ export default {
       ]
     },
     "SimpleAttestationVerifier": {
-      "address": "0xbdA099AB9e26528B55AAD642e7eB86638f8A8931",
+      "address": "0x089E2401c34ab1A3256cf0bF09f17f267Db14234",
       "abi": [
         {
           "inputs": [
@@ -6021,7 +5836,7 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0x61d4440D9410cb1091eb03e62F45ba32335e9c89",
+      "address": "0xEE686ac6DC5baeE60461734Af64A04dD054c486A",
       "abi": [
         {
           "inputs": [
