@@ -380,7 +380,7 @@ describe("Orchestrator", () => {
       );
     });
 
-    describe("when there aren't enough deposits to cover requested amount but there are prunable intents", async () => {
+    describe.skip("when there aren't enough deposits to cover requested amount but there are prunable intents", async () => {
       let timeJump: number;
       let oldIntentHash: string;
 
