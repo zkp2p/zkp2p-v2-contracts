@@ -24,39 +24,50 @@ jobs:
           yarn install
           forge --version
 
-      - name: Run all Foundry tests
+      - name: Run Foundry unit tests
+        run: |
+          echo "Running unit tests..."
+          forge test --match-path "test-foundry/unit/*.t.sol" -vv
+
+      - name: Run Foundry fuzz tests
         run: |
           echo "Running fuzz tests..."
           FOUNDRY_FUZZ_RUNS=100 forge test --match-contract "Fuzz" -vv
+
+      - name: Run Foundry invariant tests
+        run: |
           echo "Running invariant tests..."
           forge test --match-contract "Invariant" -vv
 
-  # foundry-coverage:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-  #       with:
-  #         submodules: recursive
+  foundry-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
-  #     - name: Install Foundry
-  #       uses: foundry-rs/foundry-toolchain@v1
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
 
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: '18.15.0'
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.15.0'
 
-  #     - name: Install dependencies
-  #       run: yarn install
+      - name: Install dependencies
+        run: yarn install
 
-  #     - name: Run coverage
-  #       run: forge coverage --report lcov
+      - name: Run Foundry coverage (lcov)
+        run: forge coverage --report lcov
 
-  #     - name: Upload coverage to Codecov
-  #       uses: codecov/codecov-action@v3
-  #       with:
-  #         token: ${{ secrets.CODECOV_TOKEN }}
-  #         files: ./lcov.info
-  #         flags: foundry
-  #         name: foundry-coverage
+      - name: Upload Foundry coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./lcov.info
+          flags: foundry
+          name: foundry-coverage
+          fail_ci_if_error: true
+
+  

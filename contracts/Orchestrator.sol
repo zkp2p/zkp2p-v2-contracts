@@ -108,14 +108,9 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
 
         // Effects
         bytes32 intentHash = _calculateIntentHash();
-
-        // Lock funds first to ensure escrow state allows this intent and to avoid leaving stale snapshots
-        IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount);
-
-        // Snapshot the min-per-intent at signal-time to enforce at fulfillment
         IEscrow.Deposit memory dep = IEscrow(_params.escrow).getDeposit(_params.depositId);
+        
         intentMinAtSignal[intentHash] = dep.intentAmountRange.min;
-
         intents[intentHash] = Intent({
             owner: msg.sender,
             to: _params.to,
@@ -147,6 +142,9 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             _params.conversionRate, 
             block.timestamp
         );
+
+        // Interactions
+        IEscrow(_params.escrow).lockFunds(_params.depositId, intentHash, _params.amount);
     }
 
     /**
@@ -156,13 +154,16 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
      * @param _intentHash    Hash of intent being cancelled
      */
     function cancelIntent(bytes32 _intentHash) external {
+        // Checks
         Intent memory intent = intents[_intentHash];
         
         if (intent.timestamp == 0) revert IntentNotFound(_intentHash);
         if (intent.owner != msg.sender) revert UnauthorizedCaller(msg.sender, intent.owner);
 
+        // Effects
         _pruneIntent(_intentHash);
 
+        // Interactions
         IEscrow(intent.escrow).unlockFunds(intent.depositId, _intentHash);
     }
 

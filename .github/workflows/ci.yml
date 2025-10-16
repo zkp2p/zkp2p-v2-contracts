@@ -30,12 +30,43 @@ jobs:
         run: yarn deploy:localhost
       - name: Test deploy
         run: yarn test:deploy --network localhost
-      - name: Run coverage
-        run: yarn coverage
-      - name: Upload coverage to Codecov
+
+  hardhat-coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [libs, periphery, unifiedVerifier, escrow, registries, orchestrator]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.17.0'
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install Dependencies
+        run: yarn install
+      - name: Set up env variables
+        run: cp .env.default .env
+      - name: Build (ts/abi)
+        run: |
+          yarn clean
+          yarn build
+      - name: Run Hardhat coverage for matrix group
+        run: |
+          echo "Running coverage for group: ${{ matrix.group }}" 
+          npx hardhat coverage --testfiles "test/${{ matrix.group }}/*.ts"
+      - name: Upload group coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} 
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
+          flags: hardhat
+          name: hardhat-${{ matrix.group }}
           fail_ci_if_error: true
-
