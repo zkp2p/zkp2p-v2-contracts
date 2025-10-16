@@ -2649,7 +2649,7 @@ export default {
       ]
     },
     "Orchestrator": {
-      "address": "0x65F1e4cC604E3eCCa46F1c238C00ddFFA8eD28CD",
+      "address": "0x8BA5730415f7b57eeCC021172C2C11e1D6fD67F6",
       "abi": [
         {
           "inputs": [
@@ -4311,7 +4311,7 @@ export default {
       ]
     },
     "ProtocolViewer": {
-      "address": "0x2BEf27cb6EF00d689DbD45D90F9E5Ba17c9851F0",
+      "address": "0x6E4DA57e6A59f4715aaA8054C554fF813C06CCe1",
       "abi": [
         {
           "inputs": [
@@ -5836,7 +5836,7 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0xEE686ac6DC5baeE60461734Af64A04dD054c486A",
+      "address": "0xd646C10E4E227Fce8D71C1f147a1Ab155c8048a8",
       "abi": [
         {
           "inputs": [
