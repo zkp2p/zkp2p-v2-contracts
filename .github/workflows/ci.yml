@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [libs, periphery, verifiers, unifiedVerifier, escrow, registries, orchestrator]
+        group: [libs, periphery, unifiedVerifier, escrow, registries, orchestrator]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
