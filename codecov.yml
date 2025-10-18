@@ -13,6 +13,7 @@ ignore:
   - contracts/**/external/**
   - contracts/interfaces/**
   - contracts/**/interfaces/**
+  - test-foundry/**
   - archive/**
 
 flag_management:
