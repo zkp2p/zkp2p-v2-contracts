@@ -21,3 +21,5 @@ flag_management:
   individual_flags:
     - name: hardhat
       carryforward: true
+    - name: foundry
+      carryforward: true
