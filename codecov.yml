@@ -1,0 +1,23 @@
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+ignore:
+  - contracts/mocks/**
+  - contracts/**/mocks/**
+  - contracts/external/**
+  - contracts/**/external/**
+  - contracts/interfaces/**
+  - contracts/**/interfaces/**
+  - archive/**
+
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: hardhat
+      carryforward: true
