@@ -92,10 +92,10 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
     /* ============ External Functions ============ */
 
     /**
-     * @notice Signals intent to pay the depositor defined in the _depositId the _amount * deposit conversionRate off-chain
-     * in order to unlock _amount of funds on-chain. Caller must provide a signature from the deposit's gating service to prove
-     * their eligibility to take liquidity. If there are prunable intents then they will be deleted from the deposit to be able 
-     * to maintain state hygiene. Locks liquidity for the corresponding deposit on the escrow contract.
+     * @notice Signals intent to pay the depositor defined in the _depositId the _amount * deposit conversionRate off-chain at 
+     * their given _payeeId in order to unlock _amount of funds on-chain. Caller must provide a signature from the deposit's gating
+     * service to prove their eligibility to take liquidity. This function captures and stores all values required for fullfilling
+     * the intent to give strong guarantees to the buyer. Locks liquidity for the corresponding deposit on the escrow contract.
      *
      * @param _params                   Struct containing all the intent parameters
      */
@@ -109,6 +109,10 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
         // Effects
         bytes32 intentHash = _calculateIntentHash();
         IEscrow.Deposit memory dep = IEscrow(_params.escrow).getDeposit(_params.depositId);
+        IEscrow.DepositPaymentMethodData memory depData = IEscrow(_params.escrow).getDepositPaymentMethodData(
+            _params.depositId,
+            _params.paymentMethod
+        );
         
         intentMinAtSignal[intentHash] = dep.intentAmountRange.min;
         intents[intentHash] = Intent({
@@ -120,6 +124,7 @@ contract Orchestrator is Ownable, Pausable, ReentrancyGuard, IOrchestrator {
             paymentMethod: _params.paymentMethod,
             fiatCurrency: _params.fiatCurrency,
             conversionRate: _params.conversionRate,
+            payeeId: depData.payeeDetails, 
             timestamp: block.timestamp,
             referrer: _params.referrer,
             referrerFee: _params.referrerFee,

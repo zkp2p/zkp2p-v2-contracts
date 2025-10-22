@@ -202,11 +202,13 @@ describe("Orchestrator", () => {
     let subjectCaller: Account;
 
     let depositConversionRate: BigNumber;
+    let depositPayeeDetails: BytesLike;
 
     beforeEach(async () => {
       // Create a deposit first
       await usdcToken.connect(offRamper.wallet).approve(escrow.address, usdc(10000));
       depositConversionRate = ether(1.01);
+      depositPayeeDetails = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails"));
 
       await escrow.connect(offRamper.wallet).createDeposit({
         token: usdcToken.address,
@@ -215,7 +217,7 @@ describe("Orchestrator", () => {
         paymentMethods: [venmoPaymentMethod],
         paymentMethodData: [{
           intentGatingService: gatingService.address,
-          payeeDetails: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("payeeDetails")),
+          payeeDetails: depositPayeeDetails,
           data: "0x"
         }],
         currencies: [
@@ -299,6 +301,7 @@ describe("Orchestrator", () => {
       expect(intent.paymentMethod).to.eq(subjectPaymentMethod);
       expect(intent.fiatCurrency).to.eq(subjectFiatCurrency);
       expect(intent.conversionRate).to.eq(subjectConversionRate);
+      expect(intent.payeeId).to.eq(depositPayeeDetails);
       expect(intent.referrer).to.eq(subjectReferrer);
       expect(intent.referrerFee).to.eq(subjectReferrerFee);
       expect(intent.postIntentHook).to.eq(subjectPostIntentHook);

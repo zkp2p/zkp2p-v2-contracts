@@ -223,16 +223,13 @@ contract UnifiedPaymentVerifier is IPaymentVerifier, BaseUnifiedPaymentVerifier 
         require(snapshot.intentHash == intentHash, "UPV: Snapshot hash mismatch");
 
         IOrchestrator.Intent memory intent = IOrchestrator(orchestrator).getIntent(intentHash);
+        require(snapshot.payeeDetails == intent.payeeId, "UPV: Snapshot payee mismatch");
         require(snapshot.amount == intent.amount, "UPV: Snapshot amount mismatch");
         require(snapshot.paymentMethod == intent.paymentMethod, "UPV: Snapshot method mismatch");
         require(snapshot.fiatCurrency == intent.fiatCurrency, "UPV: Snapshot currency mismatch");
         require(snapshot.conversionRate == intent.conversionRate, "UPV: Snapshot rate mismatch");
         require(snapshot.signalTimestamp == intent.timestamp, "UPV: Snapshot timestamp mismatch");
         require(snapshot.timestampBuffer <= MAX_TIMESTAMP_BUFFER, "UPV: Snapshot timestamp buffer exceeds maximum");
-
-        IEscrow.DepositPaymentMethodData memory paymentMethodData = IEscrow(intent.escrow)
-            .getDepositPaymentMethodData(intent.depositId, snapshot.paymentMethod);
-        require(snapshot.payeeDetails == paymentMethodData.payeeDetails, "UPV: Snapshot payee mismatch");
     }
 
     /**
