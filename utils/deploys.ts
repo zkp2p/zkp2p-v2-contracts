@@ -21,6 +21,7 @@ import {
   ThresholdSigVerifierUtilsMock,
   SimpleAttestationVerifier,
   ReentrantPostIntentHook,
+  ReentrantOrchestratorMock,
   PartialPullPostIntentHookMock,
   PushPostIntentHookMock
 } from "./contracts";
@@ -29,6 +30,7 @@ import {
   PostIntentHookMock__factory,
   OrchestratorMock__factory,
   ReentrantPostIntentHook__factory,
+  ReentrantOrchestratorMock__factory,
   PartialPullPostIntentHookMock__factory,
   PushPostIntentHookMock__factory
 } from "../typechain/factories/contracts/mocks";
@@ -189,5 +191,11 @@ export default class DeployHelper {
       usdc,
       orchestrator
     );
+  }
+
+  public async deployReentrantOrchestratorMock(
+    escrow: Address
+  ): Promise<ReentrantOrchestratorMock> {
+    return await new ReentrantOrchestratorMock__factory(this._deployerSigner).deploy(escrow);
   }
 }
