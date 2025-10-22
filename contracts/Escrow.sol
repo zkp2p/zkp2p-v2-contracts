@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
@@ -25,7 +26,7 @@ pragma solidity ^0.8.18;
  * @title Escrow
  * @notice Escrows deposits and manages deposit lifecycle.
  */
-contract Escrow is Ownable, Pausable, IEscrow {
+contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
 
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
@@ -211,6 +212,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function removeFunds(uint256 _depositId, uint256 _amount)
         external
+        nonReentrant
         whenNotPaused
     {
         // Checks
@@ -246,7 +248,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
-    function withdrawDeposit(uint256 _depositId) external {
+    function withdrawDeposit(uint256 _depositId) external nonReentrant {
         // Checks
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
@@ -529,13 +531,15 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * @param _depositId The deposit ID to prune expired intents for
      */
-    function pruneExpiredIntents(uint256 _depositId) external {
+    function pruneExpiredIntents(uint256 _depositId) external nonReentrant {
+        // Checks, Effects
         bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(
             deposits[_depositId], 
             _depositId, 
             PRUNE_ALL_EXPIRED_INTENTS     // Prune all expired intents
         );
 
+        // Interactions
         if (expiredIntents.length > 0) {
             _tryOrchestratorPruneIntents(expiredIntents);
         }
@@ -556,7 +560,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _intentHash,
         uint256 _amount
     ) 
-        external 
+        external
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
@@ -615,6 +620,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function unlockFunds(uint256 _depositId, bytes32 _intentHash) 
         external 
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
@@ -650,6 +656,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _to
     ) 
         external 
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
