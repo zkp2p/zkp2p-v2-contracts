@@ -18,9 +18,7 @@ ignore:
 
 flag_management:
   default_rules:
-    carryforward: true
+    carryforward: false
   individual_flags:
     - name: hardhat
-      carryforward: true
-    - name: foundry
-      carryforward: true
+      carryforward: false
