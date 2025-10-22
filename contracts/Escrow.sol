@@ -234,7 +234,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Prune intents on the orchestrator
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -269,7 +269,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Prune intents on the orchestrator
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -537,7 +537,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         );
 
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -602,7 +602,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Interactions
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -914,7 +914,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Free up deposit liquidity by reclaiming liquidity from expired intents. Only reclaims if remaining deposits amount
      * is less than the minimum required amount. Returns the expired intents that need to be pruned. Only does local state updates, 
-     * does not call any external contracts. Whenever this function is called, the calling function should also call _callOrchestratorToPruneIntents
+     * does not call any external contracts. Whenever this function is called, the calling function should also call _tryOrchestratorPruneIntents
      * with the returned intents to expire the intents on the orchestrator contract.
      */
     function _reclaimLiquidityIfNecessary(
@@ -958,7 +958,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
       * @notice Calls the orchestrator to clean up intents. 
       * Note: If the orchestrator reverts, it is caught and ignored to allow the function to continue execution.
       */
-    function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
+    function _tryOrchestratorPruneIntents(bytes32[] memory _intents) internal {
         try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
     }
 
