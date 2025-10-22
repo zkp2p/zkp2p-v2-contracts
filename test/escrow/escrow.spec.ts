@@ -2427,6 +2427,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
   });
 
   describe("#removeDepositDelegate", async () => {
@@ -2514,6 +2524,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });

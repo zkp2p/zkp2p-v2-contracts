@@ -282,7 +282,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _delegate     The address to set as delegate (address(0) to remove delegate)
      */
     
-    function setDelegate(uint256 _depositId, address _delegate) external {
+    function setDelegate(uint256 _depositId, address _delegate) external whenNotPaused {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_delegate == address(0)) revert ZeroAddress();
@@ -297,7 +297,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId    The deposit ID
      */
-    function removeDelegate(uint256 _depositId) external {
+    function removeDelegate(uint256 _depositId) external whenNotPaused {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
@@ -801,9 +801,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * - Updating deposit parameters (conversion rates, intent ranges, accepting intents state)
      * - Adding/removing payment methods and currencies
      *
-     * Functionalities that remain unpaused to allow users to retrieve funds:
+     * Functionalities that remain unpaused to allow users to rescue funds:
      * - Full deposit withdrawal (withdrawDeposit)
-     * - Delegate management (setDepositDelegate, removeDepositDelegate)
      * - Expired intent pruning (pruneExpiredIntentsAndReclaimLiquidity)
      * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
      * - Intent expiry extensions by guardian
