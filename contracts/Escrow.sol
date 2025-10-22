@@ -545,7 +545,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice ORCHESTRATOR ONLY: Locks funds for an intent with expiry time. Only callable by orchestrator.
-     *
+     * Places a lock on the deposit, stores lock amount along with it's expiry timestamp for unlocking later.
+     * 
      * @param _depositId The deposit ID to lock funds from
      * @param _amount The amount to lock
      * @param _intentHash The intent hash this intent corresponds to
@@ -607,7 +608,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice ORCHESTRATOR ONLY: Unlocks funds from a cancelled intent by removing the specific intent. 
-     * Only callable by orchestrator.
+     * Releases the lock on deposit liquidity and adds it back to the deposit.
      * 
      * @param _depositId The deposit ID to unlock funds from
      * @param _intentHash The intent hash to find and remove the intent for
@@ -634,7 +635,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice ORCHESTRATOR ONLY: Unlocks and transfers funds from a fulfilled intent by removing the specific intent.
-     * Only callable by orchestrator.
+     * Only callable by orchestrator. Releases the lock on deposlit liquidity and transfers out partial/full locked
+     * amount to the given to address.
      * 
      * @param _depositId The deposit ID to transfer from
      * @param _intentHash The intent hash to find and remove the intent for
