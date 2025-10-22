@@ -23,8 +23,6 @@ contract ReentrantOrchestratorMock {
     enum ReenterFunction {
         None,
         LockFunds,
-        UnlockFunds,
-        UnlockAndTransferFunds
     }
     
     
@@ -52,30 +50,6 @@ contract ReentrantOrchestratorMock {
             } catch (bytes memory) {
                 emit ReentryAttempted(uint8(ReenterFunction.LockFunds), false, "low-level");
                 lockReentries++;
-            }
-
-        } else if (reenterFunction == ReenterFunction.UnlockFunds) {
-            try escrow.unlockFunds(0, bytes32(0)) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockFunds), true, "");
-                unlockReentries++;
-            } catch Error(string memory reason) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockFunds), false, reason);
-                unlockReentries++;
-            } catch (bytes memory) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockFunds), false, "low-level");
-                unlockReentries++;
-            }
-
-        } else if (reenterFunction == ReenterFunction.UnlockAndTransferFunds) {
-            try escrow.unlockAndTransferFunds(0, bytes32(0), 0, address(0)) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockAndTransferFunds), true, "");
-                unlockAndTransferReentries++;
-            } catch Error(string memory reason) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockAndTransferFunds), false, reason);
-                unlockAndTransferReentries++;
-            } catch (bytes memory) {
-                emit ReentryAttempted(uint8(ReenterFunction.UnlockAndTransferFunds), false, "low-level");
-                unlockAndTransferReentries++;
             }
         }
     }
