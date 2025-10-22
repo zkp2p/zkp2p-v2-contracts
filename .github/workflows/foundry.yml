@@ -61,13 +61,13 @@ jobs:
       - name: Run Foundry coverage (lcov)
         run: forge coverage --report lcov
 
-      - name: Upload Foundry coverage to Codecov
+      - name: Upload Foundry coverage to Codecov (non-blocking)
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lcov.info
           flags: foundry
           name: foundry-coverage
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   

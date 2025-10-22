@@ -22,7 +22,7 @@ contract ReentrantOrchestratorMock {
     
     enum ReenterFunction {
         None,
-        LockFunds,
+        LockFunds
     }
     
     
