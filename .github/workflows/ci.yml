@@ -62,11 +62,11 @@ jobs:
         run: |
           echo "Running coverage for group: ${{ matrix.group }}" 
           npx hardhat coverage --testfiles "test/${{ matrix.group }}/*.ts"
-      - name: Upload group coverage to Codecov (non-blocking)
+      - name: Upload group coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           flags: hardhat
           name: hardhat-${{ matrix.group }}
-          fail_ci_if_error: false
+          fail_ci_if_error: true
