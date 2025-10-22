@@ -716,7 +716,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 

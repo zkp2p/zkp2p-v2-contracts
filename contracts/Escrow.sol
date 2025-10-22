@@ -190,6 +190,7 @@ contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
     {
         // Checks
         Deposit storage deposit = deposits[_depositId];
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (_amount == 0) revert ZeroValue();
         
         // Effects
