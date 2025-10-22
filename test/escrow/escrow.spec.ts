@@ -19,6 +19,7 @@ import {
   Orchestrator,
   RelayerRegistry,
   OrchestratorMock,
+  ReentrantOrchestratorMock,
   EscrowRegistry
 } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
@@ -68,6 +69,7 @@ describe("Escrow", () => {
   let relayerRegistry: RelayerRegistry;
   let postIntentHookMock: PostIntentHookMock;
   let orchestratorMock: OrchestratorMock;
+  let reentrantOrchestratorMock: ReentrantOrchestratorMock;
   let dustRecipient: Account;
 
   let verifier: PaymentVerifierMock;
@@ -157,8 +159,9 @@ describe("Escrow", () => {
 
     postIntentHookMock = await deployer.deployPostIntentHookMock(usdcToken.address, ramp.address);
 
-    // Deploy orchestrator mock for testing orchestrator-only functions
+    // Deploy orchestrator mocks for testing orchestrator-only functions
     orchestratorMock = await deployer.deployOrchestratorMock(ramp.address);
+    reentrantOrchestratorMock = await deployer.deployReentrantOrchestratorMock(ramp.address);
   });
 
   describe("#constructor", async () => {
@@ -609,7 +612,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#addFundsToDeposit", async () => {
+  describe("#addFunds", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
@@ -691,11 +694,19 @@ describe("Escrow", () => {
 
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
+        await usdcToken.connect(offRamper.wallet).transfer(maliciousOnRamper.address, usdc(100));
+        await usdcToken.connect(maliciousOnRamper.wallet).approve(ramp.address, usdc(100));
+
         subjectCaller = maliciousOnRamper;
       });
 
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      it("should add the funds", async () => {
+        const preDeposit = await ramp.getDeposit(subjectDepositId);
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
       });
     });
 
@@ -705,7 +716,7 @@ describe("Escrow", () => {
       });
 
       it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+        await expect(subject()).to.be.revertedWithCustomError(ramp, "DepositNotFound");
       });
     });
 
@@ -730,7 +741,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#removeFundsFromDeposit", async () => {
+  describe("#removeFunds", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
@@ -2427,6 +2438,16 @@ describe("Escrow", () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
       });
     });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
+      });
+    });
   });
 
   describe("#removeDepositDelegate", async () => {
@@ -2514,6 +2535,16 @@ describe("Escrow", () => {
 
       it("should revert", async () => {
         await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      });
+    });
+
+    describe("when the escrow is paused", async () => {
+      beforeEach(async () => {
+        await ramp.connect(owner.wallet).pauseEscrow();
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("Pausable: paused");
       });
     });
   });
@@ -3159,6 +3190,30 @@ describe("Escrow", () => {
         const deposit = await ramp.getDeposit(subjectDepositId);
         expect(deposit.remainingDeposits).to.eq(usdc(40)); // 100 - 60 (new intent)
         expect(deposit.outstandingIntentAmount).to.eq(usdc(60)); // Only new intent
+      });
+
+      describe("when the orchestrator tries to reenter", async () => {
+        beforeEach(async () => {
+          console.log(orchestratorMock.address);
+          console.log(reentrantOrchestratorMock.address);
+          await ramp.connect(owner.wallet).setOrchestrator(reentrantOrchestratorMock.address);
+          await reentrantOrchestratorMock.setFunctionToReenter(1);    // lock funds
+        });
+
+        it("emits a failed reentry signal when reentering lockFunds", async () => {
+          const tx = await reentrantOrchestratorMock.connect(subjectCaller.wallet).lockFunds(
+            subjectDepositId,
+            subjectIntentHash,
+            subjectAmount
+          );
+
+          await expect(tx)
+            .to.emit(reentrantOrchestratorMock, "ReentryAttempted")
+            .withArgs(1, false, "ReentrancyGuard: reentrant call");
+
+          const attempts = await reentrantOrchestratorMock.lockReentries();
+          expect(attempts).to.eq(1);
+        });
       });
     });
 

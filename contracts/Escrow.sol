@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { AddressArrayUtils } from "./external/AddressArrayUtils.sol";
 import { Bytes32ArrayUtils } from "./external/Bytes32ArrayUtils.sol";
@@ -25,7 +26,7 @@ pragma solidity ^0.8.18;
  * @title Escrow
  * @notice Escrows deposits and manages deposit lifecycle.
  */
-contract Escrow is Ownable, Pausable, IEscrow {
+contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
 
     using AddressArrayUtils for address[];
     using Bytes32ArrayUtils for bytes32[];
@@ -177,7 +178,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     }
 
     /**
-     * @notice Adds additional funds to an existing deposit. Only the depositor can add funds.
+     * @notice Adds additional funds to an existing deposit. Any EOA or contract can add funds.
      * The funds will be added to the remaining deposits amount, making it available for new intents.
      *
      * @param _depositId    The deposit ID to add funds to
@@ -189,7 +190,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     {
         // Checks
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
+        if (deposit.depositor == address(0)) revert DepositNotFound(_depositId);
         if (_amount == 0) revert ZeroValue();
         
         // Effects
@@ -211,6 +212,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      */
     function removeFunds(uint256 _depositId, uint256 _amount)
         external
+        nonReentrant
         whenNotPaused
     {
         // Checks
@@ -234,7 +236,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Prune intents on the orchestrator
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -246,7 +248,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId   DepositId the depositor is attempting to withdraw
      */
-    function withdrawDeposit(uint256 _depositId) external {
+    function withdrawDeposit(uint256 _depositId) external nonReentrant {
         // Checks
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
@@ -257,8 +259,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         uint256 returnAmount = deposit.remainingDeposits;
         IERC20 token = deposit.token;
         delete deposit.remainingDeposits;
-        
-        _handleAcceptingIntentsState(_depositId);
+        delete deposit.acceptingIntents;
 
         emit DepositWithdrawn(_depositId, deposit.depositor, returnAmount);
 
@@ -269,7 +270,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Prune intents on the orchestrator
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -282,7 +283,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * @param _delegate     The address to set as delegate (address(0) to remove delegate)
      */
     
-    function setDelegate(uint256 _depositId, address _delegate) external {
+    function setDelegate(uint256 _depositId, address _delegate) external whenNotPaused {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_delegate == address(0)) revert ZeroAddress();
@@ -297,7 +298,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
      *
      * @param _depositId    The deposit ID
      */
-    function removeDelegate(uint256 _depositId) external {
+    function removeDelegate(uint256 _depositId) external whenNotPaused {
         Deposit storage deposit = deposits[_depositId];
         if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (deposit.delegate == address(0)) revert DelegateNotFound(_depositId);
@@ -529,15 +530,17 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * @param _depositId The deposit ID to prune expired intents for
      */
-    function pruneExpiredIntents(uint256 _depositId) external {
+    function pruneExpiredIntents(uint256 _depositId) external nonReentrant {
+        // Checks, Effects
         bytes32[] memory expiredIntents = _reclaimLiquidityIfNecessary(
             deposits[_depositId], 
             _depositId, 
             PRUNE_ALL_EXPIRED_INTENTS     // Prune all expired intents
         );
 
+        // Interactions
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
@@ -545,7 +548,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice ORCHESTRATOR ONLY: Locks funds for an intent with expiry time. Only callable by orchestrator.
-     *
+     * Places a lock on the deposit, stores lock amount along with it's expiry timestamp for unlocking later.
+     * 
      * @param _depositId The deposit ID to lock funds from
      * @param _amount The amount to lock
      * @param _intentHash The intent hash this intent corresponds to
@@ -555,7 +559,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
         bytes32 _intentHash,
         uint256 _amount
     ) 
-        external 
+        external
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
@@ -601,19 +606,20 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
         // Interactions
         if (expiredIntents.length > 0) {
-            _callOrchestratorToPruneIntents(expiredIntents);
+            _tryOrchestratorPruneIntents(expiredIntents);
         }
     }
 
     /**
      * @notice ORCHESTRATOR ONLY: Unlocks funds from a cancelled intent by removing the specific intent. 
-     * Only callable by orchestrator.
+     * Releases the lock on deposit liquidity and adds it back to the deposit.
      * 
      * @param _depositId The deposit ID to unlock funds from
      * @param _intentHash The intent hash to find and remove the intent for
      */
     function unlockFunds(uint256 _depositId, bytes32 _intentHash) 
         external 
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
@@ -634,7 +640,8 @@ contract Escrow is Ownable, Pausable, IEscrow {
 
     /**
      * @notice ORCHESTRATOR ONLY: Unlocks and transfers funds from a fulfilled intent by removing the specific intent.
-     * Only callable by orchestrator.
+     * Only callable by orchestrator. Releases the lock on deposlit liquidity and transfers out partial/full locked
+     * amount to the given to address.
      * 
      * @param _depositId The deposit ID to transfer from
      * @param _intentHash The intent hash to find and remove the intent for
@@ -648,6 +655,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
         address _to
     ) 
         external 
+        nonReentrant
         onlyOrchestrator 
     {
         // Checks
@@ -795,13 +803,12 @@ contract Escrow is Ownable, Pausable, IEscrow {
      * 
      * Functionalities that are paused:
      * - Deposit creation (createDeposit)
-     * - Adding/removing funds to deposits (addFundsToDeposit, removeFundsFromDeposit)
+     * - Adding/removing funds to deposits (addFunds, removeFunds)
      * - Updating deposit parameters (conversion rates, intent ranges, accepting intents state)
      * - Adding/removing payment methods and currencies
      *
-     * Functionalities that remain unpaused to allow users to retrieve funds:
+     * Functionalities that remain unpaused to allow users to rescue funds:
      * - Full deposit withdrawal (withdrawDeposit)
-     * - Delegate management (setDepositDelegate, removeDepositDelegate)
      * - Expired intent pruning (pruneExpiredIntentsAndReclaimLiquidity)
      * - Orchestrator operations (lockFunds, unlockFunds, unlockAndTransferFunds)
      * - Intent expiry extensions by guardian
@@ -913,7 +920,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
     /**
      * @notice Free up deposit liquidity by reclaiming liquidity from expired intents. Only reclaims if remaining deposits amount
      * is less than the minimum required amount. Returns the expired intents that need to be pruned. Only does local state updates, 
-     * does not call any external contracts. Whenever this function is called, the calling function should also call _callOrchestratorToPruneIntents
+     * does not call any external contracts. Whenever this function is called, the calling function should also call _tryOrchestratorPruneIntents
      * with the returned intents to expire the intents on the orchestrator contract.
      */
     function _reclaimLiquidityIfNecessary(
@@ -957,7 +964,7 @@ contract Escrow is Ownable, Pausable, IEscrow {
       * @notice Calls the orchestrator to clean up intents. 
       * Note: If the orchestrator reverts, it is caught and ignored to allow the function to continue execution.
       */
-    function _callOrchestratorToPruneIntents(bytes32[] memory _intents) internal {
+    function _tryOrchestratorPruneIntents(bytes32[] memory _intents) internal {
         try IOrchestrator(orchestrator).pruneIntents(_intents) {} catch {}
     }
 

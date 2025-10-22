@@ -19,6 +19,7 @@ interface IOrchestrator {
         bytes32 paymentMethod;                      // The payment method to be used for the offchain payment
         bytes32 fiatCurrency;                       // Currency code that the owner is paying in offchain (keccak256 hash of the currency code)
         uint256 conversionRate;                     // Conversion rate of deposit token to fiat currency at the time of intent
+        bytes32 payeeId;                            // Hashed payee identifier to whom the owner will pay offchain
         address referrer;                           // Address of the referrer who brought this intent (if any)
         uint256 referrerFee;                        // Fee to be paid to the referrer in preciseUnits (1e16 = 1%)
         IPostIntentHook postIntentHook;             // Address of the post-intent hook that will execute any post-intent actions
