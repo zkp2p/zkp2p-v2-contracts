@@ -178,7 +178,7 @@ contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
     }
 
     /**
-     * @notice Adds additional funds to an existing deposit. Only the depositor can add funds.
+     * @notice Adds additional funds to an existing deposit. Any EOA or contract can add funds.
      * The funds will be added to the remaining deposits amount, making it available for new intents.
      *
      * @param _depositId    The deposit ID to add funds to
@@ -190,7 +190,6 @@ contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
     {
         // Checks
         Deposit storage deposit = deposits[_depositId];
-        if (deposit.depositor != msg.sender) revert UnauthorizedCaller(msg.sender, deposit.depositor);
         if (_amount == 0) revert ZeroValue();
         
         // Effects
@@ -804,7 +803,7 @@ contract Escrow is Ownable, Pausable, ReentrancyGuard, IEscrow {
      * 
      * Functionalities that are paused:
      * - Deposit creation (createDeposit)
-     * - Adding/removing funds to deposits (addFundsToDeposit, removeFundsFromDeposit)
+     * - Adding/removing funds to deposits (addFunds, removeFunds)
      * - Updating deposit parameters (conversion rates, intent ranges, accepting intents state)
      * - Adding/removing payment methods and currencies
      *

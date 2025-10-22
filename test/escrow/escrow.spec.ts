@@ -612,7 +612,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#addFundsToDeposit", async () => {
+  describe("#addFunds", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
@@ -694,11 +694,19 @@ describe("Escrow", () => {
 
     describe("when the caller is not the depositor", async () => {
       beforeEach(async () => {
+        await usdcToken.connect(offRamper.wallet).transfer(maliciousOnRamper.address, usdc(100));
+        await usdcToken.connect(maliciousOnRamper.wallet).approve(ramp.address, usdc(100));
+
         subjectCaller = maliciousOnRamper;
       });
 
-      it("should revert", async () => {
-        await expect(subject()).to.be.revertedWithCustomError(ramp, "UnauthorizedCaller");
+      it("should add the funds", async () => {
+        const preDeposit = await ramp.getDeposit(subjectDepositId);
+
+        await subject();
+
+        const postDeposit = await ramp.getDeposit(subjectDepositId);
+        expect(postDeposit.remainingDeposits).to.eq(preDeposit.remainingDeposits.add(subjectAmount));
       });
     });
 
@@ -733,7 +741,7 @@ describe("Escrow", () => {
     });
   });
 
-  describe("#removeFundsFromDeposit", async () => {
+  describe("#removeFunds", async () => {
     let subjectDepositId: BigNumber;
     let subjectAmount: BigNumber;
     let subjectCaller: Account;
