@@ -1,6 +1,6 @@
 # zkp2p-v2-contracts (v2.1)
 
-[![Coverage](https://codecov.io/gh/zkp2p/zkp2p-v2-contracts/branch/main/graph/badge.svg)](https://codecov.io/gh/zkp2p/zkp2p-v2-contracts)
+[![Coverage](https://codecov.io/gh/zkp2p/zkp2p-v2-contracts/branch/main/graph/badge.svg?precision=2)](https://codecov.io/gh/zkp2p/zkp2p-v2-contracts)
 
 V2.1 smart contracts for the ZK P2P fiat on/off‑ramp. The system centers on Escrow (maker deposits), Orchestrator (intent lifecycle and verification), and a Unified Payment Verifier that validates off‑chain attestations for multiple payment methods.
 
