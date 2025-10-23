@@ -3,7 +3,7 @@ export default {
   "chainId": "8453",
   "contracts": {
     "Escrow": {
-      "address": "0x8455b9a31041125C785044f45458eCf2cbB12eF7",
+      "address": "0x5C2a8D9246777eE4501B6C426a8B8C7635C7b5b5",
       "abi": [
         {
           "inputs": [
@@ -2216,7 +2216,7 @@ export default {
       ]
     },
     "EscrowRegistry": {
-      "address": "0x429b2a0A43FF077c386270Cbb8d49B417296AE9b",
+      "address": "0xc545f336eC77E69bf115729acCbf2e557A00ac91",
       "abi": [
         {
           "inputs": [],
@@ -2433,7 +2433,7 @@ export default {
       ]
     },
     "NullifierRegistry": {
-      "address": "0x54cC1603ae6A712f366793f3bc0FF2324C2c4Cef",
+      "address": "0x3FFd04f7909a16d3476263A1f4ce413A089dCc69",
       "abi": [
         {
           "inputs": [],
@@ -2649,7 +2649,7 @@ export default {
       ]
     },
     "Orchestrator": {
-      "address": "0x8BA5730415f7b57eeCC021172C2C11e1D6fD67F6",
+      "address": "0xF9b9CD27Deea496B960b3cb5221b514705fCaF5e",
       "abi": [
         {
           "inputs": [
@@ -3420,6 +3420,11 @@ export default {
                   "type": "uint256"
                 },
                 {
+                  "internalType": "bytes32",
+                  "name": "payeeId",
+                  "type": "bytes32"
+                },
+                {
                   "internalType": "address",
                   "name": "referrer",
                   "type": "address"
@@ -3792,7 +3797,7 @@ export default {
       ]
     },
     "PaymentVerifierRegistry": {
-      "address": "0x3c61dFfEa06b2DE37797a96744bd2F9B68895443",
+      "address": "0x2261416DA54C85f975C73FA56EF4D2D6b0aEF7Cc",
       "abi": [
         {
           "inputs": [],
@@ -4127,7 +4132,7 @@ export default {
       ]
     },
     "PostIntentHookRegistry": {
-      "address": "0x077Fd7abB88CD0a9bdb21f5A181957Ca511F1D85",
+      "address": "0xA4745c8F735B07fa77cD6EC64A2C77cb787fD0cd",
       "abi": [
         {
           "inputs": [],
@@ -4311,7 +4316,7 @@ export default {
       ]
     },
     "ProtocolViewer": {
-      "address": "0x6E4DA57e6A59f4715aaA8054C554fF813C06CCe1",
+      "address": "0x1b2FE4FF7530143f38b7D7f4ccd83a3f1a022840",
       "abi": [
         {
           "inputs": [
@@ -4556,6 +4561,11 @@ export default {
                       "internalType": "uint256",
                       "name": "conversionRate",
                       "type": "uint256"
+                    },
+                    {
+                      "internalType": "bytes32",
+                      "name": "payeeId",
+                      "type": "bytes32"
                     },
                     {
                       "internalType": "address",
@@ -5095,6 +5105,11 @@ export default {
                       "type": "uint256"
                     },
                     {
+                      "internalType": "bytes32",
+                      "name": "payeeId",
+                      "type": "bytes32"
+                    },
+                    {
                       "internalType": "address",
                       "name": "referrer",
                       "type": "address"
@@ -5330,6 +5345,11 @@ export default {
                       "type": "uint256"
                     },
                     {
+                      "internalType": "bytes32",
+                      "name": "payeeId",
+                      "type": "bytes32"
+                    },
+                    {
                       "internalType": "address",
                       "name": "referrer",
                       "type": "address"
@@ -5516,7 +5536,7 @@ export default {
       ]
     },
     "RelayerRegistry": {
-      "address": "0xE065d32966ceD2E33926Fc08660D61265B06FC2A",
+      "address": "0xB214650b424E6b5fdcB1259566eB7A512D8Bd25E",
       "abi": [
         {
           "inputs": [],
@@ -5681,7 +5701,7 @@ export default {
       ]
     },
     "SimpleAttestationVerifier": {
-      "address": "0x089E2401c34ab1A3256cf0bF09f17f267Db14234",
+      "address": "0x1540c12858Ad8D45EE9DAF8DFf2f28B28F047772",
       "abi": [
         {
           "inputs": [
@@ -5836,7 +5856,7 @@ export default {
       ]
     },
     "UnifiedPaymentVerifier": {
-      "address": "0xd646C10E4E227Fce8D71C1f147a1Ab155c8048a8",
+      "address": "0xfFf74adAE1fb470d49cA37772C9859C4a6dBcc03",
       "abi": [
         {
           "inputs": [
