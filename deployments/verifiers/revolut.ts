@@ -20,7 +20,15 @@ export const REVOLUT_CURRENCIES: any = [
   Currency.TRY,
   Currency.PLN,
   Currency.CHF,
-  Currency.ZAR
+  Currency.ZAR,
+  // Added later
+  Currency.CNY,
+  Currency.CZK,
+  Currency.DKK,
+  Currency.HUF,
+  Currency.NOK,
+  Currency.RON,
+  Currency.SEK,
 ];
 
 export const REVOLUT_PROVIDER_CONFIG = {
