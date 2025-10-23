@@ -4,8 +4,8 @@ coverage:
   status:
     project:
       default:
-        target: auto
-        threshold: 0.5%
+        target: 99%
+        threshold: 0%
 ignore:
   - contracts/mocks/**
   - contracts/**/mocks/**
