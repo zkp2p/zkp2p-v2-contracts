@@ -38,36 +38,3 @@ jobs:
         run: |
           echo "Running invariant tests..."
           forge test --match-contract "Invariant" -vv
-
-  foundry-coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.15.0'
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Run Foundry coverage (lcov)
-        run: forge coverage --report lcov
-
-      - name: Upload Foundry coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./lcov.info
-          flags: foundry
-          name: foundry-coverage
-          fail_ci_if_error: true
-
-  
