@@ -28,6 +28,7 @@ export const WISE_CURRENCIES: any = [
   Currency.THB,
   Currency.VND,
   // Added later
+  Currency.UGX,
   Currency.CZK,
   Currency.DKK,
   Currency.HUF,

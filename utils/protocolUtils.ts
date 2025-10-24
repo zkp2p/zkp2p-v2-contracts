@@ -42,6 +42,7 @@ export const Currency = {
   THB: getKeccak256Hash("THB"),
   TRY: getKeccak256Hash("TRY"),
   USD: getKeccak256Hash("USD"),
+  UGX: getKeccak256Hash("UGX"),
   VND: getKeccak256Hash("VND"),
   ZAR: getKeccak256Hash("ZAR"),
 } as const;
