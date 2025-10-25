@@ -27,6 +27,16 @@ export const WISE_CURRENCIES: any = [
   Currency.MXN,
   Currency.THB,
   Currency.VND,
+  // Added later
+  Currency.UGX,
+  Currency.CZK,
+  Currency.DKK,
+  Currency.HUF,
+  Currency.INR,
+  Currency.NOK,
+  Currency.PHP,
+  Currency.RON,
+  Currency.SEK,
 ];
 
 export const WISE_PROVIDER_CONFIG = {
