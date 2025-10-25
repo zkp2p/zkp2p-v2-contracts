@@ -130,6 +130,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Orchestrator deployed at", orchestrator.address);
   await waitForDeploymentDelay(hre);
 
+  // const escrowAddress = getDeployedContractAddress(network, "Escrow");
+  // console.log("Escrow Address", escrowAddress);
+  // const orchestratorAddress = getDeployedContractAddress(network, "Orchestrator");
+  // console.log("Orchestrator Address", orchestratorAddress);
+
   // Set orchestrator on escrow
   const escrowContract = await ethers.getContractAt("Escrow", escrow.address);
   await setOrchestrator(hre, escrowContract, orchestrator.address);
@@ -143,29 +148,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Protocol viewer deployed at", protocolViewer.address);
   await waitForDeploymentDelay(hre);
 
-  const paymentVerifierRegistryContract = await ethers.getContractAt("PaymentVerifierRegistry", paymentVerifierRegistry.address);
-  const postIntentHookRegistryContract = await ethers.getContractAt("PostIntentHookRegistry", postIntentHookRegistry.address);
-  const relayerRegistryContract = await ethers.getContractAt("RelayerRegistry", relayerRegistry.address);
-  const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistry.address);
+  // const paymentVerifierRegistryContract = await ethers.getContractAt("PaymentVerifierRegistry", paymentVerifierRegistry.address);
+  // const postIntentHookRegistryContract = await ethers.getContractAt("PostIntentHookRegistry", postIntentHookRegistry.address);
+  // const relayerRegistryContract = await ethers.getContractAt("RelayerRegistry", relayerRegistry.address);
+  // const nullifierRegistryContract = await ethers.getContractAt("NullifierRegistry", nullifierRegistry.address);
 
-  if (network == "goerli") {
-    const usdcContract = await ethers.getContractAt("USDCMock", usdcAddress);
-    await usdcContract.transfer(USDC_RECIPIENT, USDC_MINT_AMOUNT);
-  }
+  // if (network == "goerli") {
+  //   const usdcContract = await ethers.getContractAt("USDCMock", usdcAddress);
+  //   await usdcContract.transfer(USDC_RECIPIENT, USDC_MINT_AMOUNT);
+  // }
 
-  if (network == "localhost") {
-    const [owner] = await ethers.getSigners();
-    const usdcContract = await ethers.getContractAt("USDCMock", usdcAddress);
-    await usdcContract.transfer(owner.address, USDC_MINT_AMOUNT);
-    console.log("Transferred USDC to ", owner.address);
-  }
+  // if (network == "localhost") {
+  //   const [owner] = await ethers.getSigners();
+  //   const usdcContract = await ethers.getContractAt("USDCMock", usdcAddress);
+  //   await usdcContract.transfer(owner.address, USDC_MINT_AMOUNT);
+  //   console.log("Transferred USDC to ", owner.address);
+  // }
 
-  console.log("Transferring ownership of contracts...");
-  await setNewOwner(hre, escrowContract, multiSig);
-  await setNewOwner(hre, paymentVerifierRegistryContract, multiSig);
-  await setNewOwner(hre, postIntentHookRegistryContract, multiSig);
-  await setNewOwner(hre, relayerRegistryContract, multiSig);
-  await setNewOwner(hre, nullifierRegistryContract, multiSig);
+  // console.log("Transferring ownership of contracts...");
+  // await setNewOwner(hre, escrowContract, multiSig);
+  // await setNewOwner(hre, paymentVerifierRegistryContract, multiSig);
+  // await setNewOwner(hre, postIntentHookRegistryContract, multiSig);
+  // await setNewOwner(hre, relayerRegistryContract, multiSig);
+  // await setNewOwner(hre, nullifierRegistryContract, multiSig);
 
   console.log("Deploy finished...");
 

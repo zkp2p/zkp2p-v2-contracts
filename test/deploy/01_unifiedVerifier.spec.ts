@@ -69,27 +69,36 @@ describe("UnifiedPaymentVerifier Deployment", () => {
   });
 
   describe("SimpleAttestationVerifier Constructor", async () => {
-    it("should set the correct parameters", async () => {
+    it("should have the correct owner set", async () => {
       const actualOwner = await simpleAttestationVerifier.owner();
-      const actualWitnessAddress = await simpleAttestationVerifier.witness();
-
-      const expectedWitnessAddress = WITNESS_ADDRESS[network];
-
       expect(actualOwner).to.eq(multiSig);
+    });
+
+    it("should have the correct witness address set", async () => {
+      const actualWitnessAddress = await simpleAttestationVerifier.witness();
+      const expectedWitnessAddress = WITNESS_ADDRESS[network];
       expect(actualWitnessAddress).to.eq(expectedWitnessAddress);
     });
   });
 
   describe("UnifiedPaymentVerifier Constructor", async () => {
-    it("should set the correct parameters", async () => {
+    it("should have the correct owner set", async () => {
       const actualOwner = await unifiedPaymentVerifier.owner();
-      const actualOrchestratorAddress = await unifiedPaymentVerifier.orchestrator();
-      const actualNullifierRegistryAddress = await unifiedPaymentVerifier.nullifierRegistry();
-      const actualAttestationVerifierAddress = await unifiedPaymentVerifier.attestationVerifier();
-
       expect(actualOwner).to.eq(multiSig);
+    });
+
+    it("should have the correct orchestrator set", async () => {
+      const actualOrchestratorAddress = await unifiedPaymentVerifier.orchestrator();
       expect(actualOrchestratorAddress).to.eq(orchestratorAddress);
+    });
+
+    it("should have the correct nullifier registry set", async () => {
+      const actualNullifierRegistryAddress = await unifiedPaymentVerifier.nullifierRegistry();
       expect(actualNullifierRegistryAddress).to.eq(nullifierRegistry.address);
+    });
+
+    it("should have the correct attestation verifier set", async () => {
+      const actualAttestationVerifierAddress = await unifiedPaymentVerifier.attestationVerifier();
       expect(actualAttestationVerifierAddress).to.eq(simpleAttestationVerifier.address);
     });
   });
@@ -98,18 +107,6 @@ describe("UnifiedPaymentVerifier Deployment", () => {
     it("should add write permissions to the NullifierRegistry", async () => {
       const hasWritePermission = await nullifierRegistry.isWriter(unifiedPaymentVerifier.address);
       expect(hasWritePermission).to.be.true;
-    });
-  });
-
-  describe("Ownership Transfer", async () => {
-    it("should transfer ownership of SimpleAttestationVerifier to multiSig", async () => {
-      const owner = await simpleAttestationVerifier.owner();
-      expect(owner).to.eq(multiSig);
-    });
-
-    it("should transfer ownership of UnifiedPaymentVerifier to multiSig", async () => {
-      const owner = await unifiedPaymentVerifier.owner();
-      expect(owner).to.eq(multiSig);
     });
   });
 });
