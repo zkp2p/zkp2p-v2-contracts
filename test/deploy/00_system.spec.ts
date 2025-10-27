@@ -157,11 +157,19 @@ describe("V2.1 System Deployment", () => {
   });
 
   describe("Orchestrator", async () => {
+    it("should have the correct owner set", async () => {
+      const actualOwner = await orchestrator.owner();
+      expect(actualOwner).to.eq(multiSig);
+    });
+
+    it("should have the correct chainId set", async () => {
+      const actualChainId = await orchestrator.chainId();
+      expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
+    });
+
     it("should have the correct protocol fee and recipient set", async () => {
       const actualProtocolFee = await orchestrator.protocolFee();
       const actualProtocolFeeRecipient = await orchestrator.protocolFeeRecipient();
-      const actualOwner = await orchestrator.owner();
-      const actualChainId = await orchestrator.chainId();
 
       const expectedProtocolFeeRecipient = PROTOCOL_TAKER_FEE_RECIPIENT[network] != ""
         ? PROTOCOL_TAKER_FEE_RECIPIENT[network]
@@ -169,8 +177,6 @@ describe("V2.1 System Deployment", () => {
 
       expect(actualProtocolFee).to.eq(PROTOCOL_TAKER_FEE[network]);
       expect(actualProtocolFeeRecipient).to.eq(expectedProtocolFeeRecipient);
-      expect(actualOwner).to.eq(multiSig);
-      expect(actualChainId).to.eq((await ethers.provider.getNetwork()).chainId);
     });
 
     it("should have the correct post intent hook registry set", async () => {
