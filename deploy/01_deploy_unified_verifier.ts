@@ -56,11 +56,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await addWritePermission(hre, nullifierRegistryContract, unifiedPaymentVerifier.address);
   console.log("NullifierRegistry permissions added for UnifiedPaymentVerifier...");
 
-  // console.log("Transferring ownership of contracts...");
-  // await setNewOwner(hre, simpleAttestationVerifierContract, multiSig);
-  // console.log("SimpleAttestationVerifier ownership transferred to", multiSig);
-  // await setNewOwner(hre, unifiedPaymentVerifierContract, multiSig);
-  // console.log("UnifiedPaymentVerifier ownership transferred to", multiSig);
+  console.log("Transferring ownership of contracts...");
+  await setNewOwner(hre, simpleAttestationVerifierContract, multiSig);
+  console.log("SimpleAttestationVerifier ownership transferred to", multiSig);
+  await setNewOwner(hre, unifiedPaymentVerifierContract, multiSig);
+  console.log("UnifiedPaymentVerifier ownership transferred to", multiSig);
 
   console.log("Deploy finished...");
 
