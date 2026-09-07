@@ -1,247 +1,160 @@
-# Sponsored stake: 14-day fee model and implementation review
+# Buyer stake referrals at the existing L1 rate
 
-Status: economic model implemented; sponsorship runtime design proposed.
-No sponsor fee, contract deployment, referral reassignment, or customer pricing
-change is activated by this work.
+## Accepted product rule
 
-## Recommendation
+Aaron is a **buyer**. If another wallet stakes for him, that wallet earns a
+referral at the existing L1 rate on the trades actually backed by its stake.
+There is no independently priced sponsor product or permanent referral-code
+reassignment. The buyer's selected backer is the referral recipient for that
+trade; selecting a different backer affects future trades only. This supersedes
+the earlier 80 bps pricing hypothesis.
 
-Price sponsorship independently of referral acquisition. Use **80 bps (0.80%)
-of gross sponsored settled volume** as the initial pricing hypothesis for a
-14-day, fully collateralized position. This is a modeled pilot price, not an
-empirically calibrated risk premium or a guaranteed return. It depends on 75%
-capital utilization, a 12% simple annual net-return target, 10 bps expected
-principal losses per settled dollar, and 5 bps operating costs per settled
-dollar. The exact minimum whole-bp fee under those assumptions is 77 bps.
+The source L1 default is 40 bps (0.40%). The contract rate is configured by
+governance to match the referral program, not hardcoded or independently
+selected by a sponsor. Changing the program's L1 rate requires updating both
+Curator's ladder and the on-chain stake referral configuration for future
+signals. Existing intent snapshots keep their original rate.
 
-Matching the repository's 40 bps L1 default yields only 4.89% net annualized
-under those same assumptions. Referral rates are configurable and budget
-clamped; 40/10 bps are source defaults, not verified live rates. The 80 bps
-hypothesis must be repriced or rejected if observed losses, utilization,
-release delays, or the available fee budget do not support it.
+## Implemented contract behavior
 
-## What the existing implementation actually does
+- `setStakeReferralConfig(hook, feeSource, l1ReferralFee)` derives the dispute
+  policy from the exact canonical lifecycle hook. The configured `feeSource`
+  is Peer's existing service-fee recipient, not the Orchestrator's separate
+  protocol-fee field. Configuration is owner-only; rate zero disables future
+  stake referrals. A different lifecycle hook does not use this configuration.
+- After the lifecycle hook locks collateral, OrchestratorV3 reads the actual
+  policy snapshot. An externally backed intent gets a stake referral; self
+  stake, whitelist bypass, unprotected and zero-window routes do not.
+- The existing Peer fee entry must fully fund the L1 rate. Missing or
+  insufficient budget reverts the complete signal, including collateral and
+  escrow state. Direct callers cannot consume sponsored collateral while
+  omitting that funding entry when this configuration is active.
+- The recipient, funding source and L1 rate are snapshotted for each intent.
+  Revocation, stake-owner selection, referral configuration and hook changes
+  cannot redirect old trades' earnings or collateral liability.
+- Settlement carves the referral out of Peer's **already-rounded** fee amount.
+  The signed referral array, aggregate fees, existing seller referrals and
+  exact buyer net payout stay unchanged, including fractional-base-unit cases.
+- Proof and manual settlement pay the same L1 rate on actual gross release;
+  partial settlement pays only on the partial release. Cancellation and
+  expiry do not pay. Any failing lifecycle settlement rolls back all payouts.
+- Payouts use `IntentReferralFeeDistributed`, so they enter the existing
+  referral earnings pipeline. A wallet acting as both seller referrer and
+  buyer backer receives a combined payout and one event. No new L2 payment is
+  created from the buyer's staking relationship.
+- Stake remains fully collateralized for the snapshotted risk window after
+  settlement (14 days in this model). Maturity alone does not unlock it: the
+  permissionless policy release transaction must succeed. A later dispute
+  consumes principal but does not claw back an already earned referral.
 
-Reviewed contracts main `2e70f3c` and Curator main `69f01365`, plus Pay main
-`57468099` and its merchant staking design. These are source snapshots, not a
-live deployment audit.
+`getIntentStakeReferral` exposes an active intent's referral snapshot;
+`IntentStakeReferralSnapshotted` preserves the signal-time record after the
+intent is pruned. The stored original referral array remains the buyer's
+signed total-fee plan; actual recipient distributions include the stake carve.
 
-| Fact | Source |
-| --- | --- |
-| Referral rewards follow the **seller's** referral chain, with at most two levels | [Curator makerReferralChain.ts](https://github.com/zkp2p/curator/blob/69f01365/src/services/makerReferralChain.ts) |
-| Default ladder is L1 40 bps / L2 10 bps | [Curator envConfig.ts](https://github.com/zkp2p/curator/blob/69f01365/src/common/utils/envConfig.ts) |
-| Existing referrals draw from the service-fee budget in L1, L2, Peer order | [Curator serviceFee.ts](https://github.com/zkp2p/curator/blob/69f01365/src/common/utils/serviceFee.ts) |
-| The **taker** selects an authorized stake owner; sponsor retains custody rights | [StakeVault.sol](../../contracts/StakeVault.sol) |
-| Signal locks the full intent amount; settlement resizes to full gross release amount | [DisputeProtectionPolicy.sol](../../contracts/hooks/DisputeProtectionPolicy.sol) |
-| Lock maturity is settlement time plus the snapshotted risk window | [DisputeProtectionPolicy.sol](../../contracts/hooks/DisputeProtectionPolicy.sol) |
-| An explicit release transaction is required; exposure continues until release executes | [IDisputeProtectionPolicy.sol](../../contracts/interfaces/IDisputeProtectionPolicy.sol) |
-| Referral fee recipients and rates are stored at signal, paid on settlement | [OrchestratorV3.sol](../../contracts/OrchestratorV3.sol) |
-| Pay's staking rollout exposes self-staking, while an externally selected owner makes the page read-only | [Pay staking design, section 3.2](https://github.com/zkp2p/pay/blob/57468099/docs/superpowers/specs/2026-08-20-merchant-staking-chargebacks-design.md) |
+Existing vault consent is reused: the backer authorizes the buyer and the
+buyer selects that backer. This PR does not introduce a new lending agreement,
+per-buyer exposure cap, or UI. Vault authorization still exposes the backer's
+available shared stake to its authorized buyers, under existing vault rules.
 
-Cash App's dispute window was retired in the current contracts source and
-recorded deployment lanes. Do not carry the older Pay design's three-rail
-assumption into sponsor eligibility. Resolve the exact policy and nonzero
-payment-method window when building a sponsored quote.
+## Fee example
 
-## Review of the conversation's initial plan
+The following illustrates a 100 bps total service fee and a complete seller
+referral chain; it is not a claim about live production configuration:
 
-1. **Seller and taker were conflated.** If Aaron provides liquidity as a seller,
-   staking on his behalf does not currently back his seller fills. Existing
-   collateral compensates that seller for a dispute against a taker. A
-   seller-sponsorship product needs a separately defined obligation before its
-   payouts can be implemented. The runtime design below assumes Aaron is a
-   taker/merchant using someone else's collateral; that scope is unconfirmed.
-2. **L1 is not an available sponsor slot.** Keep the existing seller referral
-   relationship and L2 attribution. Sponsor compensation is another economic
-   role. If the same wallet performs both roles it may receive both allocations,
-   within the agreed total fee, without changing the referral tree.
-3. **Fourteen days is a minimum after settlement.** Pending intents already tie
-   up capital. Settlement delays, failed/cancelled reservations, delayed release
-   transactions, and idle capital lower realized returns. Exiting does not
-   erase outstanding exposure or earned fees.
-4. **The fee needs a payer.** Adding a recipient to the settlement array alone
-   reduces the taker's payout. Preserving advertised output requires grossing up
-   the quote or reallocating an explicitly sufficient existing fee budget.
-5. **Quote-only enforcement is insufficient.** Current vault delegation does
-   not require a sponsor fee or cap each taker's use of a shared sponsor pool.
-   A caller able to signal directly could consume collateral without paying the
-   expected fee. Fee consent, recipient, amount, and exposure limits need atomic
-   on-chain enforcement before lock creation.
+| Recipient | Rate on gross settled volume | On $1,000 |
+| --- | ---: | ---: |
+| Seller's existing L1 | 40 bps | $4 |
+| Seller's existing L2 | 10 bps | $1 |
+| Buyer's selected external backer | 40 bps | $4 |
+| Peer remainder | 10 bps | $1 |
+| Total service fee | 100 bps | $10 |
 
-## Reproducible model
+Before the carve, the supplied Peer entry is 50 bps; afterward it receives
+10 bps. Existing maker/integration allocations are preserved. If those other
+allocations leave Peer less than 40 bps, the sponsored route rejects instead
+of reducing someone's existing referral, adding a buyer charge, or silently
+underpaying the backer. Unprotected and self-backed routes retain existing fees.
+Any manager, bridge or separate protocol fees remain part of the original
+quote and are not used as funding sources.
 
-Run from the contracts repository with Node; no credentials, dependencies,
-network calls, or chain transactions are needed:
+## Economics of the chosen rate
+
+The calculator fixture now uses the accepted L1 rate of 40 bps. With 100%
+gross collateral, annual volume per dollar of capital is `utilization × 365 /
+holdingDays`. Simple net annual return is:
+
+```text
+(referral rate - losses per settled dollar - operating cost per settled dollar)
+× utilization × 365 / (risk-window days + additional holding days)
+```
+
+At a 14-day hold and illustrative 10 bps losses plus 5 bps costs:
+
+| Capital utilization | Gross annualized return at 40 bps | Net annualized return |
+| --- | ---: | ---: |
+| 50% | 5.21% | 3.26% |
+| 75% | 7.82% | 4.89% |
+| 100% | 10.43% | 6.52% |
+
+At 75% utilization, $10,000 average capital supports $195,535.71 annual gross
+settled volume and models $782.14 referral income, $195.54 losses, $97.77 costs,
+and $488.84 net income. Two additional holding days reduce modeled net return
+to 4.28%. A 12% target would require 77 bps under the base assumptions; matching
+L1 deliberately does not meet that target. The model informs economics and
+never overrides the accepted product rate.
+
+These are steady-state assumptions, not observed losses or guaranteed returns.
+Idle/cancelled reservations reduce productive utilization; additional holding
+days capture successful positions' pending/release delays. Do not count the
+same delay in both inputs. Losses must be replenished to sustain the modeled
+capital. Correlated fraud, capital depletion, fixed overhead and compounding
+are not simulated; a valid dispute can consume the full trade's collateral.
 
 ```sh
 node scripts/model-sponsor-fees.mjs scripts/fixtures/sponsor-fees.json
 node --test scripts/model-sponsor-fees.spec.mjs
 ```
 
-Copy the JSON fixture and edit the assumptions to price another scenario. All
-inputs are required integers; rate inputs use basis points (10,000 = 100%).
-Unknown inputs are rejected so a misspelled assumption cannot silently leave
-the model unchanged. The output includes its inputs, dollar cashflows, simple
-annualized returns, minimum whole-bp fee, and fee-budget shortfall.
+All JSON inputs are required integers; rates use basis points. The minimum
+whole-bp fee is rounded upward with integer arithmetic. Dollar/APR outputs are
+offline numerical approximations, never quote or transaction arithmetic.
 
-Let:
+## Source review and delivery boundary
 
-- `C` = average total sponsor capital, including idle capital;
-- `u` = fraction allocated to the modeled successful position lifecycle;
-- `D` = 14-day risk window plus average additional holding days;
-- `f`, `l`, `o` = sponsor fee, principal loss, and operating cost per settled dollar;
-- `r` = target simple annual net return on all sponsor capital.
+Reviewed contracts main `2e70f3c`, Curator main `69f01365`, clients main
+`5a3655715`, and indexer main `9954946`. Canonical sources are standalone repos.
 
-The model assumes 100% gross collateral and stable capital, utilization, and
-transaction flow:
+- Curator `src/common/utils/serviceFee.ts` allocates existing maker/integration
+  fees. No change is required to construct a stake recipient: the contract
+  derives it from the actual locked stake, avoiding stale quotes and signatures.
+- Clients `packages/sdk/src/client/IntentOperations.ts` forwards the fee plan.
+  No signal-input or signature format changes are required. Deployments and
+  package address selection still need the successor Orchestrator address.
+- Indexer `src/handlers/v3/orchestrator_v3.ts` forwards ordinary referral payout
+  events to the existing distribution and recipient aggregates. One payout
+  event per recipient avoids overwriting its intent/recipient-keyed row.
+- Curator's current dashboard attributes L1/L2 through the **seller** code tree.
+  Buyer-backer payments enter total earnings but can appear as unattributed
+  there; this PR changes payout behavior, not dashboard tree classification or
+  referral-code registration. A wallet still uses the existing referral
+  account flow to view that dashboard.
+- The new snapshot event is on-chain audit data. Current indexer projections
+  need not consume it for payout totals; a future buyer-referral dashboard
+  should consume it to distinguish that relationship from seller attribution.
 
-```text
-annual settled volume = C × u × 365 / D
-annual net income    = annual settled volume × (f - l - o)
-net APR              = (f - l - o) × u × 365 / D
-required fee         = r × D / (365 × u) + l + o
-```
-
-The implementation rounds the required rate upward to whole bps using integer
-arithmetic. Displayed returns use ordinary numerical approximation; this is an
-offline pricing model, never transaction amount or quote arithmetic. Zero
-utilization yields zero income and no volume-based fee recommendation.
-
-`additionalHoldDays` represents pending and release delay for successful
-positions. `utilizationBps` discounts idle capital and capital consumed by
-cancelled or unproductive reservations. Do not also count the same pending or
-release delay in both inputs. Losses are value-weighted, net of actual
-recoveries, divided by gross eligible settled volume; a dispute count alone is
-not a loss rate. Operating costs are averaged per settled dollar, including
-failed/reservation/release work. Fixed overhead should be converted at the
-modeled volume; at zero volume this calculator shows zero variable costs and
-does not estimate fixed operating losses.
-
-This is a steady-state expectation, not a simulation of bankruptcy, correlated
-fraud, liquidity shocks, compounding, or reinvestment. Losses must be replenished
-to maintain the assumed capital and volume. A sponsor can lose the full
-collateral backing a disputed trade; these illustrative loss inputs do not
-establish that any taker is safe to sponsor.
-
-## Sensitivities
-
-Net simple annualized return, assuming a 14-day hold, 10 bps principal loss and
-5 bps operating cost per settled dollar:
-
-| Sponsor fee | 50% utilization | 75% utilization | 100% utilization |
-| --- | ---: | ---: | ---: |
-| 40 bps / 0.40% | 3.26% | 4.89% | 6.52% |
-| 60 bps / 0.60% | 5.87% | 8.80% | 11.73% |
-| 80 bps / 0.80% | 8.47% | 12.71% | 16.95% |
-| 100 bps / 1.00% | 11.08% | 16.62% | 22.16% |
-
-At the proposed 80 bps price:
-
-| Scenario (other base inputs unchanged) | Minimum fee for 12% net APR | Net APR at 80 bps |
-| --- | ---: | ---: |
-| Base case | 77 bps | 12.71% |
-| Two additional holding days | 86 bps | 11.12% |
-| 50% utilization | 108 bps | 8.47% |
-| 25 bps losses per settled dollar | 92 bps | 9.78% |
-| 100 bps losses per settled dollar | 167 bps | -4.89% |
-
-For $10,000 average capital at base assumptions, annual settled volume is
-$195,535.71; sponsor fees $1,564.29; losses $195.54; operating costs $97.77;
-net income $1,270.98. Monthly equivalents are $16,294.64 volume and $105.92
-income on average, not a promise of monthly liquidity or payouts. Do not assume
-that $10,000 collateral can repeatedly back $100,000 each month with a 14-day
-full-principal lock.
-
-The 80 bps price can tolerate only **13.63 bps losses** while still meeting the
-12% target at the base utilization and cost assumptions. Its safety margin is
-small; 80 bps should not become a universal rate for unknown takers.
-
-## Funding and coexistence with referrals
-
-Budget every role explicitly, without silently reducing an existing referral:
-
-```text
-service fee >= sponsor fee + L1 fee + L2 fee + minimum Peer remainder
-150 bps    = 80 bps      + 40 bps + 10 bps + 20 bps
-```
-
-The 150 bps total and 20 bps Peer remainder are proposed inputs. Neither is
-claimed to be current production configuration. A hypothetical 100 bps total
-has a 50 bps shortfall against this proposal. It can fund only 30 bps of sponsor
-fees while preserving 40/10/20, producing 2.93% modeled net annual return at
-base utilization. Options are an explicitly accepted sponsored-route price,
-an explicitly funded Peer subsidy, or declining to offer sponsorship at that
-budget. Do not confiscate L1 or silently clip the sponsor's contracted rate.
-
-An 80 bps sponsor receives $8 per $1,000 gross settled volume; L1 receives $4,
-L2 receives $1, and Peer retains $2 in this example. Any separate orchestrator,
-manager, integration, or bridge fees must also be included in the final quote.
-The fixture models a full maker-referral chain, not every route's fee topology.
-
-## Proposed runtime implementation, after scope is resolved
-
-This section is a design, not an implemented or deployed feature. The open
-product question is whether Aaron is a taker/merchant, as required by existing
-dispute collateral, or a seller for whom a new collateral obligation is intended.
-
-For the taker/merchant interpretation:
-
-1. **Agreement.** Sponsor sets a rate, allowed payment methods, maximum risk
-   window and outstanding exposure cap for one taker; taker explicitly accepts
-   those exact terms. Sponsor custody stays in the vault. Paid sponsorship must
-   be bound to that consent, not inferred from free delegation alone.
-2. **Signal.** The authorized lifecycle path resolves the taker's effective
-   owner, enforces consent and sponsor rate in the orchestrator's actual stored
-   fee plan, and atomically checks/increments the exposure cap before locking
-   principal. Reject a missing fee, insufficient budget, self-sponsorship
-   rebate, stale terms or a substituted recipient. A sponsor can stop future
-   admissions; previously signaled terms remain immutable.
-3. **Quote.** Curator resolves the same agreement and eligible risk-bearing
-   route, preserves seller attribution, validates the service-fee allocation,
-   and prices the exact final output. An unavailable sponsor or unsupported
-   policy/window is an explicit quote failure. Do not accept client overrides
-   for the authoritative recipient or agreed rate. Free/whitelisted paths
-   that create no sponsor exposure must not pay a sponsor fee.
-4. **Settlement.** Pay the snapshotted sponsor fee on exact gross release using
-   the existing referral-fee transport, with separately attributable sponsor
-   metadata/events for reporting. Manual release has identical economics.
-   There is no fee on cancelled intents. This proposal pays at settlement and
-   leaves that fee earned if a later dispute occurs; its losses are modeled on
-   full collateral, without clawing back already paid fees.
-5. **Exposure release.** Cancellation releases pending exposure. Settlement
-   adjusts exposure to gross release. Only successful collateral release or
-   dispute resolution frees settled exposure capacity. Changing owner,
-   revoking authorization or changing terms cannot move an existing lock or
-   its liabilities to a new sponsor.
-6. **Visibility.** Indexer and product surfaces separate sponsor earnings from
-   L1/L2 earnings and show capital, remaining exposure capacity, observed
-   utilization, losses, release delays and net returns. Quote/UI must disclose
-   any incremental sponsorship cost before the taker accepts it.
-
-The contract changes must enforce the fee and exposure obligations for direct
-callers as well as Curator traffic. A Curator-only extra fee entry would not
-satisfy this design. Existing locks cannot be migrated casually into a fresh
-policy: preserve their original controller/lifecycle or drain them according
-to the existing deployment conventions.
-
-Runtime tests must prove: exact fee budget and net output; quote/signaling
-agreement; direct-call fee omission rejected before locking; stale consent;
-same-wallet referral/sponsor accounting; per-taker concurrent exposure caps;
-self-sponsorship; whitelist/no-risk exclusions; partial settlement; cancellation;
-manual release; dispute; maturity without release; sponsor switch/revocation;
-and invariants for total stake, locked exposure, claims and fee conservation.
-
-## PR scope and ownership
-
-This PR implements the executable pricing model, scenario fixture, tests and
-reviewed design. It leaves runtime sponsorship pending the seller/taker scope
-decision. It does not change contract ABI, package versions, addresses,
-production fee configuration, or existing referral attribution.
-
-For runtime delivery, concrete owners are contracts (fee/consent/cap
-enforcement), Curator (quote allocation and authenticated agreement), indexer
-(exposure and earnings projections), and the selected client (consent and fee
-display). Pay is a runtime owner if this is merchant sponsorship; ordinary
-Peer buyers use clients/mobile instead. Package, API and deployment ordering
-must follow the final changed interfaces; the calculator itself requires no
-package release, migration, reindex or deployment.
+This is a source PR, not a live activation. It changes the OrchestratorV3 ABI
+additively and exposes an already-existing policy getter in its interface.
+No immutable deployment scripts or historical artifacts are edited, and no
+package versions or active addresses are changed. Activation requires a new
+numbered successor-orchestrator lane, registry/verifier compatibility checks,
+authorizing its existing lifecycle path, exact L1/fee-source configuration,
+consumer package/address cutover, and separately authorized deployment.
+Existing orchestrators and hooks must remain usable until their intents drain.
+Before enabling referrals against a shared vault, every registered predecessor
+that can still open unpriced locks through the same policy must stop new
+stake-backed admissions and drain, or be removed after draining. Activating
+this configuration on one successor does not enforce fees on another
+orchestrator. Prove that invariant across the registry at cutover; do not
+advertise fee enforcement for the shared vault while a bypass remains.
+The accepted task is implementation for review; live deployment remains separate.

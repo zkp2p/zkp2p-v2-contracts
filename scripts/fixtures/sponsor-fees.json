@@ -6,9 +6,9 @@
   "targetNetAprBps": 1200,
   "expectedLossBps": 10,
   "operatingCostBps": 5,
-  "sponsorFeeBps": 80,
-  "serviceFeeBps": 150,
+  "sponsorFeeBps": 40,
+  "serviceFeeBps": 100,
   "l1FeeBps": 40,
   "l2FeeBps": 10,
-  "minimumPeerFeeBps": 20
+  "minimumPeerFeeBps": 10
 }

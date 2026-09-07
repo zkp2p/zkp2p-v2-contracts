@@ -8,7 +8,7 @@ const scenario = JSON.parse(readFileSync(new URL('./fixtures/sponsor-fees.json',
 const model = (overrides = {}) => modelSponsorFees({ ...scenario, ...overrides });
 
 test('80 bps funds a 12% target with a 14-day hold and a 150 bps fee budget', () => {
-  const result = model();
+  const result = model({ sponsorFeeBps: 80, serviceFeeBps: 150, minimumPeerFeeBps: 20 });
   assert.equal(result.requiredSponsorFeeBps, 77);
   assert.equal(result.netAprPercent.toFixed(4), '12.7098');
   assert.equal(result.annualNetIncomeUsd.toFixed(2), '1270.98');
@@ -18,15 +18,19 @@ test('80 bps funds a 12% target with a 14-day hold and a 150 bps fee budget', ()
   assert.equal(result.peerRemainderBps, 20);
 });
 
-test('matching a 40 bps referral fee does not meet the target under the same assumptions', () => {
-  assert.equal(model({ sponsorFeeBps: 40 }).netAprPercent.toFixed(4), '4.8884');
-  assert.equal(model({ sponsorFeeBps: 40 }).requiredSponsorFeeBps, 77);
+test('the approved L1-priced fixture uses 40 bps and fits a 100 bps total budget', () => {
+  const result = model();
+  assert.equal(result.assumptions.sponsorFeeBps, result.assumptions.l1FeeBps);
+  assert.equal(result.netAprPercent.toFixed(4), '4.8884');
+  assert.equal(result.requiredSponsorFeeBps, 77);
+  assert.equal(result.peerRemainderBps, 10);
+  assert.equal(result.feeBudgetFits, true);
 });
 
 test('idle collateral and delayed release reduce throughput without changing the fee per fill', () => {
   assert.equal(model({ utilizationBps: 5000 }).requiredSponsorFeeBps, 108);
   assert.equal(model({ additionalHoldDays: 2 }).requiredSponsorFeeBps, 86);
-  assert.equal(model({ additionalHoldDays: 2 }).netAprPercent.toFixed(4), '11.1211');
+  assert.equal(model({ additionalHoldDays: 2 }).netAprPercent.toFixed(4), '4.2773');
 });
 
 test('zero utilization has no earnings and no attainable volume-based target fee', () => {
@@ -37,21 +41,21 @@ test('zero utilization has no earnings and no attainable volume-based target fee
 });
 
 test('loss stress preserves negative returns rather than clipping them to zero', () => {
-  assert.equal(model({ expectedLossBps: 100 }).netAprPercent.toFixed(4), '-4.8884');
+  assert.equal(model({ expectedLossBps: 100 }).netAprPercent.toFixed(4), '-12.7098');
 });
 
-test('a 100 bps budget exposes the shortfall without taking existing referral fees', () => {
-  const result = model({ serviceFeeBps: 100 });
-  assert.equal(result.requiredServiceFeeBps, 150);
-  assert.equal(result.budgetShortfallBps, 50);
-  assert.equal(result.peerRemainderBps, -30);
+test('a 75 bps budget exposes the shortfall without taking existing referral fees', () => {
+  const result = model({ serviceFeeBps: 75 });
+  assert.equal(result.requiredServiceFeeBps, 100);
+  assert.equal(result.budgetShortfallBps, 25);
+  assert.equal(result.peerRemainderBps, -15);
   assert.equal(result.feeBudgetFits, false);
 });
 
 test('capital scales dollars, not the required rate or annualized return', () => {
   const small = model();
   const large = model({ capitalUsd: 100000 });
-  assert.equal(large.annualNetIncomeUsd.toFixed(2), '12709.82');
+  assert.equal(large.annualNetIncomeUsd.toFixed(2), '4888.39');
   assert.equal(large.requiredSponsorFeeBps, small.requiredSponsorFeeBps);
   assert.equal(large.netAprPercent, small.netAprPercent);
 });
