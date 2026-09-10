@@ -41,6 +41,7 @@ const PUBLISHED_PAYMENT_METHOD_NAMES = new Set([
   'monzo',
   'paypal',
   'revolut',
+  'upi',
   'venmo',
   'wise',
   'zelle',

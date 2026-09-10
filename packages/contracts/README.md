@@ -2,7 +2,14 @@
 
 Official npm package for ZKP2P V2 smart contract interfaces, ABIs, addresses, and utilities.
 
-## Release 0.4.1 RC
+## Release 0.4.2 RC
+
+- Includes the registered UPI/INR method in both Base and Base staging catalogs
+  and cross-network hash lookups. HDFC Gmail is the buyer proof flow selected
+  by clients; this package does not enable WhatsApp UPI.
+- Published on the `rc` tag for preproduction validation; `latest` stays at 0.4.1.
+
+## Release 0.4.1
 
 - Exports the canonical source ABIs for `DisputeNullifierRegistry`, `DisputeProtectionPolicy`,
   `DisputeVerifier`, `IntentLifecycleHookV1`, and `StakeVault`.

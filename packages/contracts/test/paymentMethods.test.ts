@@ -17,6 +17,22 @@ describe("payment method package extraction", () => {
     await extractPaymentMethods();
   });
 
+  it("publishes registered UPI/INR on Base and Base staging in every module format", () => {
+    const methodHash = "0xe99a5081226cbbff9440a63da5caa04fa30f210c12c4dd9976132ac075054cd9";
+    const currencyHash = "0xaad766fbc07fb357bed9fd8b03b935f2f71fe29fc48f08274bc2a01d7f642afc";
+    for (const format of ["", "_cjs", "_esm"]) {
+      const directory = path.resolve(__dirname, "..", format, "paymentMethods");
+      for (const network of ["base", "baseStaging"]) {
+        const data = JSON.parse(fs.readFileSync(path.join(directory, `${network}.json`), "utf8"));
+        expect(data.methods.upi.paymentMethodHash).toBe(methodHash);
+        expect(data.methods.upi.currencies).toEqual([currencyHash]);
+      }
+      const lookups = JSON.parse(fs.readFileSync(path.join(directory, "lookups.json"), "utf8"));
+      expect(lookups.nameToHash.upi).toBe(methodHash);
+      expect(lookups.hashToName[methodHash]).toBe("upi");
+    }
+  });
+
   it("publishes one generic Zelle method with no variant compatibility API", () => {
     const base = JSON.parse(fs.readFileSync(path.join(paymentMethodsDir, "base.json"), "utf8"));
     const baseStaging = JSON.parse(fs.readFileSync(path.join(paymentMethodsDir, "baseStaging.json"), "utf8"));
