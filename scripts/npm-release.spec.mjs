@@ -358,7 +358,7 @@ test('derives a future RC release line from the package version', () => {
 
 test('commits the UPI RC candidate while preserving stable release support', () => {
   const packageManifest = JSON.parse(fs.readFileSync(packageManifestPath, 'utf8'));
-  assert.equal(packageManifest.version, '0.4.2-rc.1');
+  assert.equal(packageManifest.version, '0.4.2-rc.2');
   assert.deepEqual(
     resolveReleasePolicy({
       release: '0.4.1',

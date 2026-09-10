@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { isDeepStrictEqual } from "node:util";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -19,6 +20,8 @@ const repoRoot = path.resolve(
 );
 const { INTERNAL_POLICY_RECORDS, getActiveDisputeDeploymentName } =
   requireFromRepo("../../../deployments/activeDisputeStack.cjs");
+const { riskWindowSecondsByPaymentMethod: canonicalRiskWindows } =
+  requireFromRepo("../../../deployments/dispute-stack-evidence.json");
 const internalPolicyRecords = /** @type {string[]} */ (INTERNAL_POLICY_RECORDS);
 /** @param {string} name */
 const isInternalDeploymentName = (name) =>
@@ -70,9 +73,9 @@ for (const subpath of [
     fail(`consumer import ${subpath} is missing`);
 }
 
-for (const [network, expectedRiskWindowCount] of [
-  ["base", 10],
-  ["baseStaging", 12],
+for (const [network, manifestNetwork] of [
+  ["base", "base"],
+  ["baseStaging", "base_staging"],
 ]) {
   const manifest = requireFromInstall(
     `@zkp2p/contracts-v2/disputeStack/${network}.json`
@@ -97,10 +100,12 @@ for (const [network, expectedRiskWindowCount] of [
     fail(`${network} dispute stack CJS/ESM exports differ from packaged JSON`);
   }
   if (
-    Object.keys(manifest.riskWindowSecondsByPaymentMethod || {}).length !==
-    expectedRiskWindowCount
+    !isDeepStrictEqual(
+      manifest.riskWindowSecondsByPaymentMethod,
+      canonicalRiskWindows[manifestNetwork]
+    )
   ) {
-    fail(`${network} dispute stack metadata does not cover all active methods`);
+    fail(`${network} dispute stack risk windows differ from canonical deployment evidence`);
   }
   if (
     manifest.addressExpectations?.StakeToken !==
